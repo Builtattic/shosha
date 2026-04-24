@@ -4,6 +4,7 @@ import { connectDb } from '@/lib/db';
 import { fail, fromZod, ok } from '@/lib/api';
 import { accountCreateSchema } from '@/lib/validators';
 import { averageBreakdown } from '@/lib/scoring';
+import { fetchSocialProfile, socialErrorResponse } from '@/lib/social';
 import { serializeDoc } from '@/lib/utils';
 import { Account } from '@/models/Account';
 
@@ -22,27 +23,33 @@ export async function POST(request: Request) {
   if (!parsed.success) return fromZod(parsed.error);
 
   await connectDb();
-  const displayName = parsed.data.displayName ?? `@${parsed.data.username}`;
-  const account = await Account.create({
+  const existing = await Account.findOne({
     platform: parsed.data.platform,
-    username: parsed.data.username,
+    username: parsed.data.username
+  }).lean();
+  if (existing) return ok(serializeDoc(existing), 200);
+
+  let profile;
+  try {
+    profile = await fetchSocialProfile(parsed.data.platform, parsed.data.username);
+  } catch (error) {
+    const response = socialErrorResponse(error);
+    return fail(response.code, response.message, response.status);
+  }
+
+  const displayName = parsed.data.displayName ?? profile.displayName;
+  const account = await Account.create({
+    platform: profile.platform,
+    username: profile.username,
     displayName,
-    bio: 'Public profile ingestion is scaffolded until Instagram and X API access is wired.',
-    avatarUrl: `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(displayName)}`,
-    verified: false,
-    followers: 'pending',
+    bio: profile.bio,
+    avatarUrl: profile.avatarUrl,
+    verified: profile.verified,
+    followers: profile.followers,
     score: 60,
     scoreHistory: [{ t: new Date(), s: 60, cause: 'seed' }],
     breakdown: averageBreakdown(),
-    posts: [
-      {
-        externalId: `mock-${Date.now()}`,
-        content: 'Profile capture placeholder. Live social ingestion is marked for a future phase.',
-        likes: '0',
-        replies: '0',
-        capturedAt: new Date()
-      }
-    ]
+    posts: profile.posts
   });
 
   return ok(serializeDoc(account), 201);

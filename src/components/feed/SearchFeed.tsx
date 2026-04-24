@@ -1,11 +1,15 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { useEffect, useMemo, useState } from 'react';
-import { Search } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Input } from '@/components/ui/Input';
-import { formatPlatform } from '@/lib/utils';
+import { useToast } from '@/components/ui/Toast';
+import { cn, formatPlatform } from '@/lib/utils';
 
 type AccountRow = {
   _id: string;
@@ -17,9 +21,14 @@ type AccountRow = {
 };
 
 export function SearchFeed({ initialAccounts }: { initialAccounts: AccountRow[] }) {
+  const router = useRouter();
+  const { data: session } = useSession();
+  const toast = useToast();
   const [q, setQ] = useState('');
   const [accounts, setAccounts] = useState(initialAccounts);
   const [loading, setLoading] = useState(false);
+  const [platform, setPlatform] = useState<'instagram' | 'x'>('instagram');
+  const [tracking, setTracking] = useState(false);
 
   useEffect(() => {
     const timer = window.setTimeout(async () => {
@@ -32,7 +41,32 @@ export function SearchFeed({ initialAccounts }: { initialAccounts: AccountRow[] 
     return () => window.clearTimeout(timer);
   }, [q]);
 
-  const validHandle = useMemo(() => /^[a-zA-Z0-9_.]{2,50}$/.test(q), [q]);
+  const normalizedHandle = useMemo(() => q.trim().replace(/^@/, '').toLowerCase(), [q]);
+  const validHandle = useMemo(() => /^[a-zA-Z0-9_.]{2,50}$/.test(normalizedHandle), [normalizedHandle]);
+
+  async function trackHandle() {
+    if (!session) {
+      router.push('/signin');
+      return;
+    }
+    setTracking(true);
+    try {
+      const response = await fetch('/api/accounts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ platform, username: normalizedHandle })
+      });
+      const payload = await response.json();
+      if (!payload.ok) throw new Error(payload.error.message);
+      toast.push('Live profile captured into a new dossier.');
+      router.push(`/account/${payload.data._id}`);
+      router.refresh();
+    } catch (error) {
+      toast.push(error instanceof Error ? error.message : 'The live lookup did not return a dossier.');
+    } finally {
+      setTracking(false);
+    }
+  }
 
   return (
     <section className="px-4 py-5">
@@ -63,14 +97,40 @@ export function SearchFeed({ initialAccounts }: { initialAccounts: AccountRow[] 
         ))}
         {loading ? <p className="border border-border bg-dim p-4 text-xs uppercase text-muted">Indexing the query</p> : null}
         {!loading && accounts.length === 0 ? (
-          <EmptyState
-            title="No file yet."
-            body={
-              validHandle
-                ? 'This handle has not entered the archive. A signed in user can open the first dossier.'
-                : 'The archive has no matching trace.'
-            }
-          />
+          <div className="space-y-3">
+            <EmptyState
+              title="No file yet."
+              body={
+                validHandle
+                  ? 'This handle has not entered the archive. Open the first dossier from a live platform lookup.'
+                  : 'The archive has no matching trace.'
+              }
+            />
+            {validHandle ? (
+              <div className="border border-border bg-raised p-4">
+                <p className="text-xs uppercase text-muted">Track @{normalizedHandle}</p>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  {(['instagram', 'x'] as const).map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => setPlatform(option)}
+                      className={cn(
+                        'min-h-11 border px-3 text-xs uppercase',
+                        platform === option ? 'border-accent text-accent' : 'border-border text-muted'
+                      )}
+                    >
+                      {formatPlatform(option)}
+                    </button>
+                  ))}
+                </div>
+                <Button className="mt-3 w-full" disabled={tracking} onClick={trackHandle}>
+                  <Plus size={16} />
+                  {tracking ? 'Fetching live account' : session ? 'Open live dossier' : 'Sign in to track'}
+                </Button>
+              </div>
+            ) : null}
+          </div>
         ) : null}
       </div>
     </section>

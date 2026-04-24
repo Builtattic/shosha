@@ -12,7 +12,7 @@ export const signupSchema = z.object({
 
 export const accountCreateSchema = z.object({
   platform: platformSchema,
-  username: z.string().min(1).max(50).regex(/^[a-zA-Z0-9_.]+$/).transform((value) => value.toLowerCase()),
+  username: z.string().min(1).max(50).regex(/^@?[a-zA-Z0-9_.]+$/).transform((value) => value.replace(/^@/, '').toLowerCase()),
   displayName: z.string().min(1).max(80).optional()
 });
 
