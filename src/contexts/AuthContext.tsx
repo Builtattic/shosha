@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import {
-  onAuthStateChanged,
+  onIdTokenChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut as firebaseSignOut,
@@ -35,9 +35,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
+    const unsubscribe = onIdTokenChanged(auth, async (u) => {
       setUser(u);
       setLoading(false);
+      
+      if (u) {
+        const token = await u.getIdToken();
+        document.cookie = `__session=${token}; path=/; max-age=3600; SameSite=Lax`;
+      } else {
+        document.cookie = `__session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`;
+      }
     });
     return unsubscribe;
   }, []);
