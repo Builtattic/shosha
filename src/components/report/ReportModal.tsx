@@ -75,8 +75,6 @@ export function ReportModal({
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  if (!open) return null;
-
   function reset() {
     setStep(1);
     setType(null);
@@ -247,6 +245,8 @@ export function ReportModal({
       setSubmitting(false);
     }
   }
+
+  if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-[200] flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center p-0 sm:p-4">

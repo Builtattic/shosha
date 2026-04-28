@@ -52,7 +52,7 @@ export default function ProfilePage() {
               </div>
               <h1 className="text-3xl font-bold tracking-tight">Welcome to Shoशा</h1>
               <p className="text-muted-foreground text-lg">
-                The continuous reputation ledger. Let's get your profile set up. How do you plan to use the platform?
+                The continuous reputation ledger. Let&apos;s get your profile set up. How do you plan to use the platform?
               </p>
               
               <div className="grid gap-4 pt-6">

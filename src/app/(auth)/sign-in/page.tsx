@@ -245,7 +245,7 @@ export default function SignInPage() {
                   <ArrowLeft size={16} /> Back
                 </button>
                 <h2 className="text-xl font-bold mb-2">Phone verification</h2>
-                <p className="text-sm text-muted-foreground mb-6">We'll send a 6-digit code to your phone.</p>
+                <p className="text-sm text-muted-foreground mb-6">We&apos;ll send a 6-digit code to your phone.</p>
 
                 {error && <p className="text-red-500 text-sm mb-4 bg-red-500/10 rounded-xl p-3">{error}</p>}
 
@@ -327,7 +327,7 @@ export default function SignInPage() {
                   onClick={() => { setMode('phone'); setOtp(['', '', '', '', '', '']); setError(''); }}
                   className="w-full text-center text-sm text-muted-foreground mt-4 hover:text-foreground"
                 >
-                  Didn't receive it? Try again
+                  Didn&apos;t receive it? Try again
                 </button>
               </motion.div>
             )}
@@ -335,7 +335,7 @@ export default function SignInPage() {
         </div>
 
         <p className="text-center text-xs text-muted-foreground mt-6">
-          By continuing, you agree to Shoशा's Terms of Service.
+          By continuing, you agree to Shoशा&apos;s Terms of Service.
         </p>
       </div>
     </main>
