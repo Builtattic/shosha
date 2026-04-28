@@ -1,27 +1,26 @@
-import { getServerSession } from 'next-auth';
-import { authOptions, isAdmin } from '@/lib/auth';
-import { connectDb } from '@/lib/db';
 import { fail, ok } from '@/lib/api';
-import { serializeDoc } from '@/lib/utils';
-import { Report } from '@/models/Report';
+import { getCurrentUser, isAdmin } from '@/lib/auth';
+import * as reportsRepo from '@/lib/repos/reports';
+import * as accountsRepo from '@/lib/repos/accounts';
 
 export async function GET(request: Request) {
-  const session = await getServerSession(authOptions);
-  if (!isAdmin(session)) return fail('forbidden', 'Only tribunal staff can read the queue.', 403);
+  const user = await getCurrentUser();
+  if (!isAdmin(user)) return fail('forbidden', 'Only tribunal staff can read the queue.', 403);
 
   const { searchParams } = new URL(request.url);
   const type = searchParams.get('type');
   const platform = searchParams.get('platform');
-  const sort: Record<string, 1 | -1> =
-    searchParams.get('sort') === 'confidence' ? { 'aiVerdict.confidence': -1 } : { createdAt: 1 };
-  const query: Record<string, unknown> = { status: { $in: ['ai_reviewed', 'pending_ai', 'flagged'] } };
-  if (type === 'positive' || type === 'negative') query.type = type;
+  const sort = searchParams.get('sort') === 'confidence' ? 'confidence' : 'date';
+  const reports = await reportsRepo.listQueue({
+    type: type === 'positive' || type === 'negative' ? type : undefined,
+    sort
+  });
 
-  await connectDb();
-  const reports = await Report.find(query)
-    .populate({ path: 'accountId', match: platform ? { platform } : undefined })
-    .sort(sort)
-    .limit(100)
-    .lean();
-  return ok(serializeDoc(reports.filter((report) => report.accountId)));
+  const accountIds = Array.from(new Set(reports.map((r) => r.accountId)));
+  const accounts = await Promise.all(accountIds.map((id) => accountsRepo.findById(id)));
+  const accountMap = new Map(accounts.filter(Boolean).map((a) => [a!._id, a!]));
+  const enriched = reports
+    .map((r) => ({ ...r, account: accountMap.get(r.accountId) ?? null }))
+    .filter((r) => r.account !== null && (!platform || r.account?.platform === platform));
+  return ok(enriched);
 }

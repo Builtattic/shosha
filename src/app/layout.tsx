@@ -1,35 +1,21 @@
 import type { Metadata } from 'next';
-import { getServerSession } from 'next-auth';
-import { BottomNav } from '@/components/nav/BottomNav';
+import { AuthProvider } from '@/contexts/AuthContext';
 import { Providers } from '@/components/Providers';
-import { SignInChip } from '@/components/nav/SignInChip';
-import { authOptions } from '@/lib/auth';
-import { instrumentSerif, jetBrainsMono } from '@/styles/fonts';
+import { instrumentSans, playfairDisplay, dmMono } from '@/styles/fonts';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Shosha',
-  description: 'Investigative social account reputation dossiers'
+  title: 'Shoशा — The Ledger',
+  description: 'Every action. Every consequence. Counted.'
 };
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const session = await getServerSession(authOptions);
-
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${instrumentSerif.variable} ${jetBrainsMono.variable}`}>
-      <body>
-        <Providers session={session}>
-          <div className="mx-auto min-h-screen w-full max-w-md border-x border-border bg-bg safe-bottom">
-            <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-bg/90 px-4 backdrop-blur">
-              <a href="/" className="font-serif text-3xl tracking-normal text-text">
-                Shosha
-              </a>
-              <SignInChip />
-            </header>
-            {children}
-            <BottomNav />
-          </div>
-        </Providers>
+    <html lang="en" className={`${instrumentSans.variable} ${playfairDisplay.variable} ${dmMono.variable}`}>
+      <body className="font-sans text-foreground bg-background antialiased selection:bg-primary selection:text-background">
+        <AuthProvider>
+          <Providers>{children}</Providers>
+        </AuthProvider>
       </body>
     </html>
   );

@@ -1,22 +1,21 @@
-import { getServerSession } from 'next-auth';
-import { authOptions, isAdmin } from '@/lib/auth';
-import { connectDb } from '@/lib/db';
 import { fail, ok } from '@/lib/api';
-import { Account } from '@/models/Account';
-import { Report } from '@/models/Report';
+import { getCurrentUser, isAdmin } from '@/lib/auth';
+import * as accountsRepo from '@/lib/repos/accounts';
+import * as reportsRepo from '@/lib/repos/reports';
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!isAdmin(session)) return fail('forbidden', 'Only tribunal staff can inspect stats.', 403);
-  await connectDb();
+  const user = await getCurrentUser();
+  if (!isAdmin(user)) return fail('forbidden', 'Only tribunal staff can inspect stats.', 403);
+
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   const [accountsTracked, filingsTotal, filingsLast7, queueDepth, decided] = await Promise.all([
-    Account.countDocuments({}),
-    Report.countDocuments({}),
-    Report.countDocuments({ createdAt: { $gte: sevenDaysAgo } }),
-    Report.countDocuments({ status: { $in: ['ai_reviewed', 'pending_ai', 'flagged'] } }),
-    Report.find({ status: { $in: ['approved', 'rejected'] }, aiVerdict: { $ne: null } }).lean()
+    accountsRepo.count(),
+    reportsRepo.count(),
+    reportsRepo.countSince(sevenDaysAgo),
+    reportsRepo.countByStatus(['ai_reviewed', 'pending_ai', 'flagged']),
+    reportsRepo.listDecided()
   ]);
+
   const agreed = decided.filter((report) => {
     const proposed = Number(report.aiVerdict?.proposedImpact ?? 0);
     const finalImpact = Number(report.adminDecision?.finalImpact ?? 0);

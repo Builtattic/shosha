@@ -8,3 +8,7 @@ coverage
 playwright-report
 test-results
 *.tsbuildinfo
+.emulator-data
+.env.*
+# clerk configuration (can include secrets)
+/.clerk/

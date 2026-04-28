@@ -1,19 +1,7 @@
 'use client';
 
-import { SessionProvider } from 'next-auth/react';
-import type { Session } from 'next-auth';
 import { ToastProvider } from '@/components/ui/Toast';
 
-export function Providers({
-  session,
-  children
-}: {
-  session: Session | null;
-  children: React.ReactNode;
-}) {
-  return (
-    <SessionProvider session={session}>
-      <ToastProvider>{children}</ToastProvider>
-    </SessionProvider>
-  );
+export function Providers({ children }: { children: React.ReactNode }) {
+  return <ToastProvider>{children}</ToastProvider>;
 }

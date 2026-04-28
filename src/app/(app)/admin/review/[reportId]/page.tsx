@@ -1,19 +1,17 @@
 import { notFound } from 'next/navigation';
 import { AdminReviewControls } from '@/components/admin/AdminReviewControls';
-import { connectDb } from '@/lib/db';
-import { objectIdSchema } from '@/lib/validators';
-import { serializeDoc } from '@/lib/utils';
-import { Report } from '@/models/Report';
+import { idSchema } from '@/lib/validators';
+import * as accountsRepo from '@/lib/repos/accounts';
+import * as reportsRepo from '@/lib/repos/reports';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ReviewPage({ params }: { params: { reportId: string } }) {
-  const id = objectIdSchema.safeParse(params.reportId);
+  const id = idSchema.safeParse(params.reportId);
   if (!id.success) notFound();
-  await connectDb();
-  const report: any = serializeDoc(await Report.findById(id.data).populate('accountId').lean());
+  const report = await reportsRepo.findById(id.data);
   if (!report) notFound();
-  const account = report.accountId;
+  const account = await accountsRepo.findById(report.accountId);
 
   return (
     <main className="px-4 py-6">
@@ -41,7 +39,7 @@ export default async function ReviewPage({ params }: { params: { reportId: strin
       </section>
       <section className="mt-4">
         <AdminReviewControls
-          reportId={String(report._id)}
+          reportId={report._id}
           proposedImpact={report.aiVerdict?.proposedImpact ?? 0}
           score={account?.score ?? 60}
         />

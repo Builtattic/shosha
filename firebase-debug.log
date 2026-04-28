@@ -1,0 +1,61 @@
+[debug] [2026-04-28T13:01:20.032Z] ----------------------------------------------------------------------
+[debug] [2026-04-28T13:01:20.034Z] Command:       C:\Program Files\nodejs\node.exe D:\Shosha\node_modules\firebase-tools\lib\bin\firebase.js projects:create shosha-rep --display-name Shosha
+[debug] [2026-04-28T13:01:20.034Z] CLI Version:   15.15.0
+[debug] [2026-04-28T13:01:20.034Z] Platform:      win32
+[debug] [2026-04-28T13:01:20.034Z] Node Version:  v25.6.1
+[debug] [2026-04-28T13:01:20.034Z] Time:          Tue Apr 28 2026 18:31:20 GMT+0530 (India Standard Time)
+[debug] [2026-04-28T13:01:20.034Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-04-28T13:01:20.165Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-04-28T13:01:20.165Z] > authorizing via signed-in user (tushar@builtattic.com)
+[debug] [2026-04-28T13:01:20.167Z] Checked if tokens are valid: true, expires at: 1777384165946
+[debug] [2026-04-28T13:01:20.167Z] Checked if tokens are valid: true, expires at: 1777384165946
+[debug] [2026-04-28T13:01:20.168Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects [none]
+[debug] [2026-04-28T13:01:20.168Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects {"projectId":"shosha-rep","name":"Shosha"}
+[debug] [2026-04-28T13:01:21.907Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects 200
+[debug] [2026-04-28T13:01:21.907Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects {"name":"operations/create_project.global.5896672781914394967"}
+[debug] [2026-04-28T13:01:21.907Z] Checked if tokens are valid: true, expires at: 1777384165946
+[debug] [2026-04-28T13:01:21.907Z] Checked if tokens are valid: true, expires at: 1777384165946
+[debug] [2026-04-28T13:01:21.907Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/operations/create_project.global.5896672781914394967 [none]
+[debug] [2026-04-28T13:01:23.297Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/operations/create_project.global.5896672781914394967 200
+[debug] [2026-04-28T13:01:23.297Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/operations/create_project.global.5896672781914394967 {"name":"operations/create_project.global.5896672781914394967"}
+[debug] [2026-04-28T13:01:23.802Z] [Project Creation Poller] Retrying task index 0
+[debug] [2026-04-28T13:01:23.802Z] Checked if tokens are valid: true, expires at: 1777384165946
+[debug] [2026-04-28T13:01:23.802Z] Checked if tokens are valid: true, expires at: 1777384165946
+[debug] [2026-04-28T13:01:23.802Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/operations/create_project.global.5896672781914394967 [none]
+[debug] [2026-04-28T13:01:24.125Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/operations/create_project.global.5896672781914394967 200
+[debug] [2026-04-28T13:01:24.125Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/operations/create_project.global.5896672781914394967 {"name":"operations/create_project.global.5896672781914394967","metadata":{"@type":"type.googleapis.com/google.cloudresourcemanager.v1.ProjectCreationStatus","gettable":true,"ready":true},"done":true,"response":{"@type":"type.googleapis.com/google.cloudresourcemanager.v1.Project","projectNumber":"500946757971","projectId":"shosha-rep","lifecycleState":"ACTIVE","name":"Shosha","createTime":"2026-04-28T13:01:21.992Z","parent":{"type":"organization","id":"412390711657"}}}
+[debug] [2026-04-28T13:01:24.126Z] Checked if tokens are valid: true, expires at: 1777384165946
+[debug] [2026-04-28T13:01:24.126Z] Checked if tokens are valid: true, expires at: 1777384165946
+[debug] [2026-04-28T13:01:24.127Z] >>> [apiv2][query] POST https://firebase.googleapis.com/v1beta1/projects/shosha-rep:addFirebase [none]
+[debug] [2026-04-28T13:01:25.522Z] <<< [apiv2][status] POST https://firebase.googleapis.com/v1beta1/projects/shosha-rep:addFirebase 403
+[debug] [2026-04-28T13:01:25.523Z] <<< [apiv2][body] POST https://firebase.googleapis.com/v1beta1/projects/shosha-rep:addFirebase {"error":{"code":403,"message":"The caller does not have permission","status":"PERMISSION_DENIED"}}
+[debug] [2026-04-28T13:01:25.523Z] Request to https://firebase.googleapis.com/v1beta1/projects/shosha-rep:addFirebase had HTTP Error: 403, The caller does not have permission
+[debug] [2026-04-28T13:01:25.524Z] FirebaseError: Request to https://firebase.googleapis.com/v1beta1/projects/shosha-rep:addFirebase had HTTP Error: 403, The caller does not have permission
+    at responseToError (D:\Shosha\node_modules\firebase-tools\lib\responseToError.js:53:12)
+    at RetryOperation._fn (D:\Shosha\node_modules\firebase-tools\lib\apiv2.js:333:77)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+[error] 
+[error] Error: Failed to add Firebase to Google Cloud Platform project. See firebase-debug.log for more info.
+[debug] [2026-04-28T13:01:47.669Z] ----------------------------------------------------------------------
+[debug] [2026-04-28T13:01:47.670Z] Command:       C:\Program Files\nodejs\node.exe D:\Shosha\node_modules\firebase-tools\lib\bin\firebase.js projects:addfirebase shosha-rep
+[debug] [2026-04-28T13:01:47.671Z] CLI Version:   15.15.0
+[debug] [2026-04-28T13:01:47.671Z] Platform:      win32
+[debug] [2026-04-28T13:01:47.671Z] Node Version:  v25.6.1
+[debug] [2026-04-28T13:01:47.671Z] Time:          Tue Apr 28 2026 18:31:47 GMT+0530 (India Standard Time)
+[debug] [2026-04-28T13:01:47.672Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-04-28T13:01:47.811Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-04-28T13:01:47.811Z] > authorizing via signed-in user (tushar@builtattic.com)
+[debug] [2026-04-28T13:01:47.813Z] Checked if tokens are valid: true, expires at: 1777384165946
+[debug] [2026-04-28T13:01:47.813Z] Checked if tokens are valid: true, expires at: 1777384165946
+[debug] [2026-04-28T13:01:47.814Z] >>> [apiv2][query] POST https://firebase.googleapis.com/v1beta1/projects/shosha-rep:addFirebase [none]
+[debug] [2026-04-28T13:01:48.952Z] <<< [apiv2][status] POST https://firebase.googleapis.com/v1beta1/projects/shosha-rep:addFirebase 403
+[debug] [2026-04-28T13:01:48.952Z] <<< [apiv2][body] POST https://firebase.googleapis.com/v1beta1/projects/shosha-rep:addFirebase {"error":{"code":403,"message":"The caller does not have permission","status":"PERMISSION_DENIED"}}
+[debug] [2026-04-28T13:01:48.953Z] Request to https://firebase.googleapis.com/v1beta1/projects/shosha-rep:addFirebase had HTTP Error: 403, The caller does not have permission
+[debug] [2026-04-28T13:01:48.954Z] FirebaseError: Request to https://firebase.googleapis.com/v1beta1/projects/shosha-rep:addFirebase had HTTP Error: 403, The caller does not have permission
+    at responseToError (D:\Shosha\node_modules\firebase-tools\lib\responseToError.js:53:12)
+    at RetryOperation._fn (D:\Shosha\node_modules\firebase-tools\lib\apiv2.js:333:77)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+[error] 
+[error] Error: Failed to add Firebase to Google Cloud Platform project. See firebase-debug.log for more info.

@@ -1,51 +1,51 @@
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import { connectDb } from '@/lib/db';
 import { fail, fromZod, ok } from '@/lib/api';
+import { requireUser } from '@/lib/auth';
 import { assertLimit, rateLimits } from '@/lib/ratelimit';
-import { claimSchema, objectIdSchema } from '@/lib/validators';
-import { serializeDoc } from '@/lib/utils';
-import { Account } from '@/models/Account';
-import { ClaimRequest } from '@/models/ClaimRequest';
-import { User } from '@/models/User';
+import { claimSchema, idSchema } from '@/lib/validators';
+import * as accountsRepo from '@/lib/repos/accounts';
+import * as claimsRepo from '@/lib/repos/claimRequests';
+import * as usersRepo from '@/lib/repos/users';
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
-  const session = await getServerSession(authOptions);
-  if (!session) return fail('unauthorized', 'Sign in before claiming a dossier.', 401);
-  const id = objectIdSchema.safeParse(params.id);
+  let user;
+  try {
+    user = await requireUser();
+  } catch {
+    return fail('unauthorized', 'Sign in before claiming a dossier.', 401);
+  }
+  const id = idSchema.safeParse(params.id);
   if (!id.success) return fail('not_found', 'No dossier exists for that id.', 404);
-  const limit = await assertLimit(rateLimits.claim, session.user.id);
+  const limit = await assertLimit(rateLimits.claim, user._id);
   if (!limit.allowed) return fail('rate_limited', 'Claim attempts are paused for today.', 429);
 
   const json = await request.json().catch(() => null);
   const parsed = claimSchema.safeParse(json);
   if (!parsed.success) return fromZod(parsed.error);
 
-  await connectDb();
-  const account = await Account.findById(id.data);
+  const account = await accountsRepo.findById(id.data);
   if (!account) return fail('not_found', 'No dossier exists for that id.', 404);
 
   const bioCode = `shosha-${Math.random().toString(36).slice(2, 6)}`;
   const autoApprove = parsed.data.proofType === 'bio_code';
-  const claim = await ClaimRequest.create({
-    userId: session.user.id,
+  const claim = await claimsRepo.create({
+    userId: user._id,
     accountId: id.data,
     proofType: parsed.data.proofType,
     proofPayload: {
       ...parsed.data.proofPayload,
-      ...(parsed.data.proofType === 'bio_code' ? { code: bioCode, expiresAt: new Date(Date.now() + 10 * 60_000) } : {})
+      ...(parsed.data.proofType === 'bio_code'
+        ? { code: bioCode, expiresAt: new Date(Date.now() + 10 * 60_000).toISOString() }
+        : {})
     },
     status: autoApprove ? 'approved' : 'pending',
-    reviewedAt: autoApprove ? new Date() : null,
-    reviewedBy: autoApprove ? session.user.id : null
+    reviewedAt: autoApprove ? new Date().toISOString() : null,
+    reviewedBy: autoApprove ? user._id : null
   });
 
   if (autoApprove) {
-    account.claimed = true;
-    account.claimedBy = session.user.id as any;
-    await account.save();
-    await User.findByIdAndUpdate(session.user.id, { $addToSet: { claimedAccounts: account._id } });
+    await accountsRepo.update(id.data, { claimed: true, claimedBy: user._id });
+    await usersRepo.addClaimedAccount(user._id, id.data);
   }
 
-  return ok(serializeDoc(claim), 201);
+  return ok(claim, 201);
 }

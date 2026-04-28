@@ -5,30 +5,25 @@ import { PostsFeed } from '@/components/profile/PostsFeed';
 import { ScoreGauge } from '@/components/viz/ScoreGauge';
 import { ScoreHistory } from '@/components/viz/ScoreHistory';
 import { ScoreRadar } from '@/components/viz/ScoreRadar';
-import { connectDb } from '@/lib/db';
-import { formatPlatform, serializeDoc } from '@/lib/utils';
-import { objectIdSchema } from '@/lib/validators';
-import { Account } from '@/models/Account';
-import { Report } from '@/models/Report';
+import { formatPlatform } from '@/lib/utils';
+import { idSchema } from '@/lib/validators';
+import * as accountsRepo from '@/lib/repos/accounts';
+import * as reportsRepo from '@/lib/repos/reports';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AccountPage({ params }: { params: { id: string } }) {
-  const id = objectIdSchema.safeParse(params.id);
+  const id = idSchema.safeParse(params.id);
   if (!id.success) notFound();
 
-  await connectDb();
-  const account: any = serializeDoc(await Account.findById(id.data).lean());
+  const account = await accountsRepo.findById(id.data);
   if (!account) notFound();
-  const filings: any[] = serializeDoc(
-    await Report.find({ accountId: id.data, status: { $in: ['approved', 'ai_reviewed', 'flagged'] } })
-      .sort({ createdAt: -1 })
-      .limit(30)
-      .lean()
-  );
-  const history: any[] = account.scoreHistory?.length
+
+  const filings = await reportsRepo.listForAccount(id.data, ['approved', 'ai_reviewed', 'flagged'], 30);
+
+  const history = account.scoreHistory?.length
     ? account.scoreHistory
-    : [{ t: account.createdAt ?? new Date(), s: account.score, cause: 'seed' }];
+    : [{ t: account.createdAt ?? new Date().toISOString(), s: account.score, cause: 'seed' as const }];
   const previous = history.length > 1 ? history[history.length - 2].s : 60;
   const delta = account.score - previous;
 
@@ -48,12 +43,12 @@ export default async function AccountPage({ params }: { params: { id: string } }
         </div>
       </section>
       <section className="space-y-4 px-4 py-5">
-        <DossierActions accountId={String(account._id)} claimedBy={account.claimedBy ? String(account.claimedBy) : null} />
+        <DossierActions accountId={account._id} claimedBy={account.claimedBy} />
       </section>
       <section className="border-t border-border px-4 py-5">
         <h2 className="mb-3 font-serif text-4xl">Score history</h2>
         <div className="border border-border bg-raised p-3">
-          <ScoreHistory points={history} />
+          <ScoreHistory />
         </div>
       </section>
       <section className="border-t border-border px-4 py-5">
@@ -68,7 +63,7 @@ export default async function AccountPage({ params }: { params: { id: string } }
       </section>
       <section className="border-t border-border px-4 py-5">
         <h2 className="mb-3 font-serif text-4xl">Filings on record</h2>
-        <FilingsList filings={filings} />
+        <FilingsList filings={filings as any} />
       </section>
     </main>
   );

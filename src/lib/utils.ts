@@ -1,9 +1,21 @@
-export function cn(...classes: Array<string | false | null | undefined>) {
-  return classes.filter(Boolean).join(' ');
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
 }
 
 export function formatPlatform(platform: string) {
-  return platform === 'x' ? 'X' : 'Instagram';
+  const labels: Record<string, string> = {
+    x: 'X',
+    instagram: 'Instagram',
+    facebook: 'Facebook',
+    youtube: 'YouTube',
+    tiktok: 'TikTok',
+    linkedin: 'LinkedIn',
+    website: 'Website'
+  };
+  return labels[platform] ?? platform;
 }
 
 export function clamp(value: number, min = 0, max = 100) {

@@ -1,26 +1,27 @@
 import Link from 'next/link';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { StatsBars } from '@/components/admin/StatsBars';
-import { connectDb } from '@/lib/db';
-import { serializeDoc } from '@/lib/utils';
-import { Account } from '@/models/Account';
-import { Report } from '@/models/Report';
+import * as accountsRepo from '@/lib/repos/accounts';
+import * as reportsRepo from '@/lib/repos/reports';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminPage() {
-  await connectDb();
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   const [queue, accountsTracked, filingsTotal, filingsLast7] = await Promise.all([
-    Report.find({ status: { $in: ['ai_reviewed', 'pending_ai', 'flagged'] } })
-      .populate('accountId')
-      .sort({ createdAt: 1 })
-      .limit(50)
-      .lean(),
-    Account.countDocuments({}),
-    Report.countDocuments({}),
-    Report.countDocuments({ createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } })
+    reportsRepo.listQueue({}, 50),
+    accountsRepo.count(),
+    reportsRepo.count(),
+    reportsRepo.countSince(sevenDaysAgo)
   ]);
-  const queueRows = serializeDoc(queue);
+
+  const accountIds = Array.from(new Set(queue.map((r) => r.accountId)));
+  const accounts = await Promise.all(accountIds.map((id) => accountsRepo.findById(id)));
+  const accountMap = new Map(accounts.filter(Boolean).map((a) => [a!._id, a!]));
+
+  const queueRows = queue
+    .map((report) => ({ ...report, account: accountMap.get(report.accountId) ?? null }))
+    .filter((row) => row.account !== null);
   const stats = { accountsTracked, filingsTotal, filingsLast7, queueDepth: queueRows.length };
 
   return (
@@ -43,13 +44,17 @@ export default async function AdminPage() {
       </section>
       <section className="mt-6 space-y-3">
         {queueRows.length ? (
-          queueRows.map((report: any) => (
-            <Link key={report._id} href={`/admin/review/${report._id}`} className="block border border-border bg-raised p-4">
+          queueRows.map((report) => (
+            <Link
+              key={report._id}
+              href={`/admin/review/${report._id}`}
+              className="block border border-border bg-raised p-4"
+            >
               <div className="flex items-center justify-between">
                 <p className="text-xs uppercase text-muted">{report.type}</p>
                 <p className="text-xs uppercase text-accent">{report.aiVerdict?.proposedImpact ?? 0}</p>
               </div>
-              <h2 className="mt-2 font-serif text-3xl">{report.accountId?.displayName ?? 'Unknown account'}</h2>
+              <h2 className="mt-2 font-serif text-3xl">{report.account?.displayName ?? 'Unknown account'}</h2>
               <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted">{report.description}</p>
             </Link>
           ))

@@ -1,34 +1,31 @@
-import { getServerSession } from 'next-auth';
-import { authOptions, isAdmin } from '@/lib/auth';
-import { connectDb } from '@/lib/db';
 import { fail, fromZod, ok } from '@/lib/api';
-import { claimDecisionSchema, objectIdSchema } from '@/lib/validators';
-import { serializeDoc } from '@/lib/utils';
-import { Account } from '@/models/Account';
-import { ClaimRequest } from '@/models/ClaimRequest';
-import { User } from '@/models/User';
+import { getCurrentUser, isAdmin } from '@/lib/auth';
+import { claimDecisionSchema, idSchema } from '@/lib/validators';
+import * as accountsRepo from '@/lib/repos/accounts';
+import * as claimsRepo from '@/lib/repos/claimRequests';
+import * as usersRepo from '@/lib/repos/users';
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
-  const session = await getServerSession(authOptions);
-  if (!isAdmin(session)) return fail('forbidden', 'Only tribunal staff can decide claims.', 403);
-  const id = objectIdSchema.safeParse(params.id);
+  const user = await getCurrentUser();
+  if (!isAdmin(user)) return fail('forbidden', 'Only tribunal staff can decide claims.', 403);
+  const id = idSchema.safeParse(params.id);
   if (!id.success) return fail('not_found', 'No claim exists for that id.', 404);
   const json = await request.json().catch(() => null);
   const parsed = claimDecisionSchema.safeParse(json);
   if (!parsed.success) return fromZod(parsed.error);
 
-  await connectDb();
-  const claim = await ClaimRequest.findById(id.data);
+  const claim = await claimsRepo.findById(id.data);
   if (!claim) return fail('not_found', 'No claim exists for that id.', 404);
-  claim.status = parsed.data.verdict;
-  claim.reviewedAt = new Date();
-  claim.reviewedBy = session!.user.id as any;
-  await claim.save();
+  const updated = await claimsRepo.update(id.data, {
+    status: parsed.data.verdict,
+    reviewedAt: new Date().toISOString(),
+    reviewedBy: user!._id
+  });
 
   if (parsed.data.verdict === 'approved') {
-    await Account.findByIdAndUpdate(claim.accountId, { claimed: true, claimedBy: claim.userId });
-    await User.findByIdAndUpdate(claim.userId, { $addToSet: { claimedAccounts: claim.accountId } });
+    await accountsRepo.update(claim.accountId, { claimed: true, claimedBy: claim.userId });
+    await usersRepo.addClaimedAccount(claim.userId, claim.accountId);
   }
 
-  return ok(serializeDoc(claim));
+  return ok(updated);
 }

@@ -5,7 +5,7 @@ export function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
     <input
       {...props}
       className={cn(
-        'min-h-11 w-full rounded border border-border bg-dim px-3 text-sm text-text outline-none transition placeholder:text-subtle focus:border-accent',
+        'w-full rounded-[12px] border border-border bg-card px-4 py-3 text-[14px] text-foreground outline-none transition placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary',
         props.className
       )}
     />
@@ -17,7 +17,7 @@ export function Textarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement
     <textarea
       {...props}
       className={cn(
-        'min-h-28 w-full resize-none rounded border border-border bg-dim px-3 py-3 text-sm leading-6 text-text outline-none transition placeholder:text-subtle focus:border-accent',
+        'w-full resize-none rounded-[16px] border border-border bg-card px-4 py-3 text-[14px] leading-relaxed text-foreground outline-none transition placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary',
         props.className
       )}
     />

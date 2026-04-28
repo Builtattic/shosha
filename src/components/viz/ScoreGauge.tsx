@@ -1,78 +1,121 @@
 'use client';
 
-import * as d3 from 'd3';
-import { useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
+import { TrendingUp, TrendingDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-export function ScoreGauge({ score }: { score: number }) {
-  const ref = useRef<SVGSVGElement | null>(null);
+interface ScoreGaugeProps {
+  score: number;
+  min?: number;
+  max?: number;
+  trending?: 'up' | 'down';
+  change?: string;
+  className?: string;
+}
 
-  useEffect(() => {
-    const svg = d3.select(ref.current);
-    svg.selectAll('*').remove();
-    const width = 320;
-    const height = 180;
-    const radius = 132;
-    const centerX = width / 2;
-    const centerY = height - 18;
-    const angle = d3.scaleLinear().domain([0, 100]).range([-Math.PI / 2, Math.PI / 2]);
-    const arc = d3.arc<d3.DefaultArcObject>().innerRadius(radius - 14).outerRadius(radius);
-    const color = score >= 75 ? '#6ee787' : score >= 50 ? '#d4ff4a' : score >= 30 ? '#ffa24a' : '#ff4466';
-
-    svg.attr('viewBox', `0 0 ${width} ${height}`);
-    const group = svg.append('g').attr('transform', `translate(${centerX},${centerY})`);
-    group
-      .append('path')
-      .attr('d', arc({ innerRadius: radius - 14, outerRadius: radius, startAngle: -Math.PI / 2, endAngle: Math.PI / 2 }) ?? '')
-      .attr('fill', '#262626');
-
-    const foreground = group.append('path').attr('fill', color);
-    foreground
-      .transition()
-      .duration(1300)
-      .ease(d3.easeCubicOut)
-      .attrTween('d', () => {
-        const interpolate = d3.interpolate(-Math.PI / 2, angle(score));
-        return (time) =>
-          arc({
-            innerRadius: radius - 14,
-            outerRadius: radius,
-            startAngle: -Math.PI / 2,
-            endAngle: interpolate(time)
-          }) ?? '';
-      });
-
-    for (let tick = 0; tick <= 100; tick += 5) {
-      const a = angle(tick) - Math.PI / 2;
-      const outer = radius + 4;
-      const inner = tick % 25 === 0 ? radius - 14 : radius - 7;
-      group
-        .append('line')
-        .attr('x1', Math.cos(a) * inner)
-        .attr('y1', Math.sin(a) * inner)
-        .attr('x2', Math.cos(a) * outer)
-        .attr('y2', Math.sin(a) * outer)
-        .attr('stroke', tick % 25 === 0 ? '#f5f5f0' : '#555555')
-        .attr('stroke-width', tick % 25 === 0 ? 1.5 : 1);
-    }
-
-    const needleAngle = angle(score) - Math.PI / 2;
-    group
-      .append('line')
-      .attr('x1', 0)
-      .attr('y1', 0)
-      .attr('x2', Math.cos(needleAngle) * (radius - 32))
-      .attr('y2', Math.sin(needleAngle) * (radius - 32))
-      .attr('stroke', '#f5f5f0')
-      .attr('stroke-width', 2);
-    group.append('circle').attr('r', 5).attr('fill', '#d4ff4a');
-  }, [score]);
+export function ScoreGauge({
+  score,
+  min = -1000,
+  max = 1000,
+  trending = 'up',
+  change = '+126',
+  className
+}: ScoreGaugeProps) {
+  // Calculate percentage for the arc (0 to 1)
+  const percentage = (score - min) / (max - min);
+  const clampedPercentage = Math.max(0, Math.min(1, percentage));
+  
+  // SVG parameters
+  const radius = 120;
+  const strokeWidth = 14;
+  const normalizedRadius = radius - strokeWidth / 2;
+  const circumference = normalizedRadius * Math.PI; // Semicircle
+  const strokeDashoffset = circumference - clampedPercentage * circumference;
 
   return (
-    <div className="relative">
-      <svg ref={ref} className="h-auto w-full" role="img" aria-label={`Shosha Score ${score}`} />
-      <div className="pointer-events-none absolute inset-x-0 bottom-4 text-center">
-        <p className="font-serif text-[64px] leading-none text-text">{score}</p>
-        <p className="text-[10px] uppercase text-muted">Shosha Score</p>
+    <div className={cn("flex flex-col items-center justify-center p-4", className)}>
+      <div className="relative h-[160px] w-[300px]">
+        <svg
+          viewBox={`0 0 ${radius * 2} ${radius + 20}`}
+          className="h-full w-full transform overflow-visible"
+        >
+          {/* Background Arc */}
+          <path
+            d={`M ${radius - normalizedRadius} ${radius} A ${normalizedRadius} ${normalizedRadius} 0 0 1 ${radius + normalizedRadius} ${radius}`}
+            fill="none"
+            stroke="#f0f0f0"
+            strokeWidth={strokeWidth}
+            strokeLinecap="round"
+          />
+          
+          {/* Gradient Definition */}
+          <defs>
+            <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#f87171" /> {/* brand-red */}
+              <stop offset="50%" stopColor="#e5e7eb" /> {/* greyish neutral */}
+              <stop offset="100%" stopColor="#4ade80" /> {/* brand-green */}
+            </linearGradient>
+          </defs>
+
+          {/* Active Progress Arc */}
+          <motion.path
+            d={`M ${radius - normalizedRadius} ${radius} A ${normalizedRadius} ${normalizedRadius} 0 0 1 ${radius + normalizedRadius} ${radius}`}
+            fill="none"
+            stroke="url(#scoreGradient)"
+            strokeWidth={strokeWidth}
+            strokeLinecap="round"
+            initial={{ strokeDashoffset: circumference }}
+            animate={{ strokeDashoffset }}
+            transition={{ duration: 1.5, ease: "easeOut" }}
+            style={{
+              strokeDasharray: circumference,
+            }}
+          />
+
+          {/* Indicator Dot on the Arc */}
+          <motion.circle
+            r="7"
+            fill="white"
+            stroke="#e5e7eb"
+            strokeWidth="2"
+            initial={{ cx: radius - normalizedRadius, cy: radius }}
+            animate={{
+              cx: radius - Math.cos(clampedPercentage * Math.PI) * normalizedRadius,
+              cy: radius - Math.sin(clampedPercentage * Math.PI) * normalizedRadius,
+            }}
+            transition={{ duration: 1.5, ease: "easeOut" }}
+            className="shadow-sm"
+          />
+
+          {/* Labels */}
+          <text x={radius - normalizedRadius} y={radius + 20} textAnchor="middle" className="fill-muted text-[10px] font-medium">{min}</text>
+          <text x={radius + normalizedRadius} y={radius + 20} textAnchor="middle" className="fill-muted text-[10px] font-medium">{max}</text>
+          <text x={radius} y={radius - 40} textAnchor="middle" className="fill-muted text-[10px] font-bold uppercase tracking-widest">SHOSHA SCORE</text>
+        </svg>
+
+        {/* Center Score Text */}
+        <div className="absolute inset-0 flex flex-col items-center justify-end pb-2">
+          <motion.span 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-[64px] font-bold leading-none tracking-tight text-foreground"
+          >
+            {score.toLocaleString()}
+          </motion.span>
+          
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.5 }}
+            className={cn(
+              "mt-2 flex items-center gap-1 rounded-full px-3 py-1 text-[12px] font-semibold",
+              trending === 'up' ? "bg-primary/10 text-primary" : "bg-destructive/10 text-destructive"
+            )}
+          >
+            {trending === 'up' ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+            Trending {trending}
+          </motion.div>
+        </div>
       </div>
     </div>
   );

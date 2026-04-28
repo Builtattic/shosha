@@ -1,0 +1,18 @@
+ WARN  Unsupported engine: wanted: {"node":"20.x"} (current: {"node":"v25.6.1","pnpm":"9.15.4"})
+
+> shosha@0.1.0 emulators D:\Shosha
+> firebase emulators:start --import=./.emulator-data --export-on-exit
+
+[2026-04-28T07:46:34.252Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+Failed to authenticate, have you run firebase login?
+!  emulators: You are not currently authenticated so some features may not work correctly. Please run firebase login to authenticate the CLI. 
+[2026-04-28T07:46:34.818Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase SQL Connect VSCode extension, this is expected and not an issue.
+i  emulators: Shutting down emulators. {"metadata":{"emulator":{"name":"hub"},"message":"Shutting down emulators."}}
+[2026-04-28T07:46:34.820Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase SQL Connect VSCode extension, this is expected and not an issue.
+[2026-04-28T07:46:34.820Z] Error: spawn java ENOENT
+    at ChildProcess._handle.onexit (node:internal/child_process:285:19)
+    at onErrorNT (node:internal/child_process:483:16)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+
+Error: Could not spawn `java -version`. Please make sure Java is installed and on your system PATH.
+ ELIFECYCLE  Command failed with exit code 1.

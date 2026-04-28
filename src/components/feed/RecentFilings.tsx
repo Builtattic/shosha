@@ -15,18 +15,18 @@ export function RecentFilings({ filings }: { filings: Filing[] }) {
   }
 
   return (
-    <div className="space-y-2">
+    <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
       {filings.map((filing) => {
         const account = typeof filing.accountId === 'string' ? null : filing.accountId;
         return (
           <Link
             key={filing._id}
             href={account ? `/account/${account._id}` : '#'}
-            className="block border border-border bg-dim p-3"
+            className="block border border-border bg-dim p-4 transition hover:border-accent"
           >
             <div className="flex items-center justify-between gap-3">
-              <p className="text-xs uppercase text-muted">{filing.type} filing</p>
-              <p className="text-xs uppercase text-accent">{filing.status}</p>
+              <p className="text-[10px] uppercase tracking-[0.22em] text-muted">{filing.type} filing</p>
+              <p className="text-[10px] uppercase tracking-[0.22em] text-accent">{filing.status}</p>
             </div>
             <p className="mt-2 text-sm leading-6">{filing.description}</p>
             {account ? <p className="mt-2 text-xs text-muted">{account.displayName}</p> : null}

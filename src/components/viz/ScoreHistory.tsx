@@ -1,49 +1,157 @@
 'use client';
 
-import * as d3 from 'd3';
-import { useEffect, useRef } from 'react';
-import type { ScoreHistoryPoint } from '@/types';
+import { motion } from 'framer-motion';
+import { cn } from '@/lib/utils';
+import { useState } from 'react';
 
-export function ScoreHistory({ points }: { points: ScoreHistoryPoint[] }) {
-  const ref = useRef<SVGSVGElement | null>(null);
+// Dummy data representing stock-style score growth
+const generateData = () => {
+  let val = 1000;
+  const points = [];
+  for (let i = 0; i < 50; i++) {
+    val += Math.random() * 800 - 200; // General upward trend
+    points.push(val);
+  }
+  points[points.length - 1] = 18420; // End at the exact score from the image
+  return points;
+};
 
-  useEffect(() => {
-    const data = points.length > 1 ? points : [...points, { ...points[0], t: new Date(), s: points[0]?.s ?? 60 }];
-    const svg = d3.select(ref.current);
-    svg.selectAll('*').remove();
-    const width = 320;
-    const height = 150;
-    const margin = { top: 12, right: 12, bottom: 22, left: 28 };
-    const x = d3
-      .scaleTime()
-      .domain(d3.extent(data, (d) => new Date(d.t)) as [Date, Date])
-      .range([margin.left, width - margin.right]);
-    const y = d3.scaleLinear().domain([0, 100]).range([height - margin.bottom, margin.top]);
-    const line = d3
-      .line<ScoreHistoryPoint>()
-      .x((d) => x(new Date(d.t)))
-      .y((d) => y(d.s))
-      .curve(d3.curveMonotoneX);
-    const area = d3
-      .area<ScoreHistoryPoint>()
-      .x((d) => x(new Date(d.t)))
-      .y0(height - margin.bottom)
-      .y1((d) => y(d.s))
-      .curve(d3.curveMonotoneX);
+const defaultData = generateData();
 
-    svg.attr('viewBox', `0 0 ${width} ${height}`);
-    const defs = svg.append('defs');
-    const gradient = defs.append('linearGradient').attr('id', 'history-fill').attr('x1', '0').attr('y1', '0').attr('x2', '0').attr('y2', '1');
-    gradient.append('stop').attr('offset', '0%').attr('stop-color', '#d4ff4a').attr('stop-opacity', 0.25);
-    gradient.append('stop').attr('offset', '100%').attr('stop-color', '#d4ff4a').attr('stop-opacity', 0);
-    [0, 50, 100].forEach((tick) => {
-      svg.append('line').attr('x1', margin.left).attr('x2', width - margin.right).attr('y1', y(tick)).attr('y2', y(tick)).attr('stroke', '#262626');
-    });
-    svg.append('path').datum(data).attr('d', area).attr('fill', 'url(#history-fill)');
-    const path = svg.append('path').datum(data).attr('d', line).attr('fill', 'none').attr('stroke', '#d4ff4a').attr('stroke-width', 2);
-    const length = path.node()?.getTotalLength() ?? 0;
-    path.attr('stroke-dasharray', length).attr('stroke-dashoffset', length).transition().duration(900).attr('stroke-dashoffset', 0);
-  }, [points]);
+export function ScoreHistory({ className }: { className?: string }) {
+  const [activeFilter, setActiveFilter] = useState('1Y');
+  const filters = ['1W', '1M', '6M', '1Y'];
 
-  return <svg ref={ref} className="h-auto w-full" role="img" aria-label="Score history" />;
+  // Normalize data for SVG
+  const min = Math.min(...defaultData);
+  const max = Math.max(...defaultData);
+  const range = max - min;
+  
+  // Create path strings
+  const width = 800;
+  const height = 200;
+  
+  const points = defaultData.map((val, i) => {
+    const x = (i / (defaultData.length - 1)) * width;
+    const y = height - ((val - min) / range) * height * 0.8 - 20; // 0.8 to leave some padding at top
+    return `${x},${y}`;
+  });
+
+  const pathD = `M ${points.join(' L ')}`;
+  const areaD = `${pathD} L ${width},${height} L 0,${height} Z`;
+
+  return (
+    <div className={cn("space-y-4", className)}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <h3 className="text-[16px] font-bold text-foreground">Score History</h3>
+          <span className="text-muted-foreground text-[14px]">ⓘ</span>
+        </div>
+        <div className="flex items-center gap-1 bg-muted/30 p-1 rounded-full border border-border">
+          {filters.map((filter) => (
+            <button
+              key={filter}
+              onClick={() => setActiveFilter(filter)}
+              className={cn(
+                "px-3 py-1 text-[11px] font-bold rounded-full transition-all",
+                activeFilter === filter 
+                  ? "bg-foreground text-background shadow-md" 
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {filter}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="relative h-[240px] w-full mt-6">
+        {/* Y-Axis Labels (approximated based on image) */}
+        <div className="absolute left-0 top-0 bottom-8 flex flex-col justify-between text-[10px] text-muted-foreground font-medium">
+          <span>20K</span>
+          <span>15K</span>
+          <span>10K</span>
+          <span>5K</span>
+          <span>0</span>
+          <span>-5K</span>
+        </div>
+
+        {/* Chart Area */}
+        <div className="absolute left-8 right-0 top-0 bottom-8">
+          {/* Horizontal Grid Lines */}
+          <div className="absolute inset-0 flex flex-col justify-between">
+            {[0, 1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="w-full border-b border-border/50 h-0" />
+            ))}
+          </div>
+
+          <svg viewBox={`0 0 ${width} ${height}`} className="h-full w-full overflow-visible" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="chartGradient" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stopColor="#4ade80" stopOpacity="0.2" />
+                <stop offset="100%" stopColor="#4ade80" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+
+            {/* Area Fill */}
+            <motion.path
+              d={areaD}
+              fill="url(#chartGradient)"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 1 }}
+            />
+
+            {/* Line */}
+            <motion.path
+              d={pathD}
+              fill="none"
+              stroke="#4ade80"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              initial={{ pathLength: 0 }}
+              animate={{ pathLength: 1 }}
+              transition={{ duration: 1.5, ease: "easeOut" }}
+            />
+
+            {/* End Point Dot */}
+            <motion.circle
+              cx={width}
+              cy={height - ((defaultData[defaultData.length - 1] - min) / range) * height * 0.8 - 20}
+              r="5"
+              fill="#ffffff"
+              stroke="#4ade80"
+              strokeWidth="2"
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 1.5, type: "spring" }}
+            />
+          </svg>
+
+          {/* Hover Tooltip Mockup */}
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.6 }}
+            className="absolute right-[2%] top-[10%] bg-card border border-border shadow-lg rounded-[12px] p-2 flex flex-col items-center"
+          >
+            <span className="text-[10px] text-muted-foreground font-medium">May 24, 2024</span>
+            <span className="text-[14px] font-bold text-primary">18,420</span>
+          </motion.div>
+        </div>
+
+        {/* X-Axis Labels */}
+        <div className="absolute left-8 right-0 bottom-0 flex justify-between text-[10px] text-muted-foreground font-medium pt-2">
+          <span>May &apos;23</span>
+          <span>Jul &apos;23</span>
+          <span>Sep &apos;23</span>
+          <span>Nov &apos;23</span>
+          <span>Jan &apos;24</span>
+          <span>Mar &apos;24</span>
+          <span>May &apos;24</span>
+        </div>
+      </div>
+    </div>
+  );
 }

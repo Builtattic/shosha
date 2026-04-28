@@ -1,19 +1,35 @@
 import { z } from 'zod';
 
-export const objectIdSchema = z.string().regex(/^[a-f\d]{24}$/i, 'Invalid id');
-export const platformSchema = z.enum(['x', 'instagram']);
+// Firestore doc ids are strings like "x_someuser" or auto-generated 20-char ids,
+// not 24-char Mongo ObjectIds. Validate as a generic safe id.
+export const idSchema = z.string().min(1).max(200).regex(/^[A-Za-z0-9_.\-]+$/, 'Invalid id');
+// Kept as an alias so legacy imports continue compiling during the migration.
+export const objectIdSchema = idSchema;
+export const platformSchema = z.enum(['x', 'instagram', 'facebook', 'youtube', 'tiktok', 'linkedin', 'website']);
 export const reportTypeSchema = z.enum(['positive', 'negative']);
-
-export const signupSchema = z.object({
-  username: z.string().min(3).max(32).regex(/^[a-zA-Z0-9_]+$/).transform((value) => value.toLowerCase()),
-  email: z.string().email().transform((value) => value.toLowerCase()),
-  password: z.string().min(8).max(128)
-});
 
 export const accountCreateSchema = z.object({
   platform: platformSchema,
-  username: z.string().min(1).max(50).regex(/^@?[a-zA-Z0-9_.]+$/).transform((value) => value.replace(/^@/, '').toLowerCase()),
-  displayName: z.string().min(1).max(80).optional()
+  username: z
+    .string()
+    .min(1)
+    .max(100)
+    .transform((value) =>
+      value
+        .replace(/^@/, '')
+        .trim()
+        .toLowerCase()
+        .replace(/https?:\/\//g, '')
+        .replace(/[^a-z0-9_.-]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+    )
+    .refine((value) => value.length >= 2, 'Username must contain at least 2 safe characters.'),
+  displayName: z.string().min(1).max(120).optional(),
+  sourceUrl: z.string().url().optional(),
+  bio: z.string().max(280).optional(),
+  avatarUrl: z.string().url().optional(),
+  followers: z.string().max(24).optional(),
+  verified: z.boolean().optional()
 });
 
 export const accountPatchSchema = z.object({
@@ -28,16 +44,16 @@ export const searchSchema = z.object({
 });
 
 export const mediaSchema = z.object({
-  publicId: z.string().min(1),
   url: z.string().url(),
   type: z.enum(['image', 'video']),
   width: z.number().int().nonnegative().default(0),
   height: z.number().int().nonnegative().default(0),
-  bytes: z.number().int().nonnegative()
+  bytes: z.number().int().nonnegative(),
+  publicId: z.string().optional()
 });
 
 export const reportCreateSchema = z.object({
-  accountId: objectIdSchema,
+  accountId: idSchema,
   type: reportTypeSchema,
   description: z.string().min(10).max(500),
   feelings: z.string().min(10).max(500),
