@@ -275,7 +275,7 @@ export function ReportModal({
               <div className="rounded-[24px] border border-border bg-card/50 p-5 shadow-sm">
                 <h3 className="text-[17px] font-bold mb-1">Who is this report about?</h3>
                 <p className="text-[13px] text-muted-foreground mb-4">We will create or reuse the public dossier behind this filing.</p>
-                <div className="grid grid-cols-3 gap-2 mb-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
                   {(['instagram', 'facebook', 'x', 'youtube', 'tiktok', 'linkedin'] as const).map((platform) => (
                     <button
                       key={platform}
@@ -390,7 +390,7 @@ export function ReportModal({
               <p className="text-[13px] text-muted-foreground">Help us understand the nature of this report.</p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <button
                 onClick={() => setType('positive')}
                 className={cn(

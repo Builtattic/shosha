@@ -1,5 +1,5 @@
 import { fail, fromZod, ok } from '@/lib/api';
-import { applyImpact } from '@/lib/scoring';
+import { applyImpact, calcDelta, profileMultipliersFromUser, DEFAULT_MULTIPLIERS } from '@/lib/scoring';
 import { adjudicateSchema, idSchema } from '@/lib/validators';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
 import { clamp } from '@/lib/utils';
@@ -67,6 +67,28 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const delta = parsed.data.verdict === 'approved' ? 2 : -3;
     const reporter = await usersRepo.findById(report.reporterId);
     if (reporter) await usersRepo.setReporterScore(reporter._id, clamp(reporter.reporterScore + delta));
+  }
+
+  // New 1000-base ledger: when the subject account is claimed by a user and the
+  // report is approved, compute Δ = BaseImpact × ∏(multipliers) / 10 and push it
+  // onto the user's continuous score history.
+  if (parsed.data.verdict === 'approved' && account.claimedBy && parsed.data.finalImpact !== 0) {
+    const claimant = await usersRepo.findById(account.claimedBy);
+    if (claimant) {
+      const baseImpact = parsed.data.finalImpact * 100; // admin enters −10..+10 → scale to BaseImpact range
+      const multipliers = claimant.onboardingComplete
+        ? profileMultipliersFromUser(claimant)
+        : DEFAULT_MULTIPLIERS;
+      const delta = calcDelta(baseImpact, multipliers);
+      if (delta !== 0) {
+        await usersRepo.applyDelta(claimant._id, delta, {
+          cause: 'report',
+          eventId: report._id,
+          category: report.type === 'positive' ? 'community' : 'harassment',
+          multipliers,
+        });
+      }
+    }
   }
 
   const persistedReport = await reportsRepo.update(id.data, { adminDecision, status });

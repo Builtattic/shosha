@@ -113,7 +113,7 @@ const stepContainerVariants = {
     x: 0,
     transition: {
       duration: 0.4,
-      ease: [0.25, 0.1, 0.25, 1],
+      ease: [0.25, 0.1, 0.25, 1] as any,
       staggerChildren: 0.08
     }
   },
@@ -126,7 +126,7 @@ const stepContainerVariants = {
 
 const itemVariants = {
   enter: { opacity: 0, y: 15 },
-  center: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } }
+  center: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" as any } }
 };
 
 // ── Sub-components ─────────────────────────────────────────────────────────────

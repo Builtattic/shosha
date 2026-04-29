@@ -36,9 +36,9 @@ async function fetchTwitterLive() {
     const media = new Map((data.includes?.media || []).map((m: any) => [m.media_key, m]));
 
     return data.data.map((tweet: any) => {
-      const author = users.get(tweet.author_id) || {};
+      const author = (users.get(tweet.author_id) as any) || {};
       const mediaKey = tweet.attachments?.media_keys?.[0];
-      const mediaObj = media.get(mediaKey);
+      const mediaObj = media.get(mediaKey) as any;
       
       let mediaItem = undefined;
       if (mediaObj) {

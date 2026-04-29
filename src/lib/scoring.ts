@@ -41,15 +41,15 @@ export function averageBreakdown(): Breakdown {
   };
 }
 
-// TODO: Add monthly decay toward baseline 60 when a scheduler is wired.
-
-// ── Profile Dimension Scoring ─────────────────────────────────────────────────
-// Maps onboarding fields → IY / P / M / E / AB / RY / AW / RP dimensions.
+// ─────────────────────────────────────────────────────────────────────────────
+// Profile dimension scoring (8 static profile-context multipliers).
+// IY / P / M / E / AB / RY / AW / RP — drawn from onboarding fields.
+// ─────────────────────────────────────────────────────────────────────────────
 
 export type DimensionScore = {
   key: string;
   fullName: string;
-  value: number;       // 0.5 – 3
+  value: number;
   levelLabel: string;
   description: string;
 };
@@ -62,6 +62,10 @@ const ABILITY_LABELS: Record<string, string> = { '0.5': 'Handicapped', '1': 'Abl
 const RESPONSIBILITY_LABELS: Record<string, string> = { '0.5': 'Executor', '1': 'Contributor', '1.5': 'Accountable', '2': 'Decision Maker', '2.5': 'Leader', '3': 'Primary Authority' };
 const AWARENESS_LABELS: Record<string, string> = { '0.5': 'Unaware', '1': 'Aware', '1.5': 'Informed', '2': 'Educated', '2.5': 'Highly Skilled', '3': 'Expert' };
 const REPUTATION_LABELS: Record<string, string> = { '0.5': 'Strong Positive', '1': 'Neutral', '1.5': 'Questionable', '2': 'Mixed', '2.5': 'Repeater', '3': 'Chronic' };
+
+// Per-event multipliers (not derived from onboarding — chosen at filing time).
+export const CIRCUMSTANCES_LABELS: Record<string, string> = { '0.5': 'Extreme Pressure', '1': 'Normal', '1.5': 'Manageable', '2': 'Favorable', '2.5': 'Highly Favorable', '3': 'Optimal' };
+export const INTENT_LABELS: Record<string, string> = { '0.5': 'Unintended', '1': 'Unaware', '1.5': 'Careless', '2': 'Intentional', '2.5': 'Calculated', '3': 'Strategic' };
 
 function snapToLabels(val: number, labels: Record<string, string>): { value: number; levelLabel: string } {
   const steps = Object.keys(labels).map(Number).sort((a, b) => a - b);
@@ -125,9 +129,136 @@ export function scoreToPercent(value: number): number {
   return Math.round(((value - 0.5) / 2.5) * 100);
 }
 
-// Composite 0–100 score across all 8 dimensions
 export function calcShoshaScore(dims: DimensionScore[]): number {
   if (!dims.length) return 0;
   const avg = dims.reduce((sum, d) => sum + scoreToPercent(d.value), 0) / dims.length;
   return Math.round(avg);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// New event-driven score ledger.
+//   Score₀ = 1000
+//   Δ      = BaseImpact × (IY×P×M×E×AW×AB×C×RY×IN×RP) / 10
+//   Score  = 1000 + Σ Δ
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const BASE_SCORE = 1000;
+
+export type EventCategory =
+  | 'small_help'
+  | 'community'
+  | 'integrity'
+  | 'major_contribution'
+  | 'saving_life'
+  | 'insult'
+  | 'harassment'
+  | 'hate_speech'
+  | 'fraud'
+  | 'assault'
+  | 'severe_violence';
+
+export const BASE_IMPACTS: Record<EventCategory, { label: string; value: number; type: 'positive' | 'negative' }> = {
+  small_help: { label: 'Small help', value: 50, type: 'positive' },
+  community: { label: 'Community contribution', value: 150, type: 'positive' },
+  integrity: { label: 'Integrity / honesty', value: 300, type: 'positive' },
+  major_contribution: { label: 'Major contribution', value: 500, type: 'positive' },
+  saving_life: { label: 'Saving a life', value: 1000, type: 'positive' },
+  insult: { label: 'Insult', value: -50, type: 'negative' },
+  harassment: { label: 'Harassment', value: -150, type: 'negative' },
+  hate_speech: { label: 'Hate speech', value: -300, type: 'negative' },
+  fraud: { label: 'Fraud', value: -500, type: 'negative' },
+  assault: { label: 'Assault', value: -700, type: 'negative' },
+  severe_violence: { label: 'Severe violence', value: -1000, type: 'negative' },
+};
+
+export type EventMultipliers = {
+  identity: number;       // IY 0.5 – 1.5
+  power: number;          // P  0.5 – 3
+  means: number;          // M  0.5 – 3
+  environment: number;    // E  0.5 – 3
+  awareness: number;      // AW 0.5 – 3
+  ability: number;        // AB 0.5 – 1
+  circumstances: number;  // C  0.5 – 3 (per event)
+  responsibility: number; // RY 0.5 – 3
+  intent: number;         // IN 0.5 – 3 (per event)
+  reputation: number;     // RP 0.5 – 3
+};
+
+export const DEFAULT_MULTIPLIERS: EventMultipliers = {
+  identity: 1, power: 1, means: 1, environment: 1, awareness: 1,
+  ability: 1, circumstances: 1, responsibility: 1, intent: 1, reputation: 1,
+};
+
+// Map the 8 onboarding-derived dimension scores into the event multiplier shape.
+// Per-event values (Circumstances, Intent) are passed in or default to 1.
+export function profileMultipliersFromUser(user: AppUser, perEvent?: { circumstances?: number; intent?: number }): EventMultipliers {
+  const dims = calcProfileScores(user);
+  const byKey: Record<string, number> = {};
+  for (const d of dims) byKey[d.key] = d.value;
+  return {
+    identity: byKey.IY ?? 1,
+    power: byKey.P ?? 1,
+    means: byKey.M ?? 1,
+    environment: byKey.E ?? 1,
+    awareness: byKey.AW ?? 1,
+    ability: byKey.AB ?? 1,
+    responsibility: byKey.RY ?? 1,
+    reputation: byKey.RP ?? 1,
+    circumstances: perEvent?.circumstances ?? 1,
+    intent: perEvent?.intent ?? 1,
+  };
+}
+
+// Δ = BaseImpact × (IY × P × M × E × AW × AB × C × RY × IN × RP) / 10
+export function calcDelta(baseImpact: number, m: EventMultipliers): number {
+  const product =
+    m.identity * m.power * m.means * m.environment * m.awareness *
+    m.ability * m.circumstances * m.responsibility * m.intent * m.reputation;
+  return Math.round((baseImpact * product) / 10);
+}
+
+export type LedgerEntry = {
+  t: string;            // ISO timestamp
+  delta: number;        // signed Δ applied
+  cause: ScoreCause;
+  category?: EventCategory;
+  eventId?: string;
+  multipliers?: EventMultipliers;
+};
+
+export function applyDeltaToLedger(currentScore: number | undefined, delta: number, entry: Omit<LedgerEntry, 'delta'>, history: LedgerEntry[] = []): { score: number; history: LedgerEntry[] } {
+  const base = typeof currentScore === 'number' ? currentScore : BASE_SCORE;
+  const next = base + delta;
+  return {
+    score: Math.round(next),
+    history: [...history, { ...entry, delta }],
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Weekly momentum layer.
+//   P = Σ positive Δ (week); N = Σ |negative Δ| (week)
+//   R = (P − N) / (P + N + 1)
+//   DecayFactor = 1 + 0.2 × R
+//   W_new = W_old × DecayFactor + (P − N)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const MOMENTUM_GAMMA = 0.2;
+
+export function weeklyTotals(entries: LedgerEntry[], windowStart: Date, windowEnd: Date): { P: number; N: number } {
+  let P = 0, N = 0;
+  for (const e of entries) {
+    const t = new Date(e.t).getTime();
+    if (t < windowStart.getTime() || t > windowEnd.getTime()) continue;
+    if (e.delta > 0) P += e.delta;
+    else N += Math.abs(e.delta);
+  }
+  return { P, N };
+}
+
+export function applyWeeklyMomentum(currentScore: number, P: number, N: number): { newScore: number; ratio: number; decayFactor: number } {
+  const ratio = (P - N) / (P + N + 1);
+  const decayFactor = 1 + MOMENTUM_GAMMA * ratio;
+  const newScore = currentScore * decayFactor + (P - N);
+  return { newScore: Math.round(newScore), ratio, decayFactor };
 }

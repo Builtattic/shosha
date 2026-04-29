@@ -39,7 +39,15 @@ export async function getCurrentUser(): Promise<AppUser | null> {
     // Try to find existing user in RTDB
     try {
       const existing = await usersRepo.findById(uid);
-      if (existing) return existing;
+      if (existing) {
+        // Backfill ledger fields for users created before the new scoring system.
+        // Idempotent — only writes when score / scoreHistory are missing.
+        if (typeof existing.score !== 'number' || !Array.isArray(existing.scoreHistory)) {
+          const seeded = await usersRepo.ensureLedger(uid).catch(() => null);
+          if (seeded) return seeded;
+        }
+        return existing;
+      }
 
       // First login — create user from Firebase Auth claims
       return usersRepo.upsertFromClerk({

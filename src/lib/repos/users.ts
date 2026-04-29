@@ -32,6 +32,25 @@ export type ManagementLevel =
 
 export type LimitationsStatus = 'yes' | 'no' | 'prefer_not_to_say';
 
+export type LedgerEntryRecord = {
+  t: string;
+  delta: number;
+  cause: 'seed' | 'report' | 'audit' | 'decay';
+  category?: string;
+  eventId?: string;
+  multipliers?: Record<string, number>;
+};
+
+export type WeeklyStats = {
+  weekStart: string;
+  weekEnd: string;
+  P: number;
+  N: number;
+  ratio: number;
+  decayFactor: number;
+  scoreAtSnapshot: number;
+};
+
 export type AppUser = {
   _id: string;
   username: string;
@@ -41,6 +60,10 @@ export type AppUser = {
   claimedAccounts: string[];
   createdAt?: string;
   updatedAt?: string;
+  // Continuous reputation ledger (Score₀ = 1000)
+  score?: number;
+  scoreHistory?: LedgerEntryRecord[];
+  weeklyStats?: WeeklyStats;
   // Onboarding profile fields
   onboardingComplete?: boolean;
   name?: string;
@@ -98,11 +121,60 @@ export async function upsertFromClerk(input: {
     role: input.role ?? 'user',
     reporterScore: 50,
     claimedAccounts: [],
+    score: 1000,
+    scoreHistory: [],
     createdAt: now,
     updatedAt: now
   };
   await ref().child(input.id).set(seed);
   return { _id: input.id, ...seed };
+}
+
+// Backfill score=1000 / empty scoreHistory for existing users that predate the ledger.
+// Idempotent: only writes if the field is missing.
+export async function ensureLedger(id: string): Promise<AppUser | null> {
+  const existing = await findById(id);
+  if (!existing) return null;
+  const patch: Record<string, unknown> = {};
+  if (typeof existing.score !== 'number') patch.score = 1000;
+  if (!Array.isArray(existing.scoreHistory)) patch.scoreHistory = [];
+  if (Object.keys(patch).length === 0) return existing;
+  patch.updatedAt = new Date().toISOString();
+  await ref().child(id).update(patch);
+  return findById(id);
+}
+
+// Reset and rebuild a user's ledger from a chronologically-ordered list of entries.
+// Used by the replay service after recomputing every approved report's Δ.
+export async function rebuildLedger(id: string, entries: LedgerEntryRecord[]): Promise<AppUser | null> {
+  const existing = await findById(id);
+  if (!existing) return null;
+  const finalScore = entries.reduce((sum, e) => sum + (e.delta ?? 0), 1000);
+  await ref().child(id).update({
+    score: Math.round(finalScore),
+    scoreHistory: entries,
+    updatedAt: new Date().toISOString()
+  });
+  return findById(id);
+}
+
+export async function applyDelta(
+  id: string,
+  delta: number,
+  entry: Omit<LedgerEntryRecord, 'delta' | 't'>
+): Promise<AppUser | null> {
+  const existing = await findById(id);
+  if (!existing) return null;
+  const currentScore = typeof existing.score === 'number' ? existing.score : 1000;
+  const nextScore = Math.round(currentScore + delta);
+  const history = existing.scoreHistory ?? [];
+  const next: LedgerEntryRecord = { ...entry, delta, t: new Date().toISOString() };
+  await ref().child(id).update({
+    score: nextScore,
+    scoreHistory: [...history, next],
+    updatedAt: new Date().toISOString()
+  });
+  return findById(id);
 }
 
 export async function setReporterScore(id: string, value: number): Promise<void> {

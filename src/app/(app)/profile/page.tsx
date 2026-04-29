@@ -1,65 +1,88 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-  Shield, CheckCircle2, ChevronRight, Activity, Search,
-  MapPin, Calendar, GraduationCap, Users, Briefcase, Link2,
-  Instagram, Youtube, Facebook, Linkedin, Twitter, ExternalLink,
-  UserCog, Sparkles
+  CheckCircle2, Upload, MoreHorizontal, TrendingUp, Shield,
+  PieChart, Activity, Target, User, ThumbsUp, ThumbsDown, Minus, ArrowRight,
+  Briefcase, GraduationCap, FileText, Link2, Pencil, MapPin, ExternalLink,
+  AlertCircle, RefreshCw
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { calcProfileScores, calcShoshaScore } from '@/lib/scoring';
-import type { DimensionScore } from '@/lib/scoring';
+import { calcProfileScores, calcShoshaScore, BASE_SCORE, BASE_IMPACTS } from '@/lib/scoring';
+import { D3ProfileGauge } from '@/components/viz/D3ProfileGauge';
+import { D3AreaChart } from '@/components/viz/D3AreaChart';
+import { D3ActivityBar } from '@/components/viz/D3ActivityBar';
 import { ProfileScoreRadar } from '@/components/viz/ProfileScoreRadar';
 
-// ── Label helpers ──────────────────────────────────────────────────────────────
-
-const ROLE_LABELS: Record<string, string> = {
-  student: 'Student', unemployed: 'Unemployed',
-  individual_contributor: 'Individual Contributor',
-  manager: 'Manager', founder_business_owner: 'Founder / Business Owner',
-  public_figure_influencer: 'Public Figure / Influencer',
-  government_political: 'Government / Political Role',
-};
-
-const NETWORK_LABELS: Record<string, string> = {
-  none: 'No network', '<1k': '< 1K followers', '1k-10k': '1K – 10K',
-  '10k-100k': '10K – 100K', '100k-1m': '100K – 1M',
-  '1m-100m': '1M – 100M', '100m+': '100M+',
-};
-
 const EDU_LABELS: Record<string, string> = {
-  no_formal: 'No Formal Education', school: 'School',
-  undergraduate: 'Undergraduate', postgraduate: 'Postgraduate',
+  no_formal: 'No Formal Education',
+  school: 'School',
+  undergraduate: 'Undergraduate',
+  postgraduate: 'Postgraduate',
   doctorate_specialized: 'Doctorate / Specialized',
 };
 
-// ── Social link row ────────────────────────────────────────────────────────────
+const ROLE_LABELS: Record<string, string> = {
+  student: 'Student',
+  unemployed: 'Unemployed',
+  individual_contributor: 'Individual Contributor',
+  manager: 'Manager',
+  founder_business_owner: 'Founder / Business Owner',
+  public_figure_influencer: 'Public Figure / Influencer',
+  government_political: 'Government / Political',
+};
 
-function SocialLink({ href, icon, label }: { href: string; icon: React.ReactNode; label: string }) {
-  if (!href) return null;
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
-    >
-      {icon}
-      <span className="truncate">{label}</span>
-      <ExternalLink size={10} className="shrink-0 opacity-50" />
-    </a>
-  );
-}
+const MGMT_LABELS: Record<string, string> = {
+  none: 'No management',
+  small_team_limited_control: 'Small team',
+  moderate_responsibility: 'Moderate responsibility',
+  large_team_major_decisions: 'Large team',
+  organizational_institutional: 'Organizational / Institutional',
+};
 
-// ── Main ───────────────────────────────────────────────────────────────────────
+const NETWORK_LABELS: Record<string, string> = {
+  none: 'No online network',
+  '<1k': '< 1K followers',
+  '1k-10k': '1K–10K followers',
+  '10k-100k': '10K–100K followers',
+  '100k-1m': '100K–1M followers',
+  '1m-100m': '1M–100M followers',
+  '100m+': '100M+ followers',
+};
+
+const SOCIAL_KEYS = [
+  { key: 'igUrl', label: 'Instagram' },
+  { key: 'xUrl', label: 'X / Twitter' },
+  { key: 'ytUrl', label: 'YouTube' },
+  { key: 'linkedinUrl', label: 'LinkedIn' },
+  { key: 'tiktokUrl', label: 'TikTok' },
+  { key: 'redditUrl', label: 'Reddit' },
+  { key: 'fbUrl', label: 'Facebook' },
+  { key: 'snapchatUrl', label: 'Snapchat' },
+] as const;
 
 export default function ProfilePage() {
   const { user: firebaseUser, loading: authLoading } = useAuth();
+  const router = useRouter();
   const [data, setData] = useState<{ user: any; claimedAccounts: any[]; recentEvents: any[] } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [recalculating, setRecalculating] = useState(false);
+  const [activeTab, setActiveTab] = useState<'overview' | 'activity' | 'impact' | 'about'>('overview');
+
+  async function recalculateScore() {
+    setRecalculating(true);
+    try {
+      await fetch('/api/me/score/replay', { method: 'POST' });
+      const res = await fetch('/api/me');
+      const payload = res.ok ? await res.json() : null;
+      if (payload?.ok) setData(payload.data);
+    } finally {
+      setRecalculating(false);
+    }
+  }
 
   useEffect(() => {
     fetch('/api/me')
@@ -72,57 +95,122 @@ export default function ProfilePage() {
 
   if (authLoading || loading) {
     return (
-      <div className="flex h-[50vh] items-center justify-center">
+      <div className="flex h-screen items-center justify-center bg-background">
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-foreground border-t-transparent" />
       </div>
     );
   }
 
   const appUser = data?.user ?? null;
-  const hasOnboarded = !!appUser?.onboardingComplete;
-  const scores: DimensionScore[] = appUser ? calcProfileScores(appUser) : [];
-  const shoshaScore = calcShoshaScore(scores);
+  const scores = appUser ? calcProfileScores(appUser) : [];
+  const contextPercent = calcShoshaScore(scores); // 0–100 composite of profile multipliers
+  const credibility = appUser?.reporterScore ?? 50;
+  const ledgerScore = typeof appUser?.score === 'number' ? appUser.score : BASE_SCORE;
+  const ledgerHistory: any[] = appUser?.scoreHistory ?? [];
 
-  const hasSocials = !!(
-    appUser?.igUrl || appUser?.tiktokUrl || appUser?.xUrl ||
-    appUser?.linkedinUrl || appUser?.redditUrl || appUser?.ytUrl ||
-    appUser?.fbUrl || appUser?.snapchatUrl
-  );
+  // Weekly Δ: sum of deltas in the last 7 days
+  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const weeklyDelta = ledgerHistory
+    .filter(h => h.t && new Date(h.t).getTime() >= weekAgo)
+    .reduce((sum, h) => sum + (h.delta ?? 0), 0);
+  const positiveDeltaWeek = ledgerHistory
+    .filter(h => h.t && new Date(h.t).getTime() >= weekAgo && h.delta > 0)
+    .reduce((sum, h) => sum + h.delta, 0);
+  const negativeDeltaWeek = ledgerHistory
+    .filter(h => h.t && new Date(h.t).getTime() >= weekAgo && h.delta < 0)
+    .reduce((sum, h) => sum + Math.abs(h.delta), 0);
 
-  const displayName = appUser?.name || firebaseUser?.displayName || firebaseUser?.email?.split('@')[0] || 'Anonymous';
+  const displayName = appUser?.name || firebaseUser?.displayName || firebaseUser?.email?.split('@')[0] || 'Unknown User';
   const username = appUser?.username || 'user';
-  const avatarSeed = displayName;
+  const avatarUrl = firebaseUser?.photoURL ?? `https://api.dicebear.com/9.x/initials/svg?seed=${displayName}&backgroundColor=1a1a1a&textColor=ffffff`;
+
+  const recentEvents: any[] = data?.recentEvents ?? [];
+  const positiveEvents = recentEvents.filter(e => (e.eventType ?? e.type) === 'positive');
+  const negativeEvents = recentEvents.filter(e => (e.eventType ?? e.type) === 'negative');
+  const neutralEvents = recentEvents.filter(e => !['positive', 'negative'].includes(e.eventType ?? e.type ?? ''));
+
+  // Cumulative ledger timeline built from actual ledger history (Score₀ = 1000)
+  const sortedLedger = [...ledgerHistory]
+    .filter(h => h.t)
+    .sort((a, b) => new Date(a.t).getTime() - new Date(b.t).getTime());
+
+  const areaChartData = sortedLedger.length > 0
+    ? sortedLedger.reduce<{ date: Date; value: number }[]>((acc, entry) => {
+        const last = acc.length > 0 ? acc[acc.length - 1].value : BASE_SCORE;
+        acc.push({ date: new Date(entry.t), value: last + (entry.delta ?? 0) });
+        return acc;
+      }, [])
+    : [];
+
+  const socialLinks = SOCIAL_KEYS
+    .map(s => ({ label: s.label, url: appUser?.[s.key] as string | undefined }))
+    .filter(s => s.url);
+
+  const tabs = [
+    { id: 'overview', label: 'Overview', Icon: PieChart },
+    { id: 'activity', label: 'Activity', Icon: Activity },
+    { id: 'impact', label: 'Impact', Icon: Target },
+    { id: 'about', label: 'About', Icon: User },
+  ] as const;
 
   return (
-    <main className="min-h-screen bg-background pb-28">
+    <main className="min-h-screen bg-[#fafafa] pb-24 font-sans">
+      {/* Header */}
+      <header className="sticky top-0 z-50 bg-[#fafafa]/80 px-4 py-4 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-2xl items-center justify-between">
+          <div className="font-serif text-[26px] font-black tracking-tight text-foreground">
+            Sho<span className="font-normal italic text-muted-foreground">शा</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <button className="text-foreground transition-opacity hover:opacity-70">
+              <Upload size={22} strokeWidth={2.5} />
+            </button>
+            <button className="text-foreground transition-opacity hover:opacity-70">
+              <MoreHorizontal size={24} strokeWidth={2.5} />
+            </button>
+          </div>
+        </div>
+      </header>
 
-      {/* ── Profile Header ────────────────────────────────────────────────── */}
-      <div className="bg-card border-b border-border pt-10 pb-8 px-4">
-        <div className="max-w-3xl mx-auto">
-          <div className="flex flex-col sm:flex-row gap-6 items-start sm:items-center">
-            {/* Avatar */}
-            <div className="relative shrink-0">
-              <img
-                src={firebaseUser?.photoURL ?? `https://api.dicebear.com/9.x/initials/svg?seed=${avatarSeed}&backgroundColor=1a1a1a&textColor=ffffff`}
-                alt="Profile"
-                className="w-20 h-20 rounded-2xl border border-border bg-muted object-cover"
-              />
-              {appUser?.role === 'admin' && (
-                <div className="absolute -top-2 -right-2 bg-foreground text-background text-[9px] font-black px-1.5 py-0.5 rounded-full border-2 border-background tracking-wider">
-                  ADMIN
-                </div>
-              )}
+      <div className="mx-auto max-w-2xl px-4">
+        {/* Onboarding CTA banner */}
+        {appUser && !appUser.onboardingComplete && (
+          <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-dashed border-border bg-background p-4">
+            <div className="flex items-center gap-3">
+              <AlertCircle size={18} className="shrink-0 text-muted-foreground" />
+              <p className="text-[13px] text-muted-foreground">
+                Complete your profile to unlock your full Shosha Score.
+              </p>
             </div>
+            <Link
+              href="/onboard"
+              className="shrink-0 rounded-full bg-foreground px-4 py-1.5 text-[12px] font-bold text-background"
+            >
+              Complete
+            </Link>
+          </div>
+        )}
 
-            {/* Name / username / meta */}
-            <div className="flex-1 min-w-0">
-              <div className="flex flex-wrap items-center gap-2 mb-0.5">
-                <h1 className="text-2xl font-black tracking-tight">{displayName}</h1>
-                {hasOnboarded && <CheckCircle2 size={16} className="text-foreground shrink-0" />}
+        {/* Profile Info */}
+        <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="relative h-20 w-20 shrink-0">
+              <img
+                src={avatarUrl}
+                alt={displayName}
+                className="h-full w-full rounded-full bg-[#b5e5af] object-cover shadow-sm"
+              />
+              <div className="absolute -bottom-1 -right-1 rounded-full border-2 border-[#fafafa] bg-foreground p-0.5">
+                <CheckCircle2 size={16} fill="currentColor" className="text-background" />
               </div>
-              <p className="text-sm text-muted-foreground mb-2">@{username}</p>
-
-              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <h1 className="text-[22px] font-bold text-foreground leading-none truncate">{displayName}</h1>
+                <CheckCircle2 size={16} fill="currentColor" className="text-foreground shrink-0" />
+              </div>
+              <p className="mt-1 text-[13px] text-muted-foreground">@{username}</p>
+              <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 text-[12px] font-medium text-muted-foreground items-center">
                 {appUser?.occupationRole && (
                   <span className="flex items-center gap-1">
                     <Briefcase size={12} />
@@ -135,17 +223,8 @@ export default function ProfilePage() {
                     {[appUser.city, appUser.country].filter(Boolean).join(', ')}
                   </span>
                 )}
-                {appUser?.dob && (
-                  <span className="flex items-center gap-1">
-                    <Calendar size={12} />
-                    {new Date().getFullYear() - new Date(appUser.dob).getFullYear()} yrs
-                  </span>
-                )}
-                {appUser?.networkSize && appUser.networkSize !== 'none' && (
-                  <span className="flex items-center gap-1">
-                    <Users size={12} />
-                    {NETWORK_LABELS[appUser.networkSize] ?? appUser.networkSize}
-                  </span>
+                {appUser?.networkSize && (
+                  <span>{NETWORK_LABELS[appUser.networkSize] ?? appUser.networkSize}</span>
                 )}
                 {appUser?.education && (
                   <span className="flex items-center gap-1">
@@ -155,216 +234,532 @@ export default function ProfilePage() {
                 )}
               </div>
             </div>
-
-            {/* Edit profile link */}
-            <Link
-              href="/onboard"
-              className="shrink-0 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground border border-border rounded-xl px-3 py-2 hover:bg-muted transition-colors"
-            >
-              <UserCog size={14} /> Edit Profile
-            </Link>
           </div>
+          <button
+            onClick={() => router.push('/onboard')}
+            className="flex sm:shrink-0 items-center justify-center gap-1.5 rounded-full border border-border bg-background px-4 py-2 text-[13px] font-semibold text-foreground shadow-sm transition-all hover:bg-muted w-full sm:w-auto"
+          >
+            <Pencil size={14} /> Edit Profile
+          </button>
+        </div>
 
-          {/* Stats row */}
-          <div className="mt-6 flex flex-wrap gap-6 border-t border-border pt-5">
-            {/* Shosha Score — composite of all 8 dims */}
-            {shoshaScore > 0 && (
-              <>
-                <div className="text-center">
-                  <div className="flex items-center justify-center gap-1">
-                    <span className="text-xl font-black">{shoshaScore}</span>
-                    <Sparkles size={13} className="text-muted-foreground" />
-                  </div>
-                  <div className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold mt-0.5">Shosha Score</div>
-                </div>
-                <div className="w-px bg-border" />
-              </>
-            )}
-            <div className="text-center">
-              <div className="text-xl font-black">{appUser?.reporterScore ?? 50}</div>
-              <div className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold mt-0.5">Credibility</div>
-            </div>
-            <div className="w-px bg-border" />
-            <div className="text-center">
-              <div className="text-xl font-black">{data?.recentEvents?.length ?? 0}</div>
-              <div className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold mt-0.5">Events Filed</div>
-            </div>
-            <div className="w-px bg-border" />
-            <div className="text-center">
-              <div className="text-xl font-black">{data?.claimedAccounts?.length ?? 0}</div>
-              <div className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold mt-0.5">Accounts</div>
-            </div>
+        {/* Ledger Score Hero */}
+        <div className="mt-8 text-center">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Shosha Score</p>
+          <h2 className="mt-1 text-[56px] font-black leading-none text-foreground tabular-nums">
+            {ledgerScore.toLocaleString()}
+          </h2>
+          <div className="mt-2 flex items-center justify-center gap-2">
+            <span
+              className={cn(
+                'inline-flex items-center gap-1 rounded-lg px-3 py-1 text-[12px] font-bold',
+                weeklyDelta > 0
+                  ? 'bg-green-50 text-green-600'
+                  : weeklyDelta < 0
+                  ? 'bg-red-50 text-red-600'
+                  : 'bg-[#f0f0f0] text-muted-foreground'
+              )}
+            >
+              {weeklyDelta > 0 ? <TrendingUp size={12} strokeWidth={3} /> : weeklyDelta < 0 ? <ThumbsDown size={12} strokeWidth={3} /> : <Minus size={12} strokeWidth={3} />}
+              {weeklyDelta > 0 ? '+' : ''}{weeklyDelta} this week
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-lg bg-[#f0f0f0] px-3 py-1 text-[12px] font-bold text-foreground">
+              Context {contextPercent || '–'}/100
+            </span>
+          </div>
+          <p className="mt-1 text-[11px] text-muted-foreground">Base 1,000 · ledger never resets</p>
+          <button
+            onClick={recalculateScore}
+            disabled={recalculating}
+            className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1 text-[11px] font-semibold text-foreground shadow-sm transition-all hover:bg-muted disabled:opacity-60"
+          >
+            <RefreshCw size={11} strokeWidth={2.5} className={recalculating ? 'animate-spin' : ''} />
+            {recalculating ? 'Recalculating…' : 'Recalculate from history'}
+          </button>
+          <div className="mt-4 -mb-8">
+            <D3ProfileGauge score={contextPercent} minScore={0} maxScore={100} size={340} />
           </div>
         </div>
-      </div>
 
-      {/* ── Body ──────────────────────────────────────────────────────────── */}
-      <div className="max-w-3xl mx-auto px-4 py-8 space-y-10">
+        {/* Stat Cards */}
+        <div className="mt-12 grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="rounded-2xl border border-border bg-background p-3 text-center shadow-sm">
+            <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-green-50 text-green-600">
+              <TrendingUp size={16} strokeWidth={2.5} />
+            </div>
+            <p className="mt-2 text-[16px] font-bold text-foreground tabular-nums">+{positiveDeltaWeek}</p>
+            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">P (week)</p>
+          </div>
+          <div className="rounded-2xl border border-border bg-background p-3 text-center shadow-sm">
+            <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-red-50 text-red-600">
+              <ThumbsDown size={16} strokeWidth={2.5} />
+            </div>
+            <p className="mt-2 text-[16px] font-bold text-foreground tabular-nums">−{negativeDeltaWeek}</p>
+            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">N (week)</p>
+          </div>
+          <div className="rounded-2xl border border-border bg-background p-3 text-center shadow-sm">
+            <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-[#f0f0f0] text-foreground">
+              <Shield size={16} strokeWidth={2.5} />
+            </div>
+            <p className="mt-2 text-[16px] font-bold text-foreground">{credibility}</p>
+            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Credibility</p>
+          </div>
+          <div className="rounded-2xl border border-border bg-background p-3 text-center shadow-sm">
+            <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-[#f0f0f0] text-foreground">
+              <FileText size={16} strokeWidth={2.5} />
+            </div>
+            <p className="mt-2 text-[16px] font-bold text-foreground">{recentEvents.length}</p>
+            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Events Filed</p>
+          </div>
+        </div>
 
-        {/* ── Incomplete profile CTA ─────────────────────────────────────── */}
-        {!hasOnboarded && (
-          <div className="rounded-2xl border border-dashed border-border bg-muted/30 p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            <div className="flex-1">
-              <p className="font-semibold text-sm">Complete your profile</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Fill in your details to unlock your influence scores and build your reputation on the ledger.
+        {/* Tabs */}
+        <div className="mt-8 flex justify-between gap-2 overflow-x-auto whitespace-nowrap border-b border-border text-[13px] font-semibold text-muted-foreground scrollbar-none">
+          {tabs.map(({ id, label, Icon }) => (
+            <button
+              key={id}
+              onClick={() => setActiveTab(id)}
+              className={cn(
+                'flex flex-col items-center gap-1.5 px-2 py-3 border-b-2 transition-colors',
+                activeTab === id
+                  ? 'border-foreground text-foreground'
+                  : 'border-transparent hover:text-foreground'
+              )}
+            >
+              <Icon size={18} strokeWidth={activeTab === id ? 2.5 : 2} />
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Tab Content */}
+        <div className="mt-6 mb-12">
+
+          {/* ── OVERVIEW ── */}
+          {activeTab === 'overview' && (
+            <div className="rounded-[24px] bg-background p-5 shadow-sm border border-border">
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <h3 className="flex items-center gap-1.5 text-[16px] font-bold text-foreground">
+                    <PieChart size={16} /> Profile Score Radar
+                  </h3>
+                  <p className="mt-1 text-[13px] text-muted-foreground">
+                    8 dimensions calculated from your profile. Hover each vertex for detail.
+                  </p>
+                </div>
+                <div className="text-right">
+                  <div className="text-[20px] font-black leading-none text-foreground">
+                    {contextPercent > 0 ? contextPercent : '–'}
+                  </div>
+                  <div className="text-[11px] font-bold text-muted-foreground">/ 100</div>
+                </div>
+              </div>
+
+              {scores.length > 0 ? (
+                <>
+                  <div className="mt-6 rounded-2xl bg-[#fafafa] py-8 flex justify-center border border-border">
+                    <ProfileScoreRadar dimensions={scores} size={380} />
+                  </div>
+                  <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2">
+                    {scores.map(dim => (
+                      <div key={dim.key} className="rounded-xl border border-border bg-background p-3">
+                        <div className="flex items-center gap-1.5 text-[12px] font-bold text-foreground">
+                          <span className="flex items-center justify-center rounded bg-foreground px-1.5 py-0.5 font-mono text-[10px] text-background">
+                            {dim.key}
+                          </span>
+                          {dim.fullName}
+                        </div>
+                        <div className="mt-1 text-[11px] text-muted-foreground">
+                          {dim.levelLabel}{' '}
+                          <span className="opacity-50">({dim.value})</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="mt-6 rounded-2xl bg-[#fafafa] py-12 flex flex-col items-center justify-center border border-border gap-3">
+                  <PieChart size={32} className="text-muted-foreground opacity-30" />
+                  <p className="text-[13px] text-muted-foreground">
+                    Complete your profile to see dimension scores.
+                  </p>
+                  <Link
+                    href="/onboard"
+                    className="rounded-full bg-foreground px-5 py-2 text-[13px] font-bold text-background"
+                  >
+                    Complete Profile
+                  </Link>
+                </div>
+              )}
+
+              <p className="mt-4 text-center text-[11px] text-muted-foreground">
+                Scores reflect profile context only — not intent or circumstances, which are assessed per event.
               </p>
             </div>
-            <Link
-              href="/onboard"
-              className="shrink-0 rounded-xl bg-foreground text-background text-xs font-bold px-4 py-2.5 hover:opacity-90 transition-opacity"
-            >
-              Set up profile →
-            </Link>
-          </div>
-        )}
+          )}
 
-        {/* ── Profile Score Radar ─────────────────────────────────────────── */}
-        {scores.length > 0 && (
-          <section>
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <h2 className="text-base font-bold flex items-center gap-2">
-                  <Sparkles size={15} /> Profile Score Radar
-                </h2>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  8 dimensions calculated from your profile. Hover each vertex for detail.
+          {/* ── ACTIVITY ── */}
+          {activeTab === 'activity' && (
+            <div className="rounded-[24px] bg-background p-5 shadow-sm border border-border">
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="text-[16px] font-bold text-foreground">All Events</h3>
+                <span className="text-[12px] text-muted-foreground">{recentEvents.length} total</span>
+              </div>
+              {recentEvents.length === 0 ? (
+                <div className="py-12 flex flex-col items-center gap-3 text-center">
+                  <FileText size={32} className="text-muted-foreground opacity-30" />
+                  <p className="text-[13px] text-muted-foreground">No events filed yet.</p>
+                  <Link
+                    href="/dashboard"
+                    className="rounded-full bg-foreground px-5 py-2 text-[13px] font-bold text-background"
+                  >
+                    File an Event
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {recentEvents.map((event: any, i) => {
+                    const type = event.eventType ?? event.type;
+                    const isPositive = type === 'positive';
+                    const isNegative = type === 'negative';
+                    return (
+                      <div
+                        key={event._id || i}
+                        className="flex items-start gap-3 rounded-xl border border-border p-3"
+                      >
+                        <div
+                          className={cn(
+                            'flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
+                            isPositive
+                              ? 'bg-green-50 text-green-600'
+                              : isNegative
+                              ? 'bg-red-50 text-red-600'
+                              : 'bg-[#f0f0f0] text-muted-foreground'
+                          )}
+                        >
+                          {isPositive ? (
+                            <ThumbsUp size={14} strokeWidth={2.5} />
+                          ) : isNegative ? (
+                            <ThumbsDown size={14} strokeWidth={2.5} />
+                          ) : (
+                            <Minus size={14} strokeWidth={2.5} />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-[13px] font-bold leading-tight text-foreground line-clamp-2">
+                            {event.title || event.description || 'Event'}
+                          </h4>
+                          {event.description && event.title && (
+                            <p className="mt-0.5 text-[11px] text-muted-foreground line-clamp-2">
+                              {event.description}
+                            </p>
+                          )}
+                          <p className="mt-1 text-[11px] text-muted-foreground">
+                            {event.timestamp
+                              ? new Date(event.timestamp).toLocaleDateString('en-US', {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric',
+                                })
+                              : 'Unknown date'}
+                          </p>
+                        </div>
+                        {event.impact != null && (
+                          <div
+                            className={cn(
+                              'shrink-0 rounded-lg px-2.5 py-1 text-[12px] font-bold',
+                              isPositive
+                                ? 'bg-green-50 text-green-600'
+                                : isNegative
+                                ? 'bg-red-50 text-red-600'
+                                : 'bg-[#f0f0f0] text-muted-foreground'
+                            )}
+                          >
+                            {event.impact > 0 ? '+' : ''}{event.impact}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── IMPACT ── */}
+          {activeTab === 'impact' && (
+            <div className="space-y-4">
+              {/* Breakdown */}
+              <div className="rounded-[24px] bg-background p-5 shadow-sm border border-border">
+                <h3 className="mb-4 text-[16px] font-bold text-foreground">Activity Breakdown</h3>
+                {recentEvents.length > 0 ? (
+                  <>
+                    <D3ActivityBar
+                      positive={positiveEvents.length}
+                      negative={negativeEvents.length}
+                      neutral={neutralEvents.length}
+                      height={10}
+                    />
+                    <div className="mt-5 grid grid-cols-3 gap-2 divide-x divide-border text-center">
+                      <div className="flex flex-col items-center gap-1">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-50 text-green-500">
+                          <ThumbsUp size={14} strokeWidth={2.5} />
+                        </div>
+                        <div className="mt-1 text-[15px] font-bold text-foreground">{positiveEvents.length}</div>
+                        <div className="text-[11px] text-muted-foreground">Positive</div>
+                      </div>
+                      <div className="flex flex-col items-center gap-1">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-50 text-red-500">
+                          <ThumbsDown size={14} strokeWidth={2.5} />
+                        </div>
+                        <div className="mt-1 text-[15px] font-bold text-foreground">{negativeEvents.length}</div>
+                        <div className="text-[11px] text-muted-foreground">Negative</div>
+                      </div>
+                      <div className="flex flex-col items-center gap-1">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                          <Minus size={14} strokeWidth={2.5} />
+                        </div>
+                        <div className="mt-1 text-[15px] font-bold text-foreground">{neutralEvents.length}</div>
+                        <div className="text-[11px] text-muted-foreground">Neutral</div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="py-8 flex flex-col items-center gap-3 text-center">
+                    <Target size={28} className="text-muted-foreground opacity-30" />
+                    <p className="text-[13px] text-muted-foreground">No events to break down yet.</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Ledger Timeline */}
+              <div className="rounded-[24px] bg-background p-5 shadow-sm border border-border">
+                <h3 className="mb-1 text-[16px] font-bold text-foreground">Score Ledger</h3>
+                <p className="mb-4 text-[13px] text-muted-foreground">
+                  Continuous trajectory from filed events. Base 1,000.
+                </p>
+                {areaChartData.length >= 2 ? (
+                  <D3AreaChart data={areaChartData} color="#1a1a1a" height={200} />
+                ) : (
+                  <div className="py-10 flex flex-col items-center gap-3 text-center">
+                    <TrendingUp size={28} className="text-muted-foreground opacity-30" />
+                    <p className="text-[13px] text-muted-foreground">
+                      No ledger entries yet. Adjudicated events will appear here.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Recent Δ entries */}
+              {ledgerHistory.length > 0 && (
+                <div className="rounded-[24px] bg-background p-5 shadow-sm border border-border">
+                  <h3 className="mb-4 text-[16px] font-bold text-foreground">Recent Δ Entries</h3>
+                  <div className="space-y-2">
+                    {[...ledgerHistory].reverse().slice(0, 8).map((entry: any, i) => (
+                      <div key={i} className="flex items-center justify-between rounded-xl border border-border p-3">
+                        <div className="min-w-0">
+                          <p className="text-[13px] font-semibold text-foreground capitalize">
+                            {entry.cause}{entry.category ? ` · ${entry.category.replace(/_/g, ' ')}` : ''}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground">
+                            {entry.t ? new Date(entry.t).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : ''}
+                          </p>
+                        </div>
+                        <span
+                          className={cn(
+                            'shrink-0 rounded-lg px-2.5 py-1 text-[12px] font-bold tabular-nums',
+                            entry.delta > 0 ? 'bg-green-50 text-green-600' : entry.delta < 0 ? 'bg-red-50 text-red-600' : 'bg-[#f0f0f0] text-muted-foreground'
+                          )}
+                        >
+                          {entry.delta > 0 ? '+' : ''}{entry.delta}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Scoring Formula Reference */}
+              <div className="rounded-[24px] bg-background p-5 shadow-sm border border-border">
+                <h3 className="mb-1 text-[16px] font-bold text-foreground">How scoring works</h3>
+                <p className="mb-4 text-[13px] text-muted-foreground">
+                  Δ = BaseImpact × (IY × P × M × E × AW × AB × C × RY × IN × RP) / 10
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {(Object.keys(BASE_IMPACTS) as Array<keyof typeof BASE_IMPACTS>).map(k => {
+                    const item = BASE_IMPACTS[k];
+                    const isPositive = item.type === 'positive';
+                    return (
+                      <div key={k} className="flex items-center justify-between rounded-xl border border-border p-2.5">
+                        <span className="text-[12px] font-semibold text-foreground">{item.label}</span>
+                        <span
+                          className={cn(
+                            'shrink-0 rounded px-1.5 py-0.5 font-mono text-[11px] font-bold tabular-nums',
+                            isPositive ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'
+                          )}
+                        >
+                          {item.value > 0 ? '+' : ''}{item.value}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="mt-3 text-[11px] text-muted-foreground">
+                  Multipliers run 0.5–3.0. Score never resets. Weekly momentum applies a decay/growth factor on Sundays.
                 </p>
               </div>
-              <div className="text-right">
-                <div className="text-2xl font-black">{shoshaScore}</div>
-                <div className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">/ 100</div>
+            </div>
+          )}
+
+          {/* ── ABOUT ── */}
+          {activeTab === 'about' && (
+            <div className="space-y-4">
+              {/* Basic Info */}
+              <div className="rounded-[24px] bg-background p-5 shadow-sm border border-border">
+                <h3 className="mb-4 text-[14px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Basic Info
+                </h3>
+                <dl className="space-y-3">
+                  {appUser?.name && (
+                    <div className="flex items-center justify-between">
+                      <dt className="text-[13px] text-muted-foreground">Full Name</dt>
+                      <dd className="text-[13px] font-semibold text-foreground">{appUser.name}</dd>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between">
+                    <dt className="text-[13px] text-muted-foreground">Username</dt>
+                    <dd className="text-[13px] font-semibold text-foreground">@{username}</dd>
+                  </div>
+                  {appUser?.dob && (
+                    <div className="flex items-center justify-between">
+                      <dt className="text-[13px] text-muted-foreground">Date of Birth</dt>
+                      <dd className="text-[13px] font-semibold text-foreground">
+                        {new Date(appUser.dob).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        })}
+                      </dd>
+                    </div>
+                  )}
+                  {(appUser?.city || appUser?.country) && (
+                    <div className="flex items-center justify-between">
+                      <dt className="text-[13px] text-muted-foreground">Location</dt>
+                      <dd className="text-[13px] font-semibold text-foreground">
+                        {[appUser.city, appUser.country].filter(Boolean).join(', ')}
+                      </dd>
+                    </div>
+                  )}
+                  {appUser?.phone && (
+                    <div className="flex items-center justify-between">
+                      <dt className="text-[13px] text-muted-foreground">Phone</dt>
+                      <dd className="text-[13px] font-semibold text-foreground">{appUser.phone}</dd>
+                    </div>
+                  )}
+                </dl>
               </div>
-            </div>
 
-            <div className="rounded-2xl border border-border bg-card p-4 flex justify-center">
-              <ProfileScoreRadar dimensions={scores} size={340} />
-            </div>
-
-            {/* Dimension legend */}
-            <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {scores.map((dim) => (
-                <div key={dim.key} className="rounded-xl border border-border bg-card px-3 py-2">
-                  <div className="flex items-center gap-1.5 mb-0.5">
-                    <span className="font-mono font-black text-[10px] bg-foreground text-background px-1 py-0.5 rounded-sm">{dim.key}</span>
-                    <span className="text-xs font-semibold truncate">{dim.fullName}</span>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground">{dim.levelLabel} <span className="opacity-50">({dim.value})</span></p>
+              {/* Career */}
+              {(appUser?.occupationRole || appUser?.education || appUser?.managesMoneyPeopleSystem || appUser?.networkSize) && (
+                <div className="rounded-[24px] bg-background p-5 shadow-sm border border-border">
+                  <h3 className="mb-4 text-[14px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Career & Profile
+                  </h3>
+                  <dl className="space-y-3">
+                    {appUser?.occupationRole && (
+                      <div className="flex items-center justify-between">
+                        <dt className="text-[13px] text-muted-foreground">Role</dt>
+                        <dd className="text-[13px] font-semibold text-foreground">
+                          {ROLE_LABELS[appUser.occupationRole] ?? appUser.occupationRole}
+                        </dd>
+                      </div>
+                    )}
+                    {appUser?.education && (
+                      <div className="flex items-center justify-between">
+                        <dt className="text-[13px] text-muted-foreground">Education</dt>
+                        <dd className="text-[13px] font-semibold text-foreground">
+                          {EDU_LABELS[appUser.education] ?? appUser.education}
+                        </dd>
+                      </div>
+                    )}
+                    {appUser?.managesMoneyPeopleSystem && (
+                      <div className="flex items-center justify-between">
+                        <dt className="text-[13px] text-muted-foreground">Management</dt>
+                        <dd className="text-[13px] font-semibold text-foreground">
+                          {MGMT_LABELS[appUser.managesMoneyPeopleSystem] ?? appUser.managesMoneyPeopleSystem}
+                        </dd>
+                      </div>
+                    )}
+                    {appUser?.networkSize && (
+                      <div className="flex items-center justify-between">
+                        <dt className="text-[13px] text-muted-foreground">Network Size</dt>
+                        <dd className="text-[13px] font-semibold text-foreground">
+                          {NETWORK_LABELS[appUser.networkSize] ?? appUser.networkSize}
+                        </dd>
+                      </div>
+                    )}
+                    {appUser?.specializedField && (
+                      <div className="flex items-center justify-between">
+                        <dt className="text-[13px] text-muted-foreground">Specialization</dt>
+                        <dd className="text-[13px] font-semibold text-foreground capitalize">
+                          {appUser.specializedField.replace(/_/g, ' ')}
+                        </dd>
+                      </div>
+                    )}
+                    {appUser?.physicalIntellectualLimitations && (
+                      <div className="flex items-center justify-between">
+                        <dt className="text-[13px] text-muted-foreground">Limitations</dt>
+                        <dd className="text-[13px] font-semibold text-foreground capitalize">
+                          {appUser.physicalIntellectualLimitations.replace(/_/g, ' ')}
+                        </dd>
+                      </div>
+                    )}
+                  </dl>
                 </div>
-              ))}
-            </div>
+              )}
 
-            <p className="text-[10px] text-muted-foreground mt-2 text-center">
-              Scores reflect profile context only — not intent or circumstances, which are assessed per event.
-            </p>
-          </section>
-        )}
-
-        {/* ── Social Links ───────────────────────────────────────────────── */}
-        {hasSocials && (
-          <section>
-            <h2 className="text-base font-bold mb-4 flex items-center gap-2">
-              <Link2 size={16} /> Online Presence
-            </h2>
-            <div className="rounded-2xl border border-border bg-card p-4 grid grid-cols-2 gap-3">
-              <SocialLink href={appUser?.igUrl} icon={<Instagram size={14} />} label="Instagram" />
-              <SocialLink href={appUser?.tiktokUrl} icon={<span className="text-xs font-black w-3.5">TT</span>} label="TikTok" />
-              <SocialLink href={appUser?.xUrl} icon={<Twitter size={14} />} label="X / Twitter" />
-              <SocialLink href={appUser?.linkedinUrl} icon={<Linkedin size={14} />} label="LinkedIn" />
-              <SocialLink href={appUser?.redditUrl} icon={<span className="text-xs font-bold w-3.5">R/</span>} label="Reddit" />
-              <SocialLink href={appUser?.ytUrl} icon={<Youtube size={14} />} label="YouTube" />
-              <SocialLink href={appUser?.fbUrl} icon={<Facebook size={14} />} label="Facebook" />
-              <SocialLink href={appUser?.snapchatUrl} icon={<span className="text-xs font-black w-3.5">SC</span>} label="Snapchat" />
-            </div>
-          </section>
-        )}
-
-        {/* ── Claimed Accounts ───────────────────────────────────────────── */}
-        <section>
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="text-base font-bold flex items-center gap-2">
-              <Shield size={16} /> Claimed Accounts
-            </h2>
-          </div>
-          {data?.claimedAccounts && data.claimedAccounts.length > 0 ? (
-            <div className="grid gap-3 sm:grid-cols-2">
-              {data.claimedAccounts.map((acc: any) => (
-                <Link key={acc._id} href={`/account/${acc._id}`}>
-                  <div className="p-4 rounded-2xl border border-border bg-card hover:shadow-sm transition-shadow flex items-center gap-3 group">
-                    <img src={acc.avatarUrl} alt={acc.displayName} className="w-10 h-10 rounded-full bg-muted" />
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-sm flex items-center gap-1 truncate">
-                        {acc.displayName}
-                        {acc.verified && <CheckCircle2 size={12} className="text-foreground shrink-0" />}
-                      </h3>
-                      <p className="text-xs text-muted-foreground">@{acc.username}</p>
-                      <p className="text-[10px] font-bold uppercase tracking-wide mt-0.5">Score {acc.score}</p>
-                    </div>
-                    <ChevronRight size={16} className="text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
-                  </div>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-6 text-center">
-              <p className="text-sm text-muted-foreground mb-3">
-                You haven&apos;t claimed any social accounts yet.
-              </p>
-              <Link
-                href="/dashboard"
-                className="inline-block rounded-xl bg-foreground px-5 py-2 text-xs font-bold text-background"
-              >
-                Find &amp; claim my account
-              </Link>
-            </div>
-          )}
-        </section>
-
-        {/* ── Recent Filings ─────────────────────────────────────────────── */}
-        <section>
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="text-base font-bold flex items-center gap-2">
-              <Activity size={16} /> Recent Filings
-            </h2>
-            <Link href="/dashboard" className="text-xs font-semibold text-muted-foreground hover:text-foreground">
-              File New Event →
-            </Link>
-          </div>
-
-          {data?.recentEvents && data.recentEvents.length > 0 ? (
-            <div className="space-y-3">
-              {data.recentEvents.map((event: any) => (
-                <div key={event._id} className="p-4 rounded-2xl border border-border bg-card">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className={cn(
-                      'px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider',
-                      event.eventType === 'positive'
-                        ? 'bg-foreground/10 text-foreground'
-                        : 'bg-red-500/10 text-red-600'
-                    )}>
-                      {event.eventType}
-                    </div>
-                    <span className="text-xs text-muted-foreground truncate">→ {event.subjectId}</span>
-                  </div>
-                  <p className="text-sm font-medium">{event.description}</p>
-                  <div className="mt-3 flex items-center justify-between text-[10px] text-muted-foreground">
-                    <span>{new Date(event.timestamp).toLocaleDateString()}</span>
-                    <span className="capitalize px-2 py-0.5 bg-muted rounded-full font-semibold">{event.status}</span>
+              {/* Social Links */}
+              {socialLinks.length > 0 && (
+                <div className="rounded-[24px] bg-background p-5 shadow-sm border border-border">
+                  <h3 className="mb-4 text-[14px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Social Links
+                  </h3>
+                  <div className="space-y-2">
+                    {socialLinks.map(link => (
+                      <a
+                        key={link.label}
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-between rounded-xl border border-border p-3 hover:bg-muted transition-colors"
+                      >
+                        <span className="text-[13px] font-semibold text-foreground">{link.label}</span>
+                        <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
+                          <span className="max-w-[160px] truncate">{link.url}</span>
+                          <ExternalLink size={12} className="shrink-0" />
+                        </div>
+                      </a>
+                    ))}
                   </div>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-10 bg-muted/20 rounded-2xl border border-dashed border-border">
-              <Search size={20} className="mx-auto text-muted-foreground mb-2" />
-              <p className="text-sm text-muted-foreground">No events filed yet.</p>
-              <Link href="/dashboard" className="text-xs font-semibold hover:underline mt-1 inline-block">
-                Start investigating
-              </Link>
+              )}
+
+              {/* Empty state */}
+              {!appUser?.occupationRole && !appUser?.education && socialLinks.length === 0 && (
+                <div className="rounded-[24px] border border-dashed border-border bg-background p-8 text-center">
+                  <p className="text-[13px] text-muted-foreground mb-3">No profile information yet.</p>
+                  <Link
+                    href="/onboard"
+                    className="rounded-full bg-foreground px-5 py-2 text-[13px] font-bold text-background"
+                  >
+                    Complete Profile
+                  </Link>
+                </div>
+              )}
             </div>
           )}
-        </section>
 
+        </div>
       </div>
     </main>
   );
