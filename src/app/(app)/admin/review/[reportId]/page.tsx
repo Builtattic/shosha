@@ -69,7 +69,7 @@ export default async function ReviewPage({ params }: { params: { reportId: strin
             <p className="text-foreground leading-relaxed text-[15px] font-medium">{report.description}</p>
             {report.feelings && (
               <blockquote className="mt-6 border-l-4 border-primary/20 pl-6 text-sm text-muted-foreground italic leading-relaxed">
-                "{report.feelings}"
+                &ldquo;{report.feelings}&rdquo;
               </blockquote>
             )}
           </div>
