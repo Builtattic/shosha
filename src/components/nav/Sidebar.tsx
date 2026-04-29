@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Target, TrendingUp, Info, User, ShieldAlert, Settings, Globe, ChevronDown } from 'lucide-react';
+import { Home, Target, TrendingUp, Info, User, ShieldAlert, Settings, Globe, ChevronDown, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type LiveStats = { eventsToday: number; avgWeeklyDelta: number };
@@ -13,6 +13,7 @@ export function Sidebar() {
   const [scope, setScope] = useState('Global');
   const [scopeOpen, setScopeOpen] = useState(false);
   const [stats, setStats] = useState<LiveStats | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     setScope(window.localStorage.getItem('shosha:scope') ?? 'Global');
@@ -42,6 +43,13 @@ export function Sidebar() {
     };
   }, []);
 
+  useEffect(() => {
+    fetch('/api/me', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((d) => { if (d.ok && d.data?.user?.role === 'admin') setIsAdmin(true); })
+      .catch(() => {});
+  }, []);
+
   function chooseScope(value: string) {
     setScope(value);
     setScopeOpen(false);
@@ -60,6 +68,7 @@ export function Sidebar() {
   const navigationItems = [
     { href: '/disputes', label: 'Disputes', icon: ShieldAlert },
     { href: '/settings', label: 'Settings', icon: Settings },
+    ...(isAdmin ? [{ href: '/admin', label: 'Admin', icon: ShieldCheck }] : []),
   ];
 
   return (

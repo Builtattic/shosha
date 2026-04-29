@@ -1,7 +1,7 @@
 import { adminDb } from '@/lib/firebase/admin';
 import { withId } from '@/lib/repos/_serialize';
 
-export type AuditStatus = 'pending' | 'in_progress' | 'completed';
+export type AuditStatus = 'pending' | 'in_progress' | 'completed' | 'rejected';
 
 export type AuditRequestRecord = {
   _id: string;

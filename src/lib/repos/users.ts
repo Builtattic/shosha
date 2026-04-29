@@ -76,3 +76,33 @@ export async function findByUsername(username: string): Promise<AppUser | null> 
   });
   return result;
 }
+
+export async function listAll(limit = 200): Promise<AppUser[]> {
+  const snap = await ref().orderByChild('createdAt').limitToLast(limit).once('value');
+  const results: AppUser[] = [];
+  snap.forEach((child) => {
+    results.push(withId<AppUser>(child.key!, child.val()));
+  });
+  return results.reverse();
+}
+
+export async function count(): Promise<number> {
+  const snap = await ref().once('value');
+  return snap.numChildren();
+}
+
+export async function updateRole(id: string, role: UserRole): Promise<AppUser | null> {
+  const existing = await findById(id);
+  if (!existing) return null;
+  await ref().child(id).update({ role, updatedAt: new Date().toISOString() });
+  return (await findById(id))!;
+}
+
+export async function update(id: string, partial: Partial<Omit<AppUser, '_id'>>): Promise<AppUser | null> {
+  const existing = await findById(id);
+  if (!existing) return null;
+  const patch: Record<string, unknown> = { ...partial, updatedAt: new Date().toISOString() };
+  delete patch._id;
+  await ref().child(id).update(patch);
+  return (await findById(id))!;
+}

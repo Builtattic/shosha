@@ -133,3 +133,20 @@ export async function listClaimedBy(userId: string): Promise<AccountRecord[]> {
   });
   return results;
 }
+
+export async function listAll(limit = 200): Promise<AccountRecord[]> {
+  const snap = await ref().orderByChild('score').limitToLast(limit).once('value');
+  const results: AccountRecord[] = [];
+  snap.forEach((child) => {
+    results.push(withId<AccountRecord>(child.key!, child.val()));
+  });
+  return results.reverse();
+}
+
+export async function deleteById(id: string): Promise<void> {
+  await ref().child(id).remove();
+}
+
+export async function setScore(id: string, score: number): Promise<AccountRecord | null> {
+  return update(id, { score });
+}
