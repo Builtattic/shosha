@@ -81,7 +81,7 @@ export function ClaimsList({ initialClaims }: { initialClaims: ClaimRow[] }) {
                 
                 {note && (
                   <div className="mt-4 p-4 rounded-2xl bg-secondary/30 border border-border/50">
-                    <p className="text-[14px] text-muted-foreground font-medium italic">"{note}"</p>
+                    <p className="text-[14px] text-muted-foreground font-medium italic">&ldquo;{note}&rdquo;</p>
                   </div>
                 )}
 
