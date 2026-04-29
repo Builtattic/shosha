@@ -104,7 +104,7 @@ export default function FeedPage() {
   return (
     <main className="min-h-screen bg-background pb-24">
       <header className="sticky top-0 z-50 bg-background/80 p-4 backdrop-blur-xl">
-        <div className="flex items-center justify-between">
+        <div className="mx-auto flex max-w-2xl items-center justify-between">
           <div className="font-serif text-[28px] font-black text-foreground">
             Sho<span className="font-normal italic text-muted-foreground">शा</span>
           </div>
@@ -132,45 +132,69 @@ export default function FeedPage() {
           </div>
         </div>
         {searchOpen && (
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            autoFocus
-            placeholder="Search reports..."
-            className="mt-3 w-full rounded-full border border-border bg-card px-4 py-3 text-[14px] outline-none focus:ring-2 focus:ring-primary/20"
-          />
+          <div className="mx-auto max-w-2xl">
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              autoFocus
+              placeholder="Search reports..."
+              className="mt-3 w-full rounded-full border border-border bg-card px-4 py-3 text-[14px] outline-none focus:ring-2 focus:ring-primary/20"
+            />
+          </div>
         )}
       </header>
 
-      <div className="mb-6 mt-2 px-4">
-        <div className="flex gap-2 overflow-x-auto scroll-smooth no-scrollbar">
-          {tabs.map((tab) => (
-            <button
-              key={tab.value}
-              type="button"
-              onClick={() => setActiveTab(tab.value)}
-              className={cn(
-                'whitespace-nowrap rounded-full border px-5 py-2 text-[13px] font-bold transition-all',
-                activeTab === tab.value
-                  ? 'scale-105 border-foreground bg-foreground text-background shadow-md'
-                  : 'border-border bg-card text-muted-foreground hover:bg-muted'
-              )}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="space-y-6 px-4">
-        {loading && <p className="rounded-[20px] border border-border bg-card p-5 text-sm text-muted-foreground">Loading reports...</p>}
-        {!loading && visibleFeed.map((item) => <FeedItem key={item._id} {...toFeedItem(item)} />)}
-        {!loading && visibleFeed.length === 0 && (
-          <div className="rounded-[24px] border border-border bg-card p-6 text-center">
-            <p className="text-[15px] font-bold text-foreground">No reports match this view.</p>
-            <p className="mt-2 text-[13px] text-muted-foreground">Try another tab or create the first filing.</p>
+      <div className="mx-auto max-w-2xl">
+        <div className="mb-6 mt-2 px-4">
+          <div className="flex gap-2 overflow-x-auto scroll-smooth no-scrollbar">
+            {tabs.map((tab) => (
+              <button
+                key={tab.value}
+                type="button"
+                onClick={() => setActiveTab(tab.value)}
+                className={cn(
+                  'whitespace-nowrap rounded-full border px-5 py-2 text-[13px] font-bold transition-all',
+                  activeTab === tab.value
+                    ? 'scale-105 border-foreground bg-foreground text-background shadow-md'
+                    : 'border-border bg-card text-muted-foreground hover:bg-muted'
+                )}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
-        )}
+        </div>
+
+        <div className="space-y-6 px-4">
+          {loading && (
+            <>
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="mb-6 overflow-hidden rounded-[24px] border border-border bg-card p-5">
+                  <div className="flex items-center gap-3">
+                    <div className="h-12 w-12 animate-pulse rounded-full bg-muted" />
+                    <div className="flex flex-col gap-2">
+                      <div className="h-4 w-32 animate-pulse rounded-md bg-muted" />
+                      <div className="h-3 w-20 animate-pulse rounded-md bg-muted" />
+                    </div>
+                  </div>
+                  <div className="mt-4 h-[250px] w-full animate-pulse rounded-[16px] bg-muted" />
+                  <div className="mt-4 h-6 w-3/4 animate-pulse rounded-md bg-muted" />
+                  <div className="mt-6 flex gap-3">
+                    <div className="h-12 flex-1 animate-pulse rounded-xl bg-muted" />
+                    <div className="h-12 flex-1 animate-pulse rounded-xl bg-muted" />
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+          {!loading && visibleFeed.map((item) => <FeedItem key={item._id} {...toFeedItem(item)} />)}
+          {!loading && visibleFeed.length === 0 && (
+            <div className="rounded-[24px] border border-border bg-card p-6 text-center">
+              <p className="text-[15px] font-bold text-foreground">No reports match this view.</p>
+              <p className="mt-2 text-[13px] text-muted-foreground">Try another tab or create the first filing.</p>
+            </div>
+          )}
+        </div>
       </div>
 
       <ReportModal open={reportOpen} onClose={() => setReportOpen(false)} />

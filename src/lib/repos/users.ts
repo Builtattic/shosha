@@ -3,6 +3,35 @@ import { withId, stripId } from '@/lib/repos/_serialize';
 
 export type UserRole = 'user' | 'admin';
 
+export type OccupationRole =
+  | 'student'
+  | 'unemployed'
+  | 'individual_contributor'
+  | 'manager'
+  | 'founder_business_owner'
+  | 'public_figure_influencer'
+  | 'government_political';
+
+export type NetworkSize = 'none' | '<1k' | '1k-10k' | '10k-100k' | '100k-1m' | '1m-100m' | '100m+';
+
+export type EducationLevel =
+  | 'no_formal'
+  | 'school'
+  | 'undergraduate'
+  | 'postgraduate'
+  | 'doctorate_specialized';
+
+export type SpecializedFieldLevel = 'no' | 'some_experience' | 'professional' | 'expert';
+
+export type ManagementLevel =
+  | 'none'
+  | 'small_team_limited_control'
+  | 'moderate_responsibility'
+  | 'large_team_major_decisions'
+  | 'organizational_institutional';
+
+export type LimitationsStatus = 'yes' | 'no' | 'prefer_not_to_say';
+
 export type AppUser = {
   _id: string;
   username: string;
@@ -12,6 +41,27 @@ export type AppUser = {
   claimedAccounts: string[];
   createdAt?: string;
   updatedAt?: string;
+  // Onboarding profile fields
+  onboardingComplete?: boolean;
+  name?: string;
+  phone?: string;
+  dob?: string;
+  city?: string;
+  country?: string;
+  occupationRole?: OccupationRole;
+  networkSize?: NetworkSize;
+  education?: EducationLevel;
+  specializedField?: SpecializedFieldLevel;
+  managesMoneyPeopleSystem?: ManagementLevel;
+  physicalIntellectualLimitations?: LimitationsStatus;
+  igUrl?: string;
+  tiktokUrl?: string;
+  xUrl?: string;
+  linkedinUrl?: string;
+  redditUrl?: string;
+  ytUrl?: string;
+  fbUrl?: string;
+  snapchatUrl?: string;
 };
 
 function ref() {

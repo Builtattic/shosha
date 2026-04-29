@@ -5,10 +5,12 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Search, Bell, Plus, ChevronRight, CheckCircle2, X } from 'lucide-react';
 import { FeedItem, type FeedItemProps } from '@/components/feed/FeedItem';
-import { ScoreGauge } from '@/components/viz/ScoreGauge';
+import { D3ScoreGauge } from '@/components/viz/D3ScoreGauge';
 import { cn } from '@/lib/utils';
 import { ReportModal } from '@/components/report/ReportModal';
 import { SignInChip } from '@/components/nav/SignInChip';
+import { calcProfileScores, calcShoshaScore } from '@/lib/scoring';
+import { useAuth } from '@/contexts/AuthContext';
 
 type FeedFilter = 'for_you' | 'following' | 'top' | 'near';
 
@@ -94,6 +96,7 @@ function toFeedItem(report: FeedReport): FeedItemProps {
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { user: firebaseUser } = useAuth();
   const [activeTab, setActiveTab] = useState<FeedFilter>('for_you');
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [feed, setFeed] = useState<FeedReport[]>([]);
@@ -106,6 +109,7 @@ export default function DashboardPage() {
   const [accountMatches, setAccountMatches] = useState<AccountMatch[]>([]);
   const [accountCandidates, setAccountCandidates] = useState<AccountCandidate[]>([]);
   const [searchingAccounts, setSearchingAccounts] = useState(false);
+  const [meData, setMeData] = useState<{ user: any; claimedAccounts: any[] } | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -135,6 +139,7 @@ export default function DashboardPage() {
       })
       .then((payload) => {
         if (!payload.ok) return;
+        setMeData({ user: payload.data.user, claimedAccounts: payload.data.claimedAccounts ?? [] });
         const accountId = payload.data.claimedAccounts?.[0]?._id;
         const reportAccountId = payload.data.recentReports?.[0]?.accountId;
         setMyReportHref(accountId || reportAccountId ? `/account/${accountId ?? reportAccountId}` : '/profile');
@@ -207,58 +212,64 @@ export default function DashboardPage() {
     );
   }, [feed, query]);
 
-  const heroAccount = feed[0]?.account;
-  const heroScore = heroAccount?.score ?? 60;
+  // Compute user's own Shosha Score from profile dimensions
+  const profileDims = meData?.user ? calcProfileScores(meData.user) : [];
+  const shoshaScore = calcShoshaScore(profileDims);
+  const credibility = meData?.user?.reporterScore ?? 50;
+  const hasOnboarded = !!meData?.user?.onboardingComplete;
+  const displayName = meData?.user?.name || firebaseUser?.displayName || firebaseUser?.email?.split('@')[0] || 'You';
+  const avatarUrl = firebaseUser?.photoURL ?? null;
 
   return (
     <main className="min-h-screen bg-background pb-24">
       <header className="sticky top-0 z-50 bg-background/80 p-4 backdrop-blur-xl">
-        <div className="flex items-center justify-between gap-3">
-          <div className="font-serif text-[28px] font-black text-foreground">
-            Sho<span className="font-normal italic text-muted-foreground">शा</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setSearchOpen((value) => !value)}
-              className="text-muted-foreground transition-colors hover:text-foreground"
-              aria-label="Search feed"
-            >
-              {searchOpen ? <X size={22} /> : <Search size={22} />}
-            </button>
-            <div className="relative">
+        <div className="mx-auto max-w-2xl">
+          <div className="flex items-center justify-between gap-3">
+            <div className="font-serif text-[28px] font-black text-foreground">
+              Sho<span className="font-normal italic text-muted-foreground">शा</span>
+            </div>
+            <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => setNotificationsOpen((value) => !value)}
+                onClick={() => setSearchOpen((value) => !value)}
                 className="text-muted-foreground transition-colors hover:text-foreground"
-                aria-label="Notifications"
+                aria-label="Search feed"
               >
-                <Bell size={22} />
+                {searchOpen ? <X size={22} /> : <Search size={22} />}
               </button>
-              <span className="absolute right-0.5 top-0 h-2 w-2 rounded-full border border-background bg-destructive" />
-              {notificationsOpen && (
-                <div className="absolute right-0 top-9 w-72 rounded-[18px] border border-border bg-card p-3 shadow-xl">
-                  {notifications.map((item) => (
-                    <div key={item.id} className="border-b border-border py-3 last:border-0">
-                      <p className="text-[13px] font-bold text-foreground">{item.title}</p>
-                      <p className="mt-1 text-[12px] leading-5 text-muted-foreground">{item.body}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={() => setReportModalOpen(true)}
-              className="flex items-center gap-1 rounded-full bg-foreground px-4 py-2 text-[13px] font-bold text-background shadow-sm transition-all hover:bg-foreground/90 active:scale-95"
-            >
-              <Plus size={16} strokeWidth={3} /> Create Report
-            </button>
-            <div className="hidden sm:block">
-              <SignInChip />
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setNotificationsOpen((value) => !value)}
+                  className="text-muted-foreground transition-colors hover:text-foreground"
+                  aria-label="Notifications"
+                >
+                  <Bell size={22} />
+                </button>
+                <span className="absolute right-0.5 top-0 h-2 w-2 rounded-full border border-background bg-destructive" />
+                {notificationsOpen && (
+                  <div className="absolute right-0 top-9 w-72 rounded-[18px] border border-border bg-card p-3 shadow-xl">
+                    {notifications.map((item) => (
+                      <div key={item.id} className="border-b border-border py-3 last:border-0">
+                        <p className="text-[13px] font-bold text-foreground">{item.title}</p>
+                        <p className="mt-1 text-[12px] leading-5 text-muted-foreground">{item.body}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setReportModalOpen(true)}
+                className="flex items-center gap-1 rounded-full bg-foreground px-4 py-2 text-[13px] font-bold text-background shadow-sm transition-all hover:bg-foreground/90 active:scale-95"
+              >
+                <Plus size={16} strokeWidth={3} /> Create Report
+              </button>
+              <div className="hidden sm:block">
+                <SignInChip />
+              </div>
             </div>
           </div>
-        </div>
         {searchOpen && (
           <div className="relative mt-3">
             <input
@@ -304,83 +315,113 @@ export default function DashboardPage() {
             )}
           </div>
         )}
+        </div>
       </header>
 
-      <section className="mt-2 px-4">
-        <div className="relative overflow-hidden rounded-[32px] border border-border bg-card p-6 shadow-sm">
-          <div className="relative z-10 mb-2 flex items-start justify-between">
-            <div className="flex items-center gap-3">
-              <div className="h-14 w-14 overflow-hidden rounded-full border border-border shadow-sm">
-                {heroAccount?.avatarUrl ? (
-                  <img src={heroAccount.avatarUrl} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-muted font-bold">
-                    {(heroAccount?.displayName ?? 'S').slice(0, 1)}
-                  </div>
+      <div className="mx-auto max-w-2xl">
+        <section className="mt-2 px-4">
+          <div className="relative overflow-hidden rounded-[32px] border border-border bg-card shadow-sm">
+            {/* Header row */}
+            <div className="flex items-center justify-between px-6 pt-5 pb-0">
+              <div className="flex items-center gap-3">
+                <div className="h-11 w-11 overflow-hidden rounded-xl border border-border shadow-sm shrink-0">
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-muted text-sm font-black">
+                      {displayName.slice(0, 1).toUpperCase()}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <p className="text-[11px] font-medium text-muted-foreground">Your score</p>
+                  <h2 className="text-[16px] font-black text-foreground leading-tight">{displayName}</h2>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Shosha Score</p>
+                {!hasOnboarded && (
+                  <Link href="/onboard" className="mt-1 inline-block text-[10px] font-bold text-foreground border border-border rounded-full px-2 py-0.5 hover:bg-muted">
+                    Complete profile →
+                  </Link>
                 )}
               </div>
-              <div>
-                <p className="mb-0.5 text-[12px] font-medium text-muted-foreground">Current signal</p>
-                <h2 className="flex items-center gap-1 text-[18px] font-bold text-foreground">
-                  {heroAccount?.displayName ?? 'Create your first report'}
-                  {heroAccount?.verified && <CheckCircle2 size={16} className="fill-foreground/10 text-foreground" />}
-                </h2>
+            </div>
+
+            {/* D3 Gauge */}
+            <div className="px-6 pt-0 pb-1 flex justify-center">
+              <D3ScoreGauge
+                score={hasOnboarded ? shoshaScore : credibility}
+                credibility={credibility}
+                label={hasOnboarded ? 'Shosha Score' : 'Credibility'}
+                size={260}
+              />
+            </div>
+
+            {/* Footer row */}
+            <div className="flex items-center justify-between gap-3 px-6 pb-5">
+              <div className="flex gap-4 text-center">
+                <div>
+                  <div className="text-[15px] font-black">{credibility}</div>
+                  <div className="text-[9px] text-muted-foreground uppercase tracking-wider font-semibold">Credibility</div>
+                </div>
+                {hasOnboarded && (
+                  <>
+                    <div className="w-px bg-border" />
+                    <div>
+                      <div className="text-[15px] font-black">{shoshaScore}</div>
+                      <div className="text-[9px] text-muted-foreground uppercase tracking-wider font-semibold">Shosha</div>
+                    </div>
+                  </>
+                )}
+                <div className="w-px bg-border" />
+                <div>
+                  <div className="text-[15px] font-black">{meData?.claimedAccounts?.length ?? 0}</div>
+                  <div className="text-[9px] text-muted-foreground uppercase tracking-wider font-semibold">Accounts</div>
+                </div>
               </div>
+              <Link
+                href={myReportHref}
+                className="flex items-center gap-1 rounded-full border border-border bg-background px-4 py-2 text-[12px] font-bold text-foreground shadow-sm transition-all hover:bg-muted active:scale-95 shrink-0"
+              >
+                My Profile <ChevronRight size={14} />
+              </Link>
             </div>
-            <div className="mt-1 text-right">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Shosha Score</p>
+          </div>
+        </section>
+
+        <section className="mt-8 px-4">
+          <h2 className="mb-4 text-[20px] font-bold text-foreground">Feed</h2>
+          <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+            {tabs.map((tab) => (
+              <button
+                key={tab.value}
+                type="button"
+                onClick={() => setActiveTab(tab.value)}
+                className={cn(
+                  'whitespace-nowrap rounded-full border px-5 py-2 text-[13px] font-bold transition-all',
+                  activeTab === tab.value
+                    ? 'scale-105 border-foreground bg-foreground text-background shadow-md'
+                    : 'border-border bg-card text-muted-foreground hover:bg-muted'
+                )}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-4 space-y-6 px-4">
+          {loading && <p className="rounded-[20px] border border-border bg-card p-5 text-sm text-muted-foreground">Loading live filings...</p>}
+          {!loading && visibleFeed.map((item) => <FeedItem key={item._id} {...toFeedItem(item)} />)}
+          {!loading && visibleFeed.length === 0 && (
+            <div className="rounded-[24px] border border-border bg-card p-6 text-center">
+              <p className="text-[15px] font-bold text-foreground">No filings here yet.</p>
+              <p className="mt-2 text-[13px] text-muted-foreground">Create a report or seed the emulator to populate this view.</p>
             </div>
-          </div>
-
-          <div className="relative -mt-8 flex justify-center">
-            <ScoreGauge score={heroScore} min={0} max={100} className="w-full scale-[0.85]" />
-          </div>
-
-          <div className="mt-[-10px] flex items-center justify-between gap-3">
-            <p className="max-w-[170px] text-[12px] font-medium leading-snug text-muted-foreground">
-              Live filings, account captures, and votes are now connected to the backend.
-            </p>
-            <Link
-              href={myReportHref}
-              className="flex items-center gap-1 rounded-full border border-border bg-background px-4 py-2 text-[12px] font-bold text-foreground shadow-sm transition-all hover:bg-muted active:scale-95"
-            >
-              View My Report <ChevronRight size={14} />
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      <section className="mt-8 px-4">
-        <h2 className="mb-4 text-[20px] font-bold text-foreground">Feed</h2>
-        <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-          {tabs.map((tab) => (
-            <button
-              key={tab.value}
-              type="button"
-              onClick={() => setActiveTab(tab.value)}
-              className={cn(
-                'whitespace-nowrap rounded-full border px-5 py-2 text-[13px] font-bold transition-all',
-                activeTab === tab.value
-                  ? 'scale-105 border-foreground bg-foreground text-background shadow-md'
-                  : 'border-border bg-card text-muted-foreground hover:bg-muted'
-              )}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section className="mt-4 space-y-6 px-4">
-        {loading && <p className="rounded-[20px] border border-border bg-card p-5 text-sm text-muted-foreground">Loading live filings...</p>}
-        {!loading && visibleFeed.map((item) => <FeedItem key={item._id} {...toFeedItem(item)} />)}
-        {!loading && visibleFeed.length === 0 && (
-          <div className="rounded-[24px] border border-border bg-card p-6 text-center">
-            <p className="text-[15px] font-bold text-foreground">No filings here yet.</p>
-            <p className="mt-2 text-[13px] text-muted-foreground">Create a report or seed the emulator to populate this view.</p>
-          </div>
-        )}
-      </section>
+          )}
+        </section>
+      </div>
 
       <ReportModal
         open={reportModalOpen}

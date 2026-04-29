@@ -9,6 +9,19 @@ import type { ConfirmationResult } from 'firebase/auth';
 
 type AuthMode = 'choose' | 'email' | 'phone' | 'otp';
 
+async function resolveRedirect(redirectParam: string): Promise<string> {
+  try {
+    const res = await fetch('/api/me');
+    if (res.ok) {
+      const data = await res.json();
+      if (!data.user?.onboardingComplete) return '/onboard';
+    }
+  } catch {
+    // fall through to default
+  }
+  return redirectParam || '/dashboard';
+}
+
 export default function SignInPage() {
   const router = useRouter();
   const { signIn, signUp, signInWithGoogle, sendPhoneOtp } = useAuth();
@@ -38,10 +51,10 @@ export default function SignInPage() {
       } else {
         await signIn(email, password);
       }
-      
+
       const searchParams = new URLSearchParams(window.location.search);
-      const redirect = searchParams.get('redirect') || '/dashboard';
-      router.push(redirect);
+      const dest = await resolveRedirect(searchParams.get('redirect') || '/dashboard');
+      router.push(dest);
     } catch (err: any) {
       setError(err.message?.replace('Firebase: ', '').replace(/\(auth\/.*\)/, '').trim() || 'Something went wrong');
     } finally {
@@ -54,10 +67,10 @@ export default function SignInPage() {
     setLoading(true);
     try {
       await signInWithGoogle();
-      
+
       const searchParams = new URLSearchParams(window.location.search);
-      const redirect = searchParams.get('redirect') || '/dashboard';
-      router.push(redirect);
+      const dest = await resolveRedirect(searchParams.get('redirect') || '/dashboard');
+      router.push(dest);
     } catch (err: any) {
       setError(err.message?.replace('Firebase: ', '') || 'Google sign-in failed');
     } finally {
@@ -89,10 +102,10 @@ export default function SignInPage() {
       const cred = await confirmResult.confirm(code);
       const token = await cred.user.getIdToken();
       document.cookie = `__session=${token}; path=/; max-age=3600; SameSite=Lax`;
-      
+
       const searchParams = new URLSearchParams(window.location.search);
-      const redirect = searchParams.get('redirect') || '/dashboard';
-      router.push(redirect);
+      const dest = await resolveRedirect(searchParams.get('redirect') || '/dashboard');
+      router.push(dest);
     } catch (err: any) {
       setError('Invalid OTP. Please try again.');
     } finally {
