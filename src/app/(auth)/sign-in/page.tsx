@@ -14,7 +14,13 @@ async function resolveRedirect(redirectParam: string): Promise<string> {
     const res = await fetch('/api/me');
     if (res.ok) {
       const data = await res.json();
-      if (!data.user?.onboardingComplete) return '/onboard';
+      const u = data.user;
+      // Only force onboarding for genuinely new accounts that have never
+      // filled in any profile data. Existing users who predate the flag
+      // should go straight to the dashboard.
+      if (u && !u.onboardingComplete && !u.name && !u.occupationRole) {
+        return '/onboard';
+      }
     }
   } catch {
     // fall through to default

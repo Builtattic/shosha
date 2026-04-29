@@ -288,7 +288,7 @@ export default function OnboardPage() {
     }
   }, [user]);
 
-  // Redirect to sign-in if not authenticated; skip onboarding if already complete
+  // Redirect to sign-in if not authenticated; pre-fill form from existing profile
   useEffect(() => {
     if (loading) return;
     if (!user) {
@@ -298,11 +298,35 @@ export default function OnboardPage() {
     fetch('/api/me')
       .then((r) => r.json())
       .then((data) => {
-        if (data.user?.onboardingComplete) {
-          router.replace('/dashboard');
-        } else {
-          setChecking(false);
+        const u = data.user;
+        if (u) {
+          // Pre-fill form with any existing profile data so returning users
+          // can edit their profile without starting from scratch.
+          setForm((f) => ({
+            ...f,
+            name: u.name || f.name,
+            username: u.username || f.username,
+            phone: u.phone || f.phone,
+            dob: u.dob || f.dob,
+            city: u.city || f.city,
+            country: u.country || f.country,
+            occupationRole: u.occupationRole || f.occupationRole,
+            networkSize: u.networkSize || f.networkSize,
+            education: u.education || f.education,
+            specializedField: u.specializedField || f.specializedField,
+            managesMoneyPeopleSystem: u.managesMoneyPeopleSystem || f.managesMoneyPeopleSystem,
+            physicalIntellectualLimitations: u.physicalIntellectualLimitations || f.physicalIntellectualLimitations,
+            igUrl: u.igUrl || f.igUrl,
+            tiktokUrl: u.tiktokUrl || f.tiktokUrl,
+            xUrl: u.xUrl || f.xUrl,
+            linkedinUrl: u.linkedinUrl || f.linkedinUrl,
+            redditUrl: u.redditUrl || f.redditUrl,
+            ytUrl: u.ytUrl || f.ytUrl,
+            fbUrl: u.fbUrl || f.fbUrl,
+            snapchatUrl: u.snapchatUrl || f.snapchatUrl,
+          }));
         }
+        setChecking(false);
       })
       .catch(() => setChecking(false));
   }, [loading, user, router]);

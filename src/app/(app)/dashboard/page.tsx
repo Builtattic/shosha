@@ -216,7 +216,7 @@ export default function DashboardPage() {
   const profileDims = meData?.user ? calcProfileScores(meData.user) : [];
   const shoshaScore = calcShoshaScore(profileDims);
   const credibility = meData?.user?.reporterScore ?? 50;
-  const hasOnboarded = !!meData?.user?.onboardingComplete;
+  const hasOnboarded = !!(meData?.user?.onboardingComplete || meData?.user?.name || meData?.user?.occupationRole);
   const displayName = meData?.user?.name || firebaseUser?.displayName || firebaseUser?.email?.split('@')[0] || 'You';
   const avatarUrl = firebaseUser?.photoURL ?? null;
 
