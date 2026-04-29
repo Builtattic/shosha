@@ -1,0 +1,27 @@
+{
+  "rules": {
+    ".read": "auth != null",
+    ".write": "auth != null",
+    "reports": {
+      ".indexOn": ["createdAt", "accountId", "reporterId"]
+    },
+    "accounts": {
+      ".indexOn": ["score", "usernameLower", "claimedBy"]
+    },
+    "users": {
+      ".indexOn": ["username", "createdAt"]
+    },
+    "events": {
+      ".indexOn": ["subjectId", "reporterId", "timestamp", "status"]
+    },
+    "claimRequests": {
+      ".indexOn": ["status"]
+    },
+    "auditRequests": {
+      ".indexOn": ["createdAt"]
+    },
+    "reportComments": {
+      ".indexOn": ["reportId"]
+    }
+  }
+}
