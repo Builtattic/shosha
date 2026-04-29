@@ -13,7 +13,11 @@ import {
   Plus, 
   Minus,
   PlayCircle,
-  ImageIcon
+  ImageIcon,
+  Twitter,
+  Instagram,
+  Facebook,
+  AtSign
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/Toast';
@@ -25,6 +29,7 @@ export interface FeedItemProps {
     handle: string;
     avatar: string;
     isVerified: boolean;
+    platform?: string;
   };
   timestamp: string;
   type: 'positive' | 'negative';
@@ -136,7 +141,11 @@ export function FeedItem({
             <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground/70 mt-0.5">
               <span>{timestamp}</span>
               <span className="text-[8px]">●</span>
-              <Globe size={10} />
+              {user.platform === 'twitter' ? <Twitter size={10} /> :
+               user.platform === 'instagram' ? <Instagram size={10} /> :
+               user.platform === 'facebook' ? <Facebook size={10} /> :
+               user.platform === 'threads' ? <AtSign size={10} /> :
+               <Globe size={10} />}
             </div>
           </div>
         </div>

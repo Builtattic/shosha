@@ -22,6 +22,7 @@ type FeedReport = {
     displayName: string;
     avatarUrl?: string;
     verified?: boolean;
+    platform?: string;
   };
 };
 
@@ -49,7 +50,8 @@ function toFeedItem(report: FeedReport): FeedItemProps {
       name: report.account.displayName,
       handle: report.account.username,
       avatar: report.account.avatarUrl ?? '',
-      isVerified: Boolean(report.account.verified)
+      isVerified: Boolean(report.account.verified),
+      platform: report.account.platform
     },
     timestamp: timestamp(report.createdAt),
     type: report.type,

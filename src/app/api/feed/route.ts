@@ -18,6 +18,16 @@ const parser = new Parser({
   }
 });
 
+const MOCK_ACCOUNTS = [
+  { username: 'elonmusk', displayName: 'Elon Musk', avatarUrl: 'https://pbs.twimg.com/profile_images/1780044485541699584/p78MCn3B_400x400.jpg', platform: 'twitter' },
+  { username: 'zuck', displayName: 'Mark Zuckerberg', avatarUrl: 'https://upload.wikimedia.org/wikipedia/commons/1/18/Mark_Zuckerberg_F8_2019_Keynote_%2832830578717%29_%28cropped%29.jpg', platform: 'threads' },
+  { username: 'cristiano', displayName: 'Cristiano Ronaldo', avatarUrl: 'https://upload.wikimedia.org/wikipedia/commons/8/8c/Cristiano_Ronaldo_2018.jpg', platform: 'instagram' },
+  { username: 'mrbeast', displayName: 'MrBeast', avatarUrl: 'https://pbs.twimg.com/profile_images/994592419705274369/b_E12vD5_400x400.jpg', platform: 'twitter' },
+  { username: 'meta', displayName: 'Meta', avatarUrl: 'https://pbs.twimg.com/profile_images/1453818753880190978/hzjmBsqW_400x400.jpg', platform: 'facebook' },
+  { username: 'taylorswift', displayName: 'Taylor Swift', avatarUrl: 'https://upload.wikimedia.org/wikipedia/commons/b/b1/Taylor_Swift_at_the_2023_MTV_Video_Music_Awards_%283%29.png', platform: 'instagram' },
+  { username: 'mosseri', displayName: 'Adam Mosseri', avatarUrl: 'https://upload.wikimedia.org/wikipedia/commons/6/6d/Adam_Mosseri_at_the_2019_Web_Summit_%28cropped%29.jpg', platform: 'threads' }
+];
+
 async function getLiveNews() {
   try {
     const res = await fetch('https://techcrunch.com/category/social/feed/', {
@@ -28,36 +38,37 @@ async function getLiveNews() {
     const feed = await parser.parseString(xml);
     return feed.items.map((item, index) => {
       const isPositive = Math.random() > 0.5;
+      const accountMock = MOCK_ACCOUNTS[index % MOCK_ACCOUNTS.length];
       
       let imageUrl = undefined;
       if (item['media:content'] && item['media:content']['$'] && item['media:content']['$'].url) {
         imageUrl = item['media:content']['$'].url;
       } else if (item.content) {
-         // rough extraction of image from content html
          const match = item.content.match(/<img[^>]+src="([^">]+)"/);
          if (match) imageUrl = match[1];
       }
 
       return {
         _id: `news-${index}-${Date.now()}`,
-        accountId: 'techcrunch-social',
+        accountId: `mock-${accountMock.username}`,
         userId: 'system',
         type: isPositive ? 'positive' : 'negative',
         status: 'published',
         description: item.title || 'Social Media Update',
         media: imageUrl ? { type: 'image', url: imageUrl } : undefined,
         stats: {
-          aligns: Math.floor(Math.random() * 500) + 50,
-          opposes: Math.floor(Math.random() * 100) + 10,
-          comments: Math.floor(Math.random() * 50) + 5,
-          shares: Math.floor(Math.random() * 30) + 2
+          aligns: Math.floor(Math.random() * 50000) + 5000,
+          opposes: Math.floor(Math.random() * 1000) + 100,
+          comments: Math.floor(Math.random() * 5000) + 50,
+          shares: Math.floor(Math.random() * 3000) + 20
         },
-        adminDecision: { finalImpact: isPositive ? Math.floor(Math.random() * 5) + 1 : -(Math.floor(Math.random() * 5) + 1) },
+        adminDecision: { finalImpact: isPositive ? Math.floor(Math.random() * 10) + 1 : -(Math.floor(Math.random() * 10) + 1) },
         createdAt: item.pubDate || new Date().toISOString(),
         account: {
-          username: 'TechCrunch',
-          displayName: 'TechCrunch Social',
-          avatarUrl: 'https://techcrunch.com/wp-content/uploads/2015/02/cropped-cropped-favicon.png',
+          username: accountMock.username,
+          displayName: accountMock.displayName,
+          avatarUrl: accountMock.avatarUrl,
+          platform: accountMock.platform,
           verified: true
         },
         viewer: { vote: null, bookmarked: false }
