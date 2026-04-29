@@ -28,54 +28,76 @@ const MOCK_ACCOUNTS = [
   { username: 'mosseri', displayName: 'Adam Mosseri', avatarUrl: 'https://upload.wikimedia.org/wikipedia/commons/6/6d/Adam_Mosseri_at_the_2019_Web_Summit_%28cropped%29.jpg', platform: 'threads' }
 ];
 
+const SUBREDDITS = [
+  { name: 'popculturechat', platform: 'instagram' },
+  { name: 'WhitePeopleTwitter', platform: 'twitter' },
+  { name: 'InstagramReality', platform: 'instagram' },
+  { name: 'NonPoliticalTwitter', platform: 'twitter' }
+];
+
 async function getLiveNews() {
   try {
-    const res = await fetch('https://techcrunch.com/category/social/feed/', {
-      next: { revalidate: 3600 }
-    });
-    if (!res.ok) return [];
-    const xml = await res.text();
-    const feed = await parser.parseString(xml);
-    return feed.items.map((item, index) => {
-      const isPositive = Math.random() > 0.5;
+    const allPosts = await Promise.all(
+      SUBREDDITS.map(async (sub) => {
+        const res = await fetch(`https://www.reddit.com/r/${sub.name}/hot.json?limit=15`, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36'
+          },
+          next: { revalidate: 3600 }
+        });
+        if (!res.ok) return [];
+        const json = await res.json();
+        return (json.data?.children || []).map((child: any) => ({ ...child.data, _platform: sub.platform }));
+      })
+    );
+
+    const posts = allPosts.flat().sort((a, b) => b.created_utc - a.created_utc);
+
+    return posts.filter(post => !post.is_self && post.url).map((post, index) => {
+      const isPositive = Math.random() > 0.4;
       const accountMock = MOCK_ACCOUNTS[index % MOCK_ACCOUNTS.length];
       
-      let imageUrl = undefined;
-      if (item['media:content'] && item['media:content']['$'] && item['media:content']['$'].url) {
-        imageUrl = item['media:content']['$'].url;
-      } else if (item.content) {
-         const match = item.content.match(/<img[^>]+src="([^">]+)"/);
-         if (match) imageUrl = match[1];
+      let media = undefined;
+      const redditPreview = post.preview?.images?.[0]?.source?.url?.replaceAll('&amp;', '&');
+      
+      if (post.is_video && post.media?.reddit_video?.fallback_url) {
+        media = { type: 'video' as const, url: post.media.reddit_video.fallback_url };
+      } else if (redditPreview) {
+        media = { type: 'image' as const, url: redditPreview };
+      } else if (post.url && (post.url.includes('.jpg') || post.url.includes('.png') || post.url.includes('.webp'))) {
+        media = { type: 'image' as const, url: post.url };
+      } else if (post.thumbnail && post.thumbnail.startsWith('http')) {
+        media = { type: 'image' as const, url: post.thumbnail };
       }
 
       return {
-        _id: `news-${index}-${Date.now()}`,
+        _id: `reddit-${post.id}-${Date.now()}`,
         accountId: `mock-${accountMock.username}`,
         userId: 'system',
         type: isPositive ? 'positive' : 'negative',
         status: 'published',
-        description: item.title || 'Social Media Update',
-        media: imageUrl ? { type: 'image', url: imageUrl } : undefined,
+        description: post.title,
+        media: media,
         stats: {
-          aligns: Math.floor(Math.random() * 50000) + 5000,
-          opposes: Math.floor(Math.random() * 1000) + 100,
-          comments: Math.floor(Math.random() * 5000) + 50,
-          shares: Math.floor(Math.random() * 3000) + 20
+          aligns: post.ups || Math.floor(Math.random() * 1000),
+          opposes: Math.floor(post.ups * 0.1) || Math.floor(Math.random() * 100),
+          comments: post.num_comments || Math.floor(Math.random() * 50),
+          shares: Math.floor(post.ups * 0.05) || Math.floor(Math.random() * 20)
         },
         adminDecision: { finalImpact: isPositive ? Math.floor(Math.random() * 10) + 1 : -(Math.floor(Math.random() * 10) + 1) },
-        createdAt: item.pubDate || new Date().toISOString(),
+        createdAt: new Date(post.created_utc * 1000).toISOString(),
         account: {
           username: accountMock.username,
           displayName: accountMock.displayName,
           avatarUrl: accountMock.avatarUrl,
-          platform: accountMock.platform,
+          platform: post._platform || accountMock.platform,
           verified: true
         },
         viewer: { vote: null, bookmarked: false }
       };
     });
   } catch (e) {
-    console.error('Failed to fetch live news:', e);
+    console.error('Failed to fetch live news from Reddit:', e);
     return [];
   }
 }
@@ -116,7 +138,11 @@ export async function GET(request: Request) {
   }
 
   const viewerStates = await Promise.all(
-    feed.map((report) => report._id.startsWith('news-') ? Promise.resolve({ vote: null, bookmarked: false }) : interactionsRepo.getViewerState(report._id, user?._id))
+    feed.map((report) => 
+      (report._id.startsWith('news-') || report._id.startsWith('reddit-')) 
+        ? Promise.resolve({ vote: null, bookmarked: false }) 
+        : interactionsRepo.getViewerState(report._id, user?._id)
+    )
   );
 
   return ok(

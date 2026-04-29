@@ -162,13 +162,30 @@ export function FeedItem({
       {/* Media Content */}
       {media && (
         <div className="relative mx-5 mt-2 overflow-hidden rounded-[16px] bg-muted aspect-video shadow-sm group cursor-pointer">
-          <img src={media.url} alt={title} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
+          {media.type === 'video' ? (
+            <video 
+              src={media.url} 
+              autoPlay 
+              muted 
+              loop 
+              playsInline
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <img 
+              src={media.url} 
+              alt={title} 
+              className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" 
+              onError={(e) => {
+                // Hide the media container if image fails to load
+                (e.target as HTMLImageElement).parentElement?.classList.add('hidden');
+              }}
+            />
+          )}
           
           {media.type === 'video' && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/10 transition-colors group-hover:bg-black/20">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/90 shadow-lg backdrop-blur-sm transition-transform group-hover:scale-110">
-                 <PlayCircle size={32} className="text-foreground translate-x-0.5" fill="currentColor" />
-              </div>
+            <div className="absolute top-3 right-3 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 backdrop-blur-md border border-white/10">
+              <PlayCircle size={16} className="text-white" fill="white" />
             </div>
           )}
           
