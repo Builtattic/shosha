@@ -203,34 +203,38 @@ export function ReportModal({
       toast.push(error instanceof Error ? error.message : 'Could not open target dossier.');
       return;
     }
-    if (!targetAccountId) {
-      return;
-    }
+    
+    if (!targetAccountId) return;
     if (!type) return;
+    
     if (description.length < 10) {
       toast.push('Description needs at least 10 characters.');
       return;
     }
-    const feelingsValue = feelings.length >= 10 ? feelings : description;
+
     if (!media) {
-      toast.push('Upload a photo or video as evidence first.');
+      toast.push('Upload photo or video evidence first.');
       return;
     }
+
     if (!aiConsent) {
-      toast.push('Confirm the AI undertaking before submitting.');
+      toast.push('Please confirm the AI Undertaking.');
       return;
     }
+
     setSubmitting(true);
     try {
       const response = await fetch('/api/reports', {
         method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           accountId: targetAccountId,
           type,
           description,
-          feelings: feelingsValue,
-          media: { url: media.url, type: media.type, bytes: media.bytes }
+          feelings: feelings || description,
+          media: { url: media.url, type: media.type, bytes: media.bytes },
+          location: location || undefined,
+          tags: taggedPerson ? [taggedPerson] : []
         })
       });
       const payload = await response.json();
@@ -264,309 +268,337 @@ export function ReportModal({
           <div className="w-6" />
         </div>
 
-        <AnimatePresence mode="wait">
-          {step === 1 && (
-            <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
-              <div>
-                {!accountId && (
-                  <div className="mb-6 rounded-[20px] border border-border bg-card p-4">
-                    <h3 className="text-[16px] font-bold mb-1">Who is this report about?</h3>
-                    <p className="text-[13px] text-muted-foreground mb-4">We will create or reuse the public dossier behind this filing.</p>
-                    <div className="grid grid-cols-3 gap-2 mb-3">
-                      {(['instagram', 'facebook', 'x', 'youtube', 'tiktok', 'linkedin'] as const).map((platform) => (
-                        <button
-                          key={platform}
-                          type="button"
-                          onClick={() => {
-                            setTargetPlatform(platform);
-                            setResolvedAccountId(null);
-                          }}
-                          className={cn(
-                            'rounded-full border py-2 text-[12px] font-bold transition',
-                            targetPlatform === platform
-                              ? 'border-foreground bg-foreground text-background'
-                              : 'border-border bg-background text-muted-foreground'
-                          )}
-                        >
-                          {platform === 'x' ? 'X' : platform[0].toUpperCase() + platform.slice(1)}
-                        </button>
-                      ))}
-                    </div>
-                    <input
-                      type="text"
-                      value={targetHandle}
-                      onChange={(event) => {
-                        setTargetHandle(event.target.value);
-                        setTargetDisplayName('');
-                        setTargetSourceUrl('');
-                        setTargetBio('');
-                        setTargetFollowers('');
-                        setTargetVerified(false);
+        <div className="space-y-8 pb-12">
+          {/* Step 1: Who */}
+          {!accountId && (
+            <section className="space-y-4">
+              <div className="rounded-[24px] border border-border bg-card/50 p-5 shadow-sm">
+                <h3 className="text-[17px] font-bold mb-1">Who is this report about?</h3>
+                <p className="text-[13px] text-muted-foreground mb-4">We will create or reuse the public dossier behind this filing.</p>
+                <div className="grid grid-cols-3 gap-2 mb-4">
+                  {(['instagram', 'facebook', 'x', 'youtube', 'tiktok', 'linkedin'] as const).map((platform) => (
+                    <button
+                      key={platform}
+                      type="button"
+                      onClick={() => {
+                        setTargetPlatform(platform);
                         setResolvedAccountId(null);
                       }}
-                      placeholder="Search name, brand, or @username"
-                      className="w-full rounded-full border border-border bg-background px-4 py-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-primary/20"
-                    />
-                    {targetSourceUrl ? (
-                      <div className="mt-3 rounded-[14px] border border-primary bg-primary/5 p-3">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="truncate text-[13px] font-bold flex items-center gap-1">
-                              {targetDisplayName}
-                              {targetVerified && <ShieldCheck size={12} className="text-primary shrink-0" />}
-                            </p>
-                            <p className="truncate text-[11px] text-muted-foreground">
-                              {targetPlatform === 'x' ? 'X' : targetPlatform} / @{targetHandle}
-                              {targetFollowers ? ` · ${targetFollowers}` : ''}
-                            </p>
-                            <a
-                              href={targetSourceUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="mt-1 inline-block truncate text-[10px] text-primary underline"
-                            >
-                              {targetSourceUrl}
-                            </a>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setTargetSourceUrl('');
-                              setTargetDisplayName('');
-                              setTargetBio('');
-                              setTargetFollowers('');
-                              setTargetVerified(false);
-                              setResolvedAccountId(null);
-                            }}
-                            className="shrink-0 rounded-full border border-border px-3 py-1 text-[10px] font-bold"
-                          >
-                            Change
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        {(searchingCandidates || candidates.length > 0 || targetHandle.trim().length >= 2) && (
-                          <div className="mt-3 space-y-2">
-                            {searchingCandidates && (
-                              <p className="text-[11px] text-muted-foreground">Searching public profiles with Gemini...</p>
-                            )}
-                            {!searchingCandidates && candidates.length === 0 && targetHandle.trim().length >= 2 && (
-                              <p className="text-[11px] text-destructive">
-                                No real accounts found for &ldquo;{targetHandle}&rdquo;. Try a more specific name or different handle.
-                              </p>
-                            )}
-                            {candidates.slice(0, 6).map((candidate) => (
-                              <button
-                                key={`${candidate.platform}:${candidate.username}:${candidate.sourceUrl}`}
-                                type="button"
-                                onClick={() => pickCandidate(candidate)}
-                                className="w-full rounded-[14px] border border-border bg-background p-3 text-left transition hover:bg-muted"
-                              >
-                                <div className="flex items-center justify-between gap-3">
-                                  <div className="min-w-0">
-                                    <p className="truncate text-[13px] font-bold">{candidate.displayName}</p>
-                                    <p className="truncate text-[11px] text-muted-foreground">
-                                      {candidate.platform === 'x' ? 'X' : candidate.platform} / @{candidate.username}
-                                    </p>
-                                  </div>
-                                  <span className="shrink-0 rounded-full bg-foreground px-2 py-1 text-[10px] font-bold text-background">
-                                    {Math.round(candidate.confidence * 100)}%
-                                  </span>
-                                </div>
-                                <p className="mt-2 line-clamp-2 text-[11px] leading-4 text-muted-foreground">{candidate.reason}</p>
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </div>
-                )}
-
-                <h3 className="text-[16px] font-bold mb-1">What type of impact is this?</h3>
-                <p className="text-[13px] text-muted-foreground mb-4">Help us understand the nature of this report.</p>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => setType('positive')}
-                    className={cn(
-                      'flex flex-col items-start gap-3 rounded-[20px] border p-4 transition-all text-left',
-                      type === 'positive' ? 'border-primary bg-primary/5' : 'border-border bg-card'
-                    )}
-                  >
-                    <div className={cn('flex h-10 w-10 items-center justify-center rounded-full', type === 'positive' ? 'bg-primary text-background' : 'bg-primary/10 text-primary')}>
-                      <Heart size={20} fill={type === 'positive' ? 'currentColor' : 'none'} />
-                    </div>
-                    <div>
-                      <div className={cn('text-[14px] font-bold', type === 'positive' ? 'text-primary' : 'text-foreground')}>Positive Impact</div>
-                      <div className="text-[11px] text-muted-foreground">Someone did good</div>
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={() => setType('negative')}
-                    className={cn(
-                      'flex flex-col items-start gap-3 rounded-[20px] border p-4 transition-all text-left',
-                      type === 'negative' ? 'border-destructive bg-destructive/5' : 'border-border bg-card'
-                    )}
-                  >
-                    <div className={cn('flex h-10 w-10 items-center justify-center rounded-full', type === 'negative' ? 'bg-destructive text-background' : 'bg-destructive/10 text-destructive')}>
-                      <AlertTriangle size={20} fill={type === 'negative' ? 'currentColor' : 'none'} />
-                    </div>
-                    <div>
-                      <div className={cn('text-[14px] font-bold', type === 'negative' ? 'text-destructive' : 'text-foreground')}>Negative Impact</div>
-                      <div className="text-[11px] text-muted-foreground">Harmful or unethical</div>
-                    </div>
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-[16px] font-bold mb-1">Tell us what happened</h3>
-                <p className="text-[13px] text-muted-foreground mb-4">Be clear, specific and honest.</p>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Write a detailed description of the impact..."
-                  className="w-full min-h-[120px] rounded-[16px] border border-border bg-card p-4 text-[14px] focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
-                />
-                <div className="text-right text-[11px] text-muted-foreground mt-1">{description.length}/500</div>
-              </div>
-
-              <div>
-                <h3 className="text-[16px] font-bold mb-1">How did this feel?</h3>
-                <p className="text-[13px] text-muted-foreground mb-4">A short note for the tribunal.</p>
-                <textarea
-                  value={feelings}
-                  onChange={(e) => setFeelings(e.target.value)}
-                  placeholder="Optional — defaults to your description if blank."
-                  className="w-full min-h-[80px] rounded-[16px] border border-border bg-card p-4 text-[14px] focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
-                />
-              </div>
-
-              <button
-                onClick={() => setStep(2)}
-                disabled={!type || description.length < 10 || (!accountId && !targetSourceUrl)}
-                className="w-full rounded-full bg-foreground py-4 text-[16px] font-bold text-background disabled:opacity-50"
-              >
-                {!accountId && !targetSourceUrl && targetHandle.trim().length >= 2
-                  ? 'Pick a real account above to continue'
-                  : 'Continue'}
-              </button>
-            </motion.div>
-          )}
-
-          {step === 2 && (
-            <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
-              <div>
-                <h3 className="text-[16px] font-bold mb-1">Add Proof</h3>
-                <p className="text-[13px] text-muted-foreground mb-4">Upload an image or video as evidence.</p>
-
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*,video/*"
-                  className="hidden"
-                  onChange={handleFile}
-                />
-
-                {media ? (
-                  <div className="rounded-[16px] border border-border bg-card p-3">
-                    <p className="text-xs uppercase text-muted-foreground mb-2 flex items-center gap-2">
-                      {media.type === 'video' ? <Video size={14} /> : <ImageIcon size={14} />}
-                      Uploaded · {(media.bytes / 1024).toFixed(1)} KB
-                    </p>
-                    {media.type === 'video' ? (
-                      <video src={media.url} controls className="w-full rounded-[12px] max-h-60" />
-                    ) : (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={media.url} alt="evidence" className="w-full rounded-[12px] max-h-60 object-contain" />
-                    )}
-                    <button
-                      onClick={() => setMedia(null)}
-                      className="mt-2 text-[12px] text-muted-foreground hover:text-foreground"
+                      className={cn(
+                        'rounded-full border py-2.5 text-[12px] font-bold transition-all active:scale-95',
+                        targetPlatform === platform
+                          ? 'border-foreground bg-foreground text-background shadow-md'
+                          : 'border-border bg-background text-muted-foreground hover:border-foreground/30'
+                      )}
                     >
-                      Replace
+                      {platform === 'x' ? 'X' : platform[0].toUpperCase() + platform.slice(1)}
                     </button>
+                  ))}
+                </div>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={targetHandle}
+                    onChange={(event) => {
+                      setTargetHandle(event.target.value);
+                      setTargetDisplayName('');
+                      setTargetSourceUrl('');
+                      setTargetBio('');
+                      setTargetFollowers('');
+                      setTargetVerified(false);
+                      setResolvedAccountId(null);
+                    }}
+                    placeholder="Search name, brand, or @username"
+                    className="w-full rounded-full border border-border bg-background px-5 py-4 text-[14px] focus:outline-none focus:ring-2 focus:ring-primary/20 transition-shadow"
+                  />
+                  {searchingCandidates && (
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                    </div>
+                  )}
+                </div>
+
+                {targetSourceUrl ? (
+                  <div className="mt-4 rounded-[20px] border border-primary/30 bg-primary/5 p-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="truncate text-[14px] font-bold flex items-center gap-1.5">
+                          {targetDisplayName}
+                          {targetVerified && <ShieldCheck size={14} className="text-primary shrink-0" />}
+                        </p>
+                        <p className="truncate text-[12px] text-muted-foreground">
+                          {targetPlatform === 'x' ? 'X' : targetPlatform} / @{targetHandle}
+                          {targetFollowers ? ` · ${targetFollowers}` : ''}
+                        </p>
+                        <a
+                          href={targetSourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-1.5 inline-block truncate text-[11px] text-primary hover:underline font-medium"
+                        >
+                          View Profile
+                        </a>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTargetSourceUrl('');
+                          setTargetDisplayName('');
+                          setTargetBio('');
+                          setTargetFollowers('');
+                          setTargetVerified(false);
+                          setResolvedAccountId(null);
+                        }}
+                        className="shrink-0 rounded-full bg-muted px-4 py-1.5 text-[11px] font-bold hover:bg-muted/80 transition-colors"
+                      >
+                        Change
+                      </button>
+                    </div>
                   </div>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploading}
-                    className="w-full rounded-[16px] border border-dashed border-border bg-card p-6 text-center transition hover:bg-muted disabled:opacity-50"
-                  >
-                    <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
-                      <Plus size={24} />
-                      <span className="text-[12px] font-bold">{uploading ? 'Uploading…' : 'Add photo or video'}</span>
-                    </div>
-                  </button>
+                  <div className="mt-3 empty:hidden space-y-2">
+                    {candidates.slice(0, 4).map((candidate) => (
+                      <button
+                        key={`${candidate.platform}:${candidate.username}:${candidate.sourceUrl}`}
+                        type="button"
+                        onClick={() => pickCandidate(candidate)}
+                        className="w-full rounded-[18px] border border-border bg-background p-3.5 text-left transition hover:bg-muted/50 hover:border-foreground/20 group"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-[13px] font-bold group-hover:text-primary transition-colors">{candidate.displayName}</p>
+                            <p className="truncate text-[11px] text-muted-foreground">
+                              {candidate.platform === 'x' ? 'X' : candidate.platform} / @{candidate.username}
+                            </p>
+                          </div>
+                          <span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-bold text-primary">
+                            {Math.round(candidate.confidence * 100)}% Match
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 )}
               </div>
+            </section>
+          )}
 
-              <div className="rounded-[16px] bg-muted/30 p-4 border border-border">
-                <div className="flex items-center gap-3 mb-2">
-                  <ShieldCheck size={20} className="text-primary" />
-                  <h3 className="text-[14px] font-bold text-foreground">AI Undertaking</h3>
+          {/* Impact Type */}
+          <section className="space-y-4">
+            <div>
+              <h3 className="text-[17px] font-bold mb-1">What type of impact is this?</h3>
+              <p className="text-[13px] text-muted-foreground">Help us understand the nature of this report.</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                onClick={() => setType('positive')}
+                className={cn(
+                  'flex flex-col items-start gap-3 rounded-[24px] border p-5 transition-all text-left group',
+                  type === 'positive' ? 'border-primary bg-primary/5 shadow-sm' : 'border-border bg-card hover:border-primary/30'
+                )}
+              >
+                <div className={cn('flex h-11 w-11 items-center justify-center rounded-full transition-transform group-active:scale-90', type === 'positive' ? 'bg-primary text-background' : 'bg-primary/10 text-primary')}>
+                  <Heart size={22} fill={type === 'positive' ? 'currentColor' : 'none'} />
                 </div>
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={aiConsent}
-                    onChange={(e) => setAiConsent(e.target.checked)}
-                    className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary/20"
-                  />
-                  <span className="text-[12px] text-muted-foreground leading-tight">
-                    I confirm that this content is not AI-made or fabricated and is shared in good faith.
-                    <span className="block mt-1 text-[10px] opacity-70 italic">False or misleading reports may lead to action.</span>
-                  </span>
-                </label>
-              </div>
+                <div>
+                  <div className={cn('text-[15px] font-bold', type === 'positive' ? 'text-primary' : 'text-foreground')}>Positive Impact</div>
+                  <div className="text-[12px] text-muted-foreground">Someone did good</div>
+                </div>
+              </button>
 
-              <div>
-                <h3 className="text-[16px] font-bold mb-4">
-                  Tag the person(s) involved <span className="text-muted-foreground font-normal">(Optional)</span>
-                </h3>
-                <div className="relative">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+              <button
+                onClick={() => setType('negative')}
+                className={cn(
+                  'flex flex-col items-start gap-3 rounded-[24px] border p-5 transition-all text-left group',
+                  type === 'negative' ? 'border-destructive bg-destructive/5 shadow-sm' : 'border-border bg-card hover:border-destructive/30'
+                )}
+              >
+                <div className={cn('flex h-11 w-11 items-center justify-center rounded-full transition-transform group-active:scale-90', type === 'negative' ? 'bg-destructive text-background' : 'bg-destructive/10 text-destructive')}>
+                  <AlertTriangle size={22} fill={type === 'negative' ? 'currentColor' : 'none'} />
+                </div>
+                <div>
+                  <div className={cn('text-[15px] font-bold', type === 'negative' ? 'text-destructive' : 'text-foreground')}>Negative Impact</div>
+                  <div className="text-[12px] text-muted-foreground">Harmful or unethical</div>
+                </div>
+              </button>
+            </div>
+          </section>
+
+          {/* Description */}
+          <section className="space-y-4">
+            <div>
+              <h3 className="text-[17px] font-bold mb-1">Tell us what happened</h3>
+              <p className="text-[13px] text-muted-foreground">Be clear, specific and honest.</p>
+            </div>
+            <div className="relative">
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Write a detailed description of the impact..."
+                className="w-full min-h-[140px] rounded-[24px] border border-border bg-card p-5 text-[15px] focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none transition-shadow"
+              />
+              <div className="absolute bottom-4 right-5 text-[11px] font-medium text-muted-foreground bg-background/50 px-2 py-0.5 rounded-full backdrop-blur-sm">
+                {description.length}/500
+              </div>
+            </div>
+          </section>
+
+          {/* EVIDENCE - COMPULSORY */}
+          <section className="space-y-4">
+            <div>
+              <div className="flex items-center justify-between">
+                <h3 className="text-[17px] font-bold mb-1">Add Proof</h3>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-primary bg-primary/10 px-2 py-0.5 rounded-full">Required</span>
+              </div>
+              <p className="text-[13px] text-muted-foreground">Upload a photo or video as evidence. This is compulsory.</p>
+            </div>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,video/*"
+              className="hidden"
+              onChange={handleFile}
+            />
+
+            {media ? (
+              <div className="rounded-[24px] border border-border bg-card p-4 group relative overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
+                  {media.type === 'video' ? <Video size={14} className="text-primary" /> : <ImageIcon size={14} className="text-primary" />}
+                  Evidence Uploaded · {(media.bytes / (1024 * 1024)).toFixed(2)} MB
+                </p>
+                <div className="relative rounded-[16px] overflow-hidden bg-muted">
+                  {media.type === 'video' ? (
+                    <video src={media.url} controls className="w-full max-h-72 object-contain" />
+                  ) : (
+                    <img src={media.url} alt="evidence" className="w-full max-h-72 object-contain mx-auto" />
+                  )}
+                  <button
+                    onClick={() => setMedia(null)}
+                    className="absolute top-3 right-3 flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md transition-transform hover:scale-110 active:scale-95"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className={cn(
+                  "w-full rounded-[24px] border-2 border-dashed p-8 text-center transition-all duration-300 active:scale-[0.98]",
+                  uploading ? "bg-muted border-border" : "bg-card border-border hover:border-primary/40 hover:bg-primary/[0.02]"
+                )}
+              >
+                <div className="flex flex-col items-center justify-center gap-3">
+                  <div className={cn("flex h-14 w-14 items-center justify-center rounded-full transition-colors", uploading ? "bg-muted-foreground/10" : "bg-primary/5 text-primary")}>
+                    {uploading ? (
+                      <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                    ) : (
+                      <Plus size={32} />
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <span className="block text-[15px] font-bold text-foreground">{uploading ? 'Uploading Evidence...' : 'Upload Evidence'}</span>
+                    <span className="block text-[12px] text-muted-foreground">Photos or Videos up to 50MB</span>
+                  </div>
+                </div>
+              </button>
+            )}
+          </section>
+
+          {/* AI Undertaking */}
+          <section className="rounded-[24px] bg-primary/5 p-5 border border-primary/10 shadow-sm">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <ShieldCheck size={18} />
+              </div>
+              <h3 className="text-[15px] font-bold text-foreground">AI Undertaking</h3>
+            </div>
+            <label className="flex items-start gap-4 cursor-pointer group">
+              <div className="relative flex items-center mt-0.5">
+                <input
+                  type="checkbox"
+                  checked={aiConsent}
+                  onChange={(e) => setAiConsent(e.target.checked)}
+                  className="peer h-5 w-5 rounded-md border-border bg-background text-primary focus:ring-primary/20 transition-all cursor-pointer"
+                />
+              </div>
+              <div className="space-y-1">
+                <span className="block text-[13px] font-medium text-foreground/90 leading-snug group-hover:text-foreground transition-colors">
+                  I confirm that this content is not AI-made or fabricated and is shared in good faith.
+                </span>
+                <span className="block text-[11px] text-muted-foreground/70 italic">
+                  False or misleading reports may lead to permanent platform ban.
+                </span>
+              </div>
+            </label>
+          </section>
+
+          {/* Optional Details */}
+          <section className="space-y-6">
+            <div>
+              <h3 className="text-[16px] font-bold mb-4 flex items-center justify-between">
+                Additional Details <span className="text-[11px] font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded-full uppercase tracking-wider">Optional</span>
+              </h3>
+              
+              <div className="space-y-4">
+                <div className="relative group">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
                   <input
                     type="text"
                     value={taggedPerson}
                     onChange={(e) => setTaggedPerson(e.target.value)}
-                    placeholder="Search by name or @username"
-                    className="w-full rounded-full border border-border bg-card py-3 pl-12 pr-4 text-[14px] focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    placeholder="Tag person(s) involved"
+                    className="w-full rounded-full border border-border bg-card py-3.5 pl-12 pr-4 text-[14px] focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                   />
                 </div>
-              </div>
 
-              <div>
-                <h3 className="text-[16px] font-bold mb-4">
-                  Location <span className="text-muted-foreground font-normal">(Optional)</span>
-                </h3>
-                <div className="relative">
-                  <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+                <div className="relative group">
+                  <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
                   <input
                     type="text"
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
                     placeholder="Where did this happen?"
-                    className="w-full rounded-full border border-border bg-card py-3 pl-12 pr-4 text-[14px] focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    className="w-full rounded-full border border-border bg-card py-3.5 pl-12 pr-4 text-[14px] focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                   />
                 </div>
               </div>
+            </div>
+          </section>
 
-              <button
-                onClick={submit}
-                disabled={submitting || uploading}
-                className="w-full rounded-full bg-foreground py-4 text-[16px] font-bold text-background disabled:opacity-50"
-              >
-                {submitting ? 'Submitting…' : 'Submit Report'}
-              </button>
-              <p className="text-center text-[11px] text-muted-foreground">🔒 Your identity will remain anonymous</p>
-            </motion.div>
-          )}
-        </AnimatePresence>
+          {/* Submit Action */}
+          <div className="sticky bottom-0 bg-background pt-4 border-t border-border mt-8">
+            <button
+              onClick={submit}
+              disabled={submitting || uploading || !type || description.length < 10 || !media || (!accountId && !targetSourceUrl)}
+              className={cn(
+                "w-full rounded-full py-4.5 text-[16px] font-bold transition-all active:scale-[0.98] shadow-lg",
+                (submitting || uploading || !type || description.length < 10 || !media || (!accountId && !targetSourceUrl))
+                  ? "bg-muted text-muted-foreground cursor-not-allowed opacity-70 shadow-none"
+                  : "bg-foreground text-background hover:bg-foreground/90 hover:shadow-xl"
+              )}
+            >
+              {submitting ? (
+                <div className="flex items-center justify-center gap-2">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-background/30 border-t-background" />
+                  <span>Submitting Filing...</span>
+                </div>
+              ) : !media ? (
+                'Upload Evidence to Submit'
+              ) : (
+                'Submit Report'
+              )}
+            </button>
+            <p className="text-center text-[11px] text-muted-foreground mt-3 flex items-center justify-center gap-1.5 font-medium">
+              <ShieldCheck size={12} className="text-primary" />
+              Your identity will remain 100% anonymous
+            </p>
+          </div>
+        </div>
       </motion.div>
     </div>
   );
