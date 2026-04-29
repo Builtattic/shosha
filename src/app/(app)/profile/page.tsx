@@ -137,19 +137,26 @@ export default function ProfilePage() {
       <div className="bg-card border-b border-border pt-12 pb-8 px-4">
         <div className="max-w-3xl mx-auto flex flex-col items-center text-center space-y-4">
           <div className="relative">
-            <img 
+            <img
               src={firebaseUser?.photoURL ?? `https://api.dicebear.com/9.x/initials/svg?seed=${firebaseUser?.displayName ?? 'User'}`}
               alt="Profile"
               className="w-24 h-24 rounded-full border-4 border-background shadow-lg"
             />
-            <div className="absolute -bottom-2 -right-2 bg-primary text-primary-foreground text-xs font-bold px-2 py-1 rounded-full border-2 border-background">
-              PRO
-            </div>
+            {data?.user?.role === 'admin' && (
+              <div className="absolute -bottom-2 -right-2 bg-primary text-primary-foreground text-xs font-bold px-2 py-1 rounded-full border-2 border-background">
+                ADMIN
+              </div>
+            )}
           </div>
-          
+
           <div>
             <h1 className="text-2xl font-bold">{firebaseUser?.displayName ?? firebaseUser?.email?.split('@')[0] ?? 'Anonymous Reporter'}</h1>
             <p className="text-muted-foreground">@{data?.user?.username ?? 'user'}</p>
+            {data?.claimedAccounts?.length === 0 && (
+              <p className="mt-2 text-[12px] text-muted-foreground">
+                You haven&apos;t claimed any social account yet. Claim one to audit and rebut filings on it.
+              </p>
+            )}
           </div>
 
           <div className="flex gap-6 pt-4">
@@ -173,14 +180,14 @@ export default function ProfilePage() {
 
       <div className="max-w-3xl mx-auto px-4 py-8 space-y-12">
         {/* Claimed Accounts Section */}
-        {data?.claimedAccounts && data.claimedAccounts.length > 0 && (
-          <section>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold flex items-center gap-2">
-                <Shield className="text-primary" size={20} />
-                Managed Profiles
-              </h2>
-            </div>
+        <section>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold flex items-center gap-2">
+              <Shield className="text-primary" size={20} />
+              Your claimed accounts
+            </h2>
+          </div>
+          {data?.claimedAccounts && data.claimedAccounts.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2">
               {data.claimedAccounts.map((acc: any) => (
                 <Link key={acc._id} href={`/account/${acc._id}`}>
@@ -192,14 +199,30 @@ export default function ProfilePage() {
                         {acc.verified && <CheckCircle2 size={14} className="text-blue-500" />}
                       </h3>
                       <p className="text-sm text-muted-foreground">@{acc.username}</p>
+                      <p className="text-[11px] text-primary font-bold mt-1 uppercase tracking-wide">
+                        Score {acc.score} · You can audit
+                      </p>
                     </div>
                     <ChevronRight className="text-muted-foreground group-hover:text-primary transition-colors" />
                   </div>
                 </Link>
               ))}
             </div>
-          </section>
-        )}
+          ) : (
+            <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-6 text-center">
+              <p className="text-sm text-muted-foreground mb-3">
+                You haven&apos;t claimed any social accounts yet. Without a claim, you can file reports about others
+                but cannot audit, rebut, or manage your own ledger.
+              </p>
+              <Link
+                href="/dashboard"
+                className="inline-block rounded-full bg-foreground px-5 py-2 text-[13px] font-bold text-background"
+              >
+                Find &amp; claim my account
+              </Link>
+            </div>
+          )}
+        </section>
 
         {/* Recent Events Section */}
         <section>

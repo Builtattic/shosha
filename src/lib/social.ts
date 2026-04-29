@@ -6,6 +6,7 @@ type SocialPost = {
   likes: string;
   replies: string;
   mediaUrl?: string;
+  permalink?: string;
   capturedAt: Date;
 };
 
@@ -18,6 +19,7 @@ export type SocialProfile = {
   verified: boolean;
   followers: string;
   sourceUrl?: string;
+  citations?: string[];
   posts: SocialPost[];
 };
 
@@ -30,7 +32,7 @@ export type SocialProfileSeed = {
   sourceUrl?: string;
 };
 
-class SocialFetchError extends Error {
+export class SocialFetchError extends Error {
   constructor(
     message: string,
     public code: string,
@@ -114,7 +116,7 @@ async function fetchXProfile(username: string): Promise<SocialProfile> {
         public_metrics?: { like_count?: number; reply_count?: number };
       }>;
     }>(
-      `https://api.x.com/2/users/${user.data.id}/tweets?max_results=5&exclude=retweets,replies&tweet.fields=created_at,public_metrics`,
+      `https://api.x.com/2/users/${user.data.id}/tweets?max_results=10&exclude=retweets,replies&tweet.fields=created_at,public_metrics`,
       { headers: { Authorization: `Bearer ${token}` } },
       'x'
     );
@@ -124,10 +126,35 @@ async function fetchXProfile(username: string): Promise<SocialProfile> {
         content: post.text,
         likes: formatCount(post.public_metrics?.like_count),
         replies: formatCount(post.public_metrics?.reply_count),
+        permalink: `https://x.com/${user.data!.username}/status/${post.id}`,
         capturedAt: post.created_at ? new Date(post.created_at) : new Date()
       })) ?? [];
   } catch {
     posts = [];
+  }
+
+  if (posts.length === 0) {
+    // X returned the profile but not posts (token scope or empty timeline). Try Gemini grounding to fill posts.
+    try {
+      const grounded = await fetchProfileViaGemini('x', handle, {
+        displayName: user.data.name,
+        bio: user.data.description ?? '',
+        avatarUrl: user.data.profile_image_url,
+        verified: user.data.verified,
+        followers: formatCount(user.data.public_metrics?.followers_count)
+      });
+      posts = grounded.posts;
+    } catch {
+      // fall through; we'll throw below if still empty
+    }
+  }
+
+  if (posts.length === 0) {
+    throw new SocialFetchError(
+      `Found @${handle} on X but could not retrieve any recent public posts.`,
+      'no_posts',
+      502
+    );
   }
 
   return {
@@ -138,18 +165,8 @@ async function fetchXProfile(username: string): Promise<SocialProfile> {
     avatarUrl: user.data.profile_image_url ?? `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(user.data.name)}`,
     verified: Boolean(user.data.verified),
     followers: formatCount(user.data.public_metrics?.followers_count),
-    posts:
-      posts.length > 0
-        ? posts
-        : [
-            {
-              externalId: `x-${user.data.id}`,
-              content: `Live profile metadata captured from X for @${user.data.username}. Recent posts were not available for this token.`,
-              likes: 'unknown',
-              replies: 'unknown',
-              capturedAt: new Date()
-            }
-          ]
+    sourceUrl: `https://x.com/${user.data.username}`,
+    posts
   };
 }
 
@@ -174,7 +191,7 @@ async function fetchInstagramProfile(username: string): Promise<SocialProfile> {
     'profile_picture_url',
     'followers_count',
     'media_count',
-    'media.limit(5){id,caption,comments_count,like_count,media_type,media_url,timestamp}'
+    'media.limit(10){id,caption,comments_count,like_count,media_type,media_url,permalink,timestamp}'
   ].join(',');
   const url = `https://graph.facebook.com/${version}/${businessAccountId}?fields=business_discovery.username(${encodeURIComponent(
     handle
@@ -194,6 +211,7 @@ async function fetchInstagramProfile(username: string): Promise<SocialProfile> {
           comments_count?: number;
           like_count?: number;
           media_url?: string;
+          permalink?: string;
           timestamp?: string;
         }>;
       };
@@ -203,6 +221,25 @@ async function fetchInstagramProfile(username: string): Promise<SocialProfile> {
   const profile = result.business_discovery;
   if (!profile) {
     throw new SocialFetchError(`No Instagram Business or Creator account was found for @${handle}.`, 'social_not_found', 404);
+  }
+
+  const posts: SocialPost[] =
+    profile.media?.data?.map((post) => ({
+      externalId: post.id,
+      content: post.caption ?? '',
+      likes: formatCount(post.like_count),
+      replies: formatCount(post.comments_count),
+      mediaUrl: post.media_url,
+      permalink: post.permalink,
+      capturedAt: post.timestamp ? new Date(post.timestamp) : new Date()
+    })) ?? [];
+
+  if (posts.length === 0) {
+    throw new SocialFetchError(
+      `Found @${handle} on Instagram but no recent media is publicly visible.`,
+      'no_posts',
+      502
+    );
   }
 
   return {
@@ -215,213 +252,255 @@ async function fetchInstagramProfile(username: string): Promise<SocialProfile> {
       `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(profile.name || profile.username)}`,
     verified: false,
     followers: formatCount(profile.followers_count),
-    posts:
-      profile.media?.data?.map((post) => ({
-        externalId: post.id,
-        content: post.caption || 'Instagram media without a caption.',
-        likes: formatCount(post.like_count),
-        replies: formatCount(post.comments_count),
-        mediaUrl: post.media_url,
-        capturedAt: post.timestamp ? new Date(post.timestamp) : new Date()
-      })) ?? []
+    sourceUrl: `https://www.instagram.com/${profile.username}/`,
+    posts
   };
 }
 
-function hashSeed(input: string): number {
-  let hash = 0;
-  for (let i = 0; i < input.length; i += 1) {
-    hash = (hash * 31 + input.charCodeAt(i)) | 0;
-  }
-  return Math.abs(hash);
-}
+const PLATFORM_DOMAIN: Record<Platform, string> = {
+  x: 'x.com OR twitter.com',
+  instagram: 'instagram.com',
+  facebook: 'facebook.com',
+  youtube: 'youtube.com',
+  tiktok: 'tiktok.com',
+  linkedin: 'linkedin.com',
+  website: ''
+};
 
-function mockSocialProfile(platform: Platform, rawUsername: string): SocialProfile {
-  const username = cleanHandle(rawUsername);
-  const seed = hashSeed(`${platform}:${username}`);
-  const followersBase = (seed % 9000) + 250;
-  const followers = followersBase >= 1000 ? `${(followersBase / 1000).toFixed(1)}k` : String(followersBase);
-  const displayName = username
-    .replace(/[._]+/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase()) || username;
-  const avatarUrl = `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(displayName)}`;
-  const bios = [
-    'Public profile under live observation by the local Shosha emulator.',
-    'Local mock dossier — connect a real X / Instagram token to swap in live data.',
-    'Mocked record. Receipts, captures, and filings still work end-to-end.'
-  ];
-  const sampleContents = [
-    `Heads down on a community drop today — full thread later. (mock for @${username})`,
-    `Posted the public response and the receipts. We will keep adding context. (mock for @${username})`,
-    `Quiet weekend, big follow-ups landing Monday. Notes coming. (mock for @${username})`
-  ];
-
-  return {
-    platform,
-    username,
-    displayName,
-    bio: bios[seed % bios.length],
-    avatarUrl,
-    verified: seed % 5 === 0,
-    followers,
-    posts: sampleContents.map((content, index) => ({
-      externalId: `mock-${platform}-${username}-${index}`,
-      content,
-      likes: String(((seed + index * 7) % 4000) + 50),
-      replies: String(((seed + index * 3) % 250) + 5),
-      capturedAt: new Date(Date.now() - index * 24 * 60 * 60 * 1000)
-    }))
-  };
-}
-
-function seededSocialProfile(platform: Platform, rawUsername: string, seed?: SocialProfileSeed): SocialProfile {
-  const fallback = mockSocialProfile(platform, rawUsername);
-  const username = cleanHandle(rawUsername);
-  const displayName = seed?.displayName?.trim() || fallback.displayName;
-  return {
-    ...fallback,
-    platform,
-    username,
-    displayName,
-    bio: seed?.bio?.trim() || fallback.bio,
-    avatarUrl: seed?.avatarUrl || fallback.avatarUrl,
-    verified: seed?.verified ?? fallback.verified,
-    followers: seed?.followers || fallback.followers,
-    sourceUrl: seed?.sourceUrl,
-    posts: [
-      {
-        externalId: `profile-${platform}-${username}`,
-        content: seed?.sourceUrl
-          ? `Public profile candidate captured from ${seed.sourceUrl}.`
-          : `Public profile candidate captured for @${username}.`,
-        likes: 'unknown',
-        replies: 'unknown',
-        mediaUrl: seed?.avatarUrl,
-        capturedAt: new Date()
-      },
-      ...fallback.posts.slice(0, 2)
-    ]
-  };
-}
-
-function platformConfigured(platform: Platform): boolean {
-  if (platform === 'x') return Boolean(process.env.X_BEARER_TOKEN);
-  if (platform === 'instagram') {
-    return Boolean(process.env.INSTAGRAM_GRAPH_ACCESS_TOKEN && process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID);
-  }
-  return false;
-}
-
-async function fetchProfileViaGemini(platform: Platform, username: string, seed?: SocialProfileSeed): Promise<SocialProfile> {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) throw new SocialFetchError('Add GEMINI_API_KEY to enable AI-powered profile fetching.', 'gemini_not_configured', 503);
-
-  const handle = cleanHandle(username);
-  const model = process.env.GEMINI_DISCOVERY_MODEL || 'gemini-2.5-flash';
-  
-  const prompt = `Search for the public ${platform} profile of "@${handle}" (or their likely real identity if the handle is slightly different). 
-Return ONLY strict JSON representing their profile. Include recent posts if you can find them.
-Shape:
-{
-  "displayName": "Full Name",
-  "bio": "Their public bio",
-  "followers": "e.g. '1.2M' or '50k'",
-  "verified": true/false,
-  "posts": [
-    {
-      "content": "Text of a recent post or description of recent activity",
-      "likes": "10k",
-      "replies": "500"
+function extractJsonObject(text: string): unknown {
+  // Strip code fences first
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidate = fenced?.[1] ?? text;
+  // Find the largest balanced { ... } block
+  const start = candidate.indexOf('{');
+  if (start === -1) return {};
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < candidate.length; i += 1) {
+    const ch = candidate[i];
+    if (escape) {
+      escape = false;
+      continue;
     }
-  ]
+    if (ch === '\\' && inString) {
+      escape = true;
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+    if (ch === '{') depth += 1;
+    else if (ch === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        const slice = candidate.slice(start, i + 1);
+        try {
+          return JSON.parse(slice);
+        } catch {
+          return {};
+        }
+      }
+    }
+  }
+  return {};
 }
-If you cannot find the account, return an empty bio.`;
 
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+async function callGemini(model: string, body: unknown, key: string) {
+  return fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'x-goog-api-key': key
     },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      tools: [{ google_search: {} }],
-      generationConfig: { responseMimeType: 'application/json' }
-    })
+    body: JSON.stringify(body),
+    cache: 'no-store'
   });
+}
+
+async function geminiWithRetry(primaryModel: string, fallbackModel: string, body: unknown, key: string): Promise<Response> {
+  let response = await callGemini(primaryModel, body, key);
+  if (response.ok) return response;
+
+  if (response.status === 429 || response.status >= 500) {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    response = await callGemini(primaryModel, body, key);
+    if (response.ok) return response;
+  }
+
+  if (response.status >= 500 && primaryModel !== fallbackModel) {
+    response = await callGemini(fallbackModel, body, key);
+  }
+  return response;
+}
+
+export async function fetchProfileViaGemini(
+  platform: Platform,
+  username: string,
+  seed?: SocialProfileSeed
+): Promise<SocialProfile> {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) {
+    throw new SocialFetchError('Add GEMINI_API_KEY to enable AI-powered profile fetching.', 'gemini_not_configured', 503);
+  }
+
+  const handle = cleanHandle(username);
+  const primary = process.env.GEMINI_DISCOVERY_MODEL || 'gemini-2.5-pro';
+  const fallback = 'gemini-2.5-flash';
+  const platformDomain = PLATFORM_DOMAIN[platform];
+  const platformLabel = platform === 'website' ? 'public personal website' : platform;
+
+  const knownDisplayName = seed?.displayName ? ` (display name hint: "${seed.displayName}")` : '';
+  const knownSource = seed?.sourceUrl ? `\nKnown source URL hint: ${seed.sourceUrl}` : '';
+
+  const prompt = `You are a research analyst. Use Google Search grounding to gather REAL public information about the ${platformLabel} account "@${handle}"${knownDisplayName}.
+
+PROCEDURE:
+1. ${platformDomain ? `Run multiple Google Searches: \`site:${platformDomain} ${handle}\`, \`"${handle}" ${platform}\`, \`"@${handle}" bio\`, and the person's likely real name once you spot it.` : `Search for "${handle}" official website, Wikipedia, and recent news.`}
+2. From the Google Search results (titles, snippets, knowledge graph cards, your own grounded knowledge), assemble:
+   - displayName (the real public name shown on their profile or in news)
+   - bio (a concise factual description from the search snippets, NOT paraphrased platitudes)
+   - followers count if any snippet mentions one (e.g. "1.2M followers")
+   - verified status if a snippet or knowledge card confirms it
+   - avatarUrl if a search result image URL is available
+   - sourceUrl: the canonical profile URL on ${platformLabel}
+3. For posts: list the most recent 5-10 things this account has publicly said/posted that are reported in news articles, blog posts, or quoted in search snippets. Each "content" must be an actual quote or paraphrased headline of real recent activity from the snippets, NOT invented.
+4. Cross-reference Wikipedia, news, and other sources to enrich.${knownSource}
+
+CRITICAL RULES:
+- Use ONLY information present in your Google Search grounding results. If a fact is not in the snippets/knowledge graph, omit the field entirely.
+- Never invent post text, follower counts, or URLs.
+- For "posts": each item should be a real quote, news-reported statement, or paraphrased recent public action — never a generic placeholder. If you cannot find at least one real recent activity, return posts: [] and only fill bio/displayName.
+- If the account does not seem to exist at all, return {"displayName":"","bio":"","posts":[]}.
+- Return ONLY JSON matching the schema, no prose.
+
+Return JSON:
+{
+  "displayName": "Full Name",
+  "bio": "factual public bio drawn from search results",
+  "followers": "1.2M",
+  "verified": true,
+  "avatarUrl": "https://...",
+  "sourceUrl": "https://${platformDomain ? platformDomain.split(' ')[0] : 'example.com'}/${handle}",
+  "posts": [
+    { "content": "Actual quote or news-reported recent activity", "likes": "12k", "replies": "300", "permalink": "https://...", "capturedAt": "2026-04-20T10:30:00Z" }
+  ]
+}`;
+
+  // Use ONLY google_search — url_context fails on auth-walled platforms (IG, FB, TikTok, LinkedIn).
+  // Google Search grounding gives us indexed snippets which is what those platforms expose publicly anyway.
+  // NOTE: responseSchema is incompatible with grounding tools in v1beta; we rely on prompt + manual JSON extraction.
+  const body = {
+    contents: [{ parts: [{ text: prompt }] }],
+    tools: [{ google_search: {} }],
+    generationConfig: {
+      temperature: 0.3
+    }
+  };
+
+  const response = await geminiWithRetry(primary, fallback, body, key);
 
   if (!response.ok) {
-    throw new SocialFetchError('Gemini API failed to fetch the profile.', 'gemini_error', 502);
+    const errBody = await response.text().catch(() => '');
+    console.error('[gemini profile] failure', response.status, errBody.slice(0, 500));
+    throw new SocialFetchError('Gemini grounding failed for this profile.', 'gemini_error', 502);
   }
 
   const payload = await response.json();
-  const text = payload?.candidates?.[0]?.content?.parts?.map((part: any) => part.text ?? '').join('\n') ?? '';
-  
-  let parsed: any = {};
-  try {
-    const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-    const raw = fenced?.[1] ?? text;
-    const start = raw.indexOf('{');
-    const end = raw.lastIndexOf('}');
-    if (start !== -1 && end !== -1 && end > start) {
-      parsed = JSON.parse(raw.slice(start, end + 1));
-    }
-  } catch {
-    parsed = {};
+  const text = payload?.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text ?? '').join('\n') ?? '';
+
+  const parsed = extractJsonObject(text) as {
+    displayName?: string;
+    bio?: string;
+    followers?: string;
+    verified?: boolean;
+    avatarUrl?: string;
+    sourceUrl?: string;
+    posts?: Array<{ content?: string; likes?: string; replies?: string; permalink?: string; capturedAt?: string }>;
+  };
+
+  const posts: SocialPost[] = (parsed.posts ?? [])
+    .filter((p) => typeof p.content === 'string' && p.content.trim().length > 0)
+    .map((p, i) => {
+      const captured = p.capturedAt ? new Date(p.capturedAt) : new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+      return {
+        externalId: p.permalink ? `gemini-${platform}-${handle}-${i}-${hashString(p.permalink)}` : `gemini-${platform}-${handle}-${i}`,
+        content: p.content!.trim(),
+        likes: p.likes && p.likes.trim() ? p.likes.trim() : 'unknown',
+        replies: p.replies && p.replies.trim() ? p.replies.trim() : 'unknown',
+        permalink: p.permalink,
+        capturedAt: Number.isNaN(captured.valueOf()) ? new Date() : captured
+      };
+    });
+
+  const bio = (parsed.bio ?? '').trim();
+  const displayNameExtracted = (parsed.displayName ?? '').trim();
+  // Only fail if we got literally nothing — no name, no bio, no posts.
+  if (!bio && !displayNameExtracted && posts.length === 0) {
+    throw new SocialFetchError(
+      `Could not find a public ${platform} account for @${handle}. Try a more specific handle or include the person's name.`,
+      'no_posts',
+      404
+    );
   }
 
-  const displayName = parsed.displayName || seed?.displayName || handle;
-  
+  const grounding = payload?.candidates?.[0]?.groundingMetadata;
+  const citations: string[] =
+    grounding?.groundingChunks
+      ?.map((chunk: { web?: { uri?: string } }) => chunk.web?.uri)
+      .filter((uri: string | undefined): uri is string => Boolean(uri)) ?? [];
+
+  const displayName = (parsed.displayName ?? '').trim() || seed?.displayName?.trim() || handle;
+  const sourceUrl = parsed.sourceUrl?.trim() || seed?.sourceUrl;
+  const avatarUrl =
+    parsed.avatarUrl?.trim() ||
+    seed?.avatarUrl ||
+    `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(displayName)}`;
+
   return {
     platform,
     username: handle,
     displayName,
-    bio: parsed.bio || seed?.bio || `AI-generated profile summary for @${handle} on ${platform}.`,
-    avatarUrl: seed?.avatarUrl || `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(displayName)}`,
-    verified: Boolean(parsed.verified || seed?.verified),
-    followers: parsed.followers || seed?.followers || 'unknown',
-    sourceUrl: seed?.sourceUrl,
-    posts: (parsed.posts || []).map((p: any, i: number) => ({
-      externalId: `ai-${platform}-${handle}-${i}`,
-      content: p.content || 'Content not available.',
-      likes: p.likes || 'unknown',
-      replies: p.replies || 'unknown',
-      capturedAt: new Date(Date.now() - i * 24 * 60 * 60 * 1000)
-    }))
+    bio: bio || seed?.bio?.trim() || '',
+    avatarUrl,
+    verified: Boolean(parsed.verified ?? seed?.verified),
+    followers: (parsed.followers ?? '').trim() || seed?.followers?.trim() || 'unknown',
+    sourceUrl,
+    citations: citations.length ? Array.from(new Set(citations)).slice(0, 10) : undefined,
+    posts
   };
 }
 
-export async function fetchSocialProfile(platform: Platform, username: string, seed?: SocialProfileSeed) {
-  if (platform !== 'x' && platform !== 'instagram') {
-    return seededSocialProfile(platform, username, seed);
+function hashString(input: string): string {
+  let hash = 0;
+  for (let i = 0; i < input.length; i += 1) {
+    hash = (hash * 31 + input.charCodeAt(i)) | 0;
   }
-  
-  if (!platformConfigured(platform)) {
-    if (process.env.GEMINI_API_KEY) {
-      try {
-        const aiProfile = await fetchProfileViaGemini(platform, username, seed);
-        if (aiProfile.posts.length === 0) {
-           aiProfile.posts = seededSocialProfile(platform, username, seed).posts;
-        }
-        return aiProfile;
-      } catch (err) {
-        return seededSocialProfile(platform, username, seed);
-      }
-    }
-    return seededSocialProfile(platform, username, seed);
+  return Math.abs(hash).toString(36);
+}
+
+export async function fetchSocialProfile(
+  platform: Platform,
+  username: string,
+  seed?: SocialProfileSeed
+): Promise<SocialProfile> {
+  if (platform === 'x' && process.env.X_BEARER_TOKEN) {
+    return fetchXProfile(username);
   }
-  
-  try {
-    return await (platform === 'x' ? fetchXProfile(username) : fetchInstagramProfile(username));
-  } catch (error) {
-    if (seed?.sourceUrl) return seededSocialProfile(platform, username, seed);
-    throw error;
+  if (platform === 'instagram' && process.env.INSTAGRAM_GRAPH_ACCESS_TOKEN && process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID) {
+    return fetchInstagramProfile(username);
   }
+  // Every other case (IG without tokens, facebook, youtube, tiktok, linkedin, website) → strict Gemini grounding.
+  return fetchProfileViaGemini(platform, username, seed);
 }
 
 export function socialErrorResponse(error: unknown) {
   if (error instanceof SocialFetchError) {
     return { code: error.code, message: error.message, status: error.status };
   }
+  console.error('[social] unexpected lookup failure', error);
   return {
     code: 'social_lookup_failed',
     message: 'The live account lookup failed before a dossier could be opened.',

@@ -1,12 +1,43 @@
 'use client';
 
-import { motion } from 'framer-motion';
-import { Target, TrendingUp, Users, Activity, ExternalLink } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Target, TrendingUp, Users, Activity } from 'lucide-react';
 import { ImpactOverview } from '@/components/profile/ImpactOverview';
 import { CivilImpactDrivers } from '@/components/profile/CivilImpactDrivers';
-import Link from 'next/link';
+
+type ImpactStats = {
+  accountsTracked: number;
+  eventsTotal: number;
+  eventsLast7: number;
+  netMomentum: number;
+};
 
 export default function ImpactPage() {
+  const [stats, setStats] = useState<ImpactStats | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/stats', { cache: 'no-store' });
+        const payload = await res.json();
+        if (!cancelled && payload.ok) {
+          setStats({
+            accountsTracked: Number(payload.data?.accountsTracked ?? 0),
+            eventsTotal: Number(payload.data?.eventsTotal ?? 0),
+            eventsLast7: Number(payload.data?.eventsLast7 ?? 0),
+            netMomentum: Number(payload.data?.netMomentum ?? 0)
+          });
+        }
+      } catch {
+        setStats({ accountsTracked: 0, eventsTotal: 0, eventsLast7: 0, netMomentum: 0 });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <main className="min-h-screen bg-background pb-24 pt-8 px-4 lg:px-12">
       <div className="max-w-4xl mx-auto space-y-12">
@@ -32,8 +63,12 @@ export default function ImpactPage() {
               </div>
               <h3 className="font-bold text-[14px]">Total Events</h3>
             </div>
-            <div className="text-[36px] font-black font-serif text-foreground">84,210</div>
-            <p className="text-[12px] text-primary font-bold mt-1">+1,204 this week</p>
+            <div className="text-[36px] font-black font-serif text-foreground">
+              {stats ? stats.eventsTotal.toLocaleString() : '—'}
+            </div>
+            <p className="text-[12px] text-primary font-bold mt-1">
+              {stats ? `+${stats.eventsLast7.toLocaleString()} this week` : 'loading…'}
+            </p>
           </div>
 
           <div className="rounded-[24px] border border-border bg-card p-6 shadow-sm">
@@ -43,8 +78,10 @@ export default function ImpactPage() {
               </div>
               <h3 className="font-bold text-[14px]">Net Momentum</h3>
             </div>
-            <div className="text-[36px] font-black font-serif text-foreground">+12.4%</div>
-            <p className="text-[12px] text-blue-500 font-bold mt-1">Growth factor applied</p>
+            <div className="text-[36px] font-black font-serif text-foreground">
+              {stats ? `${stats.netMomentum}%` : '—'}
+            </div>
+            <p className="text-[12px] text-blue-500 font-bold mt-1">Share of events from the last 7 days</p>
           </div>
 
           <div className="rounded-[24px] border border-border bg-card p-6 shadow-sm">
@@ -54,7 +91,9 @@ export default function ImpactPage() {
               </div>
               <h3 className="font-bold text-[14px]">Active Profiles</h3>
             </div>
-            <div className="text-[36px] font-black font-serif text-foreground">1,402</div>
+            <div className="text-[36px] font-black font-serif text-foreground">
+              {stats ? stats.accountsTracked.toLocaleString() : '—'}
+            </div>
             <p className="text-[12px] text-purple-500 font-bold mt-1">Under public ledger</p>
           </div>
         </div>

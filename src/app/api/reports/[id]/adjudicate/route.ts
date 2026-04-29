@@ -31,7 +31,16 @@ export async function POST(request: Request, { params }: { params: { id: string 
   const status = parsed.data.verdict === 'approved' ? 'approved' : 'rejected';
 
   let updatedAccount = account;
-  if (parsed.data.verdict === 'approved') {
+  // Subtract any provisional AI impact already applied at submit time, then apply admin's final impact.
+  const aiProposed = Number(report.aiVerdict?.proposedImpact ?? 0);
+  const provisionalApplied =
+    report.aiVerdict && report.aiVerdict.valid && (report.aiVerdict.abuseFlags?.length ?? 0) === 0 && aiProposed !== 0
+      ? Math.sign(aiProposed) * Math.min(3, Math.abs(aiProposed))
+      : 0;
+  const targetImpact = parsed.data.verdict === 'approved' ? parsed.data.finalImpact : 0;
+  const netImpact = targetImpact - provisionalApplied;
+
+  if (netImpact !== 0 || provisionalApplied !== 0) {
     const tags =
       report.aiVerdict?.categoryTags.filter((tag) =>
         ['authenticity', 'engagement', 'community', 'content', 'impact'].includes(tag)
@@ -39,9 +48,9 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const next = {
       score: account.score,
       breakdown: { ...account.breakdown },
-      scoreHistory: account.scoreHistory.map((point) => ({ ...point, t: new Date(point.t) }))
+      scoreHistory: (account.scoreHistory ?? []).map((point) => ({ ...point, t: new Date(point.t) }))
     };
-    applyImpact(next, parsed.data.finalImpact, 'report', tags);
+    applyImpact(next, netImpact, 'report', tags);
     const persisted = await accountsRepo.update(account._id, {
       score: next.score,
       breakdown: next.breakdown,

@@ -6,13 +6,40 @@ import { usePathname } from 'next/navigation';
 import { Home, Target, TrendingUp, Info, User, ShieldAlert, Settings, Globe, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+type LiveStats = { eventsToday: number; avgWeeklyDelta: number };
+
 export function Sidebar() {
   const pathname = usePathname();
   const [scope, setScope] = useState('Global');
   const [scopeOpen, setScopeOpen] = useState(false);
+  const [stats, setStats] = useState<LiveStats | null>(null);
 
   useEffect(() => {
     setScope(window.localStorage.getItem('shosha:scope') ?? 'Global');
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const res = await fetch('/api/stats', { cache: 'no-store' });
+        const payload = await res.json();
+        if (!cancelled && payload.ok) {
+          setStats({
+            eventsToday: Number(payload.data?.eventsToday ?? 0),
+            avgWeeklyDelta: Number(payload.data?.avgWeeklyDelta ?? 0)
+          });
+        }
+      } catch {
+        // leave stats null; UI will hide the live row
+      }
+    }
+    load();
+    const id = window.setInterval(load, 60_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
   }, []);
 
   function chooseScope(value: string) {
@@ -70,12 +97,20 @@ export function Sidebar() {
         <div className="space-y-4">
           <div className="flex items-center gap-3 text-[13px] font-medium text-muted-foreground">
             <div className="h-2 w-2 rounded-full bg-primary animate-pulse"></div>
-            2,847 events today
+            {stats ? `${stats.eventsToday.toLocaleString()} events today` : 'loading…'}
           </div>
-          <div className="flex items-center gap-3 text-[13px] font-bold text-primary">
-            <TrendingUp size={16} />
-            +12,400 Δ avg
-          </div>
+          {stats ? (
+            <div
+              className={cn(
+                'flex items-center gap-3 text-[13px] font-bold',
+                stats.avgWeeklyDelta < 0 ? 'text-destructive' : 'text-primary'
+              )}
+            >
+              <TrendingUp size={16} />
+              {stats.avgWeeklyDelta > 0 ? '+' : ''}
+              {stats.avgWeeklyDelta.toLocaleString()} Δ weekly avg
+            </div>
+          ) : null}
         </div>
       </div>
 

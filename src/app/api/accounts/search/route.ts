@@ -25,6 +25,7 @@ export async function GET(request: Request) {
     candidates,
     sources: discovery.sources,
     searchQueries: discovery.searchQueries,
-    grounded: discovery.grounded
+    grounded: discovery.grounded,
+    reason: discovery.reason
   });
 }

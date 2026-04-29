@@ -9,6 +9,8 @@ export type AdjudicationInput = {
   accountDisplayName: string;
   platform: string;
   mediaDescription?: string;
+  mediaUrl?: string;
+  mediaType?: 'image' | 'video';
 };
 
 export type AiVerdict = {
@@ -87,13 +89,37 @@ export async function adjudicateReport(input: AdjudicationInput): Promise<AiVerd
         }
       }
     });
-    const prompt = `Account: ${input.accountDisplayName}
+    const promptText = `Account: ${input.accountDisplayName}
 Platform: ${input.platform}
 Type: ${input.type}
 Description: ${input.description}
 Feelings: ${input.feelings}
-Media: ${input.mediaDescription ?? 'Media proof was supplied.'}`;
-    const result = await timeout(model.generateContent(prompt), 20_000);
+Media: ${input.mediaDescription ?? 'Media proof was supplied.'}
+${input.mediaType === 'image' && input.mediaUrl ? 'An image is attached as inline media — examine it carefully and reference what you see in your reasoning.' : ''}
+${input.mediaType === 'video' && input.mediaUrl ? `Note: a video proof was uploaded but cannot be analyzed inline. Source: ${input.mediaUrl}` : ''}`;
+
+    const parts: Array<Record<string, unknown>> = [{ text: promptText }];
+    if (input.mediaType === 'image' && input.mediaUrl) {
+      try {
+        const mediaRes = await timeout(fetch(input.mediaUrl, { cache: 'no-store' }), 8_000);
+        if (mediaRes.ok) {
+          const contentType = mediaRes.headers.get('content-type') ?? 'image/jpeg';
+          const buffer = Buffer.from(await mediaRes.arrayBuffer());
+          if (buffer.byteLength <= 5 * 1024 * 1024) {
+            parts.push({
+              inlineData: {
+                mimeType: contentType.split(';')[0].trim(),
+                data: buffer.toString('base64')
+              }
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('[gemini] media fetch failed', (err as Error).message);
+      }
+    }
+
+    const result = await timeout(model.generateContent(parts as never), 30_000);
     const json = JSON.parse(result.response.text());
 
     return {

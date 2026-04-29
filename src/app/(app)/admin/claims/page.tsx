@@ -1,7 +1,7 @@
-import { EmptyState } from '@/components/ui/EmptyState';
 import * as accountsRepo from '@/lib/repos/accounts';
 import * as claimsRepo from '@/lib/repos/claimRequests';
 import * as usersRepo from '@/lib/repos/users';
+import { ClaimsList } from './ClaimsList';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,26 +16,26 @@ export default async function ClaimsPage() {
   const accountMap = new Map(accounts.filter(Boolean).map((a) => [a!._id, a!]));
   const userMap = new Map(users.filter(Boolean).map((u) => [u!._id, u!]));
 
+  const rows = claims.map((claim) => {
+    const account = accountMap.get(claim.accountId) ?? null;
+    const user = userMap.get(claim.userId) ?? null;
+    return {
+      _id: claim._id,
+      proofType: claim.proofType,
+      proofPayload: claim.proofPayload,
+      account: account
+        ? { _id: account._id, displayName: account.displayName, platform: account.platform, username: account.username }
+        : null,
+      user: user ? { _id: user._id, username: user.username, email: user.email } : null
+    };
+  });
+
   return (
     <main className="px-4 py-6">
       <p className="text-xs uppercase text-accent">Tribunal</p>
       <h1 className="mt-2 font-serif text-6xl">Claims</h1>
-      <div className="mt-6 space-y-3">
-        {claims.length ? (
-          claims.map((claim) => {
-            const account = accountMap.get(claim.accountId);
-            const user = userMap.get(claim.userId);
-            return (
-              <article key={claim._id} className="border border-border bg-raised p-4">
-                <p className="text-xs uppercase text-muted">{claim.proofType}</p>
-                <h2 className="mt-2 font-serif text-3xl">{account?.displayName ?? 'Unknown'}</h2>
-                <p className="mt-2 text-sm text-muted">Filed by {user?.username ?? 'unknown'}</p>
-              </article>
-            );
-          })
-        ) : (
-          <EmptyState title="No claims waiting." body="No one is asking to pin a name to a dossier." />
-        )}
+      <div className="mt-6">
+        <ClaimsList initialClaims={rows} />
       </div>
     </main>
   );

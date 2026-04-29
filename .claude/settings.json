@@ -4,7 +4,9 @@
       "Bash(xargs grep *)",
       "Bash(grep -v \"^$\")",
       "Bash(pnpm typecheck *)",
-      "Bash(pnpm lint *)"
+      "Bash(pnpm lint *)",
+      "Bash(npx tsc *)",
+      "Bash(npm run *)"
     ]
   }
 }

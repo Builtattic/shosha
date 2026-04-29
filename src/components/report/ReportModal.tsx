@@ -307,34 +307,79 @@ export function ReportModal({
                       placeholder="Search name, brand, or @username"
                       className="w-full rounded-full border border-border bg-background px-4 py-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-primary/20"
                     />
-                    {(searchingCandidates || candidates.length > 0) && (
-                      <div className="mt-3 space-y-2">
-                        {searchingCandidates && <p className="text-[11px] text-muted-foreground">Searching public profiles with Gemini...</p>}
-                        {candidates.slice(0, 4).map((candidate) => (
+                    {targetSourceUrl ? (
+                      <div className="mt-3 rounded-[14px] border border-primary bg-primary/5 p-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-[13px] font-bold flex items-center gap-1">
+                              {targetDisplayName}
+                              {targetVerified && <ShieldCheck size={12} className="text-primary shrink-0" />}
+                            </p>
+                            <p className="truncate text-[11px] text-muted-foreground">
+                              {targetPlatform === 'x' ? 'X' : targetPlatform} / @{targetHandle}
+                              {targetFollowers ? ` · ${targetFollowers}` : ''}
+                            </p>
+                            <a
+                              href={targetSourceUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="mt-1 inline-block truncate text-[10px] text-primary underline"
+                            >
+                              {targetSourceUrl}
+                            </a>
+                          </div>
                           <button
-                            key={`${candidate.platform}:${candidate.username}:${candidate.sourceUrl}`}
                             type="button"
-                            onClick={() => pickCandidate(candidate)}
-                            className={cn(
-                              'w-full rounded-[14px] border p-3 text-left transition hover:bg-muted',
-                              targetSourceUrl === candidate.sourceUrl ? 'border-foreground bg-muted' : 'border-border bg-background'
-                            )}
+                            onClick={() => {
+                              setTargetSourceUrl('');
+                              setTargetDisplayName('');
+                              setTargetBio('');
+                              setTargetFollowers('');
+                              setTargetVerified(false);
+                              setResolvedAccountId(null);
+                            }}
+                            className="shrink-0 rounded-full border border-border px-3 py-1 text-[10px] font-bold"
                           >
-                            <div className="flex items-center justify-between gap-3">
-                              <div className="min-w-0">
-                                <p className="truncate text-[13px] font-bold">{candidate.displayName}</p>
-                                <p className="truncate text-[11px] text-muted-foreground">
-                                  {candidate.platform === 'x' ? 'X' : candidate.platform} / @{candidate.username}
-                                </p>
-                              </div>
-                              <span className="shrink-0 rounded-full bg-foreground px-2 py-1 text-[10px] font-bold text-background">
-                                {Math.round(candidate.confidence * 100)}%
-                              </span>
-                            </div>
-                            <p className="mt-2 line-clamp-2 text-[11px] leading-4 text-muted-foreground">{candidate.reason}</p>
+                            Change
                           </button>
-                        ))}
+                        </div>
                       </div>
+                    ) : (
+                      <>
+                        {(searchingCandidates || candidates.length > 0 || targetHandle.trim().length >= 2) && (
+                          <div className="mt-3 space-y-2">
+                            {searchingCandidates && (
+                              <p className="text-[11px] text-muted-foreground">Searching public profiles with Gemini...</p>
+                            )}
+                            {!searchingCandidates && candidates.length === 0 && targetHandle.trim().length >= 2 && (
+                              <p className="text-[11px] text-destructive">
+                                No real accounts found for &ldquo;{targetHandle}&rdquo;. Try a more specific name or different handle.
+                              </p>
+                            )}
+                            {candidates.slice(0, 6).map((candidate) => (
+                              <button
+                                key={`${candidate.platform}:${candidate.username}:${candidate.sourceUrl}`}
+                                type="button"
+                                onClick={() => pickCandidate(candidate)}
+                                className="w-full rounded-[14px] border border-border bg-background p-3 text-left transition hover:bg-muted"
+                              >
+                                <div className="flex items-center justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <p className="truncate text-[13px] font-bold">{candidate.displayName}</p>
+                                    <p className="truncate text-[11px] text-muted-foreground">
+                                      {candidate.platform === 'x' ? 'X' : candidate.platform} / @{candidate.username}
+                                    </p>
+                                  </div>
+                                  <span className="shrink-0 rounded-full bg-foreground px-2 py-1 text-[10px] font-bold text-background">
+                                    {Math.round(candidate.confidence * 100)}%
+                                  </span>
+                                </div>
+                                <p className="mt-2 line-clamp-2 text-[11px] leading-4 text-muted-foreground">{candidate.reason}</p>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 )}
@@ -402,10 +447,12 @@ export function ReportModal({
 
               <button
                 onClick={() => setStep(2)}
-                disabled={!type || description.length < 10 || (!accountId && targetHandle.trim().length < 2)}
+                disabled={!type || description.length < 10 || (!accountId && !targetSourceUrl)}
                 className="w-full rounded-full bg-foreground py-4 text-[16px] font-bold text-background disabled:opacity-50"
               >
-                Continue
+                {!accountId && !targetSourceUrl && targetHandle.trim().length >= 2
+                  ? 'Pick a real account above to continue'
+                  : 'Continue'}
               </button>
             </motion.div>
           )}

@@ -94,6 +94,15 @@ export async function listTop(limit = 50): Promise<AccountRecord[]> {
   return results.reverse(); // limitToLast gives ascending, we want descending
 }
 
+export async function listBottom(limit = 50): Promise<AccountRecord[]> {
+  const snap = await ref().orderByChild('score').limitToFirst(limit).once('value');
+  const results: AccountRecord[] = [];
+  snap.forEach((child) => {
+    results.push(withId<AccountRecord>(child.key!, child.val()));
+  });
+  return results;
+}
+
 export async function search(q: string, limit = 20): Promise<AccountRecord[]> {
   const cleaned = q.trim().toLowerCase();
   if (!cleaned) return listTop(limit);
