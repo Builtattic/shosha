@@ -27,20 +27,17 @@ export default async function AbusePage() {
   });
 
   return (
-    <div className="p-6 lg:p-8 max-w-3xl mx-auto">
-      <div className="mb-8">
-        <p className="text-xs uppercase tracking-widest text-white/30 font-bold mb-2">Tribunal</p>
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-4xl font-black text-white tracking-tight">Abuse</h1>
-            <p className="text-white/40 text-sm mt-1">{rows.length} flagged report{rows.length !== 1 ? 's' : ''}</p>
-          </div>
-          <div className="hidden sm:flex h-12 w-12 items-center justify-center rounded-xl bg-red-500/10 border border-red-500/20">
-            <ShieldAlert size={20} className="text-red-400" />
-          </div>
-        </div>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-[14px] font-black text-foreground uppercase tracking-[0.1em]">Abuse Oversight</h2>
+        <span className="text-[11px] font-bold text-red-600 bg-red-50 px-2 py-1 rounded-md border border-red-100">
+          {rows.length} flagged filings
+        </span>
       </div>
-      <AbuseList initialReports={rows} />
+
+      <div className="rounded-3xl border border-border bg-card overflow-hidden">
+        <AbuseList initialReports={rows} />
+      </div>
     </div>
   );
 }

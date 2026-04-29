@@ -10,10 +10,10 @@ type UserRow = AppUser;
 
 function RoleBadge({ role }: { role: string }) {
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider ${
       role === 'admin'
-        ? 'bg-red-500/15 text-red-400 border border-red-500/20'
-        : 'bg-white/8 text-white/40 border border-white/10'
+        ? 'bg-red-100 text-red-700 border border-red-200'
+        : 'bg-secondary text-muted-foreground border border-border'
     }`}>
       {role === 'admin' ? <Shield size={9} /> : <User size={9} />}
       {role}
@@ -51,7 +51,7 @@ export function UsersTable({ initialUsers }: { initialUsers: UserRow[] }) {
 
   function SortIcon({ col }: { col: typeof sortBy }) {
     if (sortBy !== col) return <ChevronUp size={12} className="opacity-20" />;
-    return sortDir === 'asc' ? <ChevronUp size={12} className="text-white/60" /> : <ChevronDown size={12} className="text-white/60" />;
+    return sortDir === 'asc' ? <ChevronUp size={12} className="text-foreground" /> : <ChevronDown size={12} className="text-foreground" />;
   }
 
   async function toggleRole(userId: string, currentRole: string) {
@@ -89,102 +89,105 @@ export function UsersTable({ initialUsers }: { initialUsers: UserRow[] }) {
   }
 
   return (
-    <div>
+    <div className="bg-card">
       {/* Search bar */}
-      <div className="relative mb-5">
-        <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/25 pointer-events-none" />
-        <input
-          type="text"
-          placeholder="Search by username or email…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full rounded-xl border border-white/10 bg-white/5 pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-white/25"
-        />
+      <div className="p-4 border-b border-border">
+        <div className="relative">
+          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Filter users..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full h-11 rounded-xl border border-border bg-secondary/50 pl-10 pr-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all"
+          />
+        </div>
       </div>
 
-      {/* Count */}
-      <p className="text-xs text-white/30 mb-3 font-medium">{filtered.length} user{filtered.length !== 1 ? 's' : ''}</p>
-
       {/* Table */}
-      <div className="overflow-x-auto rounded-xl border border-white/8">
+      <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-white/8">
-              <th className="text-left px-4 py-3 text-[11px] font-bold uppercase tracking-widest text-white/30">
-                <button onClick={() => toggleSort('username')} className="flex items-center gap-1 hover:text-white/60 transition-colors">
+            <tr className="bg-secondary/30">
+              <th className="text-left px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground border-b border-border">
+                <button onClick={() => toggleSort('username')} className="flex items-center gap-1 hover:text-foreground transition-colors">
                   User <SortIcon col="username" />
                 </button>
               </th>
-              <th className="text-left px-4 py-3 text-[11px] font-bold uppercase tracking-widest text-white/30 hidden md:table-cell">
+              <th className="text-left px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground border-b border-border hidden md:table-cell">
                 Role
               </th>
-              <th className="text-right px-4 py-3 text-[11px] font-bold uppercase tracking-widest text-white/30">
-                <button onClick={() => toggleSort('reporterScore')} className="flex items-center gap-1 ml-auto hover:text-white/60 transition-colors">
-                  Rep <SortIcon col="reporterScore" />
+              <th className="text-right px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground border-b border-border">
+                <button onClick={() => toggleSort('reporterScore')} className="flex items-center gap-1 ml-auto hover:text-foreground transition-colors">
+                  Score <SortIcon col="reporterScore" />
                 </button>
               </th>
-              <th className="text-right px-4 py-3 text-[11px] font-bold uppercase tracking-widest text-white/30 hidden lg:table-cell">
-                <button onClick={() => toggleSort('createdAt')} className="flex items-center gap-1 ml-auto hover:text-white/60 transition-colors">
+              <th className="text-right px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground border-b border-border hidden lg:table-cell">
+                <button onClick={() => toggleSort('createdAt')} className="flex items-center gap-1 ml-auto hover:text-foreground transition-colors">
                   Joined <SortIcon col="createdAt" />
                 </button>
               </th>
-              <th className="px-4 py-3 w-12" />
+              <th className="px-6 py-4 w-12 border-b border-border" />
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-border">
             {filtered.map((user) => (
-              <tr key={user._id} className="border-b border-white/5 hover:bg-white/3 transition-colors">
-                <td className="px-4 py-3">
-                  <p className="font-semibold text-white">@{user.username}</p>
-                  <p className="text-xs text-white/30 truncate max-w-[180px]">{user.email}</p>
+              <tr key={user._id} className="hover:bg-secondary/20 transition-colors group">
+                <td className="px-6 py-4">
+                  <p className="font-bold text-foreground">@{user.username}</p>
+                  <p className="text-xs text-muted-foreground truncate max-w-[180px]">{user.email}</p>
                 </td>
-                <td className="px-4 py-3 hidden md:table-cell">
+                <td className="px-6 py-4 hidden md:table-cell">
                   <RoleBadge role={user.role} />
                 </td>
-                <td className="px-4 py-3 text-right">
-                  <span className={`font-mono font-bold text-sm ${
-                    user.reporterScore >= 70 ? 'text-emerald-400' : user.reporterScore >= 40 ? 'text-amber-400' : 'text-red-400'
+                <td className="px-6 py-4 text-right">
+                  <span className={`font-mono font-black text-[15px] ${
+                    user.reporterScore >= 70 ? 'text-emerald-600' : user.reporterScore >= 40 ? 'text-amber-600' : 'text-red-600'
                   }`}>
                     {user.reporterScore}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-right hidden lg:table-cell">
-                  <span className="text-xs text-white/30 font-mono">
+                <td className="px-6 py-4 text-right hidden lg:table-cell">
+                  <span className="text-[12px] text-muted-foreground font-mono font-medium">
                     {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '—'}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-right relative">
+                <td className="px-6 py-4 text-right relative">
                   <button
                     onClick={() => setOpenMenu(openMenu === user._id ? null : user._id)}
-                    className="p-1.5 rounded-lg hover:bg-white/8 text-white/30 hover:text-white transition-all"
+                    className="p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-all"
                   >
-                    <MoreHorizontal size={15} />
+                    <MoreHorizontal size={16} />
                   </button>
                   {openMenu === user._id && (
-                    <div className="absolute right-3 top-10 z-50 w-48 rounded-xl border border-white/10 bg-[#1a1a1a] shadow-2xl overflow-hidden">
-                      <button
-                        onClick={() => toggleRole(user._id, user.role)}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 hover:bg-white/8 hover:text-white transition-colors text-left"
-                      >
-                        <Shield size={14} />
-                        {user.role === 'admin' ? 'Demote to user' : 'Promote to admin'}
-                      </button>
-                      <button
-                        onClick={() => deleteUser(user._id, user.username)}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors text-left"
-                      >
-                        <Trash2 size={14} />
-                        Delete user
-                      </button>
-                    </div>
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setOpenMenu(null)} />
+                      <div className="absolute right-6 top-12 z-20 w-48 rounded-xl border border-border bg-background shadow-xl overflow-hidden animate-in fade-in zoom-in duration-100">
+                        <button
+                          onClick={() => toggleRole(user._id, user.role)}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-[13px] font-bold text-foreground hover:bg-secondary transition-colors text-left"
+                        >
+                          <Shield size={14} className="text-primary" />
+                          {user.role === 'admin' ? 'Demote to user' : 'Promote to admin'}
+                        </button>
+                        <div className="h-px bg-border mx-2" />
+                        <button
+                          onClick={() => deleteUser(user._id, user.username)}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-[13px] font-bold text-destructive hover:bg-destructive/5 transition-colors text-left"
+                        >
+                          <Trash2 size={14} />
+                          Delete user
+                        </button>
+                      </div>
+                    </>
                   )}
                 </td>
               </tr>
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-12 text-center text-white/25 text-sm">
-                  No users match your search.
+                <td colSpan={5} className="px-6 py-20 text-center text-muted-foreground text-[13px] font-medium">
+                  No users match your filter criteria.
                 </td>
               </tr>
             )}

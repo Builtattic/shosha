@@ -9,21 +9,17 @@ export default async function AdminUsersPage() {
   const adminCount = users.filter((u) => u.role === 'admin').length;
 
   return (
-    <div className="p-6 lg:p-8 max-w-5xl mx-auto">
-      <div className="mb-8">
-        <p className="text-xs uppercase tracking-widest text-white/30 font-bold mb-2">Tribunal</p>
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-4xl font-black text-white tracking-tight">Users</h1>
-            <p className="text-white/40 text-sm mt-1">{users.length} total · {adminCount} admin{adminCount !== 1 ? 's' : ''}</p>
-          </div>
-          <div className="hidden sm:flex h-12 w-12 items-center justify-center rounded-xl bg-purple-500/10 border border-purple-500/20">
-            <Users size={20} className="text-purple-400" />
-          </div>
-        </div>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-[14px] font-black text-foreground uppercase tracking-[0.1em]">Registered Users</h2>
+        <span className="text-[11px] font-bold text-muted-foreground bg-secondary px-2 py-1 rounded-md">
+          {users.length} total · {adminCount} admin{adminCount !== 1 ? 's' : ''}
+        </span>
       </div>
 
-      <UsersTable initialUsers={users} />
+      <div className="rounded-3xl border border-border bg-card overflow-hidden">
+        <UsersTable initialUsers={users} />
+      </div>
     </div>
   );
 }

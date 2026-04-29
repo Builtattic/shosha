@@ -17,28 +17,24 @@ export default async function AdminQueuePage() {
     .filter((row) => row.account !== null);
 
   return (
-    <div className="p-6 lg:p-8 max-w-4xl mx-auto">
-      <div className="mb-8">
-        <p className="text-xs uppercase tracking-widest text-white/30 font-bold mb-2">Tribunal</p>
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-4xl font-black text-white tracking-tight">Queue</h1>
-            <p className="text-white/40 text-sm mt-1">{rows.length} filing{rows.length !== 1 ? 's' : ''} awaiting review</p>
-          </div>
-          <div className="hidden sm:flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/20">
-            <Clock size={20} className="text-amber-400" />
-          </div>
-        </div>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-[14px] font-black text-foreground uppercase tracking-[0.1em]">Review Queue</h2>
+        <span className="text-[11px] font-bold text-muted-foreground bg-secondary px-2 py-1 rounded-md">
+          {rows.length} awaiting review
+        </span>
       </div>
 
       {rows.length === 0 ? (
-        <div className="rounded-xl border border-white/8 bg-white/4 p-16 text-center">
-          <CheckCircle size={28} className="text-emerald-400 mx-auto mb-3" />
-          <p className="text-white/50 text-sm font-medium">Queue is clear.</p>
-          <p className="text-white/25 text-xs mt-1">No filings awaiting tribunal review.</p>
+        <div className="rounded-3xl border border-border bg-card p-20 text-center">
+          <div className="h-16 w-16 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-6">
+            <CheckCircle size={32} />
+          </div>
+          <h3 className="text-xl font-black text-foreground mb-2">Queue is clear</h3>
+          <p className="text-muted-foreground text-sm">All filings have been processed by the tribunal.</p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {rows.map((report) => {
             const hasAbuse = (report.aiVerdict?.abuseFlags?.length ?? 0) > 0;
             const confidence = Math.round((report.aiVerdict?.confidence ?? 0) * 100);
@@ -46,44 +42,44 @@ export default async function AdminQueuePage() {
               <Link
                 key={report._id}
                 href={`/admin/review/${report._id}`}
-                className="flex items-center gap-4 rounded-xl border border-white/8 bg-white/4 px-5 py-4 hover:bg-white/7 hover:border-white/14 transition-all group"
+                className="flex items-center gap-6 rounded-3xl border border-border bg-card p-6 hover:border-primary/30 hover:shadow-md transition-all group"
               >
                 {/* Type indicator */}
-                <div className={`w-1 self-stretch rounded-full shrink-0 ${
-                  report.type === 'positive' ? 'bg-emerald-500/50' : 'bg-red-500/50'
+                <div className={`w-1.5 self-stretch rounded-full shrink-0 ${
+                  report.type === 'positive' ? 'bg-emerald-500' : 'bg-destructive'
                 }`} />
 
                 {/* Content */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
-                      report.type === 'positive' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-lg ${
+                      report.type === 'positive' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
                     }`}>
                       {report.type}
                     </span>
                     {hasAbuse && (
-                      <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 flex items-center gap-1">
-                        <AlertTriangle size={8} /> abuse
+                      <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-lg bg-red-100 text-red-700 flex items-center gap-1.5">
+                        <AlertTriangle size={10} /> abuse
                       </span>
                     )}
                     {report.status === 'pending_ai' && (
-                      <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400">
+                      <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-lg bg-amber-100 text-amber-700">
                         pending AI
                       </span>
                     )}
                   </div>
-                  <p className="text-white font-semibold truncate">{report.account?.displayName}</p>
-                  <p className="text-white/35 text-xs truncate">{report.description}</p>
+                  <p className="text-[15px] font-black text-foreground group-hover:text-primary transition-colors">{report.account?.displayName}</p>
+                  <p className="text-[13px] text-muted-foreground truncate mt-0.5">{report.description}</p>
                 </div>
 
                 {/* Meta */}
                 <div className="text-right shrink-0 hidden sm:block">
-                  <p className={`text-sm font-black font-mono ${
-                    (report.aiVerdict?.proposedImpact ?? 0) > 0 ? 'text-emerald-400' : (report.aiVerdict?.proposedImpact ?? 0) < 0 ? 'text-red-400' : 'text-white/30'
+                  <p className={`text-lg font-black font-mono ${
+                    (report.aiVerdict?.proposedImpact ?? 0) > 0 ? 'text-emerald-600' : (report.aiVerdict?.proposedImpact ?? 0) < 0 ? 'text-destructive' : 'text-muted-foreground/30'
                   }`}>
                     {(report.aiVerdict?.proposedImpact ?? 0) > 0 ? '+' : ''}{report.aiVerdict?.proposedImpact ?? '—'}
                   </p>
-                  <p className="text-white/25 text-[10px] font-mono">{confidence}% conf</p>
+                  <p className="text-muted-foreground/50 text-[10px] font-black uppercase tracking-wider mt-0.5">{confidence}% confidence</p>
                 </div>
               </Link>
             );

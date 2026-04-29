@@ -22,8 +22,8 @@ export function AdminReviewControls({
   const [loading, setLoading] = useState(false);
 
   const previewScore = Math.min(100, Math.max(0, score + impact));
-  const scoreColor = previewScore >= 70 ? 'text-emerald-400' : previewScore >= 40 ? 'text-amber-400' : 'text-red-400';
-  const impactColor = impact > 0 ? 'text-emerald-400' : impact < 0 ? 'text-red-400' : 'text-white/40';
+  const scoreColor = previewScore >= 70 ? 'text-emerald-600' : previewScore >= 40 ? 'text-amber-600' : 'text-destructive';
+  const impactColor = impact > 0 ? 'text-emerald-600' : impact < 0 ? 'text-destructive' : 'text-muted-foreground';
 
   async function decide(verdict: 'approved' | 'rejected') {
     if (verdict === 'rejected' && !confirmReject) {
@@ -40,7 +40,7 @@ export function AdminReviewControls({
       const payload = await response.json();
       if (!payload.ok) throw new Error(payload.error?.message ?? 'Decision failed');
       toast.push(verdict === 'approved' ? 'Decision entered into the ledger.' : 'Filing rejected.');
-      router.push('/admin');
+      router.push('/admin/queue');
       router.refresh();
     } catch (err) {
       toast.push(err instanceof Error ? err.message : 'Something went wrong');
@@ -50,17 +50,12 @@ export function AdminReviewControls({
   }
 
   return (
-    <div className="rounded-xl border border-white/8 bg-white/4 p-5">
-      <div className="flex items-center gap-2 mb-5">
-        <Gavel size={15} className="text-amber-400" />
-        <p className="text-[10px] font-bold uppercase tracking-widest text-white/30">Admin Decision</p>
-      </div>
-
+    <div className="space-y-6">
       {/* Impact slider */}
-      <div className="mb-5">
-        <div className="flex items-center justify-between mb-2">
-          <label className="text-xs font-medium text-white/50">Final Impact</label>
-          <span className={`text-xl font-black font-mono ${impactColor}`}>
+      <div className="bg-secondary/30 rounded-2xl p-5 border border-border">
+        <div className="flex items-center justify-between mb-4">
+          <label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">Adjudicated Impact</label>
+          <span className={`text-2xl font-black font-mono ${impactColor}`}>
             {impact > 0 ? '+' : ''}{impact}
           </span>
         </div>
@@ -71,55 +66,58 @@ export function AdminReviewControls({
           step="1"
           value={impact}
           onChange={(e) => { setImpact(Number(e.target.value)); setConfirmReject(false); }}
-          className="w-full accent-white cursor-pointer"
+          className="w-full h-1.5 bg-secondary rounded-lg appearance-none cursor-pointer accent-primary"
         />
-        <div className="flex justify-between text-[10px] text-white/20 mt-1">
-          <span>-10</span>
-          <span>0</span>
-          <span>+10</span>
+        <div className="flex justify-between text-[10px] font-black text-muted-foreground/40 mt-2 uppercase tracking-tighter">
+          <span>Heavy Penalty (-10)</span>
+          <span>Zero</span>
+          <span>Max Reward (+10)</span>
         </div>
       </div>
 
       {/* Score preview */}
-      <div className="flex items-center justify-between rounded-lg bg-white/5 border border-white/8 px-4 py-3 mb-5">
-        <span className="text-xs text-white/40">Score preview</span>
-        <div className="flex items-center gap-2">
-          <span className="text-white/30 text-xs font-mono">{score}</span>
-          <span className="text-white/20">→</span>
-          <span className={`text-lg font-black font-mono ${scoreColor}`}>{previewScore}</span>
+      <div className="flex items-center justify-between rounded-2xl bg-primary/5 border border-primary/10 px-6 py-4">
+        <span className="text-[13px] font-bold text-primary/70">New Trust Score</span>
+        <div className="flex items-center gap-3">
+          <span className="text-muted-foreground/50 text-[13px] font-mono font-bold line-through">{score}</span>
+          <span className="text-primary/30">→</span>
+          <span className={`text-2xl font-black font-mono ${scoreColor}`}>{previewScore}</span>
         </div>
       </div>
 
       {/* Note */}
-      <textarea
-        value={note}
-        onChange={(e) => setNote(e.target.value)}
-        placeholder="Internal note (optional)…"
-        rows={2}
-        className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/70 placeholder:text-white/20 focus:outline-none focus:border-white/25 resize-none mb-4"
-      />
+      <div className="space-y-2">
+        <label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground ml-1">Internal Note</label>
+        <textarea
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="Reasoning for this decision..."
+          rows={3}
+          className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-[14px] text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all resize-none font-medium"
+        />
+      </div>
 
       {/* Actions */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-4">
         <button
           onClick={() => decide('rejected')}
           disabled={loading}
-          className={`flex items-center justify-center gap-2 rounded-xl border py-3 text-sm font-bold transition-all disabled:opacity-50 ${
+          className={`flex items-center justify-center gap-2 h-14 rounded-2xl border-2 transition-all disabled:opacity-50 text-[14px] font-black uppercase tracking-wider ${
             confirmReject
-              ? 'bg-red-500/30 border-red-500/50 text-red-300 animate-pulse'
-              : 'bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20'
+              ? 'bg-destructive/10 border-destructive text-destructive animate-pulse'
+              : 'bg-background border-border text-muted-foreground hover:border-destructive/30 hover:text-destructive'
           }`}
         >
-          <XCircle size={15} />
-          {confirmReject ? 'Confirm reject' : 'Reject'}
+          <XCircle size={18} />
+          {confirmReject ? 'Are you sure?' : 'Reject'}
         </button>
         <button
           onClick={() => decide('approved')}
           disabled={loading}
-          className="flex items-center justify-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/15 py-3 text-sm font-bold text-emerald-400 hover:bg-emerald-500/25 transition-all disabled:opacity-50"
+          className="flex items-center justify-center gap-2 h-14 rounded-2xl bg-primary text-primary-foreground text-[14px] font-black uppercase tracking-wider hover:opacity-90 shadow-lg shadow-primary/20 transition-all disabled:opacity-50"
         >
-          <CheckCircle size={15} />
-          {loading ? 'Saving…' : 'Approve'}
+          <CheckCircle size={18} />
+          {loading ? 'Processing...' : 'Approve Case'}
         </button>
       </div>
     </div>

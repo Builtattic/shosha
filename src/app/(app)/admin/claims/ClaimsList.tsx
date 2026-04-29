@@ -43,50 +43,57 @@ export function ClaimsList({ initialClaims }: { initialClaims: ClaimRow[] }) {
 
   if (!claims.length) {
     return (
-      <div className="rounded-xl border border-white/8 bg-white/4 p-16 text-center">
-        <CheckCircle size={28} className="text-emerald-400 mx-auto mb-3" />
-        <p className="text-white/50 text-sm font-medium">No claims pending.</p>
-        <p className="text-white/25 text-xs mt-1">No owner has asked to pin a name to a dossier.</p>
+      <div className="rounded-3xl border border-border bg-card p-20 text-center">
+        <div className="h-16 w-16 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-6">
+          <CheckCircle size={32} />
+        </div>
+        <h3 className="text-xl font-black text-foreground mb-2">No claims pending</h3>
+        <p className="text-muted-foreground text-sm">Identity verifications are up to date.</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-3">
+    <div className="divide-y divide-border">
       {claims.map((claim) => {
         const note = (claim.proofPayload as { note?: string } | undefined)?.note;
         const busy = busyId === claim._id || pending;
         return (
-          <article key={claim._id} className="rounded-xl border border-white/8 bg-white/4 p-5">
-            <div className="flex items-start justify-between gap-4">
+          <article key={claim._id} className="p-6 hover:bg-secondary/20 transition-colors">
+            <div className="flex items-start justify-between gap-6">
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-orange-500/15 text-orange-400 border border-orange-500/25">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-orange-100 text-orange-700">
                     {claim.proofType.replace(/_/g, ' ')}
                   </span>
                   {claim.createdAt && (
-                    <span className="text-[10px] text-white/25">
+                    <span className="text-[11px] font-bold text-muted-foreground/40 uppercase tracking-widest">
                       {new Date(claim.createdAt).toLocaleDateString()}
                     </span>
                   )}
                 </div>
-                <h2 className="text-lg font-bold text-white">{claim.account?.displayName ?? 'Unknown'}</h2>
+                <h2 className="text-xl font-black text-foreground">{claim.account?.displayName ?? 'Unknown Account'}</h2>
                 {claim.account && (
-                  <p className="text-xs text-white/30 mt-0.5">{claim.account.platform} · @{claim.account.username}</p>
+                  <p className="text-xs font-bold text-muted-foreground mt-1 uppercase tracking-widest">
+                    @{claim.account.username} · {claim.account.platform}
+                  </p>
                 )}
-                {claim.user && (
-                  <div className="flex items-center gap-1.5 mt-3">
-                    <User size={11} className="text-white/25" />
-                    <p className="text-xs text-white/40">
-                      Filed by @{claim.user.username}
-                      {claim.user.email ? ` (${claim.user.email})` : ''}
-                    </p>
+                
+                {note && (
+                  <div className="mt-4 p-4 rounded-2xl bg-secondary/30 border border-border/50">
+                    <p className="text-[14px] text-muted-foreground font-medium italic">"{note}"</p>
                   </div>
                 )}
-                {note && (
-                  <div className="flex items-start gap-1.5 mt-2">
-                    <FileText size={11} className="text-white/25 mt-0.5" />
-                    <p className="text-xs text-white/50">{note}</p>
+
+                {claim.user && (
+                  <div className="flex items-center gap-2 mt-4">
+                    <div className="h-6 w-6 rounded-full bg-secondary flex items-center justify-center text-muted-foreground">
+                      <User size={12} />
+                    </div>
+                    <p className="text-[12px] font-bold text-muted-foreground">
+                      Filed by <span className="text-foreground">@{claim.user.username}</span>
+                      {claim.user.email ? <span className="ml-1 opacity-50 font-medium">({claim.user.email})</span> : ''}
+                    </p>
                   </div>
                 )}
               </div>
@@ -94,17 +101,17 @@ export function ClaimsList({ initialClaims }: { initialClaims: ClaimRow[] }) {
                 <button
                   onClick={() => decide(claim._id, 'approved')}
                   disabled={busy}
-                  className="flex items-center gap-2 rounded-lg bg-emerald-500/15 border border-emerald-500/25 px-3 py-2 text-xs font-bold text-emerald-400 hover:bg-emerald-500/25 transition-colors disabled:opacity-50"
+                  className="flex items-center justify-center gap-2 h-10 px-4 rounded-xl bg-emerald-600 text-white text-[12px] font-black uppercase tracking-wider hover:opacity-90 transition-opacity disabled:opacity-50 shadow-sm"
                 >
-                  <CheckCircle size={13} />
+                  <CheckCircle size={14} />
                   Approve
                 </button>
                 <button
                   onClick={() => decide(claim._id, 'rejected')}
                   disabled={busy}
-                  className="flex items-center gap-2 rounded-lg bg-red-500/10 border border-red-500/20 px-3 py-2 text-xs font-bold text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                  className="flex items-center justify-center gap-2 h-10 px-4 rounded-xl border border-border bg-background text-[12px] font-black uppercase tracking-wider text-muted-foreground hover:border-red-200 hover:text-red-600 transition-all disabled:opacity-50"
                 >
-                  <XCircle size={13} />
+                  <XCircle size={14} />
                   Reject
                 </button>
               </div>

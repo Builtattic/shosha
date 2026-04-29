@@ -43,42 +43,51 @@ export function AuditsList({ initialAudits }: { initialAudits: AuditRow[] }) {
 
   if (!audits.length) {
     return (
-      <div className="rounded-xl border border-white/8 bg-white/4 p-16 text-center">
-        <CheckCircle size={28} className="text-emerald-400 mx-auto mb-3" />
-        <p className="text-white/50 text-sm font-medium">No audits pending.</p>
-        <p className="text-white/25 text-xs mt-1">The audit queue is clear.</p>
+      <div className="rounded-3xl border border-border bg-card p-20 text-center">
+        <div className="h-16 w-16 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-6">
+          <CheckCircle size={32} />
+        </div>
+        <h3 className="text-xl font-black text-foreground mb-2">No audits pending</h3>
+        <p className="text-muted-foreground text-sm">The verification queue is clear.</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-3">
+    <div className="divide-y divide-border">
       {audits.map((audit) => {
         const busy = busyId === audit._id || pending;
         return (
-          <article key={audit._id} className="rounded-xl border border-white/8 bg-white/4 p-5">
-            <div className="flex items-start justify-between gap-4">
+          <article key={audit._id} className="p-6 hover:bg-secondary/20 transition-colors">
+            <div className="flex items-start justify-between gap-6">
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <Clock size={12} className="text-cyan-400" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-cyan-400">{audit.status}</span>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-cyan-100 text-cyan-700">
+                    {audit.status}
+                  </span>
                   {audit.createdAt && (
-                    <span className="text-[10px] text-white/25">
+                    <span className="text-[11px] font-bold text-muted-foreground/40 uppercase tracking-widest">
                       {new Date(audit.createdAt).toLocaleDateString()}
                     </span>
                   )}
                 </div>
-                <h2 className="text-lg font-bold text-white">{audit.account?.displayName ?? 'Unknown Account'}</h2>
+                <h2 className="text-xl font-black text-foreground">{audit.account?.displayName ?? 'Unknown Account'}</h2>
                 {audit.account && (
-                  <p className="text-xs text-white/30 mt-0.5">@{audit.account.username} · {audit.account.platform}</p>
+                  <p className="text-xs font-bold text-muted-foreground mt-1 uppercase tracking-widest">
+                    @{audit.account.username} · {audit.account.platform}
+                  </p>
                 )}
-                <p className="text-sm text-white/50 mt-3 leading-relaxed">{audit.reason || 'No reason provided.'}</p>
+                <p className="text-[15px] text-muted-foreground mt-4 leading-relaxed font-medium bg-secondary/30 p-4 rounded-2xl border border-border/50">
+                  {audit.reason || 'No reason provided.'}
+                </p>
                 {audit.user && (
-                  <div className="flex items-center gap-1.5 mt-3">
-                    <User size={11} className="text-white/25" />
-                    <p className="text-xs text-white/30">
-                      Filed by @{audit.user.username}
-                      {audit.user.email ? ` (${audit.user.email})` : ''}
+                  <div className="flex items-center gap-2 mt-4">
+                    <div className="h-6 w-6 rounded-full bg-secondary flex items-center justify-center text-muted-foreground">
+                      <User size={12} />
+                    </div>
+                    <p className="text-[12px] font-bold text-muted-foreground">
+                      Requested by <span className="text-foreground">@{audit.user.username}</span>
+                      {audit.user.email ? <span className="ml-1 opacity-50 font-medium">({audit.user.email})</span> : ''}
                     </p>
                   </div>
                 )}
@@ -87,17 +96,17 @@ export function AuditsList({ initialAudits }: { initialAudits: AuditRow[] }) {
                 <button
                   onClick={() => decide(audit._id, 'completed')}
                   disabled={busy}
-                  className="flex items-center gap-2 rounded-lg bg-emerald-500/15 border border-emerald-500/25 px-3 py-2 text-xs font-bold text-emerald-400 hover:bg-emerald-500/25 transition-colors disabled:opacity-50"
+                  className="flex items-center justify-center gap-2 h-10 px-4 rounded-xl bg-emerald-600 text-white text-[12px] font-black uppercase tracking-wider hover:opacity-90 transition-opacity disabled:opacity-50 shadow-sm"
                 >
-                  <CheckCircle size={13} />
-                  Complete
+                  <CheckCircle size={14} />
+                  Approve
                 </button>
                 <button
                   onClick={() => decide(audit._id, 'rejected')}
                   disabled={busy}
-                  className="flex items-center gap-2 rounded-lg bg-red-500/10 border border-red-500/20 px-3 py-2 text-xs font-bold text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                  className="flex items-center justify-center gap-2 h-10 px-4 rounded-xl border border-border bg-background text-[12px] font-black uppercase tracking-wider text-muted-foreground hover:border-red-200 hover:text-red-600 transition-all disabled:opacity-50"
                 >
-                  <XCircle size={13} />
+                  <XCircle size={14} />
                   Reject
                 </button>
               </div>

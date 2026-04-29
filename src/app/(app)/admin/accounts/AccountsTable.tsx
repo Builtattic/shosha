@@ -21,10 +21,10 @@ function ScoreBar({ score }: { score: number }) {
   const color = score >= 70 ? 'bg-emerald-500' : score >= 40 ? 'bg-amber-500' : 'bg-red-500';
   return (
     <div className="flex items-center gap-2">
-      <div className="w-16 h-1.5 rounded-full bg-white/10 overflow-hidden">
+      <div className="w-16 h-1.5 rounded-full bg-secondary overflow-hidden">
         <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${score}%` }} />
       </div>
-      <span className={`font-mono text-xs font-bold ${score >= 70 ? 'text-emerald-400' : score >= 40 ? 'text-amber-400' : 'text-red-400'}`}>
+      <span className={`font-mono text-[11px] font-black ${score >= 70 ? 'text-emerald-600' : score >= 40 ? 'text-amber-600' : 'text-red-600'}`}>
         {score}
       </span>
     </div>
@@ -68,7 +68,7 @@ export function AccountsTable({ initialAccounts }: { initialAccounts: AccountRec
 
   function SortIcon({ col }: { col: typeof sortBy }) {
     if (sortBy !== col) return <ChevronUp size={12} className="opacity-20" />;
-    return sortDir === 'asc' ? <ChevronUp size={12} className="text-white/60" /> : <ChevronDown size={12} className="text-white/60" />;
+    return sortDir === 'asc' ? <ChevronUp size={12} className="text-foreground" /> : <ChevronDown size={12} className="text-foreground" />;
   }
 
   async function saveScore(accountId: string) {
@@ -106,143 +106,147 @@ export function AccountsTable({ initialAccounts }: { initialAccounts: AccountRec
   }
 
   return (
-    <div>
+    <div className="bg-card">
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-5">
+      <div className="p-4 border-b border-border flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/25 pointer-events-none" />
+          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
           <input
             type="text"
-            placeholder="Search accounts…"
+            placeholder="Search accounts..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-xl border border-white/10 bg-white/5 pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-white/25"
+            className="w-full h-11 rounded-xl border border-border bg-secondary/50 pl-10 pr-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all"
           />
         </div>
         <select
           value={platform}
           onChange={(e) => setPlatform(e.target.value)}
-          className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white/70 focus:outline-none focus:border-white/25"
+          className="h-11 rounded-xl border border-border bg-secondary/50 px-4 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all"
         >
           {platforms.map((p) => (
-            <option key={p} value={p} className="bg-[#1a1a1a]">{p === 'all' ? 'All platforms' : p}</option>
+            <option key={p} value={p}>{p === 'all' ? 'All platforms' : p}</option>
           ))}
         </select>
       </div>
 
-      <p className="text-xs text-white/30 mb-3 font-medium">{filtered.length} account{filtered.length !== 1 ? 's' : ''}</p>
-
       {/* Score edit modal */}
       {editScore && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setEditScore(null)}>
-          <div className="rounded-2xl border border-white/15 bg-[#181818] p-6 w-72 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-white font-bold mb-1">Override Score</h3>
-            <p className="text-white/40 text-xs mb-4">Set a new trust score (0–100).</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[2px]" onClick={() => setEditScore(null)}>
+          <div className="rounded-2xl border border-border bg-background p-6 w-80 shadow-2xl animate-in zoom-in-95 duration-100" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-foreground font-black text-lg mb-1">Override Score</h3>
+            <p className="text-muted-foreground text-[13px] mb-6">Manually set the trust score (0–100).</p>
             <input
               type="number"
               min={0}
               max={100}
               value={editScore.value}
               onChange={(e) => setEditScore({ ...editScore, value: Number(e.target.value) })}
-              className="w-full rounded-xl border border-white/15 bg-white/8 px-4 py-2.5 text-white text-2xl font-mono font-bold text-center focus:outline-none focus:border-white/30 mb-4"
+              className="w-full h-20 rounded-2xl border-2 border-primary/20 bg-secondary/50 px-4 py-2 text-foreground text-4xl font-mono font-black text-center focus:outline-none focus:border-primary mb-6 transition-all"
               autoFocus
             />
-            <div className="flex gap-2">
-              <button onClick={() => setEditScore(null)} className="flex-1 rounded-xl border border-white/15 py-2 text-sm text-white/50 hover:bg-white/5 transition-colors">Cancel</button>
-              <button onClick={() => saveScore(editScore.id)} className="flex-1 rounded-xl bg-white text-black py-2 text-sm font-bold hover:bg-white/90 transition-colors">Save</button>
+            <div className="flex gap-3">
+              <button onClick={() => setEditScore(null)} className="flex-1 h-11 rounded-xl border border-border py-2 text-[13px] font-bold text-muted-foreground hover:bg-secondary transition-colors">Cancel</button>
+              <button onClick={() => saveScore(editScore.id)} className="flex-1 h-11 rounded-xl bg-primary text-primary-foreground py-2 text-[13px] font-black hover:opacity-90 transition-opacity">Save Changes</button>
             </div>
           </div>
         </div>
       )}
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-xl border border-white/8">
+      <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-white/8">
-              <th className="text-left px-4 py-3 text-[11px] font-bold uppercase tracking-widest text-white/30">
-                <button onClick={() => toggleSort('displayName')} className="flex items-center gap-1 hover:text-white/60 transition-colors">
+            <tr className="bg-secondary/30">
+              <th className="text-left px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground border-b border-border">
+                <button onClick={() => toggleSort('displayName')} className="flex items-center gap-1 hover:text-foreground transition-colors">
                   Account <SortIcon col="displayName" />
                 </button>
               </th>
-              <th className="text-left px-4 py-3 text-[11px] font-bold uppercase tracking-widest text-white/30 hidden md:table-cell">Platform</th>
-              <th className="text-right px-4 py-3 text-[11px] font-bold uppercase tracking-widest text-white/30">
-                <button onClick={() => toggleSort('score')} className="flex items-center gap-1 ml-auto hover:text-white/60 transition-colors">
+              <th className="text-left px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground border-b border-border hidden md:table-cell">Platform</th>
+              <th className="text-right px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground border-b border-border">
+                <button onClick={() => toggleSort('score')} className="flex items-center gap-1 ml-auto hover:text-foreground transition-colors">
                   Score <SortIcon col="score" />
                 </button>
               </th>
-              <th className="text-right px-4 py-3 text-[11px] font-bold uppercase tracking-widest text-white/30 hidden lg:table-cell">
-                <button onClick={() => toggleSort('followers')} className="flex items-center gap-1 ml-auto hover:text-white/60 transition-colors">
+              <th className="text-right px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground border-b border-border hidden lg:table-cell">
+                <button onClick={() => toggleSort('followers')} className="flex items-center gap-1 ml-auto hover:text-foreground transition-colors">
                   Followers <SortIcon col="followers" />
                 </button>
               </th>
-              <th className="text-center px-4 py-3 text-[11px] font-bold uppercase tracking-widest text-white/30 hidden sm:table-cell">Claimed</th>
-              <th className="px-4 py-3 w-12" />
+              <th className="text-center px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground border-b border-border hidden sm:table-cell">Claimed</th>
+              <th className="px-6 py-4 w-12 border-b border-border" />
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-border">
             {filtered.map((account) => (
-              <tr key={account._id} className="border-b border-white/5 hover:bg-white/3 transition-colors">
-                <td className="px-4 py-3">
-                  <Link href={`/account/${account._id}`} className="group flex items-start gap-2.5">
-                    <div>
-                      <p className="font-semibold text-white group-hover:text-white/80 transition-colors flex items-center gap-1.5">
-                        {account.displayName}
-                        <ExternalLink size={11} className="opacity-0 group-hover:opacity-40 transition-opacity" />
-                      </p>
-                      <p className="text-xs text-white/30">@{account.username}</p>
-                    </div>
+              <tr key={account._id} className="hover:bg-secondary/20 transition-colors group">
+                <td className="px-6 py-4">
+                  <Link href={`/account/${account._id}`} className="group inline-block">
+                    <p className="font-bold text-foreground group-hover:text-primary transition-colors flex items-center gap-1.5">
+                      {account.displayName}
+                      <ExternalLink size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </p>
+                    <p className="text-xs text-muted-foreground">@{account.username}</p>
                   </Link>
                 </td>
-                <td className="px-4 py-3 hidden md:table-cell">
-                  <span className="text-sm">{PLATFORM_ICONS[account.platform] ?? '?'}</span>
-                  <span className="ml-2 text-xs text-white/40 capitalize">{account.platform}</span>
+                <td className="px-6 py-4 hidden md:table-cell">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">{PLATFORM_ICONS[account.platform] ?? '?'}</span>
+                    <span className="text-[12px] font-bold text-muted-foreground capitalize">{account.platform}</span>
+                  </div>
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-6 py-4">
                   <div className="flex justify-end">
                     <ScoreBar score={account.score} />
                   </div>
                 </td>
-                <td className="px-4 py-3 text-right hidden lg:table-cell">
-                  <span className="text-xs text-white/40 font-mono">{account.followers ?? '—'}</span>
+                <td className="px-6 py-4 text-right hidden lg:table-cell">
+                  <span className="text-[12px] text-muted-foreground font-mono font-bold">{account.followers ?? '—'}</span>
                 </td>
-                <td className="px-4 py-3 text-center hidden sm:table-cell">
+                <td className="px-6 py-4 text-center hidden sm:table-cell">
                   {account.claimed
-                    ? <CheckCircle size={14} className="text-emerald-400 mx-auto" />
-                    : <span className="text-white/15 text-xs">—</span>
+                    ? <div className="h-6 w-6 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 mx-auto">
+                        <CheckCircle size={14} />
+                      </div>
+                    : <span className="text-muted-foreground/30 text-xs">—</span>
                   }
                 </td>
-                <td className="px-4 py-3 text-right relative">
+                <td className="px-6 py-4 text-right relative">
                   <button
                     onClick={() => setOpenMenu(openMenu === account._id ? null : account._id)}
-                    className="p-1.5 rounded-lg hover:bg-white/8 text-white/30 hover:text-white transition-all"
+                    className="p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-all"
                   >
-                    <MoreHorizontal size={15} />
+                    <MoreHorizontal size={16} />
                   </button>
                   {openMenu === account._id && (
-                    <div className="absolute right-3 top-10 z-50 w-48 rounded-xl border border-white/10 bg-[#1a1a1a] shadow-2xl overflow-hidden">
-                      <button
-                        onClick={() => { setEditScore({ id: account._id, value: account.score }); setOpenMenu(null); }}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 hover:bg-white/8 hover:text-white transition-colors text-left"
-                      >
-                        <Edit3 size={14} />
-                        Override score
-                      </button>
-                      <button
-                        onClick={() => deleteAccount(account._id, account.displayName)}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors text-left"
-                      >
-                        <Trash2 size={14} />
-                        Delete account
-                      </button>
-                    </div>
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setOpenMenu(null)} />
+                      <div className="absolute right-6 top-12 z-20 w-48 rounded-xl border border-border bg-background shadow-xl overflow-hidden animate-in fade-in zoom-in duration-100">
+                        <button
+                          onClick={() => { setEditScore({ id: account._id, value: account.score }); setOpenMenu(null); }}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-[13px] font-bold text-foreground hover:bg-secondary transition-colors text-left"
+                        >
+                          <Edit3 size={14} className="text-primary" />
+                          Override score
+                        </button>
+                        <div className="h-px bg-border mx-2" />
+                        <button
+                          onClick={() => deleteAccount(account._id, account.displayName)}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-[13px] font-bold text-destructive hover:bg-destructive/5 transition-colors text-left"
+                        >
+                          <Trash2 size={14} />
+                          Delete account
+                        </button>
+                      </div>
+                    </>
                   )}
                 </td>
               </tr>
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-12 text-center text-white/25 text-sm">
+                <td colSpan={6} className="px-6 py-20 text-center text-muted-foreground text-[13px] font-medium">
                   No accounts match your filters.
                 </td>
               </tr>
