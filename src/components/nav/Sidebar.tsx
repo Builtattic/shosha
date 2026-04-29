@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Target, TrendingUp, Info, User, ShieldAlert, Settings, Globe, ChevronDown, ShieldCheck } from 'lucide-react';
+import { Home, Target, TrendingUp, Info, User, ShieldAlert, Settings, Globe, ChevronDown, ShieldCheck, Newspaper } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type LiveStats = { eventsToday: number; avgWeeklyDelta: number };
@@ -59,6 +59,7 @@ export function Sidebar() {
 
   const items = [
     { href: '/dashboard', label: 'Home', icon: Home },
+    { href: '/feed', label: 'Feed', icon: Newspaper },
     { href: '/impact', label: 'Impact', icon: Target },
     { href: '/ranks', label: 'Ranks', icon: TrendingUp },
     { href: '/about', label: 'About', icon: Info },
