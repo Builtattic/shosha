@@ -79,7 +79,7 @@ export async function GET(request: Request) {
   const accounts = await Promise.all(accountIds.map((id) => accountsRepo.findById(id)));
   const accountMap = new Map(accounts.filter(Boolean).map((account) => [account!._id, account!]));
 
-  let feed = reports
+  let feed: any[] = reports
     .map((report) => ({ ...report, account: accountMap.get(report.accountId) ?? null }))
     .filter((report) => report.account !== null);
 
@@ -91,7 +91,7 @@ export async function GET(request: Request) {
     feed = feed.filter((report) => followed.has(report.accountId));
   } else {
     // Append news for non-following tabs
-    feed = [...feed, ...liveNews];
+    feed = [...feed, ...liveNews] as any[];
   }
 
   if (filter === 'top') {
