@@ -38,7 +38,10 @@ export default function SignInPage() {
       } else {
         await signIn(email, password);
       }
-      router.push('/dashboard');
+      
+      const searchParams = new URLSearchParams(window.location.search);
+      const redirect = searchParams.get('redirect') || '/dashboard';
+      router.push(redirect);
     } catch (err: any) {
       setError(err.message?.replace('Firebase: ', '').replace(/\(auth\/.*\)/, '').trim() || 'Something went wrong');
     } finally {
@@ -51,7 +54,10 @@ export default function SignInPage() {
     setLoading(true);
     try {
       await signInWithGoogle();
-      router.push('/dashboard');
+      
+      const searchParams = new URLSearchParams(window.location.search);
+      const redirect = searchParams.get('redirect') || '/dashboard';
+      router.push(redirect);
     } catch (err: any) {
       setError(err.message?.replace('Firebase: ', '') || 'Google sign-in failed');
     } finally {
@@ -80,8 +86,13 @@ export default function SignInPage() {
     setLoading(true);
     try {
       const code = otp.join('');
-      await confirmResult.confirm(code);
-      router.push('/dashboard');
+      const cred = await confirmResult.confirm(code);
+      const token = await cred.user.getIdToken();
+      document.cookie = `__session=${token}; path=/; max-age=3600; SameSite=Lax`;
+      
+      const searchParams = new URLSearchParams(window.location.search);
+      const redirect = searchParams.get('redirect') || '/dashboard';
+      router.push(redirect);
     } catch (err: any) {
       setError('Invalid OTP. Please try again.');
     } finally {

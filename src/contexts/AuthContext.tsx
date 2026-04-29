@@ -50,7 +50,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   async function signIn(email: string, password: string) {
-    await signInWithEmailAndPassword(auth, email, password);
+    const cred = await signInWithEmailAndPassword(auth, email, password);
+    const token = await cred.user.getIdToken();
+    document.cookie = `__session=${token}; path=/; max-age=3600; SameSite=Lax`;
   }
 
   async function signUp(email: string, password: string, displayName?: string) {
@@ -59,12 +61,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await updateProfile(cred.user, { displayName });
     }
     await sendEmailVerification(cred.user);
+    const token = await cred.user.getIdToken();
+    document.cookie = `__session=${token}; path=/; max-age=3600; SameSite=Lax`;
   }
 
   async function signInWithGoogle() {
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
-    await signInWithPopup(auth, provider);
+    const cred = await signInWithPopup(auth, provider);
+    const token = await cred.user.getIdToken();
+    document.cookie = `__session=${token}; path=/; max-age=3600; SameSite=Lax`;
   }
 
   async function sendPhoneOtp(phone: string, recaptchaContainer: string) {
