@@ -85,6 +85,25 @@ export type AppUser = {
   ytUrl?: string;
   fbUrl?: string;
   snapchatUrl?: string;
+  
+  // Extended Edit Profile fields
+  headline?: string;
+  bio?: string;
+  category?: string;
+  primaryFocus?: string;
+  profileVisibility?: string;
+  massiveAction?: string;
+  peopleMultiplier?: string;
+  reachMultiplier?: string;
+  impactMultiplier?: string;
+  credibilityMultiplier?: string;
+  momentumMultiplier?: string;
+  innovationMultiplier?: string;
+  communityMultiplier?: string;
+  resourceMultiplier?: string;
+  legacyMultiplier?: string;
+  websiteUrl?: string;
+  photoUrl?: string;
 };
 
 function ref() {

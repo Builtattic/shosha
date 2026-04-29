@@ -51,7 +51,11 @@ export async function PATCH(req: NextRequest) {
       'occupationRole', 'networkSize', 'education', 'specializedField',
       'managesMoneyPeopleSystem', 'physicalIntellectualLimitations',
       'igUrl', 'tiktokUrl', 'xUrl', 'linkedinUrl', 'redditUrl',
-      'ytUrl', 'fbUrl', 'snapchatUrl', 'onboardingComplete'
+      'ytUrl', 'fbUrl', 'snapchatUrl', 'onboardingComplete',
+      'headline', 'bio', 'category', 'primaryFocus', 'profileVisibility',
+      'massiveAction', 'peopleMultiplier', 'reachMultiplier', 'impactMultiplier', 'credibilityMultiplier',
+      'momentumMultiplier', 'innovationMultiplier', 'communityMultiplier', 'resourceMultiplier', 'legacyMultiplier',
+      'websiteUrl', 'photoUrl'
     ] as const;
 
     const patch: Record<string, unknown> = {};

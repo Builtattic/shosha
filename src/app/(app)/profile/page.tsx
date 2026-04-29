@@ -122,7 +122,7 @@ export default function ProfilePage() {
 
   const displayName = appUser?.name || firebaseUser?.displayName || firebaseUser?.email?.split('@')[0] || 'Unknown User';
   const username = appUser?.username || 'user';
-  const avatarUrl = firebaseUser?.photoURL ?? `https://api.dicebear.com/9.x/initials/svg?seed=${displayName}&backgroundColor=1a1a1a&textColor=ffffff`;
+  const avatarUrl = appUser?.photoUrl ?? firebaseUser?.photoURL ?? `https://api.dicebear.com/9.x/initials/svg?seed=${displayName}&backgroundColor=1a1a1a&textColor=ffffff`;
 
   const recentEvents: any[] = data?.recentEvents ?? [];
   const positiveEvents = recentEvents.filter(e => (e.eventType ?? e.type) === 'positive');
@@ -236,7 +236,7 @@ export default function ProfilePage() {
             </div>
           </div>
           <button
-            onClick={() => router.push('/onboard')}
+            onClick={() => router.push('/profile/edit')}
             className="flex sm:shrink-0 items-center justify-center gap-1.5 rounded-full border border-border bg-background px-4 py-2 text-[13px] font-semibold text-foreground shadow-sm transition-all hover:bg-muted w-full sm:w-auto"
           >
             <Pencil size={14} /> Edit Profile
