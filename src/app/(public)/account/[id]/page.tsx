@@ -101,8 +101,8 @@ export default async function AccountPage({ params, searchParams }: { params: { 
           </div>
           <div className="pt-1 shrink-0">
             {/* Action Button matching the design */}
-            {account.claimable !== false ? (
-              <DossierActions accountId={account._id} claimedBy={account.claimedBy} claimable={account.claimable !== false} />
+            {(account.claimable as boolean | undefined) !== false ? (
+              <DossierActions accountId={account._id} claimedBy={account.claimedBy} claimable={(account.claimable as boolean | undefined) !== false} />
             ) : (
               <button className="flex items-center gap-2 rounded-full border border-border bg-background px-4 py-1.5 text-[13px] font-bold text-foreground shadow-sm transition-hover hover:bg-muted">
                 Following <Bell size={14} />
