@@ -1,26 +1,48 @@
 'use client';
 
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { 
-  MessageSquare, 
-  Share2, 
-  Bookmark, 
-  MapPin, 
-  Globe, 
-  CheckCircle2, 
-  Plus, 
+import {
+  MessageSquare,
+  Share2,
+  Bookmark,
+  MapPin,
+  Globe,
+  CheckCircle2,
+  Plus,
   Minus,
   PlayCircle,
   ImageIcon,
   Twitter,
   Instagram,
   Facebook,
-  AtSign
+  AtSign,
+  Send
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/Toast';
+
+type CommentItem = {
+  id: string;
+  text: string;
+  createdAt: string;
+  author: { id: string; name: string; username: string; avatar: string };
+};
+
+function relativeTime(iso: string): string {
+  const then = new Date(iso).getTime();
+  const now = Date.now();
+  const sec = Math.max(1, Math.floor((now - then) / 1000));
+  if (sec < 60) return `${sec}s ago`;
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const day = Math.floor(hr / 24);
+  if (day < 7) return `${day}d ago`;
+  return new Date(iso).toLocaleDateString();
+}
 
 export interface FeedItemProps {
   id: string;
@@ -70,20 +92,67 @@ export function FeedItem({
   const [localStats, setLocalStats] = useState(stats);
   const [viewerState, setViewerState] = useState(viewer ?? { vote: null, bookmarked: false });
   const [busy, setBusy] = useState<string | null>(null);
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [comments, setComments] = useState<CommentItem[] | null>(null);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentDraft, setCommentDraft] = useState('');
 
-  async function interact(action: 'align' | 'oppose' | 'comment' | 'share' | 'bookmark') {
-    let text = '';
-    if (action === 'comment') {
-      text = window.prompt('Add a short public comment')?.trim() ?? '';
-      if (!text) return;
+  async function loadComments() {
+    setCommentsLoading(true);
+    try {
+      const response = await fetch(`/api/reports/${id}/comments`);
+      const payload = await response.json();
+      if (!payload.ok) throw new Error(payload.error?.message ?? 'Failed to load comments.');
+      setComments(payload.data ?? []);
+    } catch (error) {
+      toast.push(error instanceof Error ? error.message : 'Failed to load comments.');
+    } finally {
+      setCommentsLoading(false);
     }
+  }
 
+  async function toggleComments() {
+    const next = !commentsOpen;
+    setCommentsOpen(next);
+    if (next && comments === null) await loadComments();
+  }
+
+  async function submitComment() {
+    const text = commentDraft.trim();
+    if (!text) return;
+    setBusy('comment');
+    try {
+      const response = await fetch(`/api/reports/${id}/interactions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'comment', text })
+      });
+      const payload = await response.json();
+      if (!payload.ok) {
+        if (response.status === 401) {
+          router.push('/sign-in');
+          return;
+        }
+        throw new Error(payload.error?.message ?? 'Comment failed.');
+      }
+      if (payload.data.stats) setLocalStats(payload.data.stats);
+      setCommentDraft('');
+      // Refresh comment list so the new one appears.
+      await loadComments();
+    } catch (error) {
+      toast.push(error instanceof Error ? error.message : 'Comment failed.');
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function interact(action: 'align' | 'oppose' | 'share' | 'bookmark') {
     setBusy(action);
     try {
       const response = await fetch(`/api/reports/${id}/interactions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(action === 'comment' ? { action, text } : { action })
+        body: JSON.stringify({ action })
       });
       const payload = await response.json();
       if (!payload.ok) {
@@ -246,9 +315,12 @@ export function FeedItem({
         <div className="flex items-center gap-8">
           <button
             type="button"
-            onClick={() => interact('comment')}
-            disabled={busy === 'comment'}
-            className="flex items-center gap-2 transition-colors hover:text-foreground active:scale-95 disabled:opacity-60"
+            onClick={toggleComments}
+            className={cn(
+              'flex items-center gap-2 transition-colors hover:text-foreground active:scale-95',
+              commentsOpen && 'text-foreground'
+            )}
+            aria-expanded={commentsOpen}
           >
             <MessageSquare size={18} />
             <span className="text-[13px] font-bold">{localStats.comments}</span>
@@ -272,6 +344,81 @@ export function FeedItem({
           <Bookmark size={18} fill={viewerState.bookmarked ? 'currentColor' : 'none'} />
         </button>
       </div>
+
+      <AnimatePresence initial={false}>
+        {commentsOpen && (
+          <motion.div
+            key="comments"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden border-t border-border/60 bg-background"
+          >
+            <div className="px-5 py-4">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  submitComment();
+                }}
+                className="flex items-center gap-2 mb-4"
+              >
+                <input
+                  type="text"
+                  value={commentDraft}
+                  onChange={(e) => setCommentDraft(e.target.value)}
+                  placeholder="Add a public comment..."
+                  maxLength={280}
+                  className="flex-1 rounded-xl border border-border bg-card px-4 py-2.5 text-[13px] focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+                <button
+                  type="submit"
+                  disabled={busy === 'comment' || !commentDraft.trim()}
+                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-foreground text-background disabled:opacity-40"
+                  aria-label="Post comment"
+                >
+                  <Send size={16} />
+                </button>
+              </form>
+
+              {commentsLoading && (
+                <p className="text-[12px] text-muted-foreground">Loading comments…</p>
+              )}
+
+              {!commentsLoading && comments && comments.length === 0 && (
+                <p className="text-[12px] text-muted-foreground">No comments yet — be the first.</p>
+              )}
+
+              {!commentsLoading && comments && comments.length > 0 && (
+                <ul className="space-y-3">
+                  {comments.map((c) => (
+                    <li key={c.id} className="flex items-start gap-3">
+                      <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full border border-border bg-muted">
+                        {c.author.avatar ? (
+                          <img src={c.author.avatar} alt={c.author.name} className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-[12px] font-bold text-muted-foreground">
+                            {c.author.name[0]?.toUpperCase() ?? '?'}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-[13px] font-bold text-foreground truncate">
+                            {c.author.name}
+                          </span>
+                          <span className="text-[11px] text-muted-foreground/70">{relativeTime(c.createdAt)}</span>
+                        </div>
+                        <p className="text-[13px] text-foreground/90 break-words">{c.text}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

@@ -128,6 +128,27 @@ export async function listPublicFeed(limit = 50, statusIn: ReportStatus[] = ['ap
   return results.reverse().slice(0, limit);
 }
 
+/**
+ * Substring full-text search across description / feelings / category / deed.
+ * Pulls a recent window from RTDB and filters in-memory — fine at our current scale.
+ */
+export async function search(query: string, limit = 30, sampleSize = 500): Promise<ReportRecord[]> {
+  const trimmed = query.trim().toLowerCase();
+  if (!trimmed) return [];
+  const snap = await ref().orderByChild('createdAt').limitToLast(sampleSize).once('value');
+  const matches: ReportRecord[] = [];
+  snap.forEach((child) => {
+    const val = child.val() ?? {};
+    if (val.visibility === 'hidden') return;
+    if (val.status !== 'approved' && val.status !== 'ai_reviewed') return;
+    const haystack = `${val.description ?? ''} ${val.feelings ?? ''} ${val.aiVerdict?.categoryTags?.join(' ') ?? ''} ${val.aiVerdict?.reasoning ?? ''}`.toLowerCase();
+    if (haystack.includes(trimmed)) {
+      matches.push(withId<ReportRecord>(child.key!, val));
+    }
+  });
+  return matches.reverse().slice(0, limit);
+}
+
 export async function deleteById(id: string): Promise<void> {
   await ref().child(id).remove();
 }

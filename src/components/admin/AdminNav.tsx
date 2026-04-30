@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Activity, LayoutDashboard, ListTodo, Users, Database, ClipboardList, Search, ShieldAlert, PlusCircle, Newspaper, Settings } from 'lucide-react';
+import { Activity, LayoutDashboard, ListTodo, Users, Database, ClipboardList, Search, ShieldAlert, PlusCircle, Newspaper, Settings, Gavel } from 'lucide-react';
 
 const navItems = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
@@ -12,6 +12,7 @@ const navItems = [
   { href: '/admin/users', label: 'Users', icon: Users },
   { href: '/admin/accounts', label: 'Accounts', icon: Database },
   { href: '/admin/claims', label: 'Claims', icon: ClipboardList },
+  { href: '/admin/disputes', label: 'Disputes', icon: Gavel },
   { href: '/admin/audits', label: 'Audits', icon: Search },
   { href: '/admin/abuse', label: 'Abuse', icon: ShieldAlert },
   { href: '/admin/settings', label: 'Settings', icon: Settings },

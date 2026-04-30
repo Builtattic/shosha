@@ -64,12 +64,20 @@ export async function setVote(reportId: string, userId: string, value: VoteValue
   return { stats, vote: current === value ? null : value };
 }
 
+export type CommentRecord = {
+  _id: string;
+  reportId: string;
+  userId: string;
+  text: string;
+  createdAt: string;
+};
+
 export async function addComment(reportId: string, userId: string, text: string) {
   const reportRef = db().ref(`reports/${reportId}`);
   const reportSnap = await reportRef.once('value');
   if (!reportSnap.exists()) return null;
 
-  await db().ref('reportComments').push({
+  const commentRef = await db().ref('reportComments').push({
     reportId,
     userId,
     text,
@@ -79,7 +87,29 @@ export async function addComment(reportId: string, userId: string, text: string)
   const stats = safeStats(reportSnap.val()?.stats);
   stats.comments += 1;
   await reportRef.update({ stats, updatedAt: new Date().toISOString() });
-  return { stats };
+  return { stats, commentId: commentRef.key ?? undefined };
+}
+
+export async function listComments(reportId: string, limit = 100): Promise<CommentRecord[]> {
+  const snap = await db()
+    .ref('reportComments')
+    .orderByChild('reportId')
+    .equalTo(reportId)
+    .limitToLast(limit)
+    .once('value');
+  if (!snap.exists()) return [];
+  const out: CommentRecord[] = [];
+  snap.forEach((child) => {
+    const value = child.val() ?? {};
+    out.push({
+      _id: child.key!,
+      reportId: value.reportId,
+      userId: value.userId,
+      text: value.text,
+      createdAt: value.createdAt
+    });
+  });
+  return out.sort((a, b) => (a.createdAt > b.createdAt ? 1 : -1));
 }
 
 export async function addShare(reportId: string) {
@@ -103,4 +133,28 @@ export async function toggleBookmark(reportId: string, userId: string) {
   }
   await bookmarkRef.set({ reportId, userId, createdAt: new Date().toISOString() });
   return { bookmarked: true };
+}
+
+export type BookmarkRecord = {
+  reportId: string;
+  userId: string;
+  createdAt: string;
+};
+
+export async function listBookmarksForUser(userId: string, limit = 100): Promise<BookmarkRecord[]> {
+  const snap = await db()
+    .ref('reportBookmarks')
+    .orderByChild('userId')
+    .equalTo(userId)
+    .limitToLast(limit)
+    .once('value');
+  if (!snap.exists()) return [];
+  const out: BookmarkRecord[] = [];
+  snap.forEach((child) => {
+    const value = child.val() ?? {};
+    if (value.reportId && value.userId) {
+      out.push({ reportId: value.reportId, userId: value.userId, createdAt: value.createdAt ?? '' });
+    }
+  });
+  return out.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
 }

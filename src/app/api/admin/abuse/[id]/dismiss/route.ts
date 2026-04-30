@@ -3,6 +3,7 @@ import { getCurrentUser, isAdmin } from '@/lib/auth';
 import { idSchema } from '@/lib/validators';
 import * as adminActionsRepo from '@/lib/repos/adminActions';
 import * as reportsRepo from '@/lib/repos/reports';
+import * as notificationsRepo from '@/lib/repos/notifications';
 
 export async function POST(_req: Request, { params }: { params: { id: string } }) {
   const user = await getCurrentUser();
@@ -22,5 +23,17 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
     status: 'ai_reviewed',
   });
   await adminActionsRepo.create({ actor: user!, action: 'abuse.dismiss', entityType: 'report', entityId: id.data, before: report, after: updated });
+
+  if (report.reporterId) {
+    await notificationsRepo.create({
+      userId: report.reporterId,
+      kind: 'abuse_dismissed',
+      title: 'Abuse flag cleared',
+      body: 'A moderator reviewed your filing and cleared the abuse flag. It is back in the review queue.',
+      link: `/account/${report.accountId}`,
+      meta: { reportId: id.data, accountId: report.accountId }
+    });
+  }
+
   return ok(updated);
 }

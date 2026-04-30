@@ -15,6 +15,7 @@ import * as adminActionsRepo from '@/lib/repos/adminActions';
 import * as eventsRepo from '@/lib/repos/events';
 import * as reportsRepo from '@/lib/repos/reports';
 import * as usersRepo from '@/lib/repos/users';
+import * as notificationsRepo from '@/lib/repos/notifications';
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   const user = await getCurrentUser();
@@ -118,5 +119,22 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
   const persistedReport = await reportsRepo.update(id.data, { adminDecision, status, eventId });
   await adminActionsRepo.create({ actor: user!, action: 'report.adjudicate', entityType: 'report', entityId: id.data, before: { report, account }, after: { report: persistedReport, account: updatedAccount } });
+
+  // Notify the reporter of the verdict (skip anonymous filings).
+  if (report.reporterId) {
+    const approved = parsed.data.verdict === 'approved';
+    const subjectName = updatedAccount.displayName || updatedAccount.username || 'an account';
+    await notificationsRepo.create({
+      userId: report.reporterId,
+      kind: approved ? 'report_approved' : 'report_rejected',
+      title: approved ? 'Filing approved' : 'Filing rejected',
+      body: approved
+        ? `Your ${report.type} filing on ${subjectName} was approved (impact ${adminDecision.finalImpact >= 0 ? '+' : ''}${adminDecision.finalImpact}). Reporter score ${approved ? '+2' : '-3'}.`
+        : `Your ${report.type} filing on ${subjectName} was rejected. Reporter score -3.`,
+      link: `/account/${updatedAccount._id}`,
+      meta: { reportId: id.data, accountId: updatedAccount._id, finalImpact: adminDecision.finalImpact }
+    });
+  }
+
   return ok({ report: persistedReport, account: updatedAccount });
 }

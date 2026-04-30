@@ -10,7 +10,14 @@
       "Bash(git pull *)",
       "Bash(git config *)",
       "Bash(git -c pull.rebase=false pull origin shosha-app --ff-only)",
-      "Bash(git checkout *)"
+      "Bash(git checkout *)",
+      "Bash(git stash *)",
+      "Bash(gh api *)",
+      "Bash(git fetch *)",
+      "Bash(git commit --allow-empty -m ' *)",
+      "Bash(git push *)",
+      "Bash(pnpm test *)",
+      "Bash(pnpm build *)"
     ]
   }
 }

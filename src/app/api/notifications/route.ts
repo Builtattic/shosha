@@ -1,38 +1,42 @@
 import { ok } from '@/lib/api';
 import { getCurrentUser } from '@/lib/auth';
-import * as accountsRepo from '@/lib/repos/accounts';
-import * as reportsRepo from '@/lib/repos/reports';
+import * as notificationsRepo from '@/lib/repos/notifications';
 
 export async function GET() {
   const user = await getCurrentUser();
   if (!user) {
-    return ok([
-      {
-        id: 'signed-out',
-        title: 'Sign in to save your activity',
-        body: 'Create reports, upload evidence, and track your filings from one account.'
-      }
-    ]);
+    return ok({
+      items: [
+        {
+          id: 'signed-out',
+          kind: 'system',
+          title: 'Sign in to save your activity',
+          body: 'Create reports, upload evidence, and track your filings from one account.',
+          read: true,
+          link: '/sign-in',
+          createdAt: new Date().toISOString()
+        }
+      ],
+      unread: 0
+    });
   }
 
-  const reports = await reportsRepo.listByReporter(user._id, 5);
-  const accountIds = Array.from(new Set(reports.map((report) => report.accountId)));
-  const accounts = await Promise.all(accountIds.map((id) => accountsRepo.findById(id)));
-  const accountMap = new Map(accounts.filter(Boolean).map((account) => [account!._id, account!]));
+  const [items, unread] = await Promise.all([
+    notificationsRepo.listForUser(user._id, 50),
+    notificationsRepo.unreadCount(user._id)
+  ]);
 
-  return ok(
-    reports.length
-      ? reports.map((report) => ({
-          id: report._id,
-          title: `${report.type === 'positive' ? 'Positive' : 'Negative'} report ${report.status.replace('_', ' ')}`,
-          body: accountMap.get(report.accountId)?.displayName ?? report.description.slice(0, 80)
-        }))
-      : [
-          {
-            id: 'empty',
-            title: 'No filings yet',
-            body: 'Create your first report to start building the ledger.'
-          }
-        ]
-  );
+  return ok({
+    items: items.map((n) => ({
+      id: n._id,
+      kind: n.kind,
+      title: n.title,
+      body: n.body,
+      link: n.link,
+      meta: n.meta,
+      read: n.read,
+      createdAt: n.createdAt
+    })),
+    unread
+  });
 }

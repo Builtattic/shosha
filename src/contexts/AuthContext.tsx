@@ -22,7 +22,7 @@ type AuthContextType = {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, displayName?: string) => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
+  signInWithGoogle: () => Promise<boolean>;
   sendPhoneOtp: (phone: string, recaptchaContainer: string) => Promise<ConfirmationResult>;
   signOut: () => Promise<void>;
   getIdToken: () => Promise<string | null>;
@@ -66,8 +66,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     document.cookie = `__session=${token}; path=/; max-age=3600; SameSite=Lax`;
   }
 
-  async function signInWithGoogle() {
-    if (googleSignInInProgress.current) return;
+  async function signInWithGoogle(): Promise<boolean> {
+    if (googleSignInInProgress.current) return false;
     googleSignInInProgress.current = true;
     try {
       const provider = new GoogleAuthProvider();
@@ -75,13 +75,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const cred = await signInWithPopup(auth, provider);
       const token = await cred.user.getIdToken();
       document.cookie = `__session=${token}; path=/; max-age=3600; SameSite=Lax`;
+      return true;
     } catch (error: any) {
       // silently swallow popup cancellations — they are expected UX
       if (
         error.code === 'auth/cancelled-popup-request' ||
         error.code === 'auth/popup-closed-by-user'
       ) {
-        return;
+        return false;
       }
       throw error; // re-throw everything else so sign-in page can show error
     } finally {

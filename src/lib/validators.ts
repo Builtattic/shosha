@@ -83,6 +83,17 @@ export const auditRequestSchema = z.object({
   reason: z.string().max(500).default('')
 });
 
+export const disputeCreateSchema = z.object({
+  reportId: idSchema,
+  reason: z.string().min(10).max(500),
+  evidenceUrl: z.string().url().max(500).optional()
+});
+
+export const disputeDecisionSchema = z.object({
+  verdict: z.enum(['accepted', 'rejected']),
+  note: z.string().max(500).default('')
+});
+
 export const uploadIntentSchema = z.object({
   type: z.enum(['image', 'video'])
 });

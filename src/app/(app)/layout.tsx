@@ -1,5 +1,6 @@
 import { BottomNav } from '@/components/nav/BottomNav';
 import { Sidebar } from '@/components/nav/Sidebar';
+import { EmailVerificationBanner } from '@/components/auth/EmailVerificationBanner';
 
 export default function AppLayout({
   children,
@@ -15,6 +16,7 @@ export default function AppLayout({
 
       {/* Main Content */}
       <div className="flex-1 lg:pl-64">
+        <EmailVerificationBanner />
         {children}
       </div>
 

@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Mail, Phone, Eye, EyeOff, ArrowRight, ArrowLeft, CheckCircle2, Shield } from 'lucide-react';
 import type { ConfirmationResult } from 'firebase/auth';
 
-type AuthMode = 'choose' | 'email' | 'phone' | 'otp';
+type AuthMode = 'choose' | 'email' | 'phone' | 'otp' | 'loading';
 
 async function resolveRedirect(redirectParam: string): Promise<string> {
   try {
@@ -60,11 +60,11 @@ export default function SignInPage() {
       }
 
       const searchParams = new URLSearchParams(window.location.search);
+      setMode('loading');
       const dest = await resolveRedirect(searchParams.get('redirect') || '/dashboard');
       router.push(dest);
     } catch (err: any) {
       setError(err.message?.replace('Firebase: ', '').replace(/\(auth\/.*\)/, '').trim() || 'Something went wrong');
-    } finally {
       setLoading(false);
     }
   }
@@ -74,14 +74,21 @@ export default function SignInPage() {
     setError('');
     setGoogleLoading(true);
     try {
-      await signInWithGoogle();
+      const success = await signInWithGoogle();
+      if (!success) {
+        setGoogleLoading(false);
+        return;
+      }
 
       const searchParams = new URLSearchParams(window.location.search);
+      setMode('loading');
       const dest = await resolveRedirect(searchParams.get('redirect') || '/dashboard');
+      
+      // Do not set googleLoading to false here so the UI stays in a loading state
+      // while the Next.js router transitions to the new page.
       router.push(dest);
     } catch (err: any) {
       setError(err.message?.replace('Firebase: ', '') || 'Google sign-in failed');
-    } finally {
       setGoogleLoading(false);
     }
   }
@@ -112,11 +119,11 @@ export default function SignInPage() {
       document.cookie = `__session=${token}; path=/; max-age=3600; SameSite=Lax`;
 
       const searchParams = new URLSearchParams(window.location.search);
+      setMode('loading');
       const dest = await resolveRedirect(searchParams.get('redirect') || '/dashboard');
       router.push(dest);
     } catch (err: any) {
       setError('Invalid OTP. Please try again.');
-    } finally {
       setLoading(false);
     }
   }
@@ -361,6 +368,20 @@ export default function SignInPage() {
                 >
                   Didn&apos;t receive it? Try again
                 </button>
+              </motion.div>
+            )}
+            {/* Step 4: Loading / Redirecting */}
+            {mode === 'loading' && (
+              <motion.div key="loading" variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.2 }} className="flex flex-col items-center justify-center py-12">
+                <div className="relative w-16 h-16 flex items-center justify-center mb-6">
+                  <div className="absolute inset-0 border-4 border-muted rounded-full"></div>
+                  <div className="absolute inset-0 border-4 border-primary rounded-full border-t-transparent animate-spin"></div>
+                  <CheckCircle2 size={24} className="text-primary animate-pulse" />
+                </div>
+                <h2 className="text-xl font-bold mb-2">Preparing your profile</h2>
+                <p className="text-sm text-muted-foreground text-center animate-pulse">
+                  Securely verifying your credentials...
+                </p>
               </motion.div>
             )}
           </AnimatePresence>

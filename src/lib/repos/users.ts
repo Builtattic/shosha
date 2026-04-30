@@ -111,6 +111,9 @@ export type AppUser = {
   legacyMultiplier?: string;
   websiteUrl?: string;
   photoUrl?: string;
+
+  // Populated at request time from the Firebase ID token, never persisted.
+  emailVerified?: boolean;
 };
 
 function ref() {

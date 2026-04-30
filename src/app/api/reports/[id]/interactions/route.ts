@@ -3,6 +3,39 @@ import { fail, ok } from '@/lib/api';
 import { getCurrentUser, requireUser } from '@/lib/auth';
 import { idSchema } from '@/lib/validators';
 import * as interactionsRepo from '@/lib/repos/reportInteractions';
+import * as notificationsRepo from '@/lib/repos/notifications';
+import * as reportsRepo from '@/lib/repos/reports';
+import * as accountsRepo from '@/lib/repos/accounts';
+import * as usersRepo from '@/lib/repos/users';
+
+async function notifyReporter(
+  reportId: string,
+  actorId: string,
+  kind: 'report_align' | 'report_oppose' | 'report_comment',
+  bodyPrefix: string
+) {
+  const report = await reportsRepo.findById(reportId);
+  if (!report || !report.reporterId || report.reporterId === actorId) return;
+  const [account, actor] = await Promise.all([
+    accountsRepo.findById(report.accountId),
+    usersRepo.findById(actorId)
+  ]);
+  const subject = account?.displayName || account?.username || 'your filing';
+  const actorLabel = actor?.name || actor?.username || 'Someone';
+  const titles: Record<typeof kind, string> = {
+    report_align: 'New aligned vote',
+    report_oppose: 'New opposing vote',
+    report_comment: 'New comment'
+  };
+  await notificationsRepo.create({
+    userId: report.reporterId,
+    kind,
+    title: titles[kind],
+    body: `${actorLabel} ${bodyPrefix} your filing on ${subject}.`,
+    link: `/account/${report.accountId}`,
+    meta: { reportId, actorId }
+  });
+}
 
 const interactionSchema = z.discriminatedUnion('action', [
   z.object({ action: z.enum(['align', 'oppose']) }),
@@ -43,12 +76,22 @@ export async function POST(request: Request, { params }: { params: { id: string 
   if (parsed.data.action === 'align' || parsed.data.action === 'oppose') {
     const result = await interactionsRepo.setVote(id.data, user._id, parsed.data.action);
     if (!result) return fail('not_found', 'No filing exists for that id.', 404);
+    // Only notify when the vote was newly set (not when toggled off).
+    if (result.vote === parsed.data.action) {
+      await notifyReporter(
+        id.data,
+        user._id,
+        parsed.data.action === 'align' ? 'report_align' : 'report_oppose',
+        parsed.data.action === 'align' ? 'aligned with' : 'opposed'
+      );
+    }
     return ok(result);
   }
 
   if (parsed.data.action === 'comment') {
     const result = await interactionsRepo.addComment(id.data, user._id, parsed.data.text);
     if (!result) return fail('not_found', 'No filing exists for that id.', 404);
+    await notifyReporter(id.data, user._id, 'report_comment', 'commented on');
     return ok(result);
   }
 

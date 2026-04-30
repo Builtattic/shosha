@@ -1,7 +1,7 @@
 import { anonymousTag } from '@/lib/anonymous';
 import { fail, fromZod, ok } from '@/lib/api';
 import { adjudicateReport } from '@/lib/gemini';
-import { getCurrentUser, isAdmin } from '@/lib/auth';
+import { getCurrentUser, isAdmin, isEmailVerified } from '@/lib/auth';
 import { assertLimit, getRequestKey, rateLimits } from '@/lib/ratelimit';
 import { idSchema, reportCreateSchema } from '@/lib/validators';
 import * as accountsRepo from '@/lib/repos/accounts';
@@ -26,6 +26,15 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const user = await getCurrentUser();
+  // Email-verification gate: signed-in users with an email must verify before filing.
+  // Anonymous filers and phone-OTP users (no email) pass through.
+  if (user && !isEmailVerified(user)) {
+    return fail(
+      'email_unverified',
+      'Verify your email before filing a report. Open the verification email we sent at signup.',
+      403
+    );
+  }
   const key = user ? user._id : getRequestKey(request);
   const limiter = user ? rateLimits.reportUser : rateLimits.reportAnon;
   const limit = await assertLimit(limiter, key);

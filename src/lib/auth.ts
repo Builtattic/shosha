@@ -36,6 +36,8 @@ export async function getCurrentUser(): Promise<AppUser | null> {
     const decoded = await adminAuth.verifyIdToken(token);
     const uid = decoded.uid;
 
+    const emailVerified = Boolean((decoded as { email_verified?: boolean }).email_verified);
+
     // Try to find existing user in RTDB
     try {
       const existing = await usersRepo.findById(uid);
@@ -44,18 +46,19 @@ export async function getCurrentUser(): Promise<AppUser | null> {
         // Idempotent — only writes when score / scoreHistory are missing.
         if (typeof existing.score !== 'number' || !Array.isArray(existing.scoreHistory)) {
           const seeded = await usersRepo.ensureLedger(uid).catch(() => null);
-          if (seeded) return seeded;
+          if (seeded) return { ...seeded, emailVerified };
         }
-        return existing;
+        return { ...existing, emailVerified };
       }
 
       // First login — create user from Firebase Auth claims
-      return usersRepo.upsertFromClerk({
+      const created = await usersRepo.upsertFromClerk({
         id: uid,
         username: decoded.email?.split('@')[0]?.toLowerCase() ?? decoded.name?.toLowerCase() ?? 'user',
         email: decoded.email ?? '',
         role: 'user'
       });
+      return { ...created, emailVerified };
     } catch (dbErr) {
       // RTDB unavailable — return lightweight user from token
       console.warn('[auth] RTDB unavailable, using token-only user:', (dbErr as Error).message);
@@ -65,7 +68,8 @@ export async function getCurrentUser(): Promise<AppUser | null> {
         email: decoded.email ?? '',
         role: 'user',
         reporterScore: 50,
-        claimedAccounts: []
+        claimedAccounts: [],
+        emailVerified
       };
     }
   } catch (err) {
@@ -87,6 +91,17 @@ export async function requireUser(): Promise<AppUser> {
 
 export function isAdmin(user: AppUser | null): boolean {
   return Boolean(user && ['moderator', 'editor', 'admin', 'super_admin'].includes(user.role));
+}
+
+/**
+ * A user passes the email-verification gate when:
+ *  - They have no email (e.g. phone-OTP signup), OR
+ *  - Their email is verified (Google guarantees true; email/password requires the verification email link).
+ */
+export function isEmailVerified(user: AppUser | null): boolean {
+  if (!user) return false;
+  if (!user.email) return true;
+  return Boolean(user.emailVerified);
 }
 
 export function isSuperAdmin(user: AppUser | null): boolean {

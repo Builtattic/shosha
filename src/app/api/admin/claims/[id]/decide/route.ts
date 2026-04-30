@@ -5,6 +5,7 @@ import * as accountsRepo from '@/lib/repos/accounts';
 import * as adminActionsRepo from '@/lib/repos/adminActions';
 import * as claimsRepo from '@/lib/repos/claimRequests';
 import * as usersRepo from '@/lib/repos/users';
+import * as notificationsRepo from '@/lib/repos/notifications';
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   const user = await getCurrentUser();
@@ -29,5 +30,22 @@ export async function POST(request: Request, { params }: { params: { id: string 
   }
 
   await adminActionsRepo.create({ actor: user!, action: `claim.${parsed.data.verdict}`, entityType: 'claim', entityId: id.data, before: claim, after: updated });
+
+  if (claim.userId) {
+    const account = await accountsRepo.findById(claim.accountId);
+    const accountName = account?.displayName || account?.username || 'an account';
+    const approved = parsed.data.verdict === 'approved';
+    await notificationsRepo.create({
+      userId: claim.userId,
+      kind: approved ? 'claim_approved' : 'claim_rejected',
+      title: approved ? 'Claim approved' : 'Claim rejected',
+      body: approved
+        ? `Your ownership claim on ${accountName} was approved. The dossier now shows your reputation profile.`
+        : `Your ownership claim on ${accountName} was rejected.${parsed.data.note ? ` Note: ${parsed.data.note}` : ''}`,
+      link: `/account/${claim.accountId}`,
+      meta: { claimId: id.data, accountId: claim.accountId }
+    });
+  }
+
   return ok(updated);
 }
