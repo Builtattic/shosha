@@ -24,7 +24,7 @@ type AuthContextType = {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, displayName?: string) => Promise<void>;
-  signInWithGoogle: () => Promise<boolean>;
+  signInWithGoogle: () => Promise<'signed-in' | 'redirecting' | 'cancelled'>;
   sendPhoneOtp: (phone: string, recaptchaContainer: string) => Promise<ConfirmationResult>;
   signOut: () => Promise<void>;
   getIdToken: () => Promise<string | null>;
@@ -32,18 +32,40 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+function setSessionCookie(token: string) {
+  document.cookie = `__session=${token}; path=/; max-age=3600; SameSite=Lax`;
+}
+
+function clearSessionCookie() {
+  document.cookie = `__session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`;
+}
+
+function shouldFallbackToRedirect(error: unknown) {
+  const code = typeof error === 'object' && error && 'code' in error ? String((error as { code?: string }).code) : '';
+  return (
+    code === 'auth/popup-blocked' ||
+    code === 'auth/popup-closed-by-user' ||
+    code === 'auth/operation-not-supported-in-this-environment' ||
+    code === 'auth/cancelled-popup-request'
+  );
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const googleSignInInProgress = useRef(false);
+  const phoneVerifierRef = useRef<RecaptchaVerifier | null>(null);
 
   useEffect(() => {
     getRedirectResult(auth).then(async (cred) => {
       if (cred && cred.user) {
         const token = await cred.user.getIdToken();
-        document.cookie = `__session=${token}; path=/; max-age=3600; SameSite=Lax`;
+        setSessionCookie(token);
       }
-    }).catch(console.error);
+    }).catch(() => {
+      // Redirect auth can fail when users cancel or browser storage is blocked.
+      // Keep the page quiet; the button handler exposes actionable failures.
+    });
 
     const unsubscribe = onIdTokenChanged(auth, async (u) => {
       setUser(u);
@@ -51,9 +73,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (u) {
         const token = await u.getIdToken();
-        document.cookie = `__session=${token}; path=/; max-age=3600; SameSite=Lax`;
+        setSessionCookie(token);
       } else {
-        document.cookie = `__session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`;
+        clearSessionCookie();
       }
     });
     return unsubscribe;
@@ -62,7 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function signIn(email: string, password: string) {
     const cred = await signInWithEmailAndPassword(auth, email, password);
     const token = await cred.user.getIdToken();
-    document.cookie = `__session=${token}; path=/; max-age=3600; SameSite=Lax`;
+    setSessionCookie(token);
   }
 
   async function signUp(email: string, password: string, displayName?: string) {
@@ -72,51 +94,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     await sendEmailVerification(cred.user);
     const token = await cred.user.getIdToken();
-    document.cookie = `__session=${token}; path=/; max-age=3600; SameSite=Lax`;
+    setSessionCookie(token);
   }
 
-  async function signInWithGoogle(): Promise<boolean> {
-    if (googleSignInInProgress.current) return false;
+  async function signInWithGoogle(): Promise<'signed-in' | 'redirecting' | 'cancelled'> {
+    if (googleSignInInProgress.current) return 'cancelled';
     googleSignInInProgress.current = true;
     try {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
-      
-      // Detect mobile to use redirect (fixes Safari/mobile partitioning issues)
-      // while keeping popup for better desktop UX.
-      const isMobile = typeof window !== 'undefined' && 
-        /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
-      if (isMobile) {
-        await signInWithRedirect(auth, provider);
-        return true;
-      } else {
+      try {
         const cred = await signInWithPopup(auth, provider);
         const token = await cred.user.getIdToken();
-        document.cookie = `__session=${token}; path=/; max-age=3600; SameSite=Lax`;
-        return true;
+        setSessionCookie(token);
+        return 'signed-in';
+      } catch (error: any) {
+        if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+          return 'cancelled';
+        }
+        if (!shouldFallbackToRedirect(error)) {
+          throw error;
+        }
+        await signInWithRedirect(auth, provider);
+        return 'redirecting';
       }
-    } catch (error: any) {
-      // silently swallow popup cancellations
-      if (
-        error.code === 'auth/cancelled-popup-request' ||
-        error.code === 'auth/popup-closed-by-user'
-      ) {
-        return false;
-      }
-      throw error;
     } finally {
       googleSignInInProgress.current = false;
     }
   }
 
   async function sendPhoneOtp(phone: string, recaptchaContainer: string) {
-    const verifier = new RecaptchaVerifier(auth, recaptchaContainer, { size: 'invisible' });
-    return signInWithPhoneNumber(auth, phone, verifier);
+    phoneVerifierRef.current?.clear();
+    phoneVerifierRef.current = new RecaptchaVerifier(auth, recaptchaContainer, { size: 'invisible' });
+    try {
+      await phoneVerifierRef.current.render();
+      return await signInWithPhoneNumber(auth, phone, phoneVerifierRef.current);
+    } catch (error) {
+      phoneVerifierRef.current?.clear();
+      phoneVerifierRef.current = null;
+      throw error;
+    }
   }
 
   async function signOut() {
     await firebaseSignOut(auth);
+    clearSessionCookie();
   }
 
   async function getIdToken(): Promise<string | null> {

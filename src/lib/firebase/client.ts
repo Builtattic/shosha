@@ -13,8 +13,6 @@ const firebaseConfig = {
   databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL,
 };
 
-console.log("FIREBASE CONFIG IN BROWSER:", firebaseConfig);
-
 let app: FirebaseApp;
 let auth: Auth;
 

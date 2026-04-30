@@ -42,6 +42,7 @@ export default function SignInPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [countryCode, setCountryCode] = useState('+91');
   const [phone, setPhone] = useState('');
+  const [otpPhone, setOtpPhone] = useState('');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -88,8 +89,17 @@ export default function SignInPage() {
     setError('');
     setGoogleLoading(true);
     try {
-      await signInWithGoogle();
-      // Browser will navigate away to Google, so we don't need to do anything else here.
+      const result = await signInWithGoogle();
+      if (result === 'cancelled') {
+        setGoogleLoading(false);
+        return;
+      }
+      setMode('loading');
+      if (result === 'signed-in') {
+        const searchParams = new URLSearchParams(window.location.search);
+        const dest = await resolveRedirect(searchParams.get('redirect') || '/dashboard');
+        router.push(dest);
+      }
     } catch (err: any) {
       setError(err.message?.replace('Firebase: ', '') || 'Google sign-in failed');
       setGoogleLoading(false);
@@ -100,9 +110,16 @@ export default function SignInPage() {
     setError('');
     setLoading(true);
     try {
-      const fullPhoneNumber = `${countryCode}${phone.replace(/\s+/g, '')}`;
+      const phoneDigits = phone.replace(/\D/g, '');
+      if (phoneDigits.length < 6) {
+        setError('Enter a valid phone number.');
+        setLoading(false);
+        return;
+      }
+      const fullPhoneNumber = `${countryCode}${phoneDigits}`;
       const result = await sendPhoneOtp(fullPhoneNumber, 'recaptcha-container');
       setConfirmResult(result);
+      setOtpPhone(fullPhoneNumber);
       setMode('otp');
     } catch (err: any) {
       setError(err.message?.replace('Firebase: ', '') || 'Could not send OTP');
@@ -132,6 +149,7 @@ export default function SignInPage() {
   }
 
   function handleOtpChange(index: number, value: string) {
+    value = value.replace(/\D/g, '');
     if (value.length > 1) value = value.slice(-1);
     const next = [...otp];
     next[index] = value;
@@ -336,7 +354,7 @@ export default function SignInPage() {
                     <Shield size={28} />
                   </div>
                   <h2 className="text-xl font-bold">Verify OTP</h2>
-                  <p className="text-sm text-muted-foreground mt-1">Enter the 6-digit code sent to {phone}</p>
+                  <p className="text-sm text-muted-foreground mt-1">Enter the 6-digit code sent to {otpPhone || phone}</p>
                 </div>
 
                 {error && <p className="text-red-500 text-sm mb-4 bg-red-500/10 rounded-xl p-3 text-center">{error}</p>}
