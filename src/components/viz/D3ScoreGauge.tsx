@@ -168,7 +168,7 @@ export function D3ScoreGauge({ score, credibility, label = 'Shosha Score', size 
       .attr('fill', '#9ca3af')
       .attr('font-size', 8.5)
       .attr('font-family', 'var(--font-instrument-sans), sans-serif')
-      .text(`Credibility ${credibility}`);
+      .text(`Credibility ${credibility}%`);
 
   }, [score, credibility, label, size]);
 

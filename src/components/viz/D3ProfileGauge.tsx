@@ -35,8 +35,9 @@ export function D3ProfileGauge({ score, minScore = -1000, maxScore = 1000, size 
       .attr('id', 'profileGaugeGrad')
       .attr('x1', '0%').attr('y1', '0%')
       .attr('x2', '100%').attr('y2', '0%');
-    grad.append('stop').attr('offset', '0%').attr('stop-color', '#e5e7eb');
-    grad.append('stop').attr('offset', '100%').attr('stop-color', '#1a1a1a');
+    grad.append('stop').attr('offset', '0%').attr('stop-color', '#f87171');
+    grad.append('stop').attr('offset', '50%').attr('stop-color', '#fcd34d');
+    grad.append('stop').attr('offset', '100%').attr('stop-color', '#4ade80');
 
     // Background track (very faint, if any. The image just shows the solid color track)
     const startAngle = -Math.PI / 2;

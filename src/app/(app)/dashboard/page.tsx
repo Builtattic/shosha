@@ -215,7 +215,7 @@ export default function DashboardPage() {
   // Compute user's own Shosha Score from profile dimensions
   const profileDims = meData?.user ? calcProfileScores(meData.user) : [];
   const shoshaScore = calcShoshaScore(profileDims);
-  const credibility = meData?.user?.reporterScore ?? 50;
+  const credibility = shoshaScore;
   const hasOnboarded = !!(meData?.user?.onboardingComplete || meData?.user?.name || meData?.user?.occupationRole);
   const displayName = meData?.user?.name || firebaseUser?.displayName || firebaseUser?.email?.split('@')[0] || 'You';
   const avatarUrl = meData?.user?.photoUrl ?? firebaseUser?.photoURL ?? null;
@@ -362,7 +362,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between gap-3 px-6 pb-5">
               <div className="flex gap-4 text-center">
                 <div>
-                  <div className="text-[15px] font-black">{credibility}</div>
+                  <div className="text-[15px] font-black">{credibility}%</div>
                   <div className="text-[9px] text-muted-foreground uppercase tracking-wider font-semibold">Credibility</div>
                 </div>
                 {hasOnboarded && (
