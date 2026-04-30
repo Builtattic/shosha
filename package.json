@@ -17,6 +17,8 @@
     "test:watch": "vitest",
     "e2e": "playwright test",
     "seed": "tsx scripts/seed.ts",
+    "seed:public-profiles": "tsx scripts/seed-public-profiles.ts",
+    "enrich:public-profiles": "tsx scripts/enrich-public-profiles.ts",
     "replay:scores": "tsx scripts/replay-sheet-scores.ts"
   },
   "dependencies": {

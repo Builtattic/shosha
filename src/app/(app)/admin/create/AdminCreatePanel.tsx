@@ -8,7 +8,7 @@ import type { Platform } from '@/types';
 
 type AccountOption = { _id: string; displayName: string; username: string; platform: Platform };
 type UserOption = { _id: string; username: string; email: string };
-const platforms: Platform[] = ['x', 'instagram', 'facebook', 'youtube', 'tiktok', 'linkedin', 'website'];
+const platforms: Platform[] = ['x', 'instagram', 'facebook', 'youtube', 'tiktok', 'linkedin', 'reddit', 'snapchat', 'website'];
 
 export function AdminCreatePanel({ initialAccounts, users }: { initialAccounts: AccountOption[]; users: UserOption[] }) {
   const [accounts, setAccounts] = useState(initialAccounts);
@@ -71,7 +71,9 @@ export function AdminCreatePanel({ initialAccounts, users }: { initialAccounts: 
           <select value={accountForm.platform} onChange={(e) => setAccountForm({ ...accountForm, platform: e.target.value as Platform })} className="admin-input">{platforms.map((p) => <option key={p} value={p}>{p}</option>)}</select>
           <input value={accountForm.username} onChange={(e) => setAccountForm({ ...accountForm, username: e.target.value })} placeholder="Username" className="admin-input" />
           <input value={accountForm.displayName} onChange={(e) => setAccountForm({ ...accountForm, displayName: e.target.value })} placeholder="Display name" className="admin-input" />
+          <textarea value={accountForm.bio} onChange={(e) => setAccountForm({ ...accountForm, bio: e.target.value })} placeholder="Bio" rows={3} className="admin-input min-h-20" />
           <input value={accountForm.avatarUrl} onChange={(e) => setAccountForm({ ...accountForm, avatarUrl: e.target.value })} placeholder="Avatar URL" className="admin-input" />
+          <input value={accountForm.followers} onChange={(e) => setAccountForm({ ...accountForm, followers: e.target.value })} placeholder="Followers" className="admin-input" />
           <label className="admin-check"><input type="checkbox" checked={accountForm.verified} onChange={(e) => setAccountForm({ ...accountForm, verified: e.target.checked })} /> Verified</label>
           <button disabled={pending} onClick={() => submit(createAccount)} className="admin-button"><CheckCircle size={15} /> Create account</button>
         </div>

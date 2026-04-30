@@ -7,7 +7,7 @@ import { useToast } from '@/components/ui/Toast';
 import type { SiteSettings } from '@/lib/repos/siteSettings';
 import type { Platform } from '@/types';
 
-const platforms: Platform[] = ['x', 'instagram', 'facebook', 'youtube', 'tiktok', 'linkedin', 'website'];
+const platforms: Platform[] = ['x', 'instagram', 'facebook', 'youtube', 'tiktok', 'linkedin', 'reddit', 'snapchat', 'website'];
 
 export function AdminSettingsForm({ initialSettings }: { initialSettings: SiteSettings }) {
   const [settings, setSettings] = useState(initialSettings);

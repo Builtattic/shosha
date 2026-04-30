@@ -18,7 +18,7 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   allowAiReviewedInFeed: false,
   allowFlaggedInFeed: false,
   feedRankingMode: 'smart',
-  enabledPlatforms: ['x', 'instagram', 'facebook', 'youtube', 'tiktok', 'linkedin', 'website'],
+  enabledPlatforms: ['x', 'instagram', 'facebook', 'youtube', 'tiktok', 'linkedin', 'reddit', 'snapchat', 'website'],
   scoreImpactMin: -10,
   scoreImpactMax: 10,
   uploadMaxBytes: 25 * 1024 * 1024,

@@ -14,7 +14,7 @@ import { BASE_SCORE } from '@/lib/scoring';
 
 type AccountRow = {
   _id: string;
-  platform: 'x' | 'instagram' | 'facebook' | 'youtube' | 'tiktok' | 'linkedin' | 'website';
+  platform: 'x' | 'instagram' | 'facebook' | 'youtube' | 'tiktok' | 'linkedin' | 'reddit' | 'snapchat' | 'website';
   username: string;
   displayName: string;
   score: number;
@@ -253,7 +253,7 @@ export function SearchFeed({ initialAccounts }: { initialAccounts: AccountRow[] 
               <div className="border border-border bg-raised p-4">
                 <p className="text-xs uppercase text-muted">Track @{normalizedHandle}</p>
                 <div className="mt-3 grid grid-cols-2 gap-2">
-                  {(['instagram', 'facebook', 'x', 'youtube', 'tiktok', 'linkedin'] as const).map((option) => (
+                  {(['instagram', 'facebook', 'x', 'youtube', 'tiktok', 'linkedin', 'reddit', 'snapchat'] as const).map((option) => (
                     <button
                       key={option}
                       type="button"
@@ -273,7 +273,7 @@ export function SearchFeed({ initialAccounts }: { initialAccounts: AccountRow[] 
                 </Button>
                 {candidates.length > 0 ? (
                   <div className="mt-4 space-y-2">
-                    <p className="text-xs uppercase text-muted">Gemini-ranked public matches</p>
+                    <p className="text-xs uppercase text-muted">Shosha-ranked public matches</p>
                     {candidates.map((candidate) => (
                       <button
                         key={`${candidate.platform}:${candidate.username}:${candidate.sourceUrl}`}

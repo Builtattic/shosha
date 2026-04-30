@@ -134,9 +134,9 @@ async function fetchXProfile(username: string): Promise<SocialProfile> {
   }
 
   if (posts.length === 0) {
-    // X returned the profile but not posts (token scope or empty timeline). Try Gemini grounding to fill posts.
+    // X returned the profile but not posts (token scope or empty timeline). Try Shosha discovery to fill posts.
     try {
-      const grounded = await fetchProfileViaGemini('x', handle, {
+      const grounded = await fetchProfileViaShosha('x', handle, {
         displayName: user.data.name,
         bio: user.data.description ?? '',
         avatarUrl: user.data.profile_image_url,
@@ -264,6 +264,8 @@ const PLATFORM_DOMAIN: Record<Platform, string> = {
   youtube: 'youtube.com',
   tiktok: 'tiktok.com',
   linkedin: 'linkedin.com',
+  reddit: 'reddit.com',
+  snapchat: 'snapchat.com',
   website: ''
 };
 
@@ -308,7 +310,7 @@ function extractJsonObject(text: string): unknown {
   return {};
 }
 
-async function callGemini(model: string, body: unknown, key: string) {
+async function callShoshaSearch(model: string, body: unknown, key: string) {
   return fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
     method: 'POST',
     headers: {
@@ -320,35 +322,38 @@ async function callGemini(model: string, body: unknown, key: string) {
   });
 }
 
-async function geminiWithRetry(primaryModel: string, fallbackModel: string, body: unknown, key: string): Promise<Response> {
-  let response = await callGemini(primaryModel, body, key);
+async function shoshaSearchWithRetry(primaryModel: string, fallbackModel: string, body: unknown, key: string): Promise<Response> {
+  let response = await callShoshaSearch(primaryModel, body, key);
   if (response.ok) return response;
 
   if (response.status === 429 || response.status >= 500) {
     await new Promise((resolve) => setTimeout(resolve, 1500));
-    response = await callGemini(primaryModel, body, key);
+    response = await callShoshaSearch(primaryModel, body, key);
     if (response.ok) return response;
   }
 
   if (response.status >= 500 && primaryModel !== fallbackModel) {
-    response = await callGemini(fallbackModel, body, key);
+    response = await callShoshaSearch(fallbackModel, body, key);
   }
   return response;
 }
 
-export async function fetchProfileViaGemini(
+export async function fetchProfileViaShosha(
   platform: Platform,
   username: string,
   seed?: SocialProfileSeed
 ): Promise<SocialProfile> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) {
-    throw new SocialFetchError('Add GEMINI_API_KEY to enable AI-powered profile fetching.', 'gemini_not_configured', 503);
+    throw new SocialFetchError('Add GEMINI_API_KEY to enable Shosha profile discovery.', 'shosha_not_configured', 503);
   }
 
   const handle = cleanHandle(username);
-  const primary = process.env.GEMINI_DISCOVERY_MODEL || 'gemini-2.5-pro';
-  const fallback = 'gemini-2.5-flash';
+  const primary = process.env.GEMINI_DISCOVERY_MODEL || 'gemini-3-pro-preview';
+  const fallback = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+  if (!primary || !fallback) {
+    throw new SocialFetchError('Add GEMINI_DISCOVERY_MODEL or GEMINI_MODEL to enable Shosha profile discovery.', 'shosha_not_configured', 503);
+  }
   const platformDomain = PLATFORM_DOMAIN[platform];
   const platformLabel = platform === 'website' ? 'public personal website' : platform;
 
@@ -389,9 +394,8 @@ Return JSON:
   ]
 }`;
 
-  // Use ONLY google_search — url_context fails on auth-walled platforms (IG, FB, TikTok, LinkedIn).
-  // Google Search grounding gives us indexed snippets which is what those platforms expose publicly anyway.
-  // NOTE: responseSchema is incompatible with grounding tools in v1beta; we rely on prompt + manual JSON extraction.
+  // Use only public search grounding; many social pages are auth-walled.
+  // Structured response schemas are not compatible with this tool in v1beta, so parse JSON manually.
   const body = {
     contents: [{ parts: [{ text: prompt }] }],
     tools: [{ google_search: {} }],
@@ -400,12 +404,19 @@ Return JSON:
     }
   };
 
-  const response = await geminiWithRetry(primary, fallback, body, key);
+  const response = await shoshaSearchWithRetry(primary, fallback, body, key);
 
   if (!response.ok) {
     const errBody = await response.text().catch(() => '');
-    console.error('[gemini profile] failure', response.status, errBody.slice(0, 500));
-    throw new SocialFetchError('Gemini grounding failed for this profile.', 'gemini_error', 502);
+    console.error('[shosha profile] failure', response.status, errBody.slice(0, 500));
+    if (errBody.includes('reported as leaked')) {
+      throw new SocialFetchError(
+        'GEMINI_API_KEY was reported as leaked. Rotate the key in Google AI Studio and update .env.local.',
+        'gemini_key_leaked',
+        503
+      );
+    }
+    throw new SocialFetchError('Shosha discovery failed for this profile.', 'shosha_error', 502);
   }
 
   const payload = await response.json();
@@ -426,7 +437,7 @@ Return JSON:
     .map((p, i) => {
       const captured = p.capturedAt ? new Date(p.capturedAt) : new Date(Date.now() - i * 24 * 60 * 60 * 1000);
       return {
-        externalId: p.permalink ? `gemini-${platform}-${handle}-${i}-${hashString(p.permalink)}` : `gemini-${platform}-${handle}-${i}`,
+        externalId: p.permalink ? `shosha-${platform}-${handle}-${i}-${hashString(p.permalink)}` : `shosha-${platform}-${handle}-${i}`,
         content: p.content!.trim(),
         likes: p.likes && p.likes.trim() ? p.likes.trim() : 'unknown',
         replies: p.replies && p.replies.trim() ? p.replies.trim() : 'unknown',
@@ -492,8 +503,8 @@ export async function fetchSocialProfile(
   if (platform === 'instagram' && process.env.INSTAGRAM_GRAPH_ACCESS_TOKEN && process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID) {
     return fetchInstagramProfile(username);
   }
-  // Every other case (IG without tokens, facebook, youtube, tiktok, linkedin, website) → strict Gemini grounding.
-  return fetchProfileViaGemini(platform, username, seed);
+  // Every other case uses strict Shosha public discovery.
+  return fetchProfileViaShosha(platform, username, seed);
 }
 
 export function socialErrorResponse(error: unknown) {

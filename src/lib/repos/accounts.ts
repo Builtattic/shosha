@@ -28,6 +28,21 @@ export type SocialPostRecord = {
   capturedAt: string;
 };
 
+export type AccountProfileKind = 'standard' | 'public_figure';
+export type AccountEnrichmentStatus = 'none' | 'pending' | 'reviewed' | 'stale';
+
+export type AccountSocialLink = {
+  url: string;
+  username?: string;
+  displayName?: string;
+  followers?: string;
+  verified?: boolean;
+  confidence?: number;
+  reason?: string;
+  sourceUrls?: string[];
+  lastCheckedAt?: string;
+};
+
 export type AccountRecord = {
   _id: string;
   platform: Platform;
@@ -43,6 +58,16 @@ export type AccountRecord = {
   posts: SocialPostRecord[];
   claimed: boolean;
   claimedBy: string | null;
+  profileId?: string;
+  profileKind?: AccountProfileKind;
+  claimable?: boolean;
+  credibility?: number;
+  enrichmentStatus?: AccountEnrichmentStatus;
+  role?: string;
+  region?: string;
+  quote?: string;
+  socialLinks?: Partial<Record<Platform, AccountSocialLink>>;
+  evidenceSummary?: string;
   usernameLower?: string;
   displayNameLower?: string;
   createdAt?: string;
@@ -76,6 +101,13 @@ export async function findByPlatformUsername(platform: Platform, username: strin
 
 export async function create(input: Omit<AccountRecord, '_id' | 'createdAt' | 'updatedAt' | 'usernameLower' | 'displayNameLower'>): Promise<AccountRecord> {
   const id = deriveId(input.platform, input.username);
+  return createWithId(id, input);
+}
+
+export async function createWithId(
+  id: string,
+  input: Omit<AccountRecord, '_id' | 'createdAt' | 'updatedAt' | 'usernameLower' | 'displayNameLower'>
+): Promise<AccountRecord> {
   const now = new Date().toISOString();
   const payload = {
     ...input,

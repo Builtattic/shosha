@@ -61,6 +61,19 @@ export default function SignInPage() {
     }
   }, [user, authLoading, router, mode]);
 
+  // Safety timeout: if we're stuck in loading for >12s, allow the user to retry
+  useEffect(() => {
+    if (mode !== 'loading') return;
+    const timer = setTimeout(() => {
+      // If still on this page after 12s, offer recovery
+      setMode('choose');
+      setGoogleLoading(false);
+      setLoading(false);
+      setError('Sign-in timed out. Please try again.');
+    }, 12000);
+    return () => clearTimeout(timer);
+  }, [mode]);
+
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   async function handleEmailSubmit(e: React.FormEvent) {
@@ -94,15 +107,19 @@ export default function SignInPage() {
         setGoogleLoading(false);
         return;
       }
-      setMode('loading');
       if (result === 'signed-in') {
+        setMode('loading');
         const searchParams = new URLSearchParams(window.location.search);
         const dest = await resolveRedirect(searchParams.get('redirect') || '/dashboard');
         router.push(dest);
+      } else if (result === 'redirecting') {
+        setMode('loading');
       }
     } catch (err: any) {
-      setError(err.message?.replace('Firebase: ', '') || 'Google sign-in failed');
+      const msg = err.message?.replace('Firebase: ', '').replace(/\(auth\/.*\)/, '').trim();
+      setError(msg || 'Google sign-in failed. Try again or use email.');
       setGoogleLoading(false);
+      setMode('choose');
     }
   }
 

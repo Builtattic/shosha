@@ -5,7 +5,7 @@ import { z } from 'zod';
 export const idSchema = z.string().min(1).max(200).regex(/^[A-Za-z0-9_.\-]+$/, 'Invalid id');
 // Kept as an alias so legacy imports continue compiling during the migration.
 export const objectIdSchema = idSchema;
-export const platformSchema = z.enum(['x', 'instagram', 'facebook', 'youtube', 'tiktok', 'linkedin', 'website']);
+export const platformSchema = z.enum(['x', 'instagram', 'facebook', 'youtube', 'tiktok', 'linkedin', 'reddit', 'snapchat', 'website']);
 export const reportTypeSchema = z.enum(['positive', 'negative']);
 export const userRoleSchema = z.enum(['user', 'moderator', 'editor', 'admin', 'super_admin']);
 export const reportStatusSchema = z.enum(['pending_ai', 'ai_reviewed', 'approved', 'rejected', 'flagged']);
@@ -32,7 +32,17 @@ export const accountCreateSchema = z.object({
   bio: z.string().max(280).optional(),
   avatarUrl: z.string().url().optional(),
   followers: z.string().max(24).optional(),
-  verified: z.boolean().optional()
+  verified: z.boolean().optional(),
+  profileId: z.string().min(1).max(40).optional(),
+  profileKind: z.enum(['standard', 'public_figure']).optional(),
+  claimable: z.boolean().optional(),
+  credibility: z.number().min(0).max(100).optional(),
+  enrichmentStatus: z.enum(['none', 'pending', 'reviewed', 'stale']).optional(),
+  role: z.string().max(120).optional(),
+  region: z.string().max(120).optional(),
+  quote: z.string().max(280).optional(),
+  evidenceSummary: z.string().max(500).optional(),
+  socialLinks: z.record(z.unknown()).optional()
 });
 
 export const accountPatchSchema = z.object({

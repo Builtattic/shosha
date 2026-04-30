@@ -11,7 +11,15 @@ import { ReportModal } from '@/components/report/ReportModal';
 
 type ClaimMethod = 'bio_code' | 'dm_screenshot' | 'oauth';
 
-export function DossierActions({ accountId, claimedBy }: { accountId: string; claimedBy?: string | null }) {
+export function DossierActions({
+  accountId,
+  claimedBy,
+  claimable = true
+}: {
+  accountId: string;
+  claimedBy?: string | null;
+  claimable?: boolean;
+}) {
   const { user } = useAuth();
   const toast = useToast();
   const [reportOpen, setReportOpen] = useState(false);
@@ -90,10 +98,17 @@ export function DossierActions({ accountId, claimedBy }: { accountId: string; cl
           <FileWarning size={16} />
           Report
         </Button>
-        <Button variant="secondary" disabled={!user} onClick={() => setClaimOpen(true)}>
-          <BadgeCheck size={16} />
-          Claim
-        </Button>
+        {claimable ? (
+          <Button variant="secondary" disabled={!user} onClick={() => setClaimOpen(true)}>
+            <BadgeCheck size={16} />
+            Claim
+          </Button>
+        ) : (
+          <Button variant="secondary" disabled>
+            <BadgeCheck size={16} />
+            Public figure
+          </Button>
+        )}
         <Button variant="secondary" disabled={!owned && !adminCapable} onClick={() => setAuditOpen(true)}>
           <RefreshCcw size={16} />
           Audit

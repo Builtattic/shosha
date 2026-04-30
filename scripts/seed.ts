@@ -1,9 +1,7 @@
-import * as accountsRepo from '../src/lib/repos/accounts';
-import * as reportsRepo from '../src/lib/repos/reports';
-import * as usersRepo from '../src/lib/repos/users';
-import { adminDb } from '../src/lib/firebase/admin';
-import { averageBreakdown } from '../src/lib/scoring';
+import { loadEnvConfig } from '@next/env';
 import type { Platform, ScoreCause } from '../src/types';
+
+loadEnvConfig(process.cwd());
 
 process.env.FIREBASE_PROJECT_ID ||= 'shosha-local';
 process.env.FIREBASE_DATABASE_URL ||= 'https://shosha-local-default-rtdb.firebaseio.com';
@@ -22,20 +20,30 @@ function breakdownFromScore(score: number) {
   };
 }
 
-async function clearNode(name: string) {
+async function clearNode(adminDb: typeof import('../src/lib/firebase/admin').adminDb, name: string) {
   await adminDb().ref(name).remove();
 }
 
 async function main() {
+  const [accountsRepo, reportsRepo, usersRepo, firebaseAdmin, scoring] = await Promise.all([
+    import('../src/lib/repos/accounts'),
+    import('../src/lib/repos/reports'),
+    import('../src/lib/repos/users'),
+    import('../src/lib/firebase/admin'),
+    import('../src/lib/scoring'),
+  ]);
+  const { adminDb } = firebaseAdmin;
+  const { averageBreakdown } = scoring;
+
   console.log('Connecting to Firebase RTDB at', process.env.FIREBASE_DATABASE_URL);
 
   await Promise.all([
-    clearNode('users'),
-    clearNode('accounts'),
-    clearNode('reports'),
-    clearNode('events'),
-    clearNode('auditRequests'),
-    clearNode('claimRequests')
+    clearNode(adminDb, 'users'),
+    clearNode(adminDb, 'accounts'),
+    clearNode(adminDb, 'reports'),
+    clearNode(adminDb, 'events'),
+    clearNode(adminDb, 'auditRequests'),
+    clearNode(adminDb, 'claimRequests')
   ]);
 
   await usersRepo.upsertFromClerk({

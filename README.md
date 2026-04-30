@@ -37,14 +37,15 @@ FIRESTORE_EMULATOR_HOST=localhost:8080
 FIREBASE_STORAGE_EMULATOR_HOST=localhost:9199
 ```
 
-`GEMINI_API_KEY` powers AI adjudication and Gemini Search grounding for account discovery across Instagram, Facebook, X, YouTube, TikTok, LinkedIn, and official websites.
+`GEMINI_API_KEY` powers Shosha adjudication and public evidence discovery across Instagram, Facebook, X, YouTube, TikTok, LinkedIn, Reddit, Snapchat, and official websites. The UI stays Shosha-branded; Gemini is the underlying model provider.
 
 ```bash
 GEMINI_API_KEY=
+GEMINI_MODEL=gemini-2.0-flash-exp
 GEMINI_DISCOVERY_MODEL=gemini-2.5-flash
 ```
 
-Live X and Instagram credentials are optional. Without them, opening a dossier uses Gemini candidate metadata or deterministic mock social data while still writing real Firestore records.
+Live X and Instagram credentials are optional. Without them, opening a dossier uses Shosha candidate metadata or deterministic mock social data while still writing real Firestore records.
 
 ```bash
 X_BEARER_TOKEN=
@@ -70,4 +71,5 @@ pnpm test
 pnpm e2e
 pnpm emulators
 pnpm seed
+pnpm seed:public-profiles
 ```

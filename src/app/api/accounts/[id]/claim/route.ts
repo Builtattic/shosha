@@ -23,6 +23,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
   const account = await accountsRepo.findById(id.data);
   if (!account) return fail('not_found', 'No dossier exists for that id.', 404);
+  if (account.claimable === false) return fail('claim_disabled', 'This public profile is not claimable.', 403);
   if (account.claimed) return fail('already_claimed', 'This account has already been claimed.', 409);
 
   const claim = await claimsRepo.create({

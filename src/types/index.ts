@@ -1,4 +1,4 @@
-export type Platform = 'x' | 'instagram' | 'facebook' | 'youtube' | 'tiktok' | 'linkedin' | 'website';
+export type Platform = 'x' | 'instagram' | 'facebook' | 'youtube' | 'tiktok' | 'linkedin' | 'reddit' | 'snapchat' | 'website';
 export type ScoreCause = 'seed' | 'report' | 'audit' | 'decay';
 export type ReportType = 'positive' | 'negative';
 export type ReportStatus = 'pending_ai' | 'ai_reviewed' | 'approved' | 'rejected' | 'flagged';

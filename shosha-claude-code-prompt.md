@@ -6,7 +6,7 @@ Paste this entire document into Claude Code as your initial prompt. It is a full
 
 ## 1. Product Overview
 
-Shosha is a mobile first webapp that rates social media accounts from Instagram and Twitter (X). Anyone can search an account and see its Shosha Score (0 to 100, starting baseline 60). Any user (anonymous or registered) can file a report (positive or negative) about a specific incident. Every report must include media proof, a 2 to 3 line description of what happened, and a 2 to 3 line statement of how the filer felt. Reports are first adjudicated by AI (Gemini), then a human admin approves or rejects and sets the final score impact. Registered users can claim their own account and request a fresh audit.
+Shosha is a mobile first webapp that rates social media accounts from Instagram and Twitter (X). Anyone can search an account and see its Shosha Score (0 to 100, starting baseline 60). Any user (anonymous or registered) can file a report (positive or negative) about a specific incident. Every report must include media proof, a 2 to 3 line description of what happened, and a 2 to 3 line statement of how the filer felt. Reports are first adjudicated by Shosha AI, then a human admin approves or rejects and sets the final score impact. Registered users can claim their own account and request a fresh audit.
 
 The aesthetic is dossier / editorial / investigative. Dark theme, serif display font (Instrument Serif), monospace body (JetBrains Mono), sharp electric lime accent (#d4ff4a). The score is always the hero element.
 
@@ -23,7 +23,7 @@ Frontend and backend in one repo using Next.js 14 App Router.
 * **Database**: MongoDB Atlas via Mongoose
 * **Auth**: NextAuth.js (credentials provider, JWT strategy)
 * **Password hashing**: bcrypt
-* **AI**: Google Gemini via @google/generative-ai (model: gemini-2.0-flash-exp, structured output)
+* **AI**: Shosha AI via the configured model provider, with structured output
 * **Media**: Cloudinary (images and short video clips, signed uploads)
 * **Validation**: Zod on every API route boundary
 * **Rate limiting**: @upstash/ratelimit with Redis
@@ -63,7 +63,7 @@ shosha/
 │   │   │   │   └── [id]/adjudicate/route.ts # POST admin verdict
 │   │   │   ├── media/upload/route.ts       # Signed Cloudinary upload
 │   │   │   ├── auth/[...nextauth]/route.ts
-│   │   │   └── ai/analyze/route.ts         # Internal Gemini call
+│   │   │   └── ai/analyze/route.ts         # Internal Shosha analysis call
 │   │   ├── layout.tsx
 │   │   └── globals.css
 │   ├── components/
@@ -80,7 +80,7 @@ shosha/
 │   ├── lib/
 │   │   ├── db.ts                           # Mongoose connection cache
 │   │   ├── auth.ts                         # NextAuth config
-│   │   ├── gemini.ts                       # Gemini client + prompts
+│   │   ├── gemini.ts                       # Gemini provider client + Shosha prompts
 │   │   ├── cloudinary.ts                   # Signed upload helper
 │   │   ├── ratelimit.ts
 │   │   ├── scoring.ts                      # Score math, history append
@@ -234,7 +234,7 @@ Three-step modal, do not let users skip steps.
 
 **Step 3: Feelings + submit**
 * Feelings textarea. Min 10 chars, max 500.
-* On submit: POST `/api/reports`. The route creates the report with `status: 'pending_ai'`, synchronously calls Gemini (see section 10), updates the report with `aiVerdict` and `status: 'ai_reviewed'` or `status: 'flagged'` if abuse detected. Returns the full report.
+* On submit: POST `/api/reports`. The route creates the report with `status: 'pending_ai'`, synchronously calls Shosha analysis (see section 10), updates the report with `aiVerdict` and `status: 'ai_reviewed'` or `status: 'flagged'` if abuse detected. Returns the full report.
 * Show the AI verdict card inline: valid / invalid, confidence %, proposed impact, reasoning. User taps confirm to file.
 * Do NOT adjust the account score yet. Score only moves after admin approval.
 
@@ -283,7 +283,7 @@ Admin role is set manually in DB or via seed. Only admins see the Tribunal tab.
 * Admin reviews screenshot, approves or rejects.
 
 ### 7.4 Audit execution
-* Admin triggers an audit. Backend batches all approved reports for that account through Gemini with a "full audit" prompt (see section 10.2) that returns a rebalanced breakdown and score. Applied as a single history entry.
+* Admin triggers an audit. Backend batches all approved reports for that account through Shosha analysis with a "full audit" prompt (see section 10.2) that returns a rebalanced breakdown and score. Applied as a single history entry.
 
 ### 7.5 Abuse and manipulation panel
 * List reports where `aiVerdict.abuseFlags.length > 0` (e.g. coordinated, spam, off-topic, doxxing).
@@ -339,9 +339,9 @@ All pages must be mobile first, max-width 448px content column centered on deskt
 
 ---
 
-## 10. Gemini AI Integration (`src/lib/gemini.ts`)
+## 10. Shosha AI Integration (`src/lib/gemini.ts`)
 
-Use `@google/generative-ai` with `gemini-2.0-flash-exp` and structured response schemas. One module exports two functions.
+Use Gemini as the underlying model provider with Shosha-branded prompts and structured JSON responses. One module exports two functions.
 
 ### 10.1 Adjudicate a single report
 
@@ -479,6 +479,8 @@ MONGODB_URI=
 NEXTAUTH_SECRET=
 NEXTAUTH_URL=http://localhost:3000
 GEMINI_API_KEY=
+GEMINI_MODEL=
+GEMINI_DISCOVERY_MODEL=
 CLOUDINARY_CLOUD_NAME=
 CLOUDINARY_API_KEY=
 CLOUDINARY_API_SECRET=
@@ -536,8 +538,8 @@ Do each phase fully and commit to a fresh git branch before the next. Verify wit
 **Phase 6: Reporting**
 * Report model + endpoints.
 * Three step report modal.
-* Gemini integration module with heuristic fallback.
-* Wire POST /api/reports to call Gemini and return verdict.
+* Shosha analysis module with heuristic fallback.
+* Wire POST /api/reports to call Shosha analysis and return verdict.
 * Render verdict card in the modal.
 
 **Phase 7: Admin tribunal**
@@ -571,7 +573,7 @@ Do each phase fully and commit to a fresh git branch before the next. Verify wit
 
 ## 17. Testing (write as you go, do not defer)
 
-* Vitest for unit tests on `src/lib/scoring.ts` and `src/lib/gemini.ts` (mock Gemini client).
+* Vitest for unit tests on `src/lib/scoring.ts` and `src/lib/gemini.ts` (mock Shosha analysis client).
 * Playwright for one E2E: sign up, file a report, admin approves, score updates.
 * Test every API route with a request and assert response shape.
 

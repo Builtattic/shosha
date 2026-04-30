@@ -35,7 +35,7 @@ type FeedReport = {
 };
 
 type Notification = { id: string; title: string; body: string };
-type Platform = 'x' | 'instagram' | 'facebook' | 'youtube' | 'tiktok' | 'linkedin' | 'website';
+type Platform = 'x' | 'instagram' | 'facebook' | 'youtube' | 'tiktok' | 'linkedin' | 'reddit' | 'snapchat' | 'website';
 type AccountMatch = {
   _id: string;
   platform: Platform;
@@ -287,7 +287,7 @@ export default function DashboardPage() {
             />
             {(searchingAccounts || accountMatches.length > 0 || accountCandidates.length > 0) && (
               <div className="absolute left-0 right-0 top-14 z-50 max-h-[70vh] overflow-y-auto rounded-[20px] border border-border bg-card p-3 shadow-xl">
-                {searchingAccounts && <p className="px-2 py-2 text-[12px] text-muted-foreground">Searching accounts with Gemini...</p>}
+                {searchingAccounts && <p className="px-2 py-2 text-[12px] text-muted-foreground">Searching accounts with Shosha...</p>}
                 {accountMatches.map((account) => (
                   <Link
                     key={account._id}

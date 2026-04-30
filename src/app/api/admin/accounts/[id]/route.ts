@@ -16,6 +16,16 @@ const updateAccountSchema = z.object({
   followers: z.string().max(24).optional(),
   claimed: z.boolean().optional(),
   claimedBy: z.string().nullable().optional(),
+  profileId: z.string().min(1).max(40).optional(),
+  profileKind: z.enum(['standard', 'public_figure']).optional(),
+  claimable: z.boolean().optional(),
+  credibility: z.number().min(0).max(100).optional(),
+  enrichmentStatus: z.enum(['none', 'pending', 'reviewed', 'stale']).optional(),
+  role: z.string().max(120).optional(),
+  region: z.string().max(120).optional(),
+  quote: z.string().max(280).optional(),
+  evidenceSummary: z.string().max(500).optional(),
+  socialLinks: z.record(z.unknown()).optional(),
 });
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {

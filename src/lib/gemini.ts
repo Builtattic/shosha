@@ -1,4 +1,3 @@
-import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 import type { Breakdown, ReportType } from '@/types';
 import { clamp } from '@/lib/utils';
 
@@ -23,27 +22,133 @@ export type AiVerdict = {
   analyzedAt: Date;
 };
 
-const reportSystemPrompt = `You are the adjudicator for Shosha, a reputation platform for social media accounts. Grade an individual filing for validity and determine how it should impact a score.
+export type AuditOutput = {
+  newScore: number;
+  breakdown: Breakdown;
+  summary: string;
+};
 
-Your output must be strict JSON matching the provided schema. No prose outside JSON.
+const reportSystemPrompt = `You are the Shosha adjudicator, grading a filing for validity and score impact.
+
+Return strict JSON only:
+{
+  "valid": true,
+  "confidence": 0.75,
+  "proposedImpact": 3,
+  "reasoning": "brief reason",
+  "categoryTags": ["community"],
+  "abuseFlags": []
+}
 
 Scoring guidance:
 - Vague emotional complaints without specifics: low confidence, small magnitude (-1 to +1).
 - Concrete dated incidents with evidence: high confidence, larger magnitude (up to -10 or +10).
 - Positive filings produce positive proposedImpact, negative filings produce negative.
-- Flag coordinated brigading, off topic vendettas, doxxing, or pure opinion as abuse. Set valid=false and list flags.
+- Flag coordinated brigading, off-topic vendettas, doxxing, or pure opinion as abuse. Set valid=false and list flags.
 
 Categorize each filing with up to 3 tags from: authenticity, engagement, community, content, impact, harassment, misinformation, philanthropy, professionalism, controversy.`;
 
-const auditSystemPrompt = `You audit a social media account's reputation holistically. Given a list of admin-approved filings and recent posts, return a rebalanced Shosha Score and trait breakdown. Weight recent events more than old ones (exponential decay by days). Do not produce impacts larger than +/- 15 from current score in a single audit.`;
+const auditSystemPrompt = `You audit a social media account's reputation holistically for Shosha. Given approved filings and recent posts, return a rebalanced Shosha Score and trait breakdown. Weight recent events more than old ones. Do not move score more than +/- 15 from current score in a single audit.
+
+Return strict JSON only:
+{
+  "newScore": 60,
+  "breakdown": {
+    "authenticity": 60,
+    "engagement": 60,
+    "community": 60,
+    "content": 60,
+    "impact": 60
+  },
+  "summary": "brief summary"
+}`;
+
+function aiKey() {
+  return process.env.GEMINI_API_KEY;
+}
+
+function aiModel() {
+  return process.env.GEMINI_MODEL || process.env.GEMINI_DISCOVERY_MODEL || 'gemini-3-pro-preview';
+}
+
+function discoveryModel() {
+  return process.env.GEMINI_DISCOVERY_MODEL || 'gemini-3-pro-preview';
+}
 
 function timeout<T>(promise: Promise<T>, ms: number) {
   return Promise.race([
     promise,
     new Promise<T>((_, reject) => {
-      setTimeout(() => reject(new Error('Gemini timeout')), ms);
+      setTimeout(() => reject(new Error('Shosha analysis timeout')), ms);
     })
   ]);
+}
+
+function extractJsonObject(text: string): unknown {
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidate = fenced?.[1] ?? text;
+  const start = candidate.indexOf('{');
+  if (start === -1) return {};
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < candidate.length; i += 1) {
+    const ch = candidate[i];
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (ch === '\\' && inString) {
+      escape = true;
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+    if (ch === '{') depth += 1;
+    else if (ch === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        try {
+          return JSON.parse(candidate.slice(start, i + 1));
+        } catch {
+          return {};
+        }
+      }
+    }
+  }
+  return {};
+}
+
+async function callShoshaModel(body: unknown, timeoutMs = 30_000) {
+  const key = aiKey();
+  const model = aiModel();
+  if (!key || !model) {
+    throw new Error('Shosha analysis is not configured.');
+  }
+  const response = await timeout(
+    fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': key
+      },
+      body: JSON.stringify(body),
+      cache: 'no-store'
+    }),
+    timeoutMs
+  );
+  if (!response.ok) {
+    const detail = await response.text().catch(() => '');
+    if (detail.includes('reported as leaked')) {
+      throw new Error('Shosha analysis failed because GEMINI_API_KEY was reported as leaked. Rotate the key in Google AI Studio and update .env.local.');
+    }
+    throw new Error(`Shosha analysis failed with status ${response.status}.`);
+  }
+  const payload = await response.json();
+  return payload?.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text ?? '').join('\n') ?? '';
 }
 
 function heuristicAdjudication(input: AdjudicationInput): AiVerdict {
@@ -57,7 +162,7 @@ function heuristicAdjudication(input: AdjudicationInput): AiVerdict {
     valid: abuseFlags.length === 0,
     confidence: concrete ? 0.45 : 0.3,
     proposedImpact,
-    reasoning: 'Heuristic fallback (AI unavailable).',
+    reasoning: 'Shosha heuristic fallback.',
     categoryTags: text.includes('harass') ? ['community', 'harassment'] : ['community'],
     abuseFlags,
     analyzedAt: new Date()
@@ -65,38 +170,19 @@ function heuristicAdjudication(input: AdjudicationInput): AiVerdict {
 }
 
 export async function adjudicateReport(input: AdjudicationInput): Promise<AiVerdict> {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) return heuristicAdjudication(input);
+  if (!aiKey() || !aiModel()) return heuristicAdjudication(input);
 
   try {
-    const genAI = new GoogleGenerativeAI(key);
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash-exp',
-      systemInstruction: reportSystemPrompt,
-      generationConfig: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: SchemaType.OBJECT,
-          properties: {
-            valid: { type: SchemaType.BOOLEAN },
-            confidence: { type: SchemaType.NUMBER },
-            proposedImpact: { type: SchemaType.INTEGER },
-            reasoning: { type: SchemaType.STRING },
-            categoryTags: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
-            abuseFlags: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } }
-          },
-          required: ['valid', 'confidence', 'proposedImpact', 'reasoning', 'categoryTags', 'abuseFlags']
-        }
-      }
-    });
-    const promptText = `Account: ${input.accountDisplayName}
+    const promptText = `${reportSystemPrompt}
+
+Account: ${input.accountDisplayName}
 Platform: ${input.platform}
 Type: ${input.type}
 Description: ${input.description}
 Feelings: ${input.feelings}
 Media: ${input.mediaDescription ?? 'Media proof was supplied.'}
-${input.mediaType === 'image' && input.mediaUrl ? 'An image is attached as inline media — examine it carefully and reference what you see in your reasoning.' : ''}
-${input.mediaType === 'video' && input.mediaUrl ? `Note: a video proof was uploaded but cannot be analyzed inline. Source: ${input.mediaUrl}` : ''}`;
+${input.mediaType === 'image' && input.mediaUrl ? 'An image is attached as inline media. Examine it carefully and reference what you see in reasoning.' : ''}
+${input.mediaType === 'video' && input.mediaUrl ? `A video proof was uploaded but cannot be analyzed inline. Source: ${input.mediaUrl}` : ''}`;
 
     const parts: Array<Record<string, unknown>> = [{ text: promptText }];
     if (input.mediaType === 'image' && input.mediaUrl) {
@@ -115,20 +201,20 @@ ${input.mediaType === 'video' && input.mediaUrl ? `Note: a video proof was uploa
           }
         }
       } catch (err) {
-        console.warn('[gemini] media fetch failed', (err as Error).message);
+        console.warn('[shosha-ai] media fetch failed', (err as Error).message);
       }
     }
 
-    const result = await timeout(model.generateContent(parts as never), 30_000);
-    const json = JSON.parse(result.response.text());
+    const text = await callShoshaModel({ contents: [{ parts }] }, 30_000);
+    const json = extractJsonObject(text) as Partial<AiVerdict>;
 
     return {
       valid: Boolean(json.valid),
       confidence: clamp(Number(json.confidence), 0, 1),
       proposedImpact: Math.max(-10, Math.min(10, Math.trunc(Number(json.proposedImpact)))),
-      reasoning: String(json.reasoning).slice(0, 500),
-      categoryTags: Array.isArray(json.categoryTags) ? json.categoryTags.slice(0, 3) : [],
-      abuseFlags: Array.isArray(json.abuseFlags) ? json.abuseFlags : [],
+      reasoning: String(json.reasoning ?? '').slice(0, 500),
+      categoryTags: Array.isArray(json.categoryTags) ? json.categoryTags.slice(0, 3).map(String) : [],
+      abuseFlags: Array.isArray(json.abuseFlags) ? json.abuseFlags.map(String) : [],
       analyzedAt: new Date()
     };
   } catch {
@@ -136,74 +222,98 @@ ${input.mediaType === 'video' && input.mediaUrl ? `Note: a video proof was uploa
   }
 }
 
-export type AuditOutput = {
-  newScore: number;
-  breakdown: Breakdown;
-  summary: string;
-};
-
 export async function runFullAudit(input: {
   account: { score: number; displayName: string; platform: string; breakdown: Breakdown };
   approvedReports: unknown[];
   recentPosts: unknown[];
 }): Promise<AuditOutput> {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) {
+  if (!aiKey() || !aiModel()) {
     return {
       newScore: input.account.score,
       breakdown: input.account.breakdown,
-      summary: 'Heuristic fallback (AI unavailable). No material score movement was applied.'
+      summary: 'Shosha heuristic fallback. No material score movement was applied.'
     };
   }
 
   try {
-    const genAI = new GoogleGenerativeAI(key);
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash-exp',
-      systemInstruction: auditSystemPrompt,
-      generationConfig: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: SchemaType.OBJECT,
-          properties: {
-            newScore: { type: SchemaType.INTEGER },
-            breakdown: {
-              type: SchemaType.OBJECT,
-              properties: {
-                authenticity: { type: SchemaType.INTEGER },
-                engagement: { type: SchemaType.INTEGER },
-                community: { type: SchemaType.INTEGER },
-                content: { type: SchemaType.INTEGER },
-                impact: { type: SchemaType.INTEGER }
-              },
-              required: ['authenticity', 'engagement', 'community', 'content', 'impact']
-            },
-            summary: { type: SchemaType.STRING }
-          },
-          required: ['newScore', 'breakdown', 'summary']
-        }
-      }
-    });
-    const result = await timeout(model.generateContent(JSON.stringify(input)), 20_000);
-    const json = JSON.parse(result.response.text());
+    const text = await callShoshaModel({
+      contents: [{ parts: [{ text: `${auditSystemPrompt}\n\n${JSON.stringify(input)}` }] }]
+    }, 20_000);
+    const json = extractJsonObject(text) as {
+      newScore?: number;
+      breakdown?: Partial<Record<keyof Breakdown, number>>;
+      summary?: string;
+    };
     const bounded = clamp(Number(json.newScore), input.account.score - 15, input.account.score + 15);
+    const breakdown = json.breakdown ?? {};
 
     return {
       newScore: Math.round(clamp(bounded, 0, 100)),
       breakdown: {
-        authenticity: Math.round(clamp(Number(json.breakdown.authenticity))),
-        engagement: Math.round(clamp(Number(json.breakdown.engagement))),
-        community: Math.round(clamp(Number(json.breakdown.community))),
-        content: Math.round(clamp(Number(json.breakdown.content))),
-        impact: Math.round(clamp(Number(json.breakdown.impact)))
+        authenticity: Math.round(clamp(Number(breakdown.authenticity))),
+        engagement: Math.round(clamp(Number(breakdown.engagement))),
+        community: Math.round(clamp(Number(breakdown.community))),
+        content: Math.round(clamp(Number(breakdown.content))),
+        impact: Math.round(clamp(Number(breakdown.impact)))
       },
-      summary: String(json.summary).slice(0, 500)
+      summary: String(json.summary ?? '').slice(0, 500)
     };
   } catch {
     return {
       newScore: input.account.score,
       breakdown: input.account.breakdown,
-      summary: 'Heuristic fallback (AI unavailable). No material score movement was applied.'
+      summary: 'Shosha heuristic fallback. No material score movement was applied.'
     };
   }
+}
+
+export async function generateGroundedJson(prompt: string, timeoutMs = 45_000): Promise<{ json: unknown; sources: Array<{ uri: string; title: string }>; searchQueries: string[]; grounded: boolean }> {
+  const key = aiKey();
+  const model = discoveryModel();
+  if (!key || !model) {
+    throw new Error('Shosha discovery is not configured.');
+  }
+
+  const response = await timeout(
+    fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': key
+      },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        tools: [{ google_search: {} }],
+        generationConfig: { temperature: 0.2 }
+      }),
+      cache: 'no-store'
+    }),
+    timeoutMs
+  );
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => '');
+    if (detail.includes('reported as leaked')) {
+      throw new Error('Shosha discovery failed because GEMINI_API_KEY was reported as leaked. Rotate the key in Google AI Studio and update .env.local.');
+    }
+    throw new Error(`Shosha discovery failed with status ${response.status}.`);
+  }
+
+  const payload = await response.json();
+  const text = payload?.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text ?? '').join('\n') ?? '';
+  const grounding = payload?.candidates?.[0]?.groundingMetadata;
+  const sources =
+    grounding?.groundingChunks
+      ?.map((chunk: { web?: { uri?: string; title?: string } }) => ({
+        uri: chunk.web?.uri,
+        title: chunk.web?.title
+      }))
+      .filter((source: { uri?: string; title?: string }) => source.uri && source.title) ?? [];
+
+  return {
+    json: extractJsonObject(text),
+    sources,
+    searchQueries: grounding?.webSearchQueries ?? [],
+    grounded: Boolean(grounding)
+  };
 }

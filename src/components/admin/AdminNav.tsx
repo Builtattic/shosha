@@ -9,6 +9,7 @@ const navItems = [
   { href: '/admin/create', label: 'Create', icon: PlusCircle },
   { href: '/admin/feed', label: 'Feed', icon: Newspaper },
   { href: '/admin/queue', label: 'Queue', icon: ListTodo },
+  { href: '/admin/evidence', label: 'Evidence', icon: Search },
   { href: '/admin/users', label: 'Users', icon: Users },
   { href: '/admin/accounts', label: 'Accounts', icon: Database },
   { href: '/admin/claims', label: 'Claims', icon: ClipboardList },

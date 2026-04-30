@@ -25,7 +25,7 @@ type UploadedMedia = {
   bytes: number;
 };
 
-type Platform = 'instagram' | 'x' | 'facebook' | 'youtube' | 'tiktok' | 'linkedin' | 'website';
+type Platform = 'instagram' | 'x' | 'facebook' | 'youtube' | 'tiktok' | 'linkedin' | 'reddit' | 'snapchat' | 'website';
 
 type AccountCandidate = {
   platform: Platform;
@@ -276,7 +276,7 @@ export function ReportModal({
                 <h3 className="text-[17px] font-bold mb-1">Who is this report about?</h3>
                 <p className="text-[13px] text-muted-foreground mb-4">We will create or reuse the public dossier behind this filing.</p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
-                  {(['instagram', 'facebook', 'x', 'youtube', 'tiktok', 'linkedin'] as const).map((platform) => (
+                  {(['instagram', 'facebook', 'x', 'youtube', 'tiktok', 'linkedin', 'reddit', 'snapchat'] as const).map((platform) => (
                     <button
                       key={platform}
                       type="button"

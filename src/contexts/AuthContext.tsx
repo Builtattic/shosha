@@ -62,7 +62,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const token = await cred.user.getIdToken();
         setSessionCookie(token);
       }
-    }).catch(() => {
+    }).catch((error) => {
+      console.error("Firebase Redirect Error:", error);
       // Redirect auth can fail when users cancel or browser storage is blocked.
       // Keep the page quiet; the button handler exposes actionable failures.
     });
@@ -103,6 +104,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
+
+      // On mobile devices, always use redirect to avoid popup issues
+      const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      
+      if (isMobile) {
+        await signInWithRedirect(auth, provider);
+        return 'redirecting';
+      }
 
       try {
         const cred = await signInWithPopup(auth, provider);

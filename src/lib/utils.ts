@@ -13,6 +13,8 @@ export function formatPlatform(platform: string) {
     youtube: 'YouTube',
     tiktok: 'TikTok',
     linkedin: 'LinkedIn',
+    reddit: 'Reddit',
+    snapchat: 'Snapchat',
     website: 'Website'
   };
   return labels[platform] ?? platform;
