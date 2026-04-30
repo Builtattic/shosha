@@ -3,7 +3,6 @@ import { fail, fromZod, ok } from '@/lib/api';
 import { adjudicateReport } from '@/lib/gemini';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
 import { assertLimit, getRequestKey, rateLimits } from '@/lib/ratelimit';
-import { applyImpact } from '@/lib/scoring';
 import { idSchema, reportCreateSchema } from '@/lib/validators';
 import * as accountsRepo from '@/lib/repos/accounts';
 import * as reportsRepo from '@/lib/repos/reports';
@@ -65,34 +64,6 @@ export async function POST(request: Request) {
     aiVerdict: { ...verdict, analyzedAt: verdict.analyzedAt.toISOString() },
     adminDecision: null
   });
-
-  // Apply provisional AI impact to the dossier immediately so the score reflects the new filing.
-  // Admins can later override via /reports/[id]/adjudicate; we apply a fraction here to avoid double-counting.
-  if (verdict.valid && verdict.abuseFlags.length === 0 && verdict.proposedImpact !== 0) {
-    try {
-      const tags = (verdict.categoryTags ?? []).filter((tag: string) =>
-        ['authenticity', 'engagement', 'community', 'content', 'impact'].includes(tag)
-      );
-      const provisionalImpact = Math.sign(verdict.proposedImpact) * Math.min(3, Math.abs(verdict.proposedImpact));
-      const next = {
-        score: account.score,
-        breakdown: { ...account.breakdown },
-        scoreHistory: (account.scoreHistory ?? []).map((point) => ({ ...point, t: new Date(point.t) }))
-      };
-      applyImpact(next, provisionalImpact, 'report', tags);
-      await accountsRepo.update(account._id, {
-        score: next.score,
-        breakdown: next.breakdown,
-        scoreHistory: next.scoreHistory.map((point) => ({
-          t: point.t.toISOString(),
-          s: point.s,
-          cause: point.cause
-        }))
-      });
-    } catch (err) {
-      console.error('[reports POST] failed to apply provisional impact', err);
-    }
-  }
 
   return ok(report, 201);
 }

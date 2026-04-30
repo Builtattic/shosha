@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Brain, AlertTriangle, Tag, CheckCircle2 } from 'lucide-react';
 import { AdminReviewControls } from '@/components/admin/AdminReviewControls';
+import { BASE_SCORE } from '@/lib/scoring';
 import { idSchema } from '@/lib/validators';
 import * as accountsRepo from '@/lib/repos/accounts';
 import * as reportsRepo from '@/lib/repos/reports';
@@ -55,7 +56,7 @@ export default async function ReviewPage({ params }: { params: { reportId: strin
           <h1 className="text-4xl font-black text-foreground tracking-tight">{account?.displayName ?? 'Case file'}</h1>
           {account && (
             <p className="text-muted-foreground text-sm font-medium mt-1">
-              @{account.username} · {account.platform} · Trust Score: <span className="font-black text-foreground">{account.score}</span>
+              @{account.username} · {account.platform} · Shosha Score: <span className="font-black text-foreground">{account.score}</span>
             </p>
           )}
         </div>
@@ -151,7 +152,7 @@ export default async function ReviewPage({ params }: { params: { reportId: strin
             <AdminReviewControls
               reportId={report._id}
               proposedImpact={report.aiVerdict?.proposedImpact ?? 0}
-              score={account?.score ?? 60}
+              score={account?.score ?? BASE_SCORE}
             />
           </div>
         </div>

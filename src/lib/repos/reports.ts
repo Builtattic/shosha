@@ -32,6 +32,7 @@ export type AdminDecisionRecord = {
 export type ReportRecord = {
   _id: string;
   accountId: string;
+  eventId?: string;
   reporterId: string | null;
   anonymousTag: string;
   type: ReportType;

@@ -4,29 +4,15 @@ import { anonymousTag } from '@/lib/anonymous';
 import * as eventsRepo from '@/lib/repos/events';
 import * as accountsRepo from '@/lib/repos/accounts';
 import * as subscriptionsRepo from '@/lib/repos/subscriptions';
+import {
+  DEFAULT_MULTIPLIERS,
+  applySheetScore,
+  calcDelta,
+  calcMultiplierQuotient,
+  resolveSheetBaseImpact,
+  type EventMultipliers,
+} from '@/lib/scoring';
 import { z } from 'zod';
-
-// Base impact lookup tables (simplified — extend as needed)
-const BASE_IMPACT_POSITIVE: Record<string, number> = {
-  donation: 200, charity: 180, advocacy: 150, education: 160, environment: 170,
-  healthcare: 190, housing: 200, employment: 150, community: 140, innovation: 160,
-  default: 100
-};
-const BASE_IMPACT_NEGATIVE: Record<string, number> = {
-  fraud: -300, corruption: -280, harassment: -250, discrimination: -240, violence: -350,
-  defamation: -200, misinformation: -220, exploitation: -270, negligence: -180,
-  default: -100
-};
-
-const DEFAULT_MULTIPLIERS = {
-  identity: 1.0, power: 1.0, means: 1.0, environment: 1.0, awareness: 1.0,
-  ability: 1.0, circumstances: 1.0, responsibility: 1.0, intent: 1.0, reputation: 1.0
-};
-
-function computeDelta(baseImpact: number, multipliers: typeof DEFAULT_MULTIPLIERS): number {
-  const product = Object.values(multipliers).reduce((acc, m) => acc * m, 1);
-  return Math.round(baseImpact * product / 10);
-}
 
 const eventCreateSchema = z.object({
   subjectId: z.string().min(1),
@@ -100,15 +86,18 @@ export async function POST(request: Request) {
     const account = await accountsRepo.findById(parsed.data.subjectId);
     if (!account) return fail('not_found', 'No profile found for this event subject.', 404);
 
-    // Resolve base impact
-    const table = parsed.data.eventType === 'positive' ? BASE_IMPACT_POSITIVE : BASE_IMPACT_NEGATIVE;
-    const baseImpact = table[parsed.data.baseImpactKey] ?? table['default'];
+    // Resolve base impact from the sheet scoring index.
+    const scoringRow = resolveSheetBaseImpact(parsed.data.baseImpactKey, parsed.data.eventType);
+    const baseImpact = scoringRow.baseScore;
 
     // Merge multipliers
-    const multipliers = { ...DEFAULT_MULTIPLIERS, ...(parsed.data.multipliers ?? {}) };
+    const multipliers: EventMultipliers = { ...DEFAULT_MULTIPLIERS, ...(parsed.data.multipliers ?? {}) };
 
     // Compute delta
-    const delta = computeDelta(baseImpact, multipliers);
+    const multiplierQuotient = calcMultiplierQuotient(multipliers);
+    const delta = calcDelta(baseImpact, multipliers);
+    const scoreBefore = account.score ?? 1000;
+    const { score: scoreAfter, decay } = applySheetScore(scoreBefore, delta);
 
     // Deduplication check
     const duplicate = await eventsRepo.findDuplicate(parsed.data.subjectId, parsed.data.description);
@@ -126,7 +115,14 @@ export async function POST(request: Request) {
       baseImpactKey: parsed.data.baseImpactKey,
       baseImpact,
       multipliers,
+      multiplierQuotient,
       delta,
+      scoreBefore,
+      scoreAfter,
+      decay,
+      category: scoringRow.category,
+      deed: scoringRow.deed,
+      formulaVersion: 'sheet-v1',
       proofLinks: parsed.data.proofLinks,
       location: parsed.data.location,
       timestamp: new Date().toISOString(),
@@ -137,19 +133,29 @@ export async function POST(request: Request) {
     });
 
     // Update account score
-    const newScore = (account.score ?? 1000) + delta;
     await accountsRepo.update(account._id, {
-      score: newScore,
+      score: scoreAfter,
       scoreHistory: [
         ...(account.scoreHistory ?? []),
-        { t: new Date().toISOString(), s: newScore, cause: 'report' as const },
+        {
+          t: new Date().toISOString(),
+          s: scoreAfter,
+          cause: 'report' as const,
+          delta,
+          baseScore: baseImpact,
+          multiplierQuotient,
+          decay,
+          category: scoringRow.category,
+          deed: scoringRow.deed,
+          multipliers,
+        },
       ],
     });
 
     // Increment usage
     if (user) await subscriptionsRepo.incrementDailyReport(user._id);
 
-    return ok({ ...event, account: { ...account, score: newScore } }, 201);
+    return ok({ ...event, account: { ...account, score: scoreAfter } }, 201);
   } catch (err) {
     console.error('[POST /api/events]', err);
     return fail('server_error', 'Failed to create event. Ensure Firestore is running.', 500);

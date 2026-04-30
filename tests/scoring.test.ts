@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { applyImpact, averageBreakdown, type ScoredAccount } from '@/lib/scoring';
+import {
+  applyImpact,
+  averageBreakdown,
+  calcDelta,
+  calcMultiplierQuotient,
+  calcProfileCredibility,
+  calcSheetScoreTracker,
+  resolveSheetBaseImpact,
+  sheetDecay,
+  type EventMultipliers,
+  type ScoredAccount,
+} from '@/lib/scoring';
 
 describe('applyImpact', () => {
   it('clamps score and appends history', () => {
@@ -22,5 +33,64 @@ describe('applyImpact', () => {
     };
     applyImpact(account, 10, 'report', ['community']);
     expect(account.breakdown.community).toBeGreaterThan(account.breakdown.content);
+  });
+});
+
+describe('sheet-first scoring', () => {
+  const sampleMultipliers: EventMultipliers = {
+    reputation: 1.5,
+    intent: 2.5,
+    identity: 1.5,
+    power: 3,
+    means: 2,
+    environment: 2.5,
+    ability: 1,
+    circumstances: 2,
+    responsibility: 1.5,
+    awareness: 2,
+  };
+
+  it('looks up base scores from the full sheet scoring index', () => {
+    expect(resolveSheetBaseImpact('Murder / rape', 'negative')).toMatchObject({
+      category: 'EXTREME IMPACT',
+      deed: 'Murder / rape',
+      baseScore: -1000,
+    });
+    expect(resolveSheetBaseImpact('Helping someone with small tasks', 'positive').baseScore).toBe(30);
+  });
+
+  it('uses every visible multiplier column for the delta ledger', () => {
+    expect(calcMultiplierQuotient(sampleMultipliers)).toBe(506.25);
+    expect(calcDelta(-100, sampleMultipliers)).toBe(-5062.5);
+  });
+
+  it('matches the sheet decay and weekly score tracker screenshots', () => {
+    expect(sheetDecay(-5062.5)).toBeCloseTo(0.9998025081, 10);
+
+    const tracker = calcSheetScoreTracker({
+      baseScore: 1000,
+      w1Delta: -5062.5,
+      w2P: 0,
+      w2N: -15000,
+    });
+
+    expect(tracker.w1Decay).toBeCloseTo(0.9998025081, 10);
+    expect(tracker.w1Score).toBe(-4061.5);
+    expect(tracker.w2Delta).toBe(-15000);
+    expect(tracker.w2Decay).toBeCloseTo(0.9999333378, 10);
+    expect(tracker.w2Score).toBe(-19060.5);
+  });
+
+  it('matches the profile credibility tracker sample', () => {
+    expect(calcProfileCredibility({
+      baseCredibility: 80,
+      trustBadgeBonus: 20,
+      opposedPosts: 12,
+      disputeLosses: 4,
+      aiFlaggedPosts: 2,
+    })).toMatchObject({
+      totalCredibility: 100,
+      updatedCredibility: 48,
+    });
   });
 });

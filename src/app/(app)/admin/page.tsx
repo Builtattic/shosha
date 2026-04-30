@@ -6,11 +6,12 @@ import * as usersRepo from '@/lib/repos/users';
 import * as claimsRepo from '@/lib/repos/claimRequests';
 import * as auditsRepo from '@/lib/repos/auditRequests';
 import { AdminDashboardChart } from '@/components/admin/AdminDashboardChart';
+import { BASE_SCORE } from '@/lib/scoring';
 
 export const dynamic = 'force-dynamic';
 
 function ScoreBadge({ score }: { score: number }) {
-  const color = score >= 70 ? 'text-emerald-400' : score >= 40 ? 'text-amber-400' : 'text-red-400';
+  const color = score >= BASE_SCORE ? 'text-emerald-400' : score >= 0 ? 'text-amber-400' : 'text-red-400';
   return <span className={`font-mono font-bold ${color}`}>{score}</span>;
 }
 

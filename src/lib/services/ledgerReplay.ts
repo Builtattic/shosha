@@ -2,31 +2,14 @@ import * as usersRepo from '@/lib/repos/users';
 import * as reportsRepo from '@/lib/repos/reports';
 import {
   calcDelta,
+  calcMultiplierQuotient,
+  applySheetScore,
   profileMultipliersFromUser,
   DEFAULT_MULTIPLIERS,
+  resolveSheetBaseImpactFromAdminImpact,
   type EventMultipliers,
 } from '@/lib/scoring';
 import type { LedgerEntryRecord } from '@/lib/repos/users';
-
-// Map a report's approved finalImpact onto a category we know about.
-// finalImpact is admin-entered −10..+10; scaled to a BaseImpact tier.
-function categoryFor(finalImpact: number): { category: string; baseImpact: number } {
-  const sign = finalImpact >= 0 ? 1 : -1;
-  const mag = Math.abs(finalImpact);
-  // Tiered mapping aligned with BASE_IMPACTS table.
-  let baseImpact = 50;
-  let positive = 'small_help';
-  let negative = 'insult';
-  if (mag >= 9) { baseImpact = 1000; positive = 'saving_life'; negative = 'severe_violence'; }
-  else if (mag >= 7) { baseImpact = 700; positive = 'major_contribution'; negative = 'assault'; }
-  else if (mag >= 5) { baseImpact = 500; positive = 'major_contribution'; negative = 'fraud'; }
-  else if (mag >= 3) { baseImpact = 300; positive = 'integrity'; negative = 'hate_speech'; }
-  else if (mag >= 2) { baseImpact = 150; positive = 'community'; negative = 'harassment'; }
-  return {
-    category: sign > 0 ? positive : negative,
-    baseImpact: sign * baseImpact,
-  };
-}
 
 export type ReplayResult = {
   userId: string;
@@ -70,21 +53,24 @@ export async function replayUserLedger(userId: string): Promise<ReplayResult | n
   for (const report of allReports) {
     const finalImpact = report.adminDecision?.finalImpact ?? 0;
     if (finalImpact === 0) continue;
-    const { category, baseImpact } = categoryFor(finalImpact);
+    const scoringRow = resolveSheetBaseImpactFromAdminImpact(finalImpact, report.type);
+    const baseImpact = scoringRow.baseScore;
     const delta = calcDelta(baseImpact, multipliers);
     if (delta === 0) continue;
     entries.push({
       t: report.adminDecision?.decidedAt ?? report.createdAt ?? new Date().toISOString(),
       delta,
       cause: 'report',
-      category,
+      category: scoringRow.category,
       eventId: report._id,
+      baseScore: baseImpact,
+      multiplierQuotient: calcMultiplierQuotient(multipliers),
       multipliers: multipliers as unknown as Record<string, number>,
     });
   }
 
   await usersRepo.rebuildLedger(userId, entries);
-  const finalScore = entries.reduce((sum, e) => sum + e.delta, 1000);
+  const finalScore = entries.reduce((score, e) => applySheetScore(score, e.delta).score, 1000);
   return { userId, entriesApplied: entries.length, finalScore };
 }
 

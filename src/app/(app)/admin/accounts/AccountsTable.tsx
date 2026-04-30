@@ -6,6 +6,7 @@ import { Search, ChevronUp, ChevronDown, Trash2, MoreHorizontal, CheckCircle, Ed
 import { useToast } from '@/components/ui/Toast';
 import Link from 'next/link';
 import type { AccountRecord } from '@/lib/repos/accounts';
+import { BASE_SCORE } from '@/lib/scoring';
 
 const PLATFORM_ICONS: Record<string, string> = {
   x: '𝕏',
@@ -18,13 +19,14 @@ const PLATFORM_ICONS: Record<string, string> = {
 };
 
 function ScoreBar({ score }: { score: number }) {
-  const color = score >= 70 ? 'bg-emerald-500' : score >= 40 ? 'bg-amber-500' : 'bg-red-500';
+  const color = score >= BASE_SCORE ? 'bg-emerald-500' : score >= 0 ? 'bg-amber-500' : 'bg-red-500';
+  const width = Math.max(0, Math.min(100, (score / (BASE_SCORE * 2)) * 100));
   return (
     <div className="flex items-center gap-2">
       <div className="w-16 h-1.5 rounded-full bg-secondary overflow-hidden">
-        <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${score}%` }} />
+        <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${width}%` }} />
       </div>
-      <span className={`font-mono text-[11px] font-black ${score >= 70 ? 'text-emerald-600' : score >= 40 ? 'text-amber-600' : 'text-red-600'}`}>
+      <span className={`font-mono text-[11px] font-black ${score >= BASE_SCORE ? 'text-emerald-600' : score >= 0 ? 'text-amber-600' : 'text-red-600'}`}>
         {score}
       </span>
     </div>
@@ -135,11 +137,9 @@ export function AccountsTable({ initialAccounts }: { initialAccounts: AccountRec
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[2px]" onClick={() => setEditScore(null)}>
           <div className="rounded-2xl border border-border bg-background p-6 w-80 shadow-2xl animate-in zoom-in-95 duration-100" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-foreground font-black text-lg mb-1">Override Score</h3>
-            <p className="text-muted-foreground text-[13px] mb-6">Manually set the trust score (0–100).</p>
+            <p className="text-muted-foreground text-[13px] mb-6">Manually set the Shosha score.</p>
             <input
               type="number"
-              min={0}
-              max={100}
               value={editScore.value}
               onChange={(e) => setEditScore({ ...editScore, value: Number(e.target.value) })}
               className="w-full h-20 rounded-2xl border-2 border-primary/20 bg-secondary/50 px-4 py-2 text-foreground text-4xl font-mono font-black text-center focus:outline-none focus:border-primary mb-6 transition-all"

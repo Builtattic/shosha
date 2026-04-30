@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { CheckCircle, XCircle, Gavel } from 'lucide-react';
+import { CheckCircle, XCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
+import { BASE_SCORE } from '@/lib/scoring';
 
 export function AdminReviewControls({
   reportId,
@@ -21,8 +22,7 @@ export function AdminReviewControls({
   const [confirmReject, setConfirmReject] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const previewScore = Math.min(100, Math.max(0, score + impact));
-  const scoreColor = previewScore >= 70 ? 'text-emerald-600' : previewScore >= 40 ? 'text-amber-600' : 'text-destructive';
+  const scoreColor = score >= BASE_SCORE ? 'text-emerald-600' : score >= 0 ? 'text-amber-600' : 'text-destructive';
   const impactColor = impact > 0 ? 'text-emerald-600' : impact < 0 ? 'text-destructive' : 'text-muted-foreground';
 
   async function decide(verdict: 'approved' | 'rejected') {
@@ -77,11 +77,9 @@ export function AdminReviewControls({
 
       {/* Score preview */}
       <div className="flex items-center justify-between rounded-2xl bg-primary/5 border border-primary/10 px-6 py-4">
-        <span className="text-[13px] font-bold text-primary/70">New Trust Score</span>
+        <span className="text-[13px] font-bold text-primary/70">Current Shosha Score</span>
         <div className="flex items-center gap-3">
-          <span className="text-muted-foreground/50 text-[13px] font-mono font-bold line-through">{score}</span>
-          <span className="text-primary/30">→</span>
-          <span className={`text-2xl font-black font-mono ${scoreColor}`}>{previewScore}</span>
+          <span className={`text-2xl font-black font-mono ${scoreColor}`}>{score.toLocaleString()}</span>
         </div>
       </div>
 
