@@ -9,6 +9,8 @@ import {
   sendEmailVerification,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   RecaptchaVerifier,
   signInWithPhoneNumber,
   updateProfile,
@@ -36,6 +38,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const googleSignInInProgress = useRef(false);
 
   useEffect(() => {
+    getRedirectResult(auth).then(async (cred) => {
+      if (cred && cred.user) {
+        const token = await cred.user.getIdToken();
+        document.cookie = `__session=${token}; path=/; max-age=3600; SameSite=Lax`;
+      }
+    }).catch(console.error);
+
     const unsubscribe = onIdTokenChanged(auth, async (u) => {
       setUser(u);
       setLoading(false);
@@ -72,21 +81,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
-      const cred = await signInWithPopup(auth, provider);
-      const token = await cred.user.getIdToken();
-      document.cookie = `__session=${token}; path=/; max-age=3600; SameSite=Lax`;
+      // Using signInWithRedirect instead of popup to fix the 'missing initial state'
+      // error that occurs on mobile Safari and in-app browsers due to storage partitioning.
+      await signInWithRedirect(auth, provider);
       return true;
     } catch (error: any) {
-      // silently swallow popup cancellations — they are expected UX
-      if (
-        error.code === 'auth/cancelled-popup-request' ||
-        error.code === 'auth/popup-closed-by-user'
-      ) {
-        return false;
-      }
-      throw error; // re-throw everything else so sign-in page can show error
-    } finally {
       googleSignInInProgress.current = false;
+      throw error;
     }
   }
 

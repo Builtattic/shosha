@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
@@ -30,7 +30,19 @@ async function resolveRedirect(redirectParam: string): Promise<string> {
 
 export default function SignInPage() {
   const router = useRouter();
-  const { signIn, signUp, signInWithGoogle, sendPhoneOtp } = useAuth();
+  const { user, loading: authLoading, signIn, signUp, signInWithGoogle, sendPhoneOtp } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && user && mode !== 'loading') {
+      setMode('loading');
+      const searchParams = new URLSearchParams(window.location.search);
+      resolveRedirect(searchParams.get('redirect') || '/dashboard').then(dest => {
+        router.push(dest);
+      }).catch(() => {
+        router.push('/dashboard');
+      });
+    }
+  }, [user, authLoading, router, mode]);
 
   const [mode, setMode] = useState<AuthMode>('choose');
   const [isSignUp, setIsSignUp] = useState(false);
@@ -74,19 +86,8 @@ export default function SignInPage() {
     setError('');
     setGoogleLoading(true);
     try {
-      const success = await signInWithGoogle();
-      if (!success) {
-        setGoogleLoading(false);
-        return;
-      }
-
-      const searchParams = new URLSearchParams(window.location.search);
-      setMode('loading');
-      const dest = await resolveRedirect(searchParams.get('redirect') || '/dashboard');
-      
-      // Do not set googleLoading to false here so the UI stays in a loading state
-      // while the Next.js router transitions to the new page.
-      router.push(dest);
+      await signInWithGoogle();
+      // Browser will navigate away to Google, so we don't need to do anything else here.
     } catch (err: any) {
       setError(err.message?.replace('Firebase: ', '') || 'Google sign-in failed');
       setGoogleLoading(false);
