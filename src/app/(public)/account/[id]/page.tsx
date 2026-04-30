@@ -299,7 +299,7 @@ export default async function AccountPage({ params, searchParams }: { params: { 
                 )}
                 {account.quote && (
                   <blockquote className="border-l-2 border-primary pl-3 text-[14px] italic text-muted-foreground mb-4">
-                    "{account.quote}"
+                    &quot;{account.quote}&quot;
                   </blockquote>
                 )}
                 
