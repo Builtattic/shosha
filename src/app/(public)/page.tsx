@@ -25,17 +25,17 @@ export default function HomePage() {
 
         <div className="relative z-10 animate-fadeUp opacity-0" style={{ animationDelay: '0.1s' }}>
           <span className="rounded-full border border-border bg-card px-4 py-1.5 text-[11px] font-bold uppercase tracking-widest text-primary shadow-sm">
-            Continuous Reputation Ledger
+            Global Reputation Ledger
           </span>
         </div>
 
         <h1 className="relative z-10 mt-8 max-w-[900px] animate-fadeUp opacity-0 font-serif text-[clamp(48px,8vw,100px)] font-black leading-[0.95] tracking-[-0.04em] text-foreground" style={{ animationDelay: '0.2s' }}>
-          Civil impact, <br />
+          your civil impact, <br />
           <span className="text-primary">quantified.</span>
         </h1>
 
         <p className="relative z-10 mt-8 max-w-[540px] animate-fadeUp opacity-0 text-[16px] leading-[1.6] text-muted-foreground md:text-[18px]" style={{ animationDelay: '0.3s' }}>
-          Measure it. Amplify it. Shosha is a momentum-driven ledger that tracks real-world actions, assigning verifiable impact scores to public figures and changemakers.
+          Shosha is a momentum-driven ledger that tracks real-world actions, assigning verifiable impact scores to public figures and changemakers.
         </p>
 
         <div className="relative z-10 mt-12 flex flex-col gap-4 animate-fadeUp opacity-0 sm:flex-row" style={{ animationDelay: '0.4s' }}>
