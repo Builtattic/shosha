@@ -134,13 +134,17 @@ export default function ProfilePage() {
     .filter(h => h.t)
     .sort((a, b) => new Date(a.t).getTime() - new Date(b.t).getTime());
 
+  const creationTime = appUser?.createdAt ? new Date(appUser.createdAt) : new Date(Date.now() - 24 * 60 * 60 * 1000);
   const areaChartData = sortedLedger.length > 0
     ? sortedLedger.reduce<{ date: Date; value: number }[]>((acc, entry) => {
         const last = acc.length > 0 ? acc[acc.length - 1].value : BASE_SCORE;
         acc.push({ date: new Date(entry.t), value: last + (entry.delta ?? 0) });
         return acc;
-      }, [])
-    : [];
+      }, [{ date: creationTime, value: BASE_SCORE }])
+    : [
+        { date: creationTime, value: BASE_SCORE },
+        { date: new Date(), value: ledgerScore }
+      ];
 
   const socialLinks = SOCIAL_KEYS
     .map(s => ({ label: s.label, url: appUser?.[s.key] as string | undefined }))
@@ -277,7 +281,7 @@ export default function ProfilePage() {
             {recalculating ? 'Recalculating…' : 'Recalculate from history'}
           </button>
           <div className="mt-4 -mb-8">
-            <D3ProfileGauge score={ledgerScore} minScore={-1000} maxScore={1000} size={340} />
+            <D3ProfileGauge score={ledgerScore} minScore={0} maxScore={2000} size={340} />
           </div>
         </div>
 
@@ -301,7 +305,7 @@ export default function ProfilePage() {
             <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-[#f0f0f0] text-foreground">
               <Shield size={16} strokeWidth={2.5} />
             </div>
-            <p className="mt-2 text-[16px] font-bold text-foreground">{credibility}%</p>
+            <p className="mt-2 text-[16px] font-bold text-foreground">{credibility || '0'}%</p>
             <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Credibility</p>
           </div>
           <div className="rounded-2xl border border-border bg-background p-3 text-center shadow-sm">

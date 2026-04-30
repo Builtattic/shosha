@@ -214,12 +214,13 @@ export default function DashboardPage() {
 
   // Compute user's own Shosha Score from profile dimensions
   const profileDims = meData?.user ? calcProfileScores(meData.user) : [];
-  const shoshaScore = calcShoshaScore(profileDims);
-  const credibility = meData?.user?.reporterScore ?? 50;
+  const contextPercent = calcShoshaScore(profileDims);
+  const ledgerScore = meData?.user?.score ?? 1000;
+  const credibility = contextPercent;
   const hasOnboarded = !!(meData?.user?.onboardingComplete || meData?.user?.name || meData?.user?.occupationRole);
   const displayName = meData?.user?.name || firebaseUser?.displayName || firebaseUser?.email?.split('@')[0] || 'You';
   const avatarUrl = meData?.user?.photoUrl ?? firebaseUser?.photoURL ?? null;
-  const displayScore = shoshaScore;
+  const displayScore = ledgerScore;
   const scoreLabel = 'Shosha Score';
   const scoreContext = hasOnboarded
     ? 'Calculated from your profile dimensions and reported events'
@@ -406,7 +407,7 @@ export default function DashboardPage() {
                       <div className="w-px bg-border" />
                       <div>
                         <div className="text-[17px] font-black text-foreground tabular-nums">
-                          {shoshaScore}
+                          {ledgerScore}
                         </div>
                         <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mt-0.5">
                           Shosha Score
