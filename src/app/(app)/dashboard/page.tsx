@@ -9,7 +9,7 @@ import { D3ScoreGauge } from '@/components/viz/D3ScoreGauge';
 import { cn } from '@/lib/utils';
 import { ReportModal } from '@/components/report/ReportModal';
 import { SignInChip } from '@/components/nav/SignInChip';
-import { BASE_SCORE, calcProfileScores, calcShoshaScore } from '@/lib/scoring';
+import { calcProfileScores, calcShoshaScore } from '@/lib/scoring';
 import { useAuth } from '@/contexts/AuthContext';
 
 type FeedFilter = 'for_you' | 'following' | 'top' | 'near';
@@ -219,15 +219,14 @@ export default function DashboardPage() {
   const hasOnboarded = !!(meData?.user?.onboardingComplete || meData?.user?.name || meData?.user?.occupationRole);
   const displayName = meData?.user?.name || firebaseUser?.displayName || firebaseUser?.email?.split('@')[0] || 'You';
   const avatarUrl = meData?.user?.photoUrl ?? firebaseUser?.photoURL ?? null;
-  // For new users show BASE_SCORE (1000); seasoned users show their calculated shoshaScore mapped 0–100
-  const displayScore = hasOnboarded ? shoshaScore : BASE_SCORE;
-  const scoreLabel = hasOnboarded ? 'Shosha Score' : 'Base Score';
+  const displayScore = shoshaScore;
+  const scoreLabel = 'Shosha Score';
   const scoreContext = hasOnboarded
     ? 'Calculated from your profile dimensions and reported events'
-    : 'Every new member starts at 1,000 — earn or lose points through reports';
+    : 'Complete your profile to start building your Shosha Score';
 
   return (
-    <main className="min-h-screen bg-background pb-24">
+    <main className="min-h-screen overflow-x-clip bg-background pb-24">
       <header className="sticky top-0 z-50 bg-background/80 p-4 backdrop-blur-xl">
         <div className="mx-auto max-w-2xl">
           <div className="flex items-center justify-between gap-3">
@@ -383,7 +382,6 @@ export default function DashboardPage() {
                   </p>
                   <D3ScoreGauge
                     score={credibility}
-                    credibility={credibility}
                     size={180}
                   />
                   <p className="text-[13px] font-black text-foreground tabular-nums -mt-1">

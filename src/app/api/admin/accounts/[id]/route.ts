@@ -5,7 +5,7 @@ import * as accountsRepo from '@/lib/repos/accounts';
 import { z } from 'zod';
 
 const updateAccountSchema = z.object({
-  score: z.number().min(0).max(100).optional(),
+  score: z.number().optional(),
   verified: z.boolean().optional(),
   displayName: z.string().min(1).optional(),
 });

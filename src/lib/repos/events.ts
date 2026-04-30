@@ -24,7 +24,15 @@ export type EventRecord = {
   baseImpactKey: string;
   baseImpact: number;
   multipliers: MultiplierSnapshot;
+  multiplierQuotient?: number;
   delta: number;
+  scoreBefore?: number;
+  scoreAfter?: number;
+  decay?: number;
+  category?: string;
+  deed?: string;
+  weekId?: string;
+  formulaVersion?: string;
   proofLinks: string[];
   location: string;
   timestamp: string;

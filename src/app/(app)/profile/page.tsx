@@ -104,7 +104,7 @@ export default function ProfilePage() {
   const appUser = data?.user ?? null;
   const scores = appUser ? calcProfileScores(appUser) : [];
   const contextPercent = calcShoshaScore(scores); // 0–100 composite of profile multipliers
-  const credibility = appUser?.reporterScore ?? 50;
+  const credibility = contextPercent;
   const ledgerScore = typeof appUser?.score === 'number' ? appUser.score : BASE_SCORE;
   const ledgerHistory: any[] = appUser?.scoreHistory ?? [];
 
@@ -277,7 +277,7 @@ export default function ProfilePage() {
             {recalculating ? 'Recalculating…' : 'Recalculate from history'}
           </button>
           <div className="mt-4 -mb-8">
-            <D3ProfileGauge score={contextPercent} minScore={0} maxScore={100} size={340} />
+            <D3ProfileGauge score={ledgerScore} minScore={-1000} maxScore={1000} size={340} />
           </div>
         </div>
 
@@ -301,7 +301,7 @@ export default function ProfilePage() {
             <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-[#f0f0f0] text-foreground">
               <Shield size={16} strokeWidth={2.5} />
             </div>
-            <p className="mt-2 text-[16px] font-bold text-foreground">{credibility}</p>
+            <p className="mt-2 text-[16px] font-bold text-foreground">{credibility}%</p>
             <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Credibility</p>
           </div>
           <div className="rounded-2xl border border-border bg-background p-3 text-center shadow-sm">

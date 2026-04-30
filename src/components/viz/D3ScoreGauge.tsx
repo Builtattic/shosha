@@ -5,8 +5,6 @@ import { useEffect, useRef } from 'react';
 
 interface Props {
   score: number;        // 0 – 100
-  credibility: number;  // kept for API compat, not rendered
-  label?: string;
   size?: number;
 }
 

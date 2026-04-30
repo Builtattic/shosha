@@ -10,6 +10,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Input } from '@/components/ui/Input';
 import { useToast } from '@/components/ui/Toast';
 import { cn, formatPlatform } from '@/lib/utils';
+import { BASE_SCORE } from '@/lib/scoring';
 
 type AccountRow = {
   _id: string;
@@ -45,13 +46,13 @@ const feedFilters: Array<{ value: FeedFilter; label: string }> = [
 ];
 
 function scoreTone(score: number) {
-  if (score >= 75) return 'text-success border-success';
-  if (score < 50) return 'text-danger border-danger';
+  if (score >= BASE_SCORE) return 'text-success border-success';
+  if (score < 0) return 'text-danger border-danger';
   return 'text-warn border-warn';
 }
 
 function eventScore(score: number) {
-  const delta = Math.round((score - 60) * 700);
+  const delta = Math.round(score - BASE_SCORE);
   return delta > 0 ? `+${delta.toLocaleString()}` : delta.toLocaleString();
 }
 
@@ -95,8 +96,8 @@ export function SearchFeed({ initialAccounts }: { initialAccounts: AccountRow[] 
   const normalizedHandle = useMemo(() => q.trim().replace(/^@/, '').toLowerCase(), [q]);
   const validHandle = useMemo(() => /^[a-zA-Z0-9_.]{2,50}$/.test(normalizedHandle), [normalizedHandle]);
   const filteredAccounts = useMemo(() => {
-    if (feedFilter === 'positive') return accounts.filter((account) => account.score >= 70);
-    if (feedFilter === 'negative') return accounts.filter((account) => account.score < 50);
+    if (feedFilter === 'positive') return accounts.filter((account) => account.score >= BASE_SCORE);
+    if (feedFilter === 'negative') return accounts.filter((account) => account.score < BASE_SCORE);
     if (feedFilter === 'following') return accounts.filter((account) => account.verified);
     return accounts;
   }, [accounts, feedFilter]);
@@ -193,7 +194,7 @@ export function SearchFeed({ initialAccounts }: { initialAccounts: AccountRow[] 
                 </div>
                 <div className="mt-6">
                   <p className={cn('text-[10px] uppercase tracking-[0.28em]', tone.split(' ')[0])}>
-                    {account.score >= 70 ? 'documented - positive signal' : account.score < 50 ? 'reported - review signal' : 'documented - mixed signal'}
+                    {account.score >= BASE_SCORE ? 'documented - positive signal' : account.score < 0 ? 'reported - review signal' : 'documented - mixed signal'}
                   </p>
                   <p className="mt-4 max-w-[120ch] text-sm leading-7 text-text">
                     {account.bio || 'Public profile dossier with filings, captured posts, and score history ready for review.'}

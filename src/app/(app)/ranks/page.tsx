@@ -1,4 +1,5 @@
 import * as accountsRepo from '@/lib/repos/accounts';
+import { BASE_SCORE } from '@/lib/scoring';
 import { RanksTabs, type RankRow } from './RanksTabs';
 
 export const dynamic = 'force-dynamic';
@@ -46,7 +47,7 @@ export default async function RanksPage() {
 
   const underFire = bottom
     .map(toRow)
-    .filter((row) => row.score < 50)
+    .filter((row) => row.score < BASE_SCORE)
     .sort((a, b) => a.score - b.score)
     .slice(0, 10);
 

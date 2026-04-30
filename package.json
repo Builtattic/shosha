@@ -16,7 +16,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
-    "seed": "tsx scripts/seed.ts"
+    "seed": "tsx scripts/seed.ts",
+    "replay:scores": "tsx scripts/replay-sheet-scores.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.12.0",

@@ -1,7 +1,7 @@
 import { fail, fromZod, ok } from '@/lib/api';
 import { requireUser } from '@/lib/auth';
 import { accountCreateSchema } from '@/lib/validators';
-import { averageBreakdown } from '@/lib/scoring';
+import { averageBreakdown, BASE_SCORE } from '@/lib/scoring';
 import { fetchSocialProfile, socialErrorResponse } from '@/lib/social';
 import * as accountsRepo from '@/lib/repos/accounts';
 
@@ -48,8 +48,8 @@ export async function POST(request: Request) {
     avatarUrl: profile.avatarUrl,
     verified: profile.verified,
     followers: profile.followers,
-    score: 60,
-    scoreHistory: [{ t: new Date().toISOString(), s: 60, cause: 'seed' }],
+    score: BASE_SCORE,
+    scoreHistory: [{ t: new Date().toISOString(), s: BASE_SCORE, cause: 'seed' }],
     breakdown: averageBreakdown(),
     posts: profile.posts.map((post) => ({
       externalId: post.externalId,

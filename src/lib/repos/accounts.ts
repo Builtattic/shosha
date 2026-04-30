@@ -1,8 +1,23 @@
 import { adminDb } from '@/lib/firebase/admin';
 import { withId } from '@/lib/repos/_serialize';
+import { BASE_SCORE, applySheetScore } from '@/lib/scoring';
 import type { Breakdown, Platform, ScoreCause } from '@/types';
 
-export type ScoreHistoryPoint = { t: string; s: number; cause: ScoreCause };
+export type ScoreHistoryPoint = {
+  t: string;
+  s: number;
+  cause: ScoreCause;
+  delta?: number;
+  baseScore?: number;
+  profileId?: string;
+  weekId?: string;
+  multiplierQuotient?: number;
+  decay?: number;
+  category?: string;
+  deed?: string;
+  eventId?: string;
+  multipliers?: Record<string, number>;
+};
 
 export type SocialPostRecord = {
   externalId: string;
@@ -149,4 +164,38 @@ export async function deleteById(id: string): Promise<void> {
 
 export async function setScore(id: string, score: number): Promise<AccountRecord | null> {
   return update(id, { score });
+}
+
+export async function ensureLedger(id: string): Promise<AccountRecord | null> {
+  const existing = await findById(id);
+  if (!existing) return null;
+  const patch: Record<string, unknown> = {};
+  if (typeof existing.score !== 'number') patch.score = BASE_SCORE;
+  if (!Array.isArray(existing.scoreHistory)) {
+    patch.scoreHistory = [{ t: existing.createdAt ?? new Date().toISOString(), s: BASE_SCORE, cause: 'seed' }];
+  }
+  if (Object.keys(patch).length === 0) return existing;
+  patch.updatedAt = new Date().toISOString();
+  await ref().child(id).update(patch);
+  return findById(id);
+}
+
+export async function rebuildLedger(id: string, entries: ScoreHistoryPoint[]): Promise<AccountRecord | null> {
+  const existing = await findById(id);
+  if (!existing) return null;
+  let score = BASE_SCORE;
+  const seededHistory: ScoreHistoryPoint[] = [
+    { t: existing.createdAt ?? new Date().toISOString(), s: BASE_SCORE, cause: 'seed' },
+  ];
+  for (const entry of entries) {
+    const applied = applySheetScore(score, entry.delta ?? 0);
+    score = applied.score;
+    seededHistory.push({ ...entry, s: score, decay: entry.decay ?? applied.decay });
+  }
+  await ref().child(id).update({
+    score,
+    scoreHistory: seededHistory,
+    updatedAt: new Date().toISOString(),
+  });
+  return findById(id);
 }

@@ -1,5 +1,6 @@
 import { adminDb } from '@/lib/firebase/admin';
 import { withId, stripId } from '@/lib/repos/_serialize';
+import { applySheetScore, sheetDecay } from '@/lib/scoring';
 
 export type UserRole = 'user' | 'admin';
 
@@ -39,6 +40,11 @@ export type LedgerEntryRecord = {
   category?: string;
   eventId?: string;
   multipliers?: Record<string, number>;
+  baseScore?: number;
+  profileId?: string;
+  weekId?: string;
+  multiplierQuotient?: number;
+  decay?: number;
 };
 
 export type WeeklyStats = {
@@ -168,7 +174,7 @@ export async function ensureLedger(id: string): Promise<AppUser | null> {
 export async function rebuildLedger(id: string, entries: LedgerEntryRecord[]): Promise<AppUser | null> {
   const existing = await findById(id);
   if (!existing) return null;
-  const finalScore = entries.reduce((sum, e) => sum + (e.delta ?? 0), 1000);
+  const finalScore = entries.reduce((score, e) => applySheetScore(score, e.delta ?? 0).score, 1000);
   await ref().child(id).update({
     score: Math.round(finalScore),
     scoreHistory: entries,
@@ -185,9 +191,9 @@ export async function applyDelta(
   const existing = await findById(id);
   if (!existing) return null;
   const currentScore = typeof existing.score === 'number' ? existing.score : 1000;
-  const nextScore = Math.round(currentScore + delta);
+  const nextScore = applySheetScore(currentScore, delta).score;
   const history = existing.scoreHistory ?? [];
-  const next: LedgerEntryRecord = { ...entry, delta, t: new Date().toISOString() };
+  const next: LedgerEntryRecord = { ...entry, delta, decay: entry.decay ?? sheetDecay(delta), t: new Date().toISOString() };
   await ref().child(id).update({
     score: nextScore,
     scoreHistory: [...history, next],

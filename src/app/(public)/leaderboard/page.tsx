@@ -1,6 +1,7 @@
 import { cn } from '@/lib/utils';
 import * as accountsRepo from '@/lib/repos/accounts';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { BASE_SCORE } from '@/lib/scoring';
 
 export const dynamic = 'force-dynamic';
 
@@ -140,7 +141,7 @@ export default async function LeaderboardPage() {
   ]);
 
   const bestRows = top.map(toRow);
-  const worstRows = bottom.filter((account) => account.score < 50).map(toRow);
+  const worstRows = bottom.filter((account) => account.score < BASE_SCORE).map(toRow);
 
   return (
     <main className="min-h-screen bg-bg">
@@ -201,7 +202,7 @@ export default async function LeaderboardPage() {
         </div>
 
         {worstRows.length === 0 ? (
-          <EmptyState title="No accounts under 50." body="No accounts have dropped below the neutral score yet." />
+          <EmptyState title="No accounts under baseline." body="No accounts have dropped below the neutral score yet." />
         ) : (
           <div className="space-y-px">
             {worstRows.map((row, index) => (
