@@ -9,7 +9,7 @@ import { D3ScoreGauge } from '@/components/viz/D3ScoreGauge';
 import { cn } from '@/lib/utils';
 import { ReportModal } from '@/components/report/ReportModal';
 import { SignInChip } from '@/components/nav/SignInChip';
-import { calcProfileScores, calcShoshaScore } from '@/lib/scoring';
+import { BASE_SCORE, calcProfileScores, calcShoshaScore } from '@/lib/scoring';
 import { useAuth } from '@/contexts/AuthContext';
 
 type FeedFilter = 'for_you' | 'following' | 'top' | 'near';
@@ -219,6 +219,12 @@ export default function DashboardPage() {
   const hasOnboarded = !!(meData?.user?.onboardingComplete || meData?.user?.name || meData?.user?.occupationRole);
   const displayName = meData?.user?.name || firebaseUser?.displayName || firebaseUser?.email?.split('@')[0] || 'You';
   const avatarUrl = meData?.user?.photoUrl ?? firebaseUser?.photoURL ?? null;
+  // For new users show BASE_SCORE (1000); seasoned users show their calculated shoshaScore mapped 0–100
+  const displayScore = hasOnboarded ? shoshaScore : BASE_SCORE;
+  const scoreLabel = hasOnboarded ? 'Shosha Score' : 'Base Score';
+  const scoreContext = hasOnboarded
+    ? 'Calculated from your profile dimensions and reported events'
+    : 'Every new member starts at 1,000 — earn or lose points through reports';
 
   return (
     <main className="min-h-screen bg-background pb-24">
@@ -319,78 +325,111 @@ export default function DashboardPage() {
       </header>
 
       <div className="mx-auto max-w-2xl">
-        <section className="mt-2 px-4">
-          <div className="relative overflow-hidden rounded-[32px] border border-border bg-card shadow-sm">
-            {/* Header row */}
-            <div className="flex items-center justify-between px-6 pt-5 pb-0">
-              <div className="flex items-center gap-3">
-                <div className="h-11 w-11 overflow-hidden rounded-xl border border-border shadow-sm shrink-0">
+        {/* ── Hero Banner ─────────────────────────────────────────────── */}
+        <section className="w-screen relative left-1/2 -translate-x-1/2 mt-0">
+          <div className="relative overflow-hidden bg-card border-b border-border">
+
+            <div className="mx-auto max-w-2xl px-8 pt-8 pb-9">
+
+              {/* ── Row 1: Avatar + Name ── */}
+              <div className="flex items-center gap-4">
+                <div className="h-14 w-14 overflow-hidden rounded-2xl border border-border shadow-sm shrink-0">
                   {avatarUrl ? (
                     <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-muted text-sm font-black">
+                    <div className="flex h-full w-full items-center justify-center bg-muted text-lg font-black">
                       {displayName.slice(0, 1).toUpperCase()}
                     </div>
                   )}
                 </div>
                 <div>
-                  <p className="text-[11px] font-medium text-muted-foreground">Your score</p>
-                  <h2 className="text-[16px] font-black text-foreground leading-tight">{displayName}</h2>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                    Welcome back
+                  </p>
+                  <h2 className="text-[20px] font-black text-foreground leading-tight tracking-tight">
+                    {displayName}
+                  </h2>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Shosha Score</p>
-                {!hasOnboarded && (
-                  <Link href="/onboard" className="mt-1 inline-block text-[10px] font-bold text-foreground border border-border rounded-full px-2 py-0.5 hover:bg-muted">
-                    Complete profile →
-                  </Link>
-                )}
-              </div>
-            </div>
 
-            {/* D3 Gauge */}
-            <div className="px-6 pt-0 pb-1 flex justify-center">
-              <D3ScoreGauge
-                score={hasOnboarded ? shoshaScore : credibility}
-                credibility={credibility}
-                label={hasOnboarded ? 'Shosha Score' : 'Credibility'}
-                size={260}
-              />
-            </div>
+              {/* ── Row 2: Score + Gauge side by side ── */}
+              <div className="mt-8 flex items-end justify-between gap-6">
 
-            {/* Footer row */}
-            <div className="flex items-center justify-between gap-3 px-6 pb-5">
-              <div className="flex gap-4 text-center">
-                <div>
-                  <div className="text-[15px] font-black">{credibility}</div>
-                  <div className="text-[9px] text-muted-foreground uppercase tracking-wider font-semibold">Credibility</div>
+                {/* Left: big score number */}
+                <div className="min-w-0">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground mb-2">
+                    {scoreLabel}
+                  </p>
+                  <div className="text-[76px] font-black leading-none text-foreground tabular-nums tracking-tight">
+                    {displayScore.toLocaleString()}
+                  </div>
+                  <p className="mt-3 text-[13px] leading-[1.6] text-muted-foreground max-w-[240px]">
+                    {scoreContext}
+                  </p>
+                  {!hasOnboarded && (
+                    <Link
+                      href="/onboard"
+                      className="mt-3 inline-block text-[12px] font-semibold text-foreground underline underline-offset-4 decoration-border hover:decoration-foreground transition-all"
+                    >
+                      Increase your credibility by completing profile
+                    </Link>
+                  )}
                 </div>
-                {hasOnboarded && (
-                  <>
-                    <div className="w-px bg-border" />
-                    <div>
-                      <div className="text-[15px] font-black">{shoshaScore}</div>
-                      <div className="text-[9px] text-muted-foreground uppercase tracking-wider font-semibold">Shosha</div>
+
+                {/* Right: credibility gauge — the only credibility visual */}
+                <div className="shrink-0 flex flex-col items-center gap-2 pb-1">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                    Credibility
+                  </p>
+                  <D3ScoreGauge
+                    score={credibility}
+                    credibility={credibility}
+                    size={180}
+                  />
+                  <p className="text-[13px] font-black text-foreground tabular-nums -mt-1">
+                    {credibility}<span className="text-[10px] font-semibold text-muted-foreground"> /100</span>
+                  </p>
+                </div>
+              </div>
+
+              {/* ── Row 3: Stats + Profile link ── */}
+              <div className="mt-7 pt-6 border-t border-border flex items-center justify-between gap-3">
+                <div className="flex gap-6">
+                  <div>
+                    <div className="text-[17px] font-black text-foreground tabular-nums">
+                      {meData?.claimedAccounts?.length ?? 0}
                     </div>
-                  </>
-                )}
-                <div className="w-px bg-border" />
-                <div>
-                  <div className="text-[15px] font-black">{meData?.claimedAccounts?.length ?? 0}</div>
-                  <div className="text-[9px] text-muted-foreground uppercase tracking-wider font-semibold">Accounts</div>
+                    <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mt-0.5">
+                      Accounts
+                    </div>
+                  </div>
+                  {hasOnboarded && (
+                    <>
+                      <div className="w-px bg-border" />
+                      <div>
+                        <div className="text-[17px] font-black text-foreground tabular-nums">
+                          {shoshaScore}
+                        </div>
+                        <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mt-0.5">
+                          Shosha Score
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
+                <Link
+                  href={myReportHref}
+                  className="flex items-center gap-1.5 rounded-full border border-border bg-background px-5 py-2.5 text-[13px] font-bold text-foreground shadow-sm transition-all hover:bg-muted active:scale-95 shrink-0"
+                >
+                  My Profile <ChevronRight size={15} />
+                </Link>
               </div>
-              <Link
-                href={myReportHref}
-                className="flex items-center gap-1 rounded-full border border-border bg-background px-4 py-2 text-[12px] font-bold text-foreground shadow-sm transition-all hover:bg-muted active:scale-95 shrink-0"
-              >
-                My Profile <ChevronRight size={14} />
-              </Link>
+
             </div>
           </div>
         </section>
 
-        <section className="mt-8 px-4">
+        <section className="mt-6 px-4">
           <h2 className="mb-4 text-[20px] font-bold text-foreground">Feed</h2>
           <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
             {tabs.map((tab) => (
