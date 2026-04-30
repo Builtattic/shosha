@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   onIdTokenChanged,
   signInWithEmailAndPassword,
@@ -33,6 +33,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const googleSignInInProgress = useRef(false);
 
   useEffect(() => {
     const unsubscribe = onIdTokenChanged(auth, async (u) => {
@@ -66,11 +67,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function signInWithGoogle() {
-    const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: 'select_account' });
-    const cred = await signInWithPopup(auth, provider);
-    const token = await cred.user.getIdToken();
-    document.cookie = `__session=${token}; path=/; max-age=3600; SameSite=Lax`;
+    if (googleSignInInProgress.current) return;
+    googleSignInInProgress.current = true;
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      const cred = await signInWithPopup(auth, provider);
+      const token = await cred.user.getIdToken();
+      document.cookie = `__session=${token}; path=/; max-age=3600; SameSite=Lax`;
+    } catch (error: any) {
+      // silently swallow popup cancellations — they are expected UX
+      if (
+        error.code === 'auth/cancelled-popup-request' ||
+        error.code === 'auth/popup-closed-by-user'
+      ) {
+        return;
+      }
+      throw error; // re-throw everything else so sign-in page can show error
+    } finally {
+      googleSignInInProgress.current = false;
+    }
   }
 
   async function sendPhoneOtp(phone: string, recaptchaContainer: string) {
