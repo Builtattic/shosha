@@ -1,6 +1,7 @@
 import { fail, ok } from '@/lib/api';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
 import { idSchema } from '@/lib/validators';
+import * as adminActionsRepo from '@/lib/repos/adminActions';
 import * as reportsRepo from '@/lib/repos/reports';
 
 export async function POST(_req: Request, { params }: { params: { id: string } }) {
@@ -20,5 +21,6 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
       : null,
     status: 'ai_reviewed',
   });
+  await adminActionsRepo.create({ actor: user!, action: 'abuse.dismiss', entityType: 'report', entityId: id.data, before: report, after: updated });
   return ok(updated);
 }

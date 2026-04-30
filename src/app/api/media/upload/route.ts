@@ -1,7 +1,11 @@
 import { v4 as uuid } from 'uuid';
+import path from 'path';
+import { mkdir, writeFile } from 'fs/promises';
 import { fail, ok } from '@/lib/api';
 import { requireUser } from '@/lib/auth';
 import { adminBucket } from '@/lib/firebase/admin';
+
+export const runtime = 'nodejs';
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
@@ -10,6 +14,20 @@ function publicEmulatorUrl(filePath: string) {
   const host = process.env.FIREBASE_STORAGE_EMULATOR_HOST || 'localhost:9199';
   const bucket = process.env.FIREBASE_STORAGE_BUCKET || 'shosha-local.appspot.com';
   return `http://${host}/v0/b/${bucket}/o/${encodeURIComponent(filePath)}?alt=media`;
+}
+
+async function saveLocalUpload(filePath: string, buffer: Buffer) {
+  const root = path.join(process.cwd(), 'public');
+  const fullPath = path.join(root, filePath);
+  if (!fullPath.startsWith(root)) throw new Error('Invalid upload path.');
+  await mkdir(path.dirname(fullPath), { recursive: true });
+  await writeFile(fullPath, buffer);
+  return `/${filePath.replace(/\\/g, '/')}`;
+}
+
+function isMissingBucketError(error: unknown) {
+  const maybe = error as { code?: number; message?: string; errors?: Array<{ reason?: string }> };
+  return maybe.code === 404 || maybe.errors?.some((item) => item.reason === 'notFound') || maybe.message?.includes('bucket does not exist');
 }
 
 export async function POST(request: Request) {
@@ -43,11 +61,26 @@ export async function POST(request: Request) {
   const filePath = `uploads/${user._id}/${folder}/${uuid()}.${ext}`;
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  await adminBucket().file(filePath).save(buffer, { contentType, resumable: false });
-
-  const url = process.env.FIREBASE_STORAGE_EMULATOR_HOST
-    ? publicEmulatorUrl(filePath)
-    : (await adminBucket().file(filePath).getSignedUrl({ action: 'read', expires: Date.now() + 7 * 24 * 60 * 60 * 1000 }))[0];
+  let url: string;
+  try {
+    const bucket = adminBucket();
+    await bucket.file(filePath).save(buffer, { contentType, resumable: false });
+    url = process.env.FIREBASE_STORAGE_EMULATOR_HOST
+      ? publicEmulatorUrl(filePath)
+      : (await bucket.file(filePath).getSignedUrl({ action: 'read', expires: Date.now() + 7 * 24 * 60 * 60 * 1000 }))[0];
+  } catch (error) {
+    if (!isMissingBucketError(error) && process.env.NODE_ENV === 'production') {
+      console.error('[POST /api/media/upload] Firebase Storage upload failed:', error);
+      return fail('upload_failed', 'Evidence upload failed. Check Firebase Storage configuration.', 500);
+    }
+    console.warn('[POST /api/media/upload] Firebase Storage unavailable, using local upload fallback:', error);
+    try {
+      url = await saveLocalUpload(filePath, buffer);
+    } catch (localError) {
+      console.error('[POST /api/media/upload] Local upload fallback failed:', localError);
+      return fail('upload_failed', 'Evidence upload failed. Check Firebase Storage bucket configuration.', 500);
+    }
+  }
 
   return ok({
     url,

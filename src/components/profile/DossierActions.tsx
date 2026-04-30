@@ -23,6 +23,7 @@ export function DossierActions({ accountId, claimedBy }: { accountId: string; cl
   const [submitting, setSubmitting] = useState(false);
   const [role, setRole] = useState<string>('user');
   const owned = Boolean(user && claimedBy === user.uid);
+  const adminCapable = ['moderator', 'editor', 'admin', 'super_admin'].includes(role);
 
   useEffect(() => {
     let cancelled = false;
@@ -93,7 +94,7 @@ export function DossierActions({ accountId, claimedBy }: { accountId: string; cl
           <BadgeCheck size={16} />
           Claim
         </Button>
-        <Button variant="secondary" disabled={!owned && role !== 'admin'} onClick={() => setAuditOpen(true)}>
+        <Button variant="secondary" disabled={!owned && !adminCapable} onClick={() => setAuditOpen(true)}>
           <RefreshCcw size={16} />
           Audit
         </Button>

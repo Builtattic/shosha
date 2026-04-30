@@ -1,5 +1,5 @@
 import { fail, fromZod, ok } from '@/lib/api';
-import { requireUser } from '@/lib/auth';
+import { isAdmin, requireUser } from '@/lib/auth';
 import { auditRequestSchema, idSchema } from '@/lib/validators';
 import * as accountsRepo from '@/lib/repos/accounts';
 import * as auditsRepo from '@/lib/repos/auditRequests';
@@ -19,7 +19,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
   const account = await accountsRepo.findById(id.data);
   if (!account) return fail('not_found', 'No dossier exists for that id.', 404);
-  if (user.role !== 'admin' && account.claimedBy !== user._id) {
+  if (!isAdmin(user) && account.claimedBy !== user._id) {
     return fail('forbidden', 'Only the claimed owner can request this audit.', 403);
   }
 

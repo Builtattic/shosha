@@ -11,6 +11,7 @@ import { adjudicateSchema, idSchema } from '@/lib/validators';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
 import { clamp } from '@/lib/utils';
 import * as accountsRepo from '@/lib/repos/accounts';
+import * as adminActionsRepo from '@/lib/repos/adminActions';
 import * as eventsRepo from '@/lib/repos/events';
 import * as reportsRepo from '@/lib/repos/reports';
 import * as usersRepo from '@/lib/repos/users';
@@ -116,5 +117,6 @@ export async function POST(request: Request, { params }: { params: { id: string 
   }
 
   const persistedReport = await reportsRepo.update(id.data, { adminDecision, status, eventId });
+  await adminActionsRepo.create({ actor: user!, action: 'report.adjudicate', entityType: 'report', entityId: id.data, before: { report, account }, after: { report: persistedReport, account: updatedAccount } });
   return ok({ report: persistedReport, account: updatedAccount });
 }

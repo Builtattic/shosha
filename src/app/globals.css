@@ -88,3 +88,17 @@ select {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+@layer components {
+  .admin-input {
+    @apply w-full rounded-xl border border-border bg-secondary/50 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary;
+  }
+
+  .admin-button {
+    @apply inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-[12px] font-black uppercase tracking-wider text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50;
+  }
+
+  .admin-check {
+    @apply flex items-center gap-2 rounded-xl border border-border bg-secondary/30 px-4 py-3 text-[12px] font-bold text-muted-foreground;
+  }
+}

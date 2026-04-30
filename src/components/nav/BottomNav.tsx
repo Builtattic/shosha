@@ -1,17 +1,35 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { FileText, User, BarChart2 } from 'lucide-react';
+import { FileText, User, BarChart2, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function BottomNav() {
   const pathname = usePathname();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/me', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((d) => {
+        if (!cancelled && d.ok && ['moderator', 'editor', 'admin', 'super_admin'].includes(d.data?.user?.role)) {
+          setIsAdmin(true);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const items = [
     { href: '/feed', label: 'Reports', icon: FileText },
     { href: '/profile', label: 'Profile', icon: User },
     { href: '/ranks', label: 'Ranks', icon: BarChart2 },
+    ...(isAdmin ? [{ href: '/admin', label: 'Admin', icon: ShieldCheck }] : []),
   ];
 
   return (

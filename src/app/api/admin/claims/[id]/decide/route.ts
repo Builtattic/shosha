@@ -2,6 +2,7 @@ import { fail, fromZod, ok } from '@/lib/api';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
 import { claimDecisionSchema, idSchema } from '@/lib/validators';
 import * as accountsRepo from '@/lib/repos/accounts';
+import * as adminActionsRepo from '@/lib/repos/adminActions';
 import * as claimsRepo from '@/lib/repos/claimRequests';
 import * as usersRepo from '@/lib/repos/users';
 
@@ -27,5 +28,6 @@ export async function POST(request: Request, { params }: { params: { id: string 
     await usersRepo.addClaimedAccount(claim.userId, claim.accountId);
   }
 
+  await adminActionsRepo.create({ actor: user!, action: `claim.${parsed.data.verdict}`, entityType: 'claim', entityId: id.data, before: claim, after: updated });
   return ok(updated);
 }

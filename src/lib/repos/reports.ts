@@ -1,6 +1,6 @@
 import { adminDb } from '@/lib/firebase/admin';
 import { withId } from '@/lib/repos/_serialize';
-import type { ReportType, ReportStatus, Platform } from '@/types';
+import type { ReportType, ReportStatus, Platform, ReportSource, ReportVisibility } from '@/types';
 
 export type ReportMedia = {
   url: string;
@@ -42,6 +42,11 @@ export type ReportRecord = {
   status: ReportStatus;
   aiVerdict: AiVerdictRecord | null;
   adminDecision: AdminDecisionRecord | null;
+  visibility?: ReportVisibility;
+  pinned?: boolean;
+  featured?: boolean;
+  createdByAdminId?: string;
+  source?: ReportSource;
   stats?: {
     aligns: number;
     opposes: number;
@@ -69,6 +74,10 @@ export async function create(input: CreateReportInput): Promise<ReportRecord> {
   const newRef = ref().push();
   const payload = {
     ...input,
+    visibility: input.visibility ?? 'public',
+    pinned: input.pinned ?? false,
+    featured: input.featured ?? false,
+    source: input.source ?? 'user',
     stats: input.stats ?? { aligns: 0, opposes: 0, comments: 0, shares: 0 },
     createdAt: now,
     updatedAt: now
@@ -107,17 +116,20 @@ export async function listAll(limit = 100): Promise<ReportRecord[]> {
   return results.reverse();
 }
 
-export async function listPublicFeed(limit = 50): Promise<ReportRecord[]> {
+export async function listPublicFeed(limit = 50, statusIn: ReportStatus[] = ['approved']): Promise<ReportRecord[]> {
   const snap = await ref().orderByChild('createdAt').limitToLast(limit * 2).once('value');
-  const validStatuses: ReportStatus[] = ['approved', 'ai_reviewed', 'flagged'];
   const results: ReportRecord[] = [];
   snap.forEach((child) => {
     const val = child.val();
-    if (validStatuses.includes(val.status)) {
+    if (statusIn.includes(val.status) && val.visibility !== 'hidden') {
       results.push(withId<ReportRecord>(child.key!, val));
     }
   });
   return results.reverse().slice(0, limit);
+}
+
+export async function deleteById(id: string): Promise<void> {
+  await ref().child(id).remove();
 }
 
 export async function listByReporter(reporterId: string, limit = 50): Promise<ReportRecord[]> {

@@ -3,6 +3,7 @@ import { getCurrentUser, isAdmin } from '@/lib/auth';
 import { runFullAudit } from '@/lib/gemini';
 import { idSchema } from '@/lib/validators';
 import * as accountsRepo from '@/lib/repos/accounts';
+import * as adminActionsRepo from '@/lib/repos/adminActions';
 import * as auditsRepo from '@/lib/repos/auditRequests';
 import * as reportsRepo from '@/lib/repos/reports';
 
@@ -36,6 +37,7 @@ export async function POST(_: Request, { params }: { params: { id: string } }) {
     scoreHistory: [...account.scoreHistory, { t: new Date().toISOString(), s: result.newScore, cause: 'audit' }]
   });
   const updatedAudit = await auditsRepo.update(id.data, { status: 'completed' });
+  await adminActionsRepo.create({ actor: user!, action: 'audit.run', entityType: 'audit', entityId: id.data, before: { audit, account }, after: { audit: updatedAudit, account: updatedAccount, summary: result.summary } });
 
   return ok({ audit: updatedAudit, account: updatedAccount, summary: result.summary });
 }

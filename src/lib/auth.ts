@@ -2,7 +2,7 @@ import { headers, cookies } from 'next/headers';
 import { getAuth } from 'firebase-admin/auth';
 import { adminDb } from '@/lib/firebase/admin';
 import * as usersRepo from '@/lib/repos/users';
-import type { AppUser, UserRole } from '@/lib/repos/users';
+import type { AppUser } from '@/lib/repos/users';
 
 // Re-export init to ensure admin app is initialized
 import '@/lib/firebase/admin';
@@ -86,7 +86,11 @@ export async function requireUser(): Promise<AppUser> {
 }
 
 export function isAdmin(user: AppUser | null): boolean {
-  return user?.role === 'admin';
+  return Boolean(user && ['moderator', 'editor', 'admin', 'super_admin'].includes(user.role));
+}
+
+export function isSuperAdmin(user: AppUser | null): boolean {
+  return user?.role === 'admin' || user?.role === 'super_admin';
 }
 
 export async function requireAdmin(): Promise<AppUser> {

@@ -1,6 +1,7 @@
 import { fail, fromZod, ok } from '@/lib/api';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
 import { idSchema } from '@/lib/validators';
+import * as adminActionsRepo from '@/lib/repos/adminActions';
 import * as auditsRepo from '@/lib/repos/auditRequests';
 import { z } from 'zod';
 
@@ -27,5 +28,6 @@ export async function POST(request: Request, { params }: { params: { id: string 
     status: parsed.data.verdict,
     updatedAt: new Date().toISOString(),
   });
+  await adminActionsRepo.create({ actor: user!, action: `audit.${parsed.data.verdict}`, entityType: 'audit', entityId: id.data, before: audit, after: updated });
   return ok(updated);
 }

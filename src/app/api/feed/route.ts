@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/lib/auth';
 import * as accountsRepo from '@/lib/repos/accounts';
 import * as reportsRepo from '@/lib/repos/reports';
 import * as interactionsRepo from '@/lib/repos/reportInteractions';
+import * as siteSettingsRepo from '@/lib/repos/siteSettings';
 
 function scoreReport(report: reportsRepo.ReportRecord) {
   const impact = Math.abs(report.adminDecision?.finalImpact ?? report.aiVerdict?.proposedImpact ?? 0);
@@ -198,8 +199,9 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const filter = searchParams.get('filter') ?? 'for_you';
   const user = await getCurrentUser();
+  const settings = await siteSettingsRepo.get();
 
-  const reports = await reportsRepo.listPublicFeed(75);
+  const reports = await reportsRepo.listPublicFeed(75, siteSettingsRepo.publicFeedStatuses(settings));
   const accountIds = Array.from(new Set(reports.map((report) => report.accountId)));
   const accounts = await Promise.all(accountIds.map((id) => accountsRepo.findById(id)));
   const accountMap = new Map(accounts.filter(Boolean).map((account) => [account!._id, account!]));
@@ -208,8 +210,7 @@ export async function GET(request: Request) {
     .map((report) => ({ ...report, account: accountMap.get(report.accountId) ?? null }))
     .filter((report) => report.account !== null);
 
-  // Fetch live news to augment the feed
-  const liveNews = await getLiveNews();
+  const liveNews = settings.liveFeedEnabled ? await getLiveNews() : [];
 
   if (filter === 'following') {
     const followed = new Set(user?.claimedAccounts ?? []);
@@ -219,7 +220,7 @@ export async function GET(request: Request) {
     feed = [...feed, ...liveNews] as any[];
   }
 
-  if (filter === 'top') {
+  if (filter === 'top' || settings.feedRankingMode === 'smart') {
     feed = feed.sort((a, b) => scoreReport(b as any) - scoreReport(a as any));
   } else if (filter === 'positive') {
     feed = feed.filter((report) => report.type === 'positive');
@@ -229,16 +230,21 @@ export async function GET(request: Request) {
     feed = feed.filter((report) => report.account?.platform === 'instagram');
   }
 
+  feed = feed
+    .filter((report) => !report.account?.platform || settings.enabledPlatforms.includes(report.account.platform))
+    .sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) || Number(Boolean(b.featured)) - Number(Boolean(a.featured)))
+    .slice(0, 30);
+
   const viewerStates = await Promise.all(
-    feed.map((report) => 
-      (report._id.startsWith('news-') || report._id.startsWith('reddit-')) 
-        ? Promise.resolve({ vote: null, bookmarked: false }) 
+    feed.map((report) =>
+      (report._id.startsWith('news-') || report._id.startsWith('reddit-') || report._id.startsWith('twitter-') || report._id.startsWith('ig-') || report._id.startsWith('fb-'))
+        ? Promise.resolve({ vote: null, bookmarked: false })
         : interactionsRepo.getViewerState(report._id, user?._id)
     )
   );
 
   return ok(
-    feed.slice(0, 30).map((report, index) => ({
+    feed.map((report, index) => ({
       ...report,
       viewer: viewerStates[index]
     }))

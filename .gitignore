@@ -9,6 +9,7 @@ playwright-report
 test-results
 *.tsbuildinfo
 .emulator-data
+public/uploads/
 .env.*
 # clerk configuration (can include secrets)
 /.clerk/

@@ -2,6 +2,8 @@ export type Platform = 'x' | 'instagram' | 'facebook' | 'youtube' | 'tiktok' | '
 export type ScoreCause = 'seed' | 'report' | 'audit' | 'decay';
 export type ReportType = 'positive' | 'negative';
 export type ReportStatus = 'pending_ai' | 'ai_reviewed' | 'approved' | 'rejected' | 'flagged';
+export type ReportVisibility = 'public' | 'hidden';
+export type ReportSource = 'user' | 'admin' | 'system';
 
 export type Breakdown = {
   authenticity: number;

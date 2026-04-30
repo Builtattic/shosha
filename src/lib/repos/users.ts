@@ -2,7 +2,8 @@ import { adminDb } from '@/lib/firebase/admin';
 import { withId, stripId } from '@/lib/repos/_serialize';
 import { applySheetScore, sheetDecay } from '@/lib/scoring';
 
-export type UserRole = 'user' | 'admin';
+export type UserRole = 'user' | 'moderator' | 'editor' | 'admin' | 'super_admin';
+export const USER_ROLES: UserRole[] = ['user', 'moderator', 'editor', 'admin', 'super_admin'];
 
 export type OccupationRole =
   | 'student'

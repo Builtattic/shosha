@@ -7,6 +7,9 @@ export const idSchema = z.string().min(1).max(200).regex(/^[A-Za-z0-9_.\-]+$/, '
 export const objectIdSchema = idSchema;
 export const platformSchema = z.enum(['x', 'instagram', 'facebook', 'youtube', 'tiktok', 'linkedin', 'website']);
 export const reportTypeSchema = z.enum(['positive', 'negative']);
+export const userRoleSchema = z.enum(['user', 'moderator', 'editor', 'admin', 'super_admin']);
+export const reportStatusSchema = z.enum(['pending_ai', 'ai_reviewed', 'approved', 'rejected', 'flagged']);
+export const reportVisibilitySchema = z.enum(['public', 'hidden']);
 
 export const accountCreateSchema = z.object({
   platform: platformSchema,

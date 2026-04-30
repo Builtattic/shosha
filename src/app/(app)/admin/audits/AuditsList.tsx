@@ -41,6 +41,22 @@ export function AuditsList({ initialAudits }: { initialAudits: AuditRow[] }) {
     }
   }
 
+  async function runAudit(auditId: string) {
+    setBusyId(auditId);
+    try {
+      const res = await fetch(`/api/admin/audits/${auditId}/run`, { method: 'POST' });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error?.message ?? 'Failed');
+      setAudits((prev) => prev.filter((a) => a._id !== auditId));
+      toast.push(data.data?.summary ? `Audit completed: ${data.data.summary}` : 'Audit completed.');
+      startTransition(() => router.refresh());
+    } catch (e) {
+      toast.push(e instanceof Error ? e.message : 'Audit failed');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   if (!audits.length) {
     return (
       <div className="rounded-3xl border border-border bg-card p-20 text-center">
@@ -94,12 +110,12 @@ export function AuditsList({ initialAudits }: { initialAudits: AuditRow[] }) {
               </div>
               <div className="flex flex-col gap-2 shrink-0">
                 <button
-                  onClick={() => decide(audit._id, 'completed')}
+                  onClick={() => runAudit(audit._id)}
                   disabled={busy}
                   className="flex items-center justify-center gap-2 h-10 px-4 rounded-xl bg-emerald-600 text-white text-[12px] font-black uppercase tracking-wider hover:opacity-90 transition-opacity disabled:opacity-50 shadow-sm"
                 >
                   <CheckCircle size={14} />
-                  Approve
+                  Run audit
                 </button>
                 <button
                   onClick={() => decide(audit._id, 'rejected')}

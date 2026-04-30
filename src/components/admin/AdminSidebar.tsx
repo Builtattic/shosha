@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
+  Activity,
   Users,
   Database,
   ShieldAlert,
@@ -11,16 +12,24 @@ import {
   Search,
   Gavel,
   ArrowLeft,
+  Newspaper,
+  PlusCircle,
+  Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
-  { href: '/admin', label: 'Queue', icon: Gavel, exact: true },
+  { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
+  { href: '/admin/create', label: 'Create', icon: PlusCircle },
+  { href: '/admin/feed', label: 'Feed', icon: Newspaper },
+  { href: '/admin/queue', label: 'Queue', icon: Gavel },
   { href: '/admin/users', label: 'Users', icon: Users },
   { href: '/admin/accounts', label: 'Accounts', icon: Database },
   { href: '/admin/claims', label: 'Claims', icon: ClipboardList },
   { href: '/admin/audits', label: 'Audits', icon: Search },
   { href: '/admin/abuse', label: 'Abuse', icon: ShieldAlert },
+  { href: '/admin/settings', label: 'Settings', icon: Settings },
+  { href: '/admin/activity', label: 'Activity', icon: Activity },
 ];
 
 export function AdminSidebar() {

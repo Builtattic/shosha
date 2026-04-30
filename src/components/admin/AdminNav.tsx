@@ -2,16 +2,20 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, ListTodo, Users, Database, ClipboardList, Search, ShieldAlert } from 'lucide-react';
+import { Activity, LayoutDashboard, ListTodo, Users, Database, ClipboardList, Search, ShieldAlert, PlusCircle, Newspaper, Settings } from 'lucide-react';
 
 const navItems = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/admin/create', label: 'Create', icon: PlusCircle },
+  { href: '/admin/feed', label: 'Feed', icon: Newspaper },
   { href: '/admin/queue', label: 'Queue', icon: ListTodo },
   { href: '/admin/users', label: 'Users', icon: Users },
   { href: '/admin/accounts', label: 'Accounts', icon: Database },
   { href: '/admin/claims', label: 'Claims', icon: ClipboardList },
   { href: '/admin/audits', label: 'Audits', icon: Search },
   { href: '/admin/abuse', label: 'Abuse', icon: ShieldAlert },
+  { href: '/admin/settings', label: 'Settings', icon: Settings },
+  { href: '/admin/activity', label: 'Activity', icon: Activity },
 ];
 
 export function AdminNav() {

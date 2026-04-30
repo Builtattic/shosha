@@ -6,7 +6,11 @@
       "Bash(pnpm typecheck *)",
       "Bash(pnpm lint *)",
       "Bash(npx tsc *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(git pull *)",
+      "Bash(git config *)",
+      "Bash(git -c pull.rebase=false pull origin shosha-app --ff-only)",
+      "Bash(git checkout *)"
     ]
   }
 }
