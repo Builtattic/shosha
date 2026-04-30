@@ -81,13 +81,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
-      // Using signInWithRedirect instead of popup to fix the 'missing initial state'
-      // error that occurs on mobile Safari and in-app browsers due to storage partitioning.
-      await signInWithRedirect(auth, provider);
-      return true;
+      
+      // Detect mobile to use redirect (fixes Safari/mobile partitioning issues)
+      // while keeping popup for better desktop UX.
+      const isMobile = typeof window !== 'undefined' && 
+        /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+      if (isMobile) {
+        await signInWithRedirect(auth, provider);
+        return true;
+      } else {
+        const cred = await signInWithPopup(auth, provider);
+        const token = await cred.user.getIdToken();
+        document.cookie = `__session=${token}; path=/; max-age=3600; SameSite=Lax`;
+        return true;
+      }
     } catch (error: any) {
-      googleSignInInProgress.current = false;
+      // silently swallow popup cancellations
+      if (
+        error.code === 'auth/cancelled-popup-request' ||
+        error.code === 'auth/popup-closed-by-user'
+      ) {
+        return false;
+      }
       throw error;
+    } finally {
+      googleSignInInProgress.current = false;
     }
   }
 
