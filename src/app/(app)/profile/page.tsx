@@ -16,6 +16,7 @@ import { D3ProfileGauge } from '@/components/viz/D3ProfileGauge';
 import { D3AreaChart } from '@/components/viz/D3AreaChart';
 import { D3ActivityBar } from '@/components/viz/D3ActivityBar';
 import { ProfileScoreRadar } from '@/components/viz/ProfileScoreRadar';
+import { ShareCardModal } from '@/components/profile/ShareCardModal';
 
 const EDU_LABELS: Record<string, string> = {
   no_formal: 'No Formal Education',
@@ -71,6 +72,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [recalculating, setRecalculating] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'activity' | 'impact' | 'about'>('overview');
+  const [shareOpen, setShareOpen] = useState(false);
 
   async function recalculateScore() {
     setRecalculating(true);
@@ -166,7 +168,11 @@ export default function ProfilePage() {
             Sho<span className="font-normal italic text-muted-foreground">शा</span>
           </div>
           <div className="flex items-center gap-4">
-            <button className="text-foreground transition-opacity hover:opacity-70">
+            <button
+              onClick={() => setShareOpen(true)}
+              className="text-foreground transition-opacity hover:opacity-70"
+              aria-label="Share profile card"
+            >
               <Upload size={22} strokeWidth={2.5} />
             </button>
             <button className="text-foreground transition-opacity hover:opacity-70">
@@ -765,6 +771,23 @@ export default function ProfilePage() {
 
         </div>
       </div>
+
+      <ShareCardModal
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        displayName={displayName}
+        username={username}
+        avatarUrl={avatarUrl}
+        ledgerScore={ledgerScore}
+        credibility={credibility}
+        weeklyDelta={weeklyDelta}
+        eventsCount={recentEvents.length}
+        dimensions={scores}
+        recentEvents={recentEvents}
+        role={appUser?.occupationRole ? (ROLE_LABELS[appUser.occupationRole] ?? appUser.occupationRole) : undefined}
+        location={[appUser?.city, appUser?.country].filter(Boolean).join(', ') || undefined}
+        isVerified={Boolean(appUser?.onboardingComplete)}
+      />
     </main>
   );
 }
