@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function AdminUsersPage() {
   const users = await usersRepo.listAll(500);
-  const adminCount = users.filter((u) => u.role === 'admin').length;
+  const adminCount = users.filter((u) => u.role !== 'user').length;
 
   return (
     <div className="space-y-6">

@@ -7,15 +7,17 @@ import { useToast } from '@/components/ui/Toast';
 import type { AppUser } from '@/lib/repos/users';
 
 type UserRow = AppUser;
+const roles = ['user', 'moderator', 'editor', 'admin', 'super_admin'] as const;
 
 function RoleBadge({ role }: { role: string }) {
+  const elevated = role !== 'user';
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider ${
-      role === 'admin'
+      elevated
         ? 'bg-red-100 text-red-700 border border-red-200'
         : 'bg-secondary text-muted-foreground border border-border'
     }`}>
-      {role === 'admin' ? <Shield size={9} /> : <User size={9} />}
+      {elevated ? <Shield size={9} /> : <User size={9} />}
       {role}
     </span>
   );
@@ -27,6 +29,7 @@ export function UsersTable({ initialUsers }: { initialUsers: UserRow[] }) {
   const [sortBy, setSortBy] = useState<'username' | 'reporterScore' | 'createdAt'>('createdAt');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [editUser, setEditUser] = useState<UserRow | null>(null);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
   const toast = useToast();
@@ -55,7 +58,7 @@ export function UsersTable({ initialUsers }: { initialUsers: UserRow[] }) {
   }
 
   async function toggleRole(userId: string, currentRole: string) {
-    const newRole = currentRole === 'admin' ? 'user' : 'admin';
+    const newRole = currentRole === 'user' ? 'admin' : 'user';
     try {
       const res = await fetch(`/api/admin/users/${userId}`, {
         method: 'PATCH',
@@ -71,6 +74,29 @@ export function UsersTable({ initialUsers }: { initialUsers: UserRow[] }) {
       toast.push(e instanceof Error ? e.message : 'Failed to update role');
     }
     setOpenMenu(null);
+  }
+
+  async function saveUser() {
+    if (!editUser) return;
+    try {
+      const res = await fetch(`/api/admin/users/${editUser._id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          role: editUser.role,
+          reporterScore: Number(editUser.reporterScore),
+          claimedAccounts: editUser.claimedAccounts ?? [],
+        }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error?.message ?? 'Failed');
+      setUsers((prev) => prev.map((u) => (u._id === editUser._id ? data.data : u)));
+      toast.push('User updated.');
+      setEditUser(null);
+      startTransition(() => router.refresh());
+    } catch (e) {
+      toast.push(e instanceof Error ? e.message : 'Failed to update user');
+    }
   }
 
   async function deleteUser(userId: string, username: string) {
@@ -90,6 +116,32 @@ export function UsersTable({ initialUsers }: { initialUsers: UserRow[] }) {
 
   return (
     <div className="bg-card">
+      {editUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-[2px]" onClick={() => setEditUser(null)}>
+          <div className="w-full max-w-lg rounded-2xl border border-border bg-background p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-foreground font-black text-lg mb-1">Edit User</h3>
+            <p className="text-muted-foreground text-[13px] mb-6">@{editUser.username}</p>
+            <div className="space-y-3">
+              <select value={editUser.role} onChange={(e) => setEditUser({ ...editUser, role: e.target.value as UserRow['role'] })} className="admin-input">
+                {roles.map((role) => <option key={role} value={role}>{role}</option>)}
+              </select>
+              <input type="number" min="0" max="100" value={editUser.reporterScore} onChange={(e) => setEditUser({ ...editUser, reporterScore: Number(e.target.value) })} className="admin-input" />
+              <textarea
+                value={(editUser.claimedAccounts ?? []).join('\n')}
+                onChange={(e) => setEditUser({ ...editUser, claimedAccounts: e.target.value.split('\n').map((item) => item.trim()).filter(Boolean) })}
+                rows={5}
+                placeholder="Claimed account ids, one per line"
+                className="admin-input"
+              />
+            </div>
+            <div className="mt-6 flex gap-3">
+              <button onClick={() => setEditUser(null)} className="flex-1 h-11 rounded-xl border border-border py-2 text-[13px] font-bold text-muted-foreground hover:bg-secondary transition-colors">Cancel</button>
+              <button onClick={saveUser} className="flex-1 h-11 rounded-xl bg-primary text-primary-foreground py-2 text-[13px] font-black hover:opacity-90 transition-opacity">Save User</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Search bar */}
       <div className="p-4 border-b border-border">
         <div className="relative">
@@ -164,11 +216,18 @@ export function UsersTable({ initialUsers }: { initialUsers: UserRow[] }) {
                       <div className="fixed inset-0 z-10" onClick={() => setOpenMenu(null)} />
                       <div className="absolute right-6 top-12 z-20 w-48 rounded-xl border border-border bg-background shadow-xl overflow-hidden animate-in fade-in zoom-in duration-100">
                         <button
+                          onClick={() => { setEditUser(user); setOpenMenu(null); }}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-[13px] font-bold text-foreground hover:bg-secondary transition-colors text-left"
+                        >
+                          <User size={14} className="text-primary" />
+                          Edit user
+                        </button>
+                        <button
                           onClick={() => toggleRole(user._id, user.role)}
                           className="w-full flex items-center gap-3 px-4 py-3 text-[13px] font-bold text-foreground hover:bg-secondary transition-colors text-left"
                         >
                           <Shield size={14} className="text-primary" />
-                          {user.role === 'admin' ? 'Demote to user' : 'Promote to admin'}
+                          {user.role === 'user' ? 'Promote to admin' : 'Demote to user'}
                         </button>
                         <div className="h-px bg-border mx-2" />
                         <button

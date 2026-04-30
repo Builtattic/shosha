@@ -41,6 +41,7 @@ export function AccountsTable({ initialAccounts }: { initialAccounts: AccountRec
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [editScore, setEditScore] = useState<{ id: string; value: number } | null>(null);
+  const [editAccount, setEditAccount] = useState<AccountRecord | null>(null);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
   const toast = useToast();
@@ -90,6 +91,38 @@ export function AccountsTable({ initialAccounts }: { initialAccounts: AccountRec
       toast.push(e instanceof Error ? e.message : 'Failed to update score');
     }
     setEditScore(null);
+  }
+
+  async function saveAccount() {
+    if (!editAccount) return;
+    try {
+      const res = await fetch(`/api/admin/accounts/${editAccount._id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          displayName: editAccount.displayName,
+          username: editAccount.username,
+          platform: editAccount.platform,
+          bio: editAccount.bio,
+          avatarUrl: editAccount.avatarUrl,
+          followers: editAccount.followers,
+          verified: editAccount.verified,
+          claimed: editAccount.claimed,
+          claimedBy: editAccount.claimedBy,
+          score: Number(editAccount.score),
+          breakdown: editAccount.breakdown,
+          posts: editAccount.posts,
+        }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error?.message ?? 'Failed');
+      setAccounts((prev) => prev.map((a) => (a._id === editAccount._id ? data.data : a)));
+      toast.push('Account updated.');
+      setEditAccount(null);
+      startTransition(() => router.refresh());
+    } catch (e) {
+      toast.push(e instanceof Error ? e.message : 'Failed to update account');
+    }
   }
 
   async function deleteAccount(accountId: string, name: string) {
@@ -148,6 +181,30 @@ export function AccountsTable({ initialAccounts }: { initialAccounts: AccountRec
             <div className="flex gap-3">
               <button onClick={() => setEditScore(null)} className="flex-1 h-11 rounded-xl border border-border py-2 text-[13px] font-bold text-muted-foreground hover:bg-secondary transition-colors">Cancel</button>
               <button onClick={() => saveScore(editScore.id)} className="flex-1 h-11 rounded-xl bg-primary text-primary-foreground py-2 text-[13px] font-black hover:opacity-90 transition-opacity">Save Changes</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editAccount && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-[2px]" onClick={() => setEditAccount(null)}>
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-border bg-background p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-foreground font-black text-lg mb-1">Edit Account</h3>
+            <p className="text-muted-foreground text-[13px] mb-6">Full admin override for this dossier.</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <input value={editAccount.displayName} onChange={(e) => setEditAccount({ ...editAccount, displayName: e.target.value })} className="admin-input" />
+              <input value={editAccount.username} onChange={(e) => setEditAccount({ ...editAccount, username: e.target.value })} className="admin-input" />
+              <input value={editAccount.followers} onChange={(e) => setEditAccount({ ...editAccount, followers: e.target.value })} className="admin-input" />
+              <input type="number" value={editAccount.score} onChange={(e) => setEditAccount({ ...editAccount, score: Number(e.target.value) })} className="admin-input" />
+              <input value={editAccount.avatarUrl} onChange={(e) => setEditAccount({ ...editAccount, avatarUrl: e.target.value })} placeholder="Avatar URL" className="admin-input sm:col-span-2" />
+              <textarea value={editAccount.bio} onChange={(e) => setEditAccount({ ...editAccount, bio: e.target.value })} className="admin-input sm:col-span-2" rows={3} />
+              <input value={editAccount.claimedBy ?? ''} onChange={(e) => setEditAccount({ ...editAccount, claimedBy: e.target.value || null, claimed: Boolean(e.target.value) })} placeholder="Claimed by user id" className="admin-input sm:col-span-2" />
+              <label className="admin-check"><input type="checkbox" checked={editAccount.verified} onChange={(e) => setEditAccount({ ...editAccount, verified: e.target.checked })} /> Verified</label>
+              <label className="admin-check"><input type="checkbox" checked={editAccount.claimed} onChange={(e) => setEditAccount({ ...editAccount, claimed: e.target.checked, claimedBy: e.target.checked ? editAccount.claimedBy : null })} /> Claimed</label>
+            </div>
+            <div className="mt-6 flex gap-3">
+              <button onClick={() => setEditAccount(null)} className="flex-1 h-11 rounded-xl border border-border py-2 text-[13px] font-bold text-muted-foreground hover:bg-secondary transition-colors">Cancel</button>
+              <button onClick={saveAccount} className="flex-1 h-11 rounded-xl bg-primary text-primary-foreground py-2 text-[13px] font-black hover:opacity-90 transition-opacity">Save Account</button>
             </div>
           </div>
         </div>
@@ -223,6 +280,13 @@ export function AccountsTable({ initialAccounts }: { initialAccounts: AccountRec
                     <>
                       <div className="fixed inset-0 z-10" onClick={() => setOpenMenu(null)} />
                       <div className="absolute right-6 top-12 z-20 w-48 rounded-xl border border-border bg-background shadow-xl overflow-hidden animate-in fade-in zoom-in duration-100">
+                        <button
+                          onClick={() => { setEditAccount(account); setOpenMenu(null); }}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-[13px] font-bold text-foreground hover:bg-secondary transition-colors text-left"
+                        >
+                          <Edit3 size={14} className="text-primary" />
+                          Edit details
+                        </button>
                         <button
                           onClick={() => { setEditScore({ id: account._id, value: account.score }); setOpenMenu(null); }}
                           className="w-full flex items-center gap-3 px-4 py-3 text-[13px] font-bold text-foreground hover:bg-secondary transition-colors text-left"
