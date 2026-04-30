@@ -105,13 +105,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
 
-      // On mobile devices, always use redirect to avoid popup issues
-      const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      
-      if (isMobile) {
-        await signInWithRedirect(auth, provider);
-        return 'redirecting';
-      }
+      // Attempt popup first; if blocked or not supported, fallback to redirect
+
 
       try {
         const cred = await signInWithPopup(auth, provider);
