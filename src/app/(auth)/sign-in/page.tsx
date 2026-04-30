@@ -32,17 +32,7 @@ export default function SignInPage() {
   const router = useRouter();
   const { user, loading: authLoading, signIn, signUp, signInWithGoogle, sendPhoneOtp } = useAuth();
 
-  useEffect(() => {
-    if (!authLoading && user && mode !== 'loading') {
-      setMode('loading');
-      const searchParams = new URLSearchParams(window.location.search);
-      resolveRedirect(searchParams.get('redirect') || '/dashboard').then(dest => {
-        router.push(dest);
-      }).catch(() => {
-        router.push('/dashboard');
-      });
-    }
-  }, [user, authLoading, router, mode]);
+
 
   const [mode, setMode] = useState<AuthMode>('choose');
   const [isSignUp, setIsSignUp] = useState(false);
@@ -57,6 +47,18 @@ export default function SignInPage() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [confirmResult, setConfirmResult] = useState<ConfirmationResult | null>(null);
+
+  useEffect(() => {
+    if (!authLoading && user && mode !== 'loading') {
+      setMode('loading');
+      const searchParams = new URLSearchParams(window.location.search);
+      resolveRedirect(searchParams.get('redirect') || '/dashboard').then(dest => {
+        router.push(dest);
+      }).catch(() => {
+        router.push('/dashboard');
+      });
+    }
+  }, [user, authLoading, router, mode]);
 
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
