@@ -109,7 +109,7 @@ export function AdminReviewControls({
             onChange={(e) => setIntent(e.target.value)}
             className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-[14px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all font-medium"
           >
-            <option value="0.5">Didn't mean to (0.5)</option>
+            <option value="0.5">Didn&apos;t mean to (0.5)</option>
             <option value="1">Not Aware (1)</option>
             <option value="1.5">Not Careful (1.5)</option>
             <option value="2">Meant to (2)</option>

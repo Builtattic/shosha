@@ -79,6 +79,13 @@ function normalizeUrl(value: string) {
   return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 }
 
+function generateUsername(name: string) {
+  if (!name) return '';
+  const clean = name.toLowerCase().replace(/[^a-z0-9]/g, '.').replace(/\.+/g, '.').replace(/(^\.|\.$)/g, '');
+  const num = Math.floor(1000 + Math.random() * 9000);
+  return `${clean}.${num}`;
+}
+
 async function readApiPayload<T>(response: Response, fallbackMessage: string): Promise<ApiPayload<T>> {
   const text = await response.text();
   if (!text.trim()) {
@@ -139,18 +146,11 @@ export function ReportModal({
   const [newProfileUrl, setNewProfileUrl] = useState('');
   const [newProfileUsername, setNewProfileUsername] = useState('');
 
-  function generateUsername(name: string) {
-    if (!name) return '';
-    const clean = name.toLowerCase().replace(/[^a-z0-9]/g, '.').replace(/\.+/g, '.').replace(/(^\.|\.$)/g, '');
-    const num = Math.floor(1000 + Math.random() * 9000);
-    return `${clean}.${num}`;
-  }
-
   useEffect(() => {
     if (newProfileName && !newProfileUsername) {
       setNewProfileUsername(generateUsername(newProfileName));
     }
-  }, [newProfileName]);
+  }, [newProfileName, newProfileUsername]);
 
   function reset() {
     setStep(1);
@@ -766,7 +766,7 @@ export function ReportModal({
                   onChange={(e) => setIntent(e.target.value)}
                   className="w-full rounded-[12px] border border-border bg-card p-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-primary/20"
                 >
-                  <option value="0.5">Didn't mean to (0.5)</option>
+                  <option value="0.5">Didn&apos;t mean to (0.5)</option>
                   <option value="1">Not Aware (1)</option>
                   <option value="1.5">Not Careful (1.5)</option>
                   <option value="2">Meant to (2)</option>
