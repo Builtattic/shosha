@@ -47,32 +47,6 @@ type ApiPayload<T = unknown> = {
   error?: { message?: string };
 };
 
-function profileUrlForPlatform(platform: Platform, username: string) {
-  const handle = username.trim().replace(/^@/, '');
-  const encoded = encodeURIComponent(handle);
-
-  switch (platform) {
-    case 'instagram':
-      return `https://www.instagram.com/${encoded}/`;
-    case 'x':
-      return `https://x.com/${encoded}`;
-    case 'facebook':
-      return `https://www.facebook.com/${encoded}`;
-    case 'youtube':
-      return `https://www.youtube.com/@${encoded}`;
-    case 'tiktok':
-      return `https://www.tiktok.com/@${encoded}`;
-    case 'linkedin':
-      return `https://www.linkedin.com/in/${encoded}`;
-    case 'reddit':
-      return `https://www.reddit.com/user/${encoded}/`;
-    case 'snapchat':
-      return `https://www.snapchat.com/add/${encoded}`;
-    case 'website':
-      return `https://${handle}`;
-  }
-}
-
 function normalizeUrl(value: string) {
   const trimmed = value.trim();
   if (!trimmed) return '';
@@ -130,6 +104,7 @@ export function ReportModal({
   const [targetBio, setTargetBio] = useState('');
   const [targetFollowers, setTargetFollowers] = useState('');
   const [targetVerified, setTargetVerified] = useState(false);
+  const [targetManual, setTargetManual] = useState(false);
   const [candidates, setCandidates] = useState<AccountCandidate[]>([]);
   const [searchingCandidates, setSearchingCandidates] = useState(false);
   const [resolvedAccountId, setResolvedAccountId] = useState<string | null>(null);
@@ -166,6 +141,7 @@ export function ReportModal({
     setTargetBio('');
     setTargetFollowers('');
     setTargetVerified(false);
+    setTargetManual(false);
     setCandidates([]);
     setSearchingCandidates(false);
     setResolvedAccountId(null);
@@ -211,6 +187,7 @@ export function ReportModal({
     setTargetBio(candidate.bio);
     setTargetFollowers(candidate.followers ?? '');
     setTargetVerified(Boolean(candidate.verified));
+    setTargetManual(false);
     setResolvedAccountId(null);
   }
 
@@ -268,6 +245,7 @@ export function ReportModal({
         username,
         displayName: targetDisplayName || undefined,
         sourceUrl: targetSourceUrl || undefined,
+        skipDiscovery: targetManual || undefined,
         bio: targetBio || undefined,
         followers: targetFollowers || undefined,
         verified: targetVerified || undefined
@@ -306,7 +284,7 @@ export function ReportModal({
       return;
     }
 
-    if (!accountId && !targetSourceUrl) {
+    if (!accountId && !targetHandle.trim()) {
       showSubmitError('Select or add the profile this report is about.');
       return;
     }
@@ -435,12 +413,13 @@ export function ReportModal({
                       displayName: newProfileName,
                       username: newProfileUsername,
                       bio: newProfileEmail ? `Contact: ${newProfileEmail}` : '',
-                      platform: targetPlatform,
-                      sourceUrl: normalizeUrl(newProfileUrl) || profileUrlForPlatform(targetPlatform, newProfileUsername),
+                      platform: normalizeUrl(newProfileUrl) ? targetPlatform : 'website',
+                      sourceUrl: normalizeUrl(newProfileUrl),
                       verified: false,
                       confidence: 1
                     };
                     pickCandidate(payload as any);
+                    setTargetManual(!payload.sourceUrl);
                     setView('report');
                   } finally {
                     setSubmitting(false);
@@ -466,6 +445,7 @@ export function ReportModal({
                       type="button"
                       onClick={() => {
                         setTargetPlatform(platform);
+                        setTargetManual(false);
                         setResolvedAccountId(null);
                       }}
                       className={cn(
@@ -490,6 +470,7 @@ export function ReportModal({
                       setTargetBio('');
                       setTargetFollowers('');
                       setTargetVerified(false);
+                      setTargetManual(false);
                       setResolvedAccountId(null);
                     }}
                     placeholder="Search name, brand, or @username"
@@ -502,7 +483,7 @@ export function ReportModal({
                   )}
                 </div>
 
-                {targetSourceUrl ? (
+                {targetDisplayName || targetSourceUrl ? (
                   <div className="mt-4 rounded-[20px] border border-primary/30 bg-primary/5 p-4 animate-in fade-in slide-in-from-top-2 duration-300">
                     <div className="flex items-center justify-between gap-4">
                       <div className="min-w-0">
@@ -511,17 +492,23 @@ export function ReportModal({
                           {targetVerified && <ShieldCheck size={14} className="text-primary shrink-0" />}
                         </p>
                         <p className="truncate text-[12px] text-muted-foreground">
-                          {targetPlatform === 'x' ? 'X' : targetPlatform} / @{targetHandle}
+                          {targetManual ? 'Internal profile' : targetPlatform === 'x' ? 'X' : targetPlatform} / @{targetHandle}
                           {targetFollowers ? ` · ${targetFollowers}` : ''}
                         </p>
-                        <a
-                          href={targetSourceUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="mt-1.5 inline-block truncate text-[11px] text-primary hover:underline font-medium"
-                        >
-                          View Profile
-                        </a>
+                        {targetSourceUrl ? (
+                          <a
+                            href={targetSourceUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-1.5 inline-block truncate text-[11px] text-primary hover:underline font-medium"
+                          >
+                            View Profile
+                          </a>
+                        ) : (
+                          <p className="mt-1.5 text-[11px] font-medium text-muted-foreground">
+                            Social link can be added later
+                          </p>
+                        )}
                       </div>
                       <button
                         type="button"
@@ -531,6 +518,7 @@ export function ReportModal({
                           setTargetBio('');
                           setTargetFollowers('');
                           setTargetVerified(false);
+                          setTargetManual(false);
                           setResolvedAccountId(null);
                         }}
                         className="shrink-0 rounded-full bg-muted px-4 py-1.5 text-[11px] font-bold hover:bg-muted/80 transition-colors"
@@ -820,10 +808,10 @@ export function ReportModal({
             <button
               type="button"
               onClick={submit}
-              disabled={submitting || uploading || !type || description.length < 10 || !media || (!accountId && !targetSourceUrl)}
+              disabled={submitting || uploading || !type || description.length < 10 || !media || (!accountId && !targetHandle.trim())}
               className={cn(
                 "w-full rounded-full py-4.5 text-[16px] font-bold transition-all active:scale-[0.98] shadow-lg",
-                (submitting || uploading || !type || description.length < 10 || !media || (!accountId && !targetSourceUrl))
+                (submitting || uploading || !type || description.length < 10 || !media || (!accountId && !targetHandle.trim()))
                   ? "bg-muted text-muted-foreground cursor-not-allowed opacity-70 shadow-none"
                   : "bg-foreground text-background hover:bg-foreground/90 hover:shadow-xl"
               )}

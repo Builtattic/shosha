@@ -25,34 +25,42 @@ export async function POST(request: Request) {
   if (existing) return ok(existing, 200);
 
   let profile: SocialProfile;
-  try {
-    profile = await fetchSocialProfile(parsed.data.platform, parsed.data.username, {
-      displayName: parsed.data.displayName,
-      bio: parsed.data.bio,
-      avatarUrl: parsed.data.avatarUrl,
-      followers: parsed.data.followers,
-      verified: parsed.data.verified,
-      sourceUrl: parsed.data.sourceUrl
-    });
-  } catch (error) {
-    if (parsed.data.displayName || parsed.data.sourceUrl) {
-      const displayName = parsed.data.displayName ?? parsed.data.username;
-      profile = {
-        platform: parsed.data.platform,
-        username: parsed.data.username,
-        displayName,
-        bio: parsed.data.bio ?? '',
-        avatarUrl:
-          parsed.data.avatarUrl ??
-          `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(displayName)}`,
-        verified: parsed.data.verified ?? false,
-        followers: parsed.data.followers ?? 'unknown',
-        sourceUrl: parsed.data.sourceUrl,
-        posts: []
-      };
-    } else {
-      const response = socialErrorResponse(error);
-      return fail(response.code, response.message, response.status);
+  const fallbackProfile = () => {
+    const displayName = parsed.data.displayName ?? parsed.data.username;
+    return {
+      platform: parsed.data.platform,
+      username: parsed.data.username,
+      displayName,
+      bio: parsed.data.bio ?? '',
+      avatarUrl:
+        parsed.data.avatarUrl ??
+        `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(displayName)}`,
+      verified: parsed.data.verified ?? false,
+      followers: parsed.data.followers ?? 'unknown',
+      sourceUrl: parsed.data.sourceUrl,
+      posts: []
+    };
+  };
+
+  if (parsed.data.skipDiscovery && parsed.data.displayName) {
+    profile = fallbackProfile();
+  } else {
+    try {
+      profile = await fetchSocialProfile(parsed.data.platform, parsed.data.username, {
+        displayName: parsed.data.displayName,
+        bio: parsed.data.bio,
+        avatarUrl: parsed.data.avatarUrl,
+        followers: parsed.data.followers,
+        verified: parsed.data.verified,
+        sourceUrl: parsed.data.sourceUrl
+      });
+    } catch (error) {
+      if (parsed.data.displayName || parsed.data.sourceUrl) {
+        profile = fallbackProfile();
+      } else {
+        const response = socialErrorResponse(error);
+        return fail(response.code, response.message, response.status);
+      }
     }
   }
 

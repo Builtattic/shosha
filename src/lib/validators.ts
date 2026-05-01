@@ -29,6 +29,7 @@ export const accountCreateSchema = z.object({
     .refine((value) => value.length >= 2, 'Username must contain at least 2 safe characters.'),
   displayName: z.string().min(1).max(120).optional(),
   sourceUrl: z.string().url().optional(),
+  skipDiscovery: z.boolean().optional(),
   bio: z.string().max(280).optional(),
   avatarUrl: z.string().url().optional(),
   followers: z.string().max(24).optional(),
