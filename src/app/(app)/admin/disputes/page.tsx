@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Gavel, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -54,7 +54,7 @@ export default function AdminDisputesPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({});
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const statusParam =
@@ -69,11 +69,11 @@ export default function AdminDisputesPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [filter]);
 
   useEffect(() => {
     load();
-  }, [filter]);
+  }, [load]);
 
   async function decide(id: string, verdict: 'accepted' | 'rejected') {
     if (busyId) return;

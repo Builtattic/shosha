@@ -38,7 +38,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             </div>
             <div className="h-8 w-[1px] bg-border mx-2" />
             <div className="text-right">
-              <p className="text-xs font-black text-foreground">{user?.displayName || 'Admin'}</p>
+              <p className="text-xs font-black text-foreground">{user?.name || user?.username || 'Admin'}</p>
               <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-tighter">Authorized Session</p>
             </div>
           </div>

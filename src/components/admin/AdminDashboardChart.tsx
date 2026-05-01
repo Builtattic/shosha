@@ -1,7 +1,7 @@
 'use client';
 
 import * as d3 from 'd3';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
 
 interface DataPoint {
@@ -23,7 +23,7 @@ export function AdminDashboardChart({
   const ref = useRef<SVGSVGElement>(null);
 
   // Fallback data if none provided
-  const chartData = data || [
+  const chartData = useMemo(() => data || [
     { date: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000), value: 45 },
     { date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), value: 52 },
     { date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000), value: 48 },
@@ -31,7 +31,7 @@ export function AdminDashboardChart({
     { date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), value: 65 },
     { date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), value: 85 },
     { date: new Date(), value: 78 },
-  ];
+  ], [data]);
 
   useEffect(() => {
     if (!ref.current || chartData.length === 0) return;

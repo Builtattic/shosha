@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { X, Download, Image, Loader2 } from 'lucide-react';
+import { X, Download, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { ProfileShareCard } from './ProfileShareCard';
 
 interface Props {
@@ -97,7 +97,7 @@ export function ShareCardModal({ open, onClose, ...cardProps }: Props) {
             >
               {exporting === 'png'
                 ? <Loader2 size={13} className="animate-spin" />
-                : <Image size={13} />}
+                : <ImageIcon size={13} />}
               {exporting === 'png' ? 'Saving…' : 'PNG'}
             </button>
 
