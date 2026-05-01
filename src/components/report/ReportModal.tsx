@@ -18,6 +18,8 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
 
 type UploadedMedia = {
   url: string;
@@ -39,6 +41,58 @@ type AccountCandidate = {
   reason: string;
 };
 
+type ApiPayload<T = unknown> = {
+  ok?: boolean;
+  data?: T;
+  error?: { message?: string };
+};
+
+function profileUrlForPlatform(platform: Platform, username: string) {
+  const handle = username.trim().replace(/^@/, '');
+  const encoded = encodeURIComponent(handle);
+
+  switch (platform) {
+    case 'instagram':
+      return `https://www.instagram.com/${encoded}/`;
+    case 'x':
+      return `https://x.com/${encoded}`;
+    case 'facebook':
+      return `https://www.facebook.com/${encoded}`;
+    case 'youtube':
+      return `https://www.youtube.com/@${encoded}`;
+    case 'tiktok':
+      return `https://www.tiktok.com/@${encoded}`;
+    case 'linkedin':
+      return `https://www.linkedin.com/in/${encoded}`;
+    case 'reddit':
+      return `https://www.reddit.com/user/${encoded}/`;
+    case 'snapchat':
+      return `https://www.snapchat.com/add/${encoded}`;
+    case 'website':
+      return `https://${handle}`;
+  }
+}
+
+function normalizeUrl(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+}
+
+async function readApiPayload<T>(response: Response, fallbackMessage: string): Promise<ApiPayload<T>> {
+  const text = await response.text();
+  if (!text.trim()) {
+    throw new Error(fallbackMessage);
+  }
+
+  try {
+    return JSON.parse(text) as ApiPayload<T>;
+  } catch {
+    const message = text.trim().startsWith('<') ? fallbackMessage : text.trim().slice(0, 240);
+    throw new Error(message || fallbackMessage);
+  }
+}
+
 export function ReportModal({
   open,
   accountId,
@@ -56,6 +110,8 @@ export function ReportModal({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [step, setStep] = useState(1);
   const [type, setType] = useState<'positive' | 'negative' | null>(null);
+  const [repetitionPattern, setRepetitionPattern] = useState<string>('0.5');
+  const [intent, setIntent] = useState<string>('0.5');
   const [description, setDescription] = useState('');
   const [feelings, setFeelings] = useState('');
   const [aiConsent, setAiConsent] = useState(false);
@@ -74,6 +130,27 @@ export function ReportModal({
   const [media, setMedia] = useState<UploadedMedia | null>(null);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+
+  // New Profile State
+  const [view, setView] = useState<'report' | 'add_profile'>('report');
+  const [newProfileName, setNewProfileName] = useState('');
+  const [newProfileEmail, setNewProfileEmail] = useState('');
+  const [newProfileUrl, setNewProfileUrl] = useState('');
+  const [newProfileUsername, setNewProfileUsername] = useState('');
+
+  function generateUsername(name: string) {
+    if (!name) return '';
+    const clean = name.toLowerCase().replace(/[^a-z0-9]/g, '.').replace(/\.+/g, '.').replace(/(^\.|\.$)/g, '');
+    const num = Math.floor(1000 + Math.random() * 9000);
+    return `${clean}.${num}`;
+  }
+
+  useEffect(() => {
+    if (newProfileName && !newProfileUsername) {
+      setNewProfileUsername(generateUsername(newProfileName));
+    }
+  }, [newProfileName]);
 
   function reset() {
     setStep(1);
@@ -96,6 +173,12 @@ export function ReportModal({
     setMedia(null);
     setUploading(false);
     setSubmitting(false);
+    setSubmitError('');
+    setView('report');
+    setNewProfileName('');
+    setNewProfileEmail('');
+    setNewProfileUrl('');
+    setNewProfileUsername('');
   }
 
   useEffect(() => {
@@ -149,8 +232,9 @@ export function ReportModal({
       const form = new FormData();
       form.set('file', file);
       const response = await fetch('/api/media/upload', { method: 'POST', body: form });
-      const payload = await response.json();
+      const payload = await readApiPayload<UploadedMedia>(response, 'Upload failed.');
       if (!payload.ok) throw new Error(payload.error?.message ?? 'Upload failed.');
+      if (!payload.data) throw new Error('Upload failed.');
       setMedia({ url: payload.data.url, type: payload.data.type, bytes: payload.data.bytes });
       toast.push('Evidence uploaded.');
     } catch (error) {
@@ -189,40 +273,60 @@ export function ReportModal({
         verified: targetVerified || undefined
       })
     });
-    const payload = await response.json();
+    const payload = await readApiPayload<{ _id: string }>(response, 'Could not open target dossier.');
     if (!payload.ok) throw new Error(payload.error?.message ?? 'Could not open target dossier.');
+    if (!payload.data?._id) throw new Error('Could not open target dossier.');
     setResolvedAccountId(payload.data._id);
     return payload.data._id as string;
   }
 
   async function submit() {
-    let targetAccountId: string | null = null;
-    try {
-      targetAccountId = await ensureAccount();
-    } catch (error) {
-      toast.push(error instanceof Error ? error.message : 'Could not open target dossier.');
+    function showSubmitError(message: string) {
+      setSubmitError(message);
+      toast.push(message);
+    }
+
+    if (!type) {
+      showSubmitError('Choose positive or negative impact before submitting.');
       return;
     }
-    
-    if (!targetAccountId) return;
-    if (!type) return;
-    
+
     if (description.length < 10) {
-      toast.push('Description needs at least 10 characters.');
+      showSubmitError('Description needs at least 10 characters.');
       return;
     }
 
     if (!media) {
-      toast.push('Upload photo or video evidence first.');
+      showSubmitError('Upload photo or video evidence first.');
       return;
     }
 
     if (!aiConsent) {
-      toast.push('Please confirm the AI Undertaking.');
+      showSubmitError('Please confirm the AI Undertaking.');
       return;
     }
 
+    if (!accountId && !targetSourceUrl) {
+      showSubmitError('Select or add the profile this report is about.');
+      return;
+    }
+
+    setSubmitError('');
     setSubmitting(true);
+    let targetAccountId: string | null = null;
+    try {
+      targetAccountId = await ensureAccount();
+    } catch (error) {
+      showSubmitError(error instanceof Error ? error.message : 'Could not open target dossier.');
+      setSubmitting(false);
+      return;
+    }
+    
+    if (!targetAccountId) {
+      setSubmitting(false);
+      return;
+    }
+
     try {
       const response = await fetch('/api/reports', {
         method: 'POST',
@@ -234,17 +338,19 @@ export function ReportModal({
           feelings: feelings || description,
           media: { url: media.url, type: media.type, bytes: media.bytes },
           location: location || undefined,
-          tags: taggedPerson ? [taggedPerson] : []
+          tags: taggedPerson ? [taggedPerson] : [],
+          repetitionPattern,
+          intent
         })
       });
-      const payload = await response.json();
+      const payload = await readApiPayload(response, 'Submission failed. Please try again.');
       if (!payload.ok) throw new Error(payload.error?.message ?? 'Submission failed.');
       toast.push('Filing entered into the queue.');
       onSubmitted?.(targetAccountId);
       router.refresh();
       close();
     } catch (error) {
-      toast.push(error instanceof Error ? error.message : 'Submission failed.');
+      showSubmitError(error instanceof Error ? error.message : 'Submission failed.');
     } finally {
       setSubmitting(false);
     }
@@ -261,14 +367,92 @@ export function ReportModal({
         className="w-full max-w-lg rounded-t-[32px] sm:rounded-[32px] bg-background border-x border-t border-border p-6 max-h-[90vh] overflow-y-auto no-scrollbar"
       >
         <div className="flex items-center justify-between mb-6">
-          <button onClick={() => (step > 1 ? setStep(step - 1) : close())} className="text-muted-foreground">
-            {step > 1 ? <ChevronLeft size={24} /> : <X size={24} />}
+          <button onClick={() => {
+            if (view === 'add_profile') setView('report');
+            else if (step > 1) setStep(step - 1);
+            else close();
+          }} className="text-muted-foreground">
+            {view === 'add_profile' || step > 1 ? <ChevronLeft size={24} /> : <X size={24} />}
           </button>
-          <h2 className="text-[18px] font-bold">Create Report</h2>
+          <h2 className="text-[18px] font-bold">{view === 'add_profile' ? 'Add Profile to Platform' : 'Create Report'}</h2>
           <div className="w-6" />
         </div>
 
-        <div className="space-y-8 pb-12">
+        {view === 'add_profile' ? (
+          <div className="space-y-6 pb-6">
+            <div className="space-y-4">
+              <div>
+                <label className="text-[13px] font-bold">Full Name</label>
+                <Input
+                  value={newProfileName}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewProfileName(e.target.value)}
+                  placeholder="e.g. John Doe"
+                  className="mt-1.5 bg-background border-border"
+                />
+              </div>
+              <div>
+                <label className="text-[13px] font-bold">Email / Contact (Optional)</label>
+                <Input
+                  value={newProfileEmail}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewProfileEmail(e.target.value)}
+                  placeholder="email@example.com"
+                  className="mt-1.5 bg-background border-border"
+                />
+              </div>
+              <div>
+                <label className="text-[13px] font-bold">Link to Social Media (Optional)</label>
+                <Input
+                  value={newProfileUrl}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewProfileUrl(e.target.value)}
+                  placeholder="https://instagram.com/johndoe"
+                  className="mt-1.5 bg-background border-border"
+                />
+              </div>
+              <div>
+                <label className="text-[13px] font-bold">System Generated Username</label>
+                <Input
+                  value={newProfileUsername}
+                  readOnly
+                  className="mt-1.5 bg-muted/50 text-muted-foreground font-mono"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  This handle is automatically assigned and cannot be changed here.
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex gap-3 pt-4">
+              <Button variant="secondary" className="flex-1 py-6 rounded-[20px]" onClick={() => setView('report')}>
+                Cancel
+              </Button>
+              <Button 
+                className="flex-1 py-6 rounded-[20px] bg-foreground text-background hover:bg-foreground/90" 
+                disabled={!newProfileName || submitting}
+                onClick={async () => {
+                  setSubmitting(true);
+                  try {
+                    const payload = {
+                      displayName: newProfileName,
+                      username: newProfileUsername,
+                      bio: newProfileEmail ? `Contact: ${newProfileEmail}` : '',
+                      platform: targetPlatform,
+                      sourceUrl: normalizeUrl(newProfileUrl) || profileUrlForPlatform(targetPlatform, newProfileUsername),
+                      verified: false,
+                      confidence: 1
+                    };
+                    pickCandidate(payload as any);
+                    setView('report');
+                  } finally {
+                    setSubmitting(false);
+                  }
+                }}
+              >
+                Confirm & Add
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-8 pb-12">
           {/* Step 1: Who */}
           {!accountId && (
             <section className="space-y-4">
@@ -356,7 +540,7 @@ export function ReportModal({
                     </div>
                   </div>
                 ) : (
-                  <div className="mt-3 empty:hidden space-y-2">
+                  <div className="mt-3 space-y-2">
                     {candidates.slice(0, 4).map((candidate) => (
                       <button
                         key={`${candidate.platform}:${candidate.username}:${candidate.sourceUrl}`}
@@ -377,6 +561,22 @@ export function ReportModal({
                         </div>
                       </button>
                     ))}
+                    
+                    {targetHandle.length > 1 && !searchingCandidates && (
+                      <div className="pt-2">
+                        <div className="rounded-[18px] border border-border bg-muted/30 p-4 text-center">
+                          <p className="text-[13px] font-medium mb-1">No exact match found?</p>
+                          <p className="text-[11px] text-muted-foreground mb-3">They don&apos;t exist yet. Help us build the platform.</p>
+                          <Button 
+                            variant="secondary" 
+                            className="w-full text-[13px]"
+                            onClick={() => setView('add_profile')}
+                          >
+                            Add profile to the platform
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -537,6 +737,46 @@ export function ReportModal({
             </label>
           </section>
 
+          {/* Scoring Options */}
+          <section className="space-y-4">
+            <div>
+              <h3 className="text-[17px] font-bold mb-1">Repetition & Intent</h3>
+              <p className="text-[13px] text-muted-foreground">Classify the pattern and intent of this incident.</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-[13px] font-bold block mb-2">Repetition Pattern (RP)</label>
+                <select 
+                  value={repetitionPattern} 
+                  onChange={(e) => setRepetitionPattern(e.target.value)}
+                  className="w-full rounded-[12px] border border-border bg-card p-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-primary/20"
+                >
+                  <option value="0.5">No Clear Pattern (0.5)</option>
+                  <option value="1">Balanced (1)</option>
+                  <option value="1.5">Mixed Signals (1.5)</option>
+                  <option value="2">Leaning Off (2)</option>
+                  <option value="2.5">Pattern Forming (2.5)</option>
+                  <option value="3">Consistent Pattern (3)</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[13px] font-bold block mb-2">Intent (IN)</label>
+                <select 
+                  value={intent} 
+                  onChange={(e) => setIntent(e.target.value)}
+                  className="w-full rounded-[12px] border border-border bg-card p-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-primary/20"
+                >
+                  <option value="0.5">Didn't mean to (0.5)</option>
+                  <option value="1">Not Aware (1)</option>
+                  <option value="1.5">Not Careful (1.5)</option>
+                  <option value="2">Meant to (2)</option>
+                  <option value="2.5">Thought Through (2.5)</option>
+                  <option value="3">Fully Planned (3)</option>
+                </select>
+              </div>
+            </div>
+          </section>
+
           {/* Optional Details */}
           <section className="space-y-6">
             <div>
@@ -572,7 +812,13 @@ export function ReportModal({
 
           {/* Submit Action */}
           <div className="sticky bottom-0 bg-background pt-4 border-t border-border mt-8">
+            {submitError && (
+              <p className="mb-3 rounded-2xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-[13px] font-medium text-destructive">
+                {submitError}
+              </p>
+            )}
             <button
+              type="button"
               onClick={submit}
               disabled={submitting || uploading || !type || description.length < 10 || !media || (!accountId && !targetSourceUrl)}
               className={cn(
@@ -599,6 +845,7 @@ export function ReportModal({
             </p>
           </div>
         </div>
+        )}
       </motion.div>
     </div>
   );
