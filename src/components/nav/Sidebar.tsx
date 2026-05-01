@@ -46,7 +46,7 @@ export function Sidebar() {
   useEffect(() => {
     fetch('/api/me', { cache: 'no-store' })
       .then((r) => r.json())
-      .then((d) => { if (d.ok && d.data?.user?.role === 'admin') setIsAdmin(true); })
+      .then((d) => { if (d.ok && ['moderator', 'editor', 'admin', 'super_admin'].includes(d.data?.user?.role)) setIsAdmin(true); })
       .catch(() => {});
   }, []);
 
