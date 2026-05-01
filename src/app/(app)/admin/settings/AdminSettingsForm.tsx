@@ -9,6 +9,31 @@ import type { Platform } from '@/types';
 
 const platforms: Platform[] = ['x', 'instagram', 'facebook', 'youtube', 'tiktok', 'linkedin', 'reddit', 'snapchat', 'website'];
 
+function NumberField({
+  label,
+  value,
+  step,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  step?: string;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label className="space-y-1.5">
+      <span className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground">{label}</span>
+      <input
+        type="number"
+        step={step}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="admin-input"
+      />
+    </label>
+  );
+}
+
 export function AdminSettingsForm({ initialSettings }: { initialSettings: SiteSettings }) {
   const [settings, setSettings] = useState(initialSettings);
   const [pending, startTransition] = useTransition();
@@ -44,8 +69,20 @@ export function AdminSettingsForm({ initialSettings }: { initialSettings: SiteSe
         </section>
         <section className="space-y-3">
           <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Limits & platforms</h3>
-          <div className="grid grid-cols-2 gap-3"><input type="number" value={settings.scoreImpactMin} onChange={(e) => setSettings({ ...settings, scoreImpactMin: Number(e.target.value) })} className="admin-input" /><input type="number" value={settings.scoreImpactMax} onChange={(e) => setSettings({ ...settings, scoreImpactMax: Number(e.target.value) })} className="admin-input" /></div>
-          <input type="number" value={settings.uploadMaxBytes} onChange={(e) => setSettings({ ...settings, uploadMaxBytes: Number(e.target.value) })} className="admin-input" />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <NumberField label="Impact min" value={settings.scoreImpactMin} onChange={(value) => setSettings({ ...settings, scoreImpactMin: value })} />
+            <NumberField label="Impact max" value={settings.scoreImpactMax} onChange={(value) => setSettings({ ...settings, scoreImpactMax: value })} />
+          </div>
+          <NumberField label="Upload max bytes" value={settings.uploadMaxBytes} onChange={(value) => setSettings({ ...settings, uploadMaxBytes: value })} />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <NumberField label="Dispute threshold" value={settings.disputeThreshold} onChange={(value) => setSettings({ ...settings, disputeThreshold: value })} />
+            <NumberField label="Duplicate threshold" step="0.01" value={settings.duplicateThreshold} onChange={(value) => setSettings({ ...settings, duplicateThreshold: value })} />
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <NumberField label="Report cap" value={settings.singleReportDeltaCap} onChange={(value) => setSettings({ ...settings, singleReportDeltaCap: value })} />
+            <NumberField label="Daily cap" value={settings.dailyProfileDeltaCap} onChange={(value) => setSettings({ ...settings, dailyProfileDeltaCap: value })} />
+            <NumberField label="Cooldown hours" value={settings.reportCooldownHours} onChange={(value) => setSettings({ ...settings, reportCooldownHours: value })} />
+          </div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{platforms.map((platform) => <label key={platform} className="admin-check capitalize"><input type="checkbox" checked={settings.enabledPlatforms.includes(platform)} onChange={() => togglePlatform(platform)} />{platform}</label>)}</div>
         </section>
       </div>

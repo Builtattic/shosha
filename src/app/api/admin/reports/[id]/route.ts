@@ -34,6 +34,13 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   if (!parsed.success) return fromZod(parsed.error);
   const before = await reportsRepo.findById(id.data);
   if (!before) return fail('not_found', 'No report found for that id.', 404);
+  if (parsed.data.status && parsed.data.status !== before.status) {
+    return fail(
+      'status_locked',
+      'Report status changes must use the review workflow so ledger and profile scores stay connected.',
+      409
+    );
+  }
   const patch: Record<string, unknown> = { ...parsed.data };
   if (parsed.data.stats) patch.stats = { ...(before.stats ?? { aligns: 0, opposes: 0, comments: 0, shares: 0 }), ...parsed.data.stats };
   const updated = await reportsRepo.update(id.data, patch);

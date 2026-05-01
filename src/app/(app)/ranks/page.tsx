@@ -52,7 +52,7 @@ export default async function RanksPage() {
     .slice(0, 10);
 
   return (
-    <main className="min-h-screen bg-background p-4 pb-24">
+    <main className="min-h-screen bg-background p-4 safe-bottom">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-[28px] font-bold text-foreground">Ranks</h1>
       </div>

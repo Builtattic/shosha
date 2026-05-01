@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
 import { AdminNav } from '@/components/admin/AdminNav';
-import { ShieldCheck, ChevronRight } from 'lucide-react';
+import { ShieldCheck, ChevronRight, PlusCircle } from 'lucide-react';
 import Link from 'next/link';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -9,7 +9,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (!isAdmin(user)) redirect('/dashboard');
 
   return (
-    <main className="min-h-screen bg-background pb-32">
+    <main className="min-h-screen bg-background safe-bottom">
       {/* Admin Header */}
       <div className="sticky top-0 z-30 w-full border-b border-white/5 bg-background/60 backdrop-blur-xl px-4 lg:px-12 py-6">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -28,7 +28,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             </div>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              href="/admin/create"
+              className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-[11px] font-black uppercase tracking-widest text-primary-foreground shadow-sm transition hover:bg-primary/90"
+            >
+              <PlusCircle size={15} />
+              Publish Claim
+            </Link>
             <div className="flex -space-x-2">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="h-8 w-8 rounded-full border-2 border-background bg-secondary flex items-center justify-center text-[10px] font-bold">
@@ -60,4 +67,3 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     </main>
   );
 }
-

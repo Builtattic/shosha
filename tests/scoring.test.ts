@@ -65,7 +65,7 @@ describe('sheet-first scoring', () => {
   });
 
   it('matches the sheet decay and weekly score tracker screenshots', () => {
-    expect(sheetDecay(-5062.5)).toBeCloseTo(0.9998025081, 10);
+    expect(sheetDecay(-5062.5)).toBeCloseTo(0.8350515464, 10);
 
     const tracker = calcSheetScoreTracker({
       baseScore: 1000,
@@ -74,11 +74,11 @@ describe('sheet-first scoring', () => {
       w2N: -15000,
     });
 
-    expect(tracker.w1Decay).toBeCloseTo(0.9998025081, 10);
-    expect(tracker.w1Score).toBe(-4061.5);
+    expect(tracker.w1Decay).toBeCloseTo(0.8350515464, 10);
+    expect(tracker.w1Score).toBe(-8289.9);
     expect(tracker.w2Delta).toBe(-15000);
-    expect(tracker.w2Decay).toBeCloseTo(0.9999333378, 10);
-    expect(tracker.w2Score).toBe(-19060.5);
+    expect(tracker.w2Decay).toBeCloseTo(0.9375, 10);
+    expect(tracker.w2Score).toBe(-37352.4);
   });
 
   it('matches the profile credibility tracker sample', () => {
@@ -90,7 +90,7 @@ describe('sheet-first scoring', () => {
       aiFlaggedPosts: 2,
     })).toMatchObject({
       totalCredibility: 100,
-      updatedCredibility: 48,
+      updatedCredibility: 68,
     });
   });
 });

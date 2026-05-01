@@ -66,22 +66,35 @@ export const mediaSchema = z.object({
   publicId: z.string().optional()
 });
 
+export const workbookScaleSchema = z.enum(['0.5', '1', '1.5', '2', '2.5', '3']);
+
 export const reportCreateSchema = z.object({
   accountId: idSchema,
   type: reportTypeSchema,
+  category: z.string().min(1).max(120),
+  deed: z.string().min(1).max(160),
+  baseScore: z.number().int(),
   description: z.string().min(10).max(500),
   feelings: z.string().min(10).max(500),
   media: mediaSchema,
-  repetitionPattern: z.enum(['0.5', '1', '1.5', '2', '2.5', '3']).optional(),
-  intent: z.enum(['0.5', '1', '1.5', '2', '2.5', '3']).optional()
+  repetitionPattern: workbookScaleSchema.default('1'),
+  intent: workbookScaleSchema.default('1'),
+  circumstances: workbookScaleSchema.default('1'),
+  aiUndertaking: z.literal(true),
+  location: z.string().max(160).optional(),
+  tags: z.array(z.string().min(1).max(80)).max(10).optional()
 });
 
 export const adjudicateSchema = z.object({
   verdict: z.enum(['approved', 'rejected']),
-  finalImpact: z.number().int().min(-10).max(10),
+  finalImpact: z.number().int().min(-100000).max(100000),
   note: z.string().max(500).default(''),
-  repetitionPattern: z.enum(['0.5', '1', '1.5', '2', '2.5', '3']).optional(),
-  intent: z.enum(['0.5', '1', '1.5', '2', '2.5', '3']).optional()
+  category: z.string().min(1).max(120).optional(),
+  deed: z.string().min(1).max(160).optional(),
+  baseScore: z.number().int().optional(),
+  repetitionPattern: workbookScaleSchema.optional(),
+  intent: workbookScaleSchema.optional(),
+  circumstances: workbookScaleSchema.optional()
 });
 
 export const claimSchema = z.object({

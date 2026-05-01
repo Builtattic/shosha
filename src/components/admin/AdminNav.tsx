@@ -48,7 +48,7 @@ const groups = [
   {
     name: 'Content',
     items: [
-      { href: '/admin/create', label: 'Create', icon: PlusCircle },
+      { href: '/admin/create', label: 'Publish Claim', icon: PlusCircle },
       { href: '/admin/feed', label: 'Feed', icon: Newspaper },
     ]
   },

@@ -1,13 +1,11 @@
 import * as accountsRepo from '@/lib/repos/accounts';
 import * as reportsRepo from '@/lib/repos/reports';
-import * as usersRepo from '@/lib/repos/users';
 import {
-  DEFAULT_MULTIPLIERS,
-  BASE_SCORE,
-  applySheetScore,
+  calcWorkbookScoreFromEntries,
   calcDelta,
   calcMultiplierQuotient,
-  profileMultipliersFromUser,
+  profileMultipliersFromWorkbookProfile,
+  resolveSheetBaseImpact,
   resolveSheetBaseImpactFromAdminImpact,
   type EventMultipliers,
 } from '@/lib/scoring';
@@ -23,11 +21,6 @@ export async function replayAccountLedger(accountId: string): Promise<AccountRep
   const account = await accountsRepo.findById(accountId);
   if (!account) return null;
 
-  const claimant = account.claimedBy ? await usersRepo.findById(account.claimedBy).catch(() => null) : null;
-  const multipliers: EventMultipliers = claimant?.onboardingComplete
-    ? profileMultipliersFromUser(claimant)
-    : DEFAULT_MULTIPLIERS;
-
   const reports = await reportsRepo.listForAccount(accountId, ['approved'], 1000).catch(() => []);
   reports.sort((a, b) =>
     new Date(a.adminDecision?.decidedAt ?? a.createdAt ?? 0).getTime() -
@@ -36,9 +29,15 @@ export async function replayAccountLedger(accountId: string): Promise<AccountRep
 
   const entries: ScoreHistoryPoint[] = [];
   for (const report of reports) {
-    const finalImpact = report.adminDecision?.finalImpact ?? 0;
-    if (finalImpact === 0) continue;
-    const scoringRow = resolveSheetBaseImpactFromAdminImpact(finalImpact, report.type);
+    const scoringRow = report.deed
+      ? resolveSheetBaseImpact(report.deed, report.type)
+      : resolveSheetBaseImpactFromAdminImpact(report.adminDecision?.finalImpact ?? 0, report.type);
+    if (scoringRow.baseScore === 0) continue;
+    const multipliers: EventMultipliers = profileMultipliersFromWorkbookProfile(account, {
+      repetitionPattern: Number(report.repetitionPattern ?? report.adminDecision?.repetitionPattern ?? 1),
+      intent: Number(report.intent ?? report.adminDecision?.intent ?? 1),
+      circumstances: Number(report.circumstances ?? report.adminDecision?.circumstances ?? 1),
+    });
     const delta = calcDelta(scoringRow.baseScore, multipliers);
     if (delta === 0) continue;
     entries.push({
@@ -57,7 +56,7 @@ export async function replayAccountLedger(accountId: string): Promise<AccountRep
   }
 
   await accountsRepo.rebuildLedger(accountId, entries);
-  const finalScore = entries.reduce((score, entry) => applySheetScore(score, entry.delta ?? 0).score, BASE_SCORE);
+  const finalScore = calcWorkbookScoreFromEntries(entries.map((entry) => ({ t: entry.t, delta: entry.delta ?? 0 }))).finalScore;
   return { accountId, entriesApplied: entries.length, finalScore };
 }
 

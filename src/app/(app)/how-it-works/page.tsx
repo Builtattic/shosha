@@ -89,7 +89,7 @@ function Footnote({ children }: { children: React.ReactNode }) {
 
 export default function HowItWorksPage() {
   return (
-    <main className="min-h-screen bg-background pb-24">
+    <main className="min-h-screen bg-background safe-bottom">
       <div className="mx-auto max-w-[860px] px-7">
 
         {/* ── HERO ── */}

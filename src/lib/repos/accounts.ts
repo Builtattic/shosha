@@ -1,6 +1,6 @@
 import { adminDb } from '@/lib/firebase/admin';
 import { withId } from '@/lib/repos/_serialize';
-import { BASE_SCORE, applySheetScore } from '@/lib/scoring';
+import { BASE_SCORE, applySheetScore, calcWorkbookScoreFromEntries } from '@/lib/scoring';
 import type { Breakdown, Platform, ScoreCause } from '@/types';
 
 export type ScoreHistoryPoint = {
@@ -62,6 +62,33 @@ export type AccountRecord = {
   profileKind?: AccountProfileKind;
   claimable?: boolean;
   credibility?: number;
+  globalScore?: number;
+  displayScore?: number;
+  windowScores?: {
+    baseScore: number;
+    w1Delta: number;
+    w1Decay: number;
+    w1Score: number;
+    w2Delta: number;
+    w2Decay: number;
+    w2Score: number;
+    w3Delta: number;
+    w3Decay: number;
+    w3Score: number;
+    finalScore: number;
+  };
+  profileUserType?: string;
+  reach?: string;
+  educationWorkbook?: string;
+  specializedFieldWorkbook?: string;
+  managementWorkbook?: string;
+  disability?: string;
+  lifestyle?: string;
+  profileCompletion?: number;
+  opposedPosts?: number;
+  aiFlaggedPosts?: number;
+  disputedPosts?: number;
+  disputesLost?: number;
   enrichmentStatus?: AccountEnrichmentStatus;
   role?: string;
   region?: string;
@@ -215,6 +242,8 @@ export async function ensureLedger(id: string): Promise<AccountRecord | null> {
 export async function rebuildLedger(id: string, entries: ScoreHistoryPoint[]): Promise<AccountRecord | null> {
   const existing = await findById(id);
   if (!existing) return null;
+  const tracker = calcWorkbookScoreFromEntries(entries.map((entry) => ({ t: entry.t, delta: entry.delta ?? 0 })), BASE_SCORE);
+  const globalScore = entries.reduce((sum, entry) => sum + (entry.delta ?? 0), 0);
   let score = BASE_SCORE;
   const seededHistory: ScoreHistoryPoint[] = [
     { t: existing.createdAt ?? new Date().toISOString(), s: BASE_SCORE, cause: 'seed' },
@@ -225,7 +254,10 @@ export async function rebuildLedger(id: string, entries: ScoreHistoryPoint[]): P
     seededHistory.push({ ...entry, s: score, decay: entry.decay ?? applied.decay });
   }
   await ref().child(id).update({
-    score,
+    score: tracker.finalScore,
+    displayScore: tracker.finalScore,
+    globalScore,
+    windowScores: tracker,
     scoreHistory: seededHistory,
     updatedAt: new Date().toISOString(),
   });

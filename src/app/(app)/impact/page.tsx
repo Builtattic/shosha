@@ -39,7 +39,7 @@ export default function ImpactPage() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-background pb-24 pt-8 px-4 lg:px-12">
+    <main className="min-h-screen bg-background safe-bottom pt-8 px-4 lg:px-12">
       <div className="max-w-4xl mx-auto space-y-12">
         {/* Header */}
         <header className="space-y-4">

@@ -12,6 +12,11 @@ export type SiteSettings = {
   scoreImpactMax: number;
   uploadMaxBytes: number;
   liveFeedEnabled: boolean;
+  disputeThreshold: number;
+  duplicateThreshold: number;
+  singleReportDeltaCap: number;
+  dailyProfileDeltaCap: number;
+  reportCooldownHours: number;
 };
 
 export const DEFAULT_SITE_SETTINGS: SiteSettings = {
@@ -23,6 +28,11 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   scoreImpactMax: 10,
   uploadMaxBytes: 25 * 1024 * 1024,
   liveFeedEnabled: false,
+  disputeThreshold: 3,
+  duplicateThreshold: 0.86,
+  singleReportDeltaCap: 3000,
+  dailyProfileDeltaCap: 5000,
+  reportCooldownHours: 24,
 };
 
 function ref() {

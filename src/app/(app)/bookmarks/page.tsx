@@ -13,6 +13,11 @@ type FeedReport = {
   stats?: FeedItemProps['stats'];
   aiVerdict?: { proposedImpact?: number } | null;
   adminDecision?: { finalImpact?: number } | null;
+  category?: string;
+  deed?: string;
+  disputeStatus?: string;
+  reportScore?: number;
+  baseScore?: number;
   viewer?: FeedItemProps['viewer'];
   account: {
     username: string;
@@ -47,6 +52,10 @@ function toFeedItem(report: FeedReport): FeedItemProps {
     title: report.description,
     location: 'Global',
     media: report.media,
+    category: report.category,
+    deed: report.deed,
+    disputeStatus: report.disputeStatus,
+    reportScore: report.reportScore ?? report.baseScore,
     stats: report.stats ?? { aligns: 0, opposes: 0, comments: 0, shares: 0 },
     delta: report.adminDecision?.finalImpact ?? report.aiVerdict?.proposedImpact ?? 0,
     viewer: report.viewer
@@ -81,7 +90,7 @@ export default function BookmarksPage() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-background pb-24">
+    <main className="min-h-screen bg-background safe-bottom">
       <header className="sticky top-0 z-50 bg-background/80 p-4 backdrop-blur-xl">
         <div className="mx-auto flex max-w-2xl items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">

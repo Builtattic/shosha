@@ -1,11 +1,21 @@
-import { anonymousTag } from '@/lib/anonymous';
+import { anonymousHash, anonymousTag } from '@/lib/anonymous';
 import { fail, fromZod, ok } from '@/lib/api';
 import { adjudicateReport } from '@/lib/gemini';
 import { getCurrentUser, isAdmin, isEmailVerified } from '@/lib/auth';
 import { assertLimit, getRequestKey, rateLimits } from '@/lib/ratelimit';
 import { idSchema, reportCreateSchema } from '@/lib/validators';
+import {
+  WORKBOOK_FORMULA_VERSION,
+  calcMultiplierQuotient,
+  calcDelta,
+  credibilityWeight,
+  profileMultipliersFromWorkbookProfile,
+  resolveSheetBaseImpact,
+} from '@/lib/scoring';
 import * as accountsRepo from '@/lib/repos/accounts';
 import * as reportsRepo from '@/lib/repos/reports';
+import * as reportMetadataRepo from '@/lib/repos/reportMetadata';
+import * as siteSettingsRepo from '@/lib/repos/siteSettings';
 
 export async function GET(request: Request) {
   const user = await getCurrentUser();
@@ -47,6 +57,37 @@ export async function POST(request: Request) {
 
     const account = await accountsRepo.findById(parsed.data.accountId);
     if (!account) return fail('not_found', 'No dossier exists for that report.', 404);
+    const scoringRow = resolveSheetBaseImpact(parsed.data.deed, parsed.data.type);
+    if (
+      scoringRow.deed !== parsed.data.deed ||
+      scoringRow.category !== parsed.data.category ||
+      scoringRow.baseScore !== parsed.data.baseScore
+    ) {
+      return fail('validation_error', 'The selected deed and base score do not match the workbook scoring index.', 422);
+    }
+
+    const settings = await siteSettingsRepo.get();
+    const actorHash = user?._id ?? anonymousHash(request);
+    const recentProfileReports = await reportsRepo.listForAccount(account._id, ['pending_ai', 'ai_reviewed', 'approved', 'flagged'], 200);
+    const cooldownMs = settings.reportCooldownHours * 60 * 60 * 1000;
+    const repeated = recentProfileReports.some((item) => {
+      const created = item.createdAt ? new Date(item.createdAt).getTime() : 0;
+      return item.hashedUserId === actorHash &&
+        item.deed === scoringRow.deed &&
+        Date.now() - created < cooldownMs;
+    });
+    if (repeated) {
+      return fail('cooldown_active', 'A similar filing from this account is cooling down for this profile.', 429);
+    }
+
+    const multipliers = profileMultipliersFromWorkbookProfile(account, {
+      repetitionPattern: Number(parsed.data.repetitionPattern),
+      intent: Number(parsed.data.intent),
+      circumstances: Number(parsed.data.circumstances),
+    });
+    const multiplierQuotient = calcMultiplierQuotient(multipliers);
+    const reportScore = calcDelta(scoringRow.baseScore, multipliers);
+    const weight = credibilityWeight(user?.reporterScore, user ? 80 : 50);
 
     const verdict = await adjudicateReport({
       description: parsed.data.description,
@@ -64,15 +105,43 @@ export async function POST(request: Request) {
 
     const report = await reportsRepo.create({
       accountId: parsed.data.accountId,
+      reportNo: (await reportsRepo.count().catch(() => 0)) + 1,
       reporterId: user?._id ?? null,
       anonymousTag: user?.username ?? anonymousTag(request),
+      hashedUserId: actorHash,
       type: parsed.data.type,
+      category: scoringRow.category,
+      deed: scoringRow.deed,
+      baseScore: scoringRow.baseScore,
+      reportScore,
+      credibilityWeight: weight,
       description: parsed.data.description,
       feelings: parsed.data.feelings,
       media: parsed.data.media,
+      repetitionPattern: parsed.data.repetitionPattern,
+      intent: parsed.data.intent,
+      circumstances: parsed.data.circumstances,
+      location: parsed.data.location,
+      tags: parsed.data.tags ?? [],
+      aiUndertaking: true,
+      disputeStatus: 'none',
       status: verdict.abuseFlags.length > 0 ? 'flagged' : 'ai_reviewed',
       aiVerdict: { ...verdict, analyzedAt: verdict.analyzedAt.toISOString() },
       adminDecision: null
+    });
+
+    await reportMetadataRepo.upsert(report._id, {
+      reportId: report._id,
+      profileId: account._id,
+      multipliers,
+      multiplierQuotient,
+      formulaVersion: WORKBOOK_FORMULA_VERSION,
+      sourceFields: {
+        category: scoringRow.category,
+        deed: scoringRow.deed,
+        baseScore: scoringRow.baseScore,
+        reportNo: report.reportNo,
+      },
     });
 
     return ok(report, 201);

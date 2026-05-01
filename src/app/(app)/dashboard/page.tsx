@@ -3,11 +3,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
 import { Search, Bell, Plus, ChevronRight, CheckCircle2, X } from 'lucide-react';
 import { FeedItem, type FeedItemProps } from '@/components/feed/FeedItem';
 import { D3ScoreGauge } from '@/components/viz/D3ScoreGauge';
 import { cn } from '@/lib/utils';
-import { ReportModal } from '@/components/report/ReportModal';
+import { useReportModal } from '@/components/report/ReportModalProvider';
 import { SignInChip } from '@/components/nav/SignInChip';
 import { calcProfileScores, calcShoshaScore } from '@/lib/scoring';
 import { useAuth } from '@/contexts/AuthContext';
@@ -23,6 +24,11 @@ type FeedReport = {
   stats?: { aligns: number; opposes: number; comments: number; shares: number };
   aiVerdict?: { proposedImpact?: number } | null;
   adminDecision?: { finalImpact?: number } | null;
+  category?: string;
+  deed?: string;
+  disputeStatus?: string;
+  reportScore?: number;
+  baseScore?: number;
   viewer?: FeedItemProps['viewer'];
   account: {
     _id: string;
@@ -34,7 +40,7 @@ type FeedReport = {
   };
 };
 
-type Notification = { id: string; title: string; body: string };
+type Notification = { id: string; title: string; body: string; link?: string; read?: boolean };
 type Platform = 'x' | 'instagram' | 'facebook' | 'youtube' | 'tiktok' | 'linkedin' | 'reddit' | 'snapchat' | 'website';
 type AccountMatch = {
   _id: string;
@@ -88,6 +94,10 @@ function toFeedItem(report: FeedReport): FeedItemProps {
     title: report.description,
     location: 'Global',
     media: report.media ? { type: report.media.type, url: report.media.url } : undefined,
+    category: report.category,
+    deed: report.deed,
+    disputeStatus: report.disputeStatus,
+    reportScore: report.reportScore ?? report.baseScore,
     stats: report.stats ?? { aligns: 0, opposes: 0, comments: 0, shares: 0 },
     delta: report.adminDecision?.finalImpact ?? report.aiVerdict?.proposedImpact ?? 0,
     viewer: report.viewer
@@ -97,14 +107,15 @@ function toFeedItem(report: FeedReport): FeedItemProps {
 export default function DashboardPage() {
   const router = useRouter();
   const { user: firebaseUser } = useAuth();
+  const reportModal = useReportModal();
   const [activeTab, setActiveTab] = useState<FeedFilter>('for_you');
-  const [reportModalOpen, setReportModalOpen] = useState(false);
   const [feed, setFeed] = useState<FeedReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [myReportHref, setMyReportHref] = useState('/profile');
   const [accountMatches, setAccountMatches] = useState<AccountMatch[]>([]);
   const [accountCandidates, setAccountCandidates] = useState<AccountCandidate[]>([]);
@@ -114,7 +125,13 @@ export default function DashboardPage() {
   useEffect(() => {
     let active = true;
     setLoading(true);
-    fetch('/api/events')
+    const filterMap: Record<FeedFilter, string> = {
+      for_you: 'for_you',
+      following: 'following',
+      top: 'top',
+      near: 'near',
+    };
+    fetch(`/api/feed?filter=${filterMap[activeTab]}`)
       .then((response) => {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return response.json();
@@ -140,22 +157,26 @@ export default function DashboardPage() {
       .then((payload) => {
         if (!payload.ok) return;
         setMeData({ user: payload.data.user, claimedAccounts: payload.data.claimedAccounts ?? [] });
-        const accountId = payload.data.claimedAccounts?.[0]?._id;
-        const reportAccountId = payload.data.recentReports?.[0]?.accountId;
-        setMyReportHref(accountId || reportAccountId ? `/account/${accountId ?? reportAccountId}` : '/profile');
+        const claimedAccountId = payload.data.claimedAccounts?.[0]?._id;
+        const recentReportAccountId = payload.data.recentEvents?.[0]?.subjectId;
+        const target = claimedAccountId ?? recentReportAccountId;
+        setMyReportHref(target ? `/account/${target}` : '/profile');
       })
       .catch(() => undefined);
   }, []);
 
+  // Always fetch unread count for the badge
   useEffect(() => {
-    if (!notificationsOpen) return;
     fetch('/api/notifications')
       .then((response) => {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return response.json();
       })
       .then((payload) => {
-        if (payload.ok) setNotifications(payload.data);
+        if (!payload.ok) return;
+        const items = Array.isArray(payload.data?.items) ? payload.data.items : [];
+        setNotifications(items);
+        setUnreadCount(typeof payload.data?.unread === 'number' ? payload.data.unread : 0);
       })
       .catch(() => undefined);
   }, [notificationsOpen]);
@@ -230,7 +251,7 @@ export default function DashboardPage() {
     : 'Complete your profile to start building your Shosha Score';
 
   return (
-    <main className="min-h-screen overflow-x-clip bg-background pb-24">
+    <main className="min-h-screen overflow-x-clip bg-background safe-bottom">
       <header className="sticky top-0 z-50 bg-background/80 p-4 backdrop-blur-xl">
         <div className="mx-auto max-w-2xl">
           <div className="flex items-center justify-between gap-3">
@@ -255,25 +276,49 @@ export default function DashboardPage() {
                 >
                   <Bell size={22} />
                 </button>
-                <span className="absolute right-0.5 top-0 h-2 w-2 rounded-full border border-background bg-destructive" />
+                {unreadCount > 0 && (
+                  <span className="absolute right-0.5 top-0 flex h-4 min-w-4 items-center justify-center rounded-full border border-background bg-destructive px-1 text-[9px] font-bold text-background">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
                 {notificationsOpen && (
-                  <div className="absolute right-0 top-9 w-72 rounded-[18px] border border-border bg-card p-3 shadow-xl">
-                    {notifications.map((item) => (
-                      <div key={item.id} className="border-b border-border py-3 last:border-0">
-                        <p className="text-[13px] font-bold text-foreground">{item.title}</p>
-                        <p className="mt-1 text-[12px] leading-5 text-muted-foreground">{item.body}</p>
+                  <div className="absolute right-0 top-9 z-30 w-80 rounded-[18px] border border-border bg-card p-2 shadow-xl">
+                    {notifications.length === 0 ? (
+                      <p className="px-3 py-6 text-center text-[12px] text-muted-foreground">You&apos;re all caught up.</p>
+                    ) : (
+                      <div className="max-h-96 overflow-y-auto">
+                        {notifications.slice(0, 12).map((item) => {
+                          const content = (
+                            <>
+                              <p className={cn('text-[13px] font-bold', item.read ? 'text-muted-foreground' : 'text-foreground')}>{item.title}</p>
+                              <p className="mt-1 text-[12px] leading-5 text-muted-foreground">{item.body}</p>
+                            </>
+                          );
+                          return item.link ? (
+                            <Link key={item.id} href={item.link} className="block rounded-xl px-3 py-2.5 transition-colors hover:bg-muted">
+                              {content}
+                            </Link>
+                          ) : (
+                            <div key={item.id} className="rounded-xl px-3 py-2.5">
+                              {content}
+                            </div>
+                          );
+                        })}
                       </div>
-                    ))}
+                    )}
                   </div>
                 )}
               </div>
-              <button
+              <motion.button
                 type="button"
-                onClick={() => setReportModalOpen(true)}
-                className="flex items-center gap-1 rounded-full bg-foreground px-4 py-2 text-[13px] font-bold text-background shadow-sm transition-all hover:bg-foreground/90 active:scale-95"
+                onClick={() => reportModal.open({ onSubmitted: (id) => setMyReportHref(`/account/${id}`) })}
+                whileTap={{ scale: 0.94 }}
+                whileHover={{ scale: 1.02 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 22 }}
+                className="hidden sm:flex items-center gap-1 rounded-full bg-foreground px-4 py-2 text-[13px] font-bold text-background shadow-sm transition-colors hover:bg-foreground/90"
               >
                 <Plus size={16} strokeWidth={3} /> Create Report
-              </button>
+              </motion.button>
               <div className="hidden sm:block">
                 <SignInChip />
               </div>
@@ -327,12 +372,17 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-2xl">
+      <div className="mx-auto max-w-2xl px-4 lg:px-0">
         {/* ── Hero Banner ─────────────────────────────────────────────── */}
-        <section className="w-screen relative left-1/2 -translate-x-1/2 mt-0">
-          <div className="relative overflow-hidden bg-card border-b border-border">
+        <motion.section
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          className="mt-4"
+        >
+          <div className="relative overflow-hidden rounded-3xl border border-border bg-card shadow-sm">
 
-            <div className="mx-auto max-w-2xl px-8 pt-8 pb-9">
+            <div className="px-5 pt-6 pb-7 sm:px-8 sm:pt-7 sm:pb-8">
 
               {/* ── Row 1: Avatar + Name ── */}
               <div className="flex items-center gap-4">
@@ -368,17 +418,17 @@ export default function DashboardPage() {
               </div>
 
               {/* ── Row 2: Score + Gauge side by side ── */}
-              <div className="mt-8 flex items-end justify-between gap-6">
+              <div className="mt-8 flex items-end justify-between gap-4 sm:gap-6">
 
                 {/* Left: big score number */}
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground mb-2">
                     {scoreLabel}
                   </p>
-                  <div className="text-[76px] font-black leading-none text-foreground tabular-nums tracking-tight">
+                  <div className="text-[52px] sm:text-[76px] font-black leading-none text-foreground tabular-nums tracking-tight">
                     {displayScore.toLocaleString()}
                   </div>
-                  <p className="mt-3 text-[13px] leading-[1.6] text-muted-foreground max-w-[240px]">
+                  <p className="mt-3 text-[12px] sm:text-[13px] leading-[1.6] text-muted-foreground max-w-[240px]">
                     {scoreContext}
                   </p>
                   {!hasOnboarded && (
@@ -396,10 +446,9 @@ export default function DashboardPage() {
                   <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
                     Credibility
                   </p>
-                  <D3ScoreGauge
-                    score={credibility}
-                    size={180}
-                  />
+                  <div className="w-[130px] sm:w-[180px]">
+                    <D3ScoreGauge score={credibility} size={180} />
+                  </div>
                   <p className="text-[13px] font-black text-foreground tabular-nums -mt-1">
                     {credibility}<span className="text-[10px] font-semibold text-muted-foreground"> /100</span>
                   </p>
@@ -441,46 +490,72 @@ export default function DashboardPage() {
 
             </div>
           </div>
-        </section>
+        </motion.section>
 
-        <section className="mt-6 px-4">
+        <section className="mt-6">
           <h2 className="mb-4 text-[20px] font-bold text-foreground">Feed</h2>
           <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-            {tabs.map((tab) => (
-              <button
-                key={tab.value}
-                type="button"
-                onClick={() => setActiveTab(tab.value)}
-                className={cn(
-                  'whitespace-nowrap rounded-full border px-5 py-2 text-[13px] font-bold transition-all',
-                  activeTab === tab.value
-                    ? 'scale-105 border-foreground bg-foreground text-background shadow-md'
-                    : 'border-border bg-card text-muted-foreground hover:bg-muted'
-                )}
-              >
-                {tab.label}
-              </button>
-            ))}
+            {tabs.map((tab) => {
+              const isActive = activeTab === tab.value;
+              return (
+                <motion.button
+                  key={tab.value}
+                  type="button"
+                  onClick={() => setActiveTab(tab.value)}
+                  whileTap={{ scale: 0.95 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                  className={cn(
+                    'whitespace-nowrap rounded-full border px-5 py-2 text-[13px] font-bold transition-colors duration-200',
+                    isActive
+                      ? 'border-foreground bg-foreground text-background shadow-md'
+                      : 'border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground'
+                  )}
+                >
+                  {tab.label}
+                </motion.button>
+              );
+            })}
           </div>
         </section>
 
-        <section className="mt-4 space-y-6 px-4">
-          {loading && <p className="rounded-[20px] border border-border bg-card p-5 text-sm text-muted-foreground">Loading live filings...</p>}
+        <section className="mt-4 space-y-6">
+          {loading && (
+            <div className="space-y-4">
+              {[0, 1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="overflow-hidden rounded-[24px] border border-border bg-card p-5 shadow-sm"
+                  style={{ opacity: 1 - i * 0.2 }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="h-12 w-12 animate-pulse rounded-full bg-muted" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-3 w-1/3 animate-pulse rounded bg-muted" />
+                      <div className="h-2.5 w-1/4 animate-pulse rounded bg-muted/70" />
+                    </div>
+                    <div className="h-6 w-20 animate-pulse rounded-full bg-muted" />
+                  </div>
+                  <div className="mt-4 h-44 animate-pulse rounded-2xl bg-muted" />
+                  <div className="mt-4 h-4 w-3/4 animate-pulse rounded bg-muted" />
+                  <div className="mt-2 h-4 w-1/2 animate-pulse rounded bg-muted" />
+                </div>
+              ))}
+            </div>
+          )}
           {!loading && visibleFeed.map((item) => <FeedItem key={item._id} {...toFeedItem(item)} />)}
           {!loading && visibleFeed.length === 0 && (
-            <div className="rounded-[24px] border border-border bg-card p-6 text-center">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="rounded-[24px] border border-border bg-card p-6 text-center"
+            >
               <p className="text-[15px] font-bold text-foreground">No filings here yet.</p>
               <p className="mt-2 text-[13px] text-muted-foreground">Create a report or seed the emulator to populate this view.</p>
-            </div>
+            </motion.div>
           )}
         </section>
       </div>
 
-      <ReportModal
-        open={reportModalOpen}
-        onClose={() => setReportModalOpen(false)}
-        onSubmitted={(accountId) => setMyReportHref(`/account/${accountId}`)}
-      />
     </main>
   );
 }

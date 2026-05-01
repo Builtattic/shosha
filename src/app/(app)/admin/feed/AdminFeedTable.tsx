@@ -64,7 +64,9 @@ export function AdminFeedTable({ initialReports }: { initialReports: FeedRow[] }
                 </td>
                 <td className="px-5 py-4">
                   <div className="space-y-2">
-                    <select disabled={busy} value={report.status} onChange={(e) => patchReport(report._id, { status: e.target.value })} className="admin-input h-9 py-1 text-xs"><option value="approved">approved</option><option value="ai_reviewed">ai_reviewed</option><option value="flagged">flagged</option><option value="rejected">rejected</option><option value="pending_ai">pending_ai</option></select>
+                    <span className="inline-flex min-h-9 items-center rounded-xl border border-border bg-secondary/40 px-3 py-1 text-xs font-bold text-muted-foreground">
+                      {report.status}
+                    </span>
                     <select disabled={busy} value={report.visibility ?? 'public'} onChange={(e) => patchReport(report._id, { visibility: e.target.value })} className="admin-input h-9 py-1 text-xs"><option value="public">public</option><option value="hidden">hidden</option></select>
                   </div>
                 </td>

@@ -88,6 +88,9 @@ export function Sidebar() {
         </div>
       </div>
 
+      {/* Scrollable middle content */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar">
+
       <nav className="space-y-1 px-3 py-5">
         {items.map((item) => {
           const Icon = item.icon;
@@ -163,7 +166,7 @@ export function Sidebar() {
         </div>
       </div>
 
-      <div className="mt-auto px-3 pb-4 pt-6">
+      <div className="mt-6 px-3 pb-4">
         <p className="mb-3 px-4 text-[10px] font-black uppercase tracking-[3px] text-muted-foreground">Manage</p>
         <nav className="space-y-1">
           {navigationItems.map((item) => {
@@ -185,6 +188,9 @@ export function Sidebar() {
           })}
         </nav>
       </div>
+
+      </div>
+      {/* /Scrollable middle content */}
 
       <div className="relative shrink-0 border-t border-border px-6 py-5">
         <button

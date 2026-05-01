@@ -39,7 +39,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <main className="mx-auto min-h-screen max-w-3xl bg-background px-4 pb-24 pt-8 lg:px-12">
+    <main className="mx-auto min-h-screen max-w-3xl bg-background px-4 safe-bottom pt-8 lg:px-12">
       <header className="mb-10 flex items-center gap-3">
         <Settings size={28} className="text-foreground" />
         <h1 className="font-serif text-[32px] font-black text-foreground">Settings</h1>

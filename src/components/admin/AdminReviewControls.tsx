@@ -4,29 +4,69 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CheckCircle, XCircle, AlertCircle, Info, Zap, ShieldCheck } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
-import { BASE_SCORE } from '@/lib/scoring';
-import { motion } from 'framer-motion';
+import { BASE_SCORE, CIRCUMSTANCES_LABELS, SHEET_SCORING_INDEX, calcDelta, calcMultiplierQuotient, type EventMultipliers } from '@/lib/scoring';
 
 export function AdminReviewControls({
   reportId,
   proposedImpact,
   score,
+  reportType,
+  initialCategory,
+  initialDeed,
+  initialBaseScore,
+  initialRepetitionPattern,
+  initialIntent,
+  initialCircumstances,
+  initialMultipliers,
 }: {
   reportId: string;
   proposedImpact: number;
   score: number;
+  reportType: 'positive' | 'negative';
+  initialCategory?: string;
+  initialDeed?: string;
+  initialBaseScore?: number;
+  initialRepetitionPattern?: string;
+  initialIntent?: string;
+  initialCircumstances?: string;
+  initialMultipliers?: EventMultipliers;
 }) {
   const router = useRouter();
   const toast = useToast();
-  const [impact, setImpact] = useState(proposedImpact);
+  const typedRows = SHEET_SCORING_INDEX.filter((row) => row.type === reportType);
+  const firstRow = typedRows.find((row) => row.deed === initialDeed) ?? typedRows[0];
+  const [category, setCategory] = useState(initialCategory ?? firstRow.category);
+  const [deed, setDeed] = useState(initialDeed ?? firstRow.deed);
+  const selectedRow = typedRows.find((row) => row.category === category && row.deed === deed) ?? firstRow;
+  const [baseScore, setBaseScore] = useState(initialBaseScore ?? selectedRow.baseScore);
   const [note, setNote] = useState('');
-  const [repetitionPattern, setRepetitionPattern] = useState('0.5');
-  const [intent, setIntent] = useState('0.5');
+  const [repetitionPattern, setRepetitionPattern] = useState(initialRepetitionPattern ?? '1');
+  const [intent, setIntent] = useState(initialIntent ?? '1');
+  const [circumstances, setCircumstances] = useState(initialCircumstances ?? '1');
   const [confirmReject, setConfirmReject] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const scoreColor = score >= BASE_SCORE ? 'text-emerald-500' : score >= 0 ? 'text-amber-500' : 'text-red-500';
-  const impactColor = impact > 0 ? 'text-emerald-500' : impact < 0 ? 'text-red-500' : 'text-muted-foreground';
+  const scoreColor = score >= BASE_SCORE ? 'text-foreground' : score >= 0 ? 'text-muted-foreground' : 'text-destructive';
+  const impactColor = baseScore > 0 ? 'text-foreground' : baseScore < 0 ? 'text-destructive' : 'text-muted-foreground';
+  const categories = Array.from(new Set(typedRows.map((row) => row.category)));
+  const deeds = typedRows.filter((row) => row.category === category);
+  const previewMultipliers: EventMultipliers = {
+    ...(initialMultipliers ?? {
+      identity: 1,
+      power: 1,
+      means: 1,
+      environment: 1,
+      ability: 1,
+      responsibility: 1,
+      awareness: 1,
+    }),
+    reputation: Number(repetitionPattern),
+    intent: Number(intent),
+    circumstances: Number(circumstances),
+  };
+  const multiplierQuotient = calcMultiplierQuotient(previewMultipliers);
+  const previewDelta = calcDelta(baseScore, previewMultipliers);
+  const selectClass = 'w-full min-h-12 rounded-xl border border-border bg-card px-3 py-3 text-[13px] font-bold text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20';
 
   async function decide(verdict: 'approved' | 'rejected') {
     if (verdict === 'rejected' && !confirmReject) {
@@ -38,7 +78,17 @@ export function AdminReviewControls({
       const response = await fetch(`/api/reports/${reportId}/adjudicate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ verdict, finalImpact: impact, note, repetitionPattern, intent }),
+        body: JSON.stringify({
+          verdict,
+          finalImpact: Math.round(previewDelta),
+          note,
+          category,
+          deed,
+          baseScore,
+          repetitionPattern,
+          intent,
+          circumstances,
+        }),
       });
       const payload = await response.json();
       if (!payload.ok) throw new Error(payload.error?.message ?? 'Decision failed');
@@ -53,57 +103,77 @@ export function AdminReviewControls({
   }
 
   return (
-    <div className="space-y-10">
-      {/* Impact Section */}
-      <div className="relative p-8 rounded-[2rem] bg-white/[0.03] border border-white/5 overflow-hidden group">
-        <div className="absolute top-0 right-0 p-4 opacity-5">
-          <Zap size={80} />
-        </div>
-        
-        <div className="flex items-center justify-between mb-8">
+    <div className="space-y-6">
+      {/* Workbook ledger preview */}
+      <div className="relative overflow-hidden rounded-2xl border border-border bg-background p-4 shadow-sm sm:p-6">
+        <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-center gap-2">
-            <Zap size={14} className="text-primary" />
-            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Adjudicated Impact</label>
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-muted text-foreground">
+              <Zap size={15} />
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Workbook Ledger</p>
+              <p className="mt-1 text-[12px] font-semibold leading-5 text-muted-foreground">Preview before committing the report.</p>
+            </div>
           </div>
-          <div className="flex flex-col items-end">
-            <span className={`text-4xl font-mono font-black ${impactColor} leading-none`}>
-              {impact > 0 ? '+' : ''}{impact}
+          <div className="rounded-2xl border border-border bg-card px-4 py-3 text-left sm:text-right">
+            <span className={`block text-3xl font-mono font-black ${impactColor} leading-none`}>
+              {previewDelta > 0 ? '+' : ''}{previewDelta.toLocaleString()}
             </span>
-            <span className="text-[9px] font-black text-muted-foreground/40 uppercase tracking-widest mt-1">Dossier delta</span>
+            <span className="mt-1 block text-[9px] font-black uppercase tracking-widest text-muted-foreground">Preview delta</span>
           </div>
         </div>
 
-        <div className="relative h-12 flex items-center">
-          <div className="absolute inset-x-0 h-1.5 bg-white/5 rounded-full" />
-          <div 
-            className="absolute h-1.5 bg-primary/40 rounded-full transition-all duration-300" 
-            style={{ 
-              left: '50%', 
-              right: impact > 0 ? 'auto' : `${50 + (impact / 20) * 100}%`,
-              width: `${Math.abs(impact / 20) * 100}%`,
-              transform: impact > 0 ? 'none' : 'translateX(-100%)'
-            }} 
-          />
-          <input
-            type="range"
-            min="-10"
-            max="10"
-            step="1"
-            value={impact}
-            onChange={(e) => { setImpact(Number(e.target.value)); setConfirmReject(false); }}
-            className="relative w-full bg-transparent appearance-none cursor-pointer z-10 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-6 [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:border-4 [&::-webkit-slider-thumb]:border-background [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:shadow-primary/20"
-          />
-        </div>
-        
-        <div className="flex justify-between text-[9px] font-black text-muted-foreground/30 mt-4 uppercase tracking-[0.1em]">
-          <span>Maximum Penalty</span>
-          <span>Neutral</span>
-          <span>Maximum Reward</span>
+        <div className="grid gap-4">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Category</label>
+            <select
+              value={category}
+              onChange={(e) => {
+                const nextCategory = e.target.value;
+                const first = typedRows.find((row) => row.category === nextCategory) ?? selectedRow;
+                setCategory(nextCategory);
+                setDeed(first.deed);
+                setBaseScore(first.baseScore);
+              }}
+              className={selectClass}
+            >
+              {categories.map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Deed</label>
+            <select
+              value={deed}
+              onChange={(e) => {
+                const row = deeds.find((item) => item.deed === e.target.value) ?? selectedRow;
+                setDeed(row.deed);
+                setBaseScore(row.baseScore);
+              }}
+              className={selectClass}
+            >
+              {deeds.map((item) => <option key={`${item.category}:${item.deed}`} value={item.deed}>{item.deed}</option>)}
+            </select>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-center sm:gap-3">
+            <div className="rounded-xl border border-border bg-card p-3">
+              <p className="text-[9px] uppercase tracking-widest text-muted-foreground">Base</p>
+              <p className={`text-lg font-black ${impactColor}`}>{baseScore > 0 ? '+' : ''}{baseScore}</p>
+            </div>
+            <div className="rounded-xl border border-border bg-card p-3">
+              <p className="text-[9px] uppercase tracking-widest text-muted-foreground">MQ</p>
+              <p className="text-lg font-black text-foreground">{multiplierQuotient}</p>
+            </div>
+            <div className="rounded-xl border border-border bg-card p-3">
+              <p className="text-[9px] uppercase tracking-widest text-muted-foreground">Formula</p>
+              <p className="text-lg font-black text-foreground">v1</p>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Protocol Selectors */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="space-y-3">
           <div className="flex items-center gap-2 ml-1">
             <Info size={12} className="text-muted-foreground/60" />
@@ -112,7 +182,7 @@ export function AdminReviewControls({
           <select 
             value={repetitionPattern} 
             onChange={(e) => setRepetitionPattern(e.target.value)}
-            className="w-full h-14 rounded-2xl border border-white/10 bg-black/20 px-4 text-sm font-bold focus:outline-none focus:border-primary/40 transition-all appearance-none"
+            className={selectClass}
           >
             <option value="0.5">Isolated Incident (0.5)</option>
             <option value="1">Occasional (1.0)</option>
@@ -131,7 +201,7 @@ export function AdminReviewControls({
           <select 
             value={intent} 
             onChange={(e) => setIntent(e.target.value)}
-            className="w-full h-14 rounded-2xl border border-white/10 bg-black/20 px-4 text-sm font-bold focus:outline-none focus:border-primary/40 transition-all appearance-none"
+            className={selectClass}
           >
             <option value="0.5">Accidental (0.5)</option>
             <option value="1">Negligent (1.0)</option>
@@ -139,6 +209,21 @@ export function AdminReviewControls({
             <option value="2">Intentional (2.0)</option>
             <option value="2.5">Coordinated (2.5)</option>
             <option value="3">Malicious (3.0)</option>
+          </select>
+        </div>
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 ml-1">
+            <Info size={12} className="text-muted-foreground/60" />
+            <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Circumstances (C)</label>
+          </div>
+          <select
+            value={circumstances}
+            onChange={(e) => setCircumstances(e.target.value)}
+            className={selectClass}
+          >
+            {Object.entries(CIRCUMSTANCES_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>{label} ({value})</option>
+            ))}
           </select>
         </div>
       </div>
@@ -151,19 +236,19 @@ export function AdminReviewControls({
           onChange={(e) => setNote(e.target.value)}
           placeholder="Detailed reasoning for the tribunal's decision..."
           rows={4}
-          className="w-full rounded-2xl border border-white/10 bg-black/20 p-5 text-sm font-medium placeholder:text-muted-foreground/30 focus:outline-none focus:border-primary/40 transition-all resize-none leading-relaxed"
+          className="w-full resize-none rounded-xl border border-border bg-card p-4 text-[13px] font-medium leading-relaxed text-foreground outline-none transition placeholder:text-muted-foreground/60 focus:border-primary focus:ring-2 focus:ring-primary/20"
         />
       </div>
 
       {/* Score Preview Banner */}
-      <div className="flex items-center justify-between p-6 rounded-2xl bg-primary/[0.03] border border-primary/10">
+      <div className="flex items-center justify-between gap-4 rounded-2xl border border-border bg-card p-4">
         <div className="flex items-center gap-3">
           <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
             <ShieldCheck size={16} />
           </div>
           <div>
             <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest leading-none mb-1">Live Score</p>
-            <p className="text-xs font-bold text-primary/80">Authorized for ledger update</p>
+            <p className="text-xs font-bold text-muted-foreground">Authorized for ledger update</p>
           </div>
         </div>
         <div className={`text-3xl font-mono font-black ${scoreColor}`}>
@@ -172,14 +257,14 @@ export function AdminReviewControls({
       </div>
 
       {/* Action Buttons */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <button
           onClick={() => decide('rejected')}
           disabled={loading}
-          className={`flex items-center justify-center gap-3 h-16 rounded-2xl border-2 transition-all disabled:opacity-50 text-[13px] font-black uppercase tracking-[0.1em] ${
+          className={`flex min-h-14 items-center justify-center gap-3 rounded-xl border transition-all disabled:opacity-50 text-[12px] font-black uppercase tracking-[0.1em] ${
             confirmReject
-              ? 'bg-red-500/10 border-red-500 text-red-500 animate-pulse'
-              : 'bg-transparent border-white/5 text-muted-foreground hover:bg-red-500 hover:text-white hover:border-red-500'
+              ? 'bg-destructive/10 border-destructive text-destructive animate-pulse'
+              : 'bg-background border-border text-muted-foreground hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive'
           }`}
         >
           <XCircle size={18} />
@@ -189,7 +274,7 @@ export function AdminReviewControls({
         <button
           onClick={() => decide('approved')}
           disabled={loading}
-          className="flex items-center justify-center gap-3 h-16 rounded-2xl bg-primary text-primary-foreground text-[13px] font-black uppercase tracking-[0.1em] hover:opacity-90 shadow-xl shadow-primary/20 transition-all disabled:opacity-50"
+          className="flex min-h-14 items-center justify-center gap-3 rounded-xl bg-foreground text-background text-[12px] font-black uppercase tracking-[0.1em] transition-all hover:bg-foreground/90 disabled:opacity-50"
         >
           <CheckCircle size={18} />
           {loading ? 'Finalizing...' : 'Commit Verdict'}

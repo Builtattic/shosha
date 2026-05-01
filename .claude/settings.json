@@ -18,7 +18,15 @@
       "Bash(git push *)",
       "Bash(pnpm test *)",
       "Bash(pnpm build *)",
-      "Bash(gh issue *)"
+      "Bash(gh issue *)",
+      "Bash(git status *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(rm 'src/app/\\(public\\)/account/[id]/page.tsx')",
+      "Bash(rmdir 'src/app/\\(public\\)/account/[id]')"
+    ],
+    "additionalDirectories": [
+      "D:\\Shosha\\src\\app\\(app)\\account"
     ]
   }
 }

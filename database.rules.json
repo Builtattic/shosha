@@ -3,7 +3,7 @@
     ".read": "auth != null",
     ".write": "auth != null",
     "reports": {
-      ".indexOn": ["createdAt", "accountId", "reporterId"]
+      ".indexOn": ["createdAt", "accountId", "reporterId", "hashedUserId", "disputeStatus"]
     },
     "accounts": {
       ".indexOn": ["score", "usernameLower", "claimedBy"]
@@ -13,6 +13,15 @@
     },
     "events": {
       ".indexOn": ["subjectId", "reporterId", "timestamp", "status"]
+    },
+    "ledgerEntries": {
+      ".indexOn": ["profileId", "reportId", "timestamp"]
+    },
+    "reportMetadata": {
+      ".indexOn": ["reportId", "profileId"]
+    },
+    "reportVotes": {
+      ".indexOn": ["reportId", "userId"]
     },
     "claimRequests": {
       ".indexOn": ["status"]

@@ -6,9 +6,13 @@ import * as interactionsRepo from '@/lib/repos/reportInteractions';
 import * as siteSettingsRepo from '@/lib/repos/siteSettings';
 
 function scoreReport(report: reportsRepo.ReportRecord) {
-  const impact = Math.abs(report.adminDecision?.finalImpact ?? report.aiVerdict?.proposedImpact ?? 0);
+  const reportScore = Math.abs(report.reportScore ?? report.baseScore ?? report.adminDecision?.finalImpact ?? report.aiVerdict?.proposedImpact ?? 0);
   const stats = report.stats ?? { aligns: 0, opposes: 0, comments: 0, shares: 0 };
-  return impact * 100 + stats.aligns + stats.opposes + stats.comments * 2 + stats.shares * 3;
+  const createdAt = report.createdAt ? new Date(report.createdAt).getTime() : Date.now();
+  const ageDays = Math.max(0, (Date.now() - createdAt) / (24 * 60 * 60 * 1000));
+  const recency = Math.exp(-0.05 * ageDays);
+  const engagement = Math.log(1 + stats.aligns + stats.opposes + stats.comments + stats.shares);
+  return reportScore * (report.credibilityWeight ?? 1) * recency * Math.max(1, engagement);
 }
 
 import Parser from 'rss-parser';

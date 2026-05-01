@@ -29,21 +29,38 @@ export type AdminDecisionRecord = {
   note: string;
   repetitionPattern?: string;
   intent?: string;
+  circumstances?: string;
+  category?: string;
+  deed?: string;
+  baseScore?: number;
   decidedAt: string;
 };
 
 export type ReportRecord = {
   _id: string;
   accountId: string;
+  reportNo?: number;
   eventId?: string;
+  ledgerEntryId?: string;
   reporterId: string | null;
   anonymousTag: string;
+  hashedUserId?: string;
   type: ReportType;
+  category?: string;
+  deed?: string;
+  baseScore?: number;
+  reportScore?: number;
+  credibilityWeight?: number;
   description: string;
   feelings: string;
   media: ReportMedia;
   repetitionPattern?: string;
   intent?: string;
+  circumstances?: string;
+  location?: string;
+  tags?: string[];
+  aiUndertaking?: boolean;
+  disputeStatus?: 'none' | 'open' | 'resolved';
   status: ReportStatus;
   aiVerdict: AiVerdictRecord | null;
   adminDecision: AdminDecisionRecord | null;
@@ -146,7 +163,7 @@ export async function search(query: string, limit = 30, sampleSize = 500): Promi
     const val = child.val() ?? {};
     if (val.visibility === 'hidden') return;
     if (val.status !== 'approved' && val.status !== 'ai_reviewed') return;
-    const haystack = `${val.description ?? ''} ${val.feelings ?? ''} ${val.aiVerdict?.categoryTags?.join(' ') ?? ''} ${val.aiVerdict?.reasoning ?? ''}`.toLowerCase();
+    const haystack = `${val.description ?? ''} ${val.feelings ?? ''} ${val.category ?? ''} ${val.deed ?? ''} ${val.aiVerdict?.categoryTags?.join(' ') ?? ''} ${val.aiVerdict?.reasoning ?? ''}`.toLowerCase();
     if (haystack.includes(trimmed)) {
       matches.push(withId<ReportRecord>(child.key!, val));
     }

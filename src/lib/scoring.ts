@@ -318,6 +318,21 @@ export type EventMultipliers = {
   reputation: number;     // RP 0.5 – 3
 };
 
+export type WorkbookMultiplierKey =
+  | 'reputation'
+  | 'intent'
+  | 'identity'
+  | 'power'
+  | 'means'
+  | 'environment'
+  | 'ability'
+  | 'circumstances'
+  | 'responsibility'
+  | 'awareness';
+
+export const WORKBOOK_FORMULA_VERSION = 'workbook-v1';
+export const WORKBOOK_DECAY_DENOMINATOR = 1000;
+
 export const DEFAULT_MULTIPLIERS: EventMultipliers = {
   identity: 1, power: 1, means: 1, environment: 1, awareness: 1,
   ability: 1, circumstances: 1, responsibility: 1, intent: 1, reputation: 1,
@@ -351,10 +366,141 @@ export function calcMultiplierQuotient(m: EventMultipliers): number {
   );
 }
 
+function lookupWorkbookValue(value: string | undefined, table: Record<string, number>, fallback = 1): number {
+  if (!value) return fallback;
+  const normalized = normalizeLookup(value);
+  return table[normalized] ?? fallback;
+}
+
+const WORKBOOK_ROLE_POWER: Record<string, number> = {
+  student_unemployed: 0.5,
+  student: 0.5,
+  unemployed: 0.5,
+  individual_contributor_job: 1,
+  individual_contributor: 1,
+  manager: 1.5,
+  founder_business_owner: 2,
+  public_figure_influencer: 2.5,
+  government_political_role: 3,
+  government_political: 3,
+};
+
+const WORKBOOK_REACH_RESPONSIBILITY: Record<string, number> = {
+  none: 0.5,
+  '1k': 1,
+  '1k_10k': 1.5,
+  '10k_100k': 2,
+  '100k_1m': 2.5,
+  '1m': 3,
+  '10m_100m': 3,
+  '100m': 3,
+};
+
+const WORKBOOK_EDUCATION_AWARENESS: Record<string, number> = {
+  no_formal_education: 0.5,
+  no_formal: 0.5,
+  school: 1,
+  undergraduate: 1.5,
+  postgraduate: 2,
+  doctorate_specialized: 2.5,
+  field_contributor: 3,
+};
+
+const WORKBOOK_SPECIALIZED_IDENTITY: Record<string, number> = {
+  no: 0.5,
+  some_experience: 1,
+  professional: 1.5,
+  expert: 2,
+};
+
+const WORKBOOK_MANAGEMENT_MEANS: Record<string, number> = {
+  none: 1,
+  small_team_limited_control: 1.5,
+  moderate_responsibility: 2,
+  large_team_major_decisions: 2.5,
+  organizational_institutional_control: 3,
+  organizational_institutional: 3,
+};
+
+const WORKBOOK_REGION_ENVIRONMENT: Record<string, number> = {
+  syria_palestine_lebanon: 0.5,
+  rest_of_the_world: 1,
+  rest_of_asia_rest_of_africa: 1.5,
+  india_se_asia_north_africa_south_america: 2,
+  india: 2,
+  gcc: 2.5,
+  east_asia_russia_east_europe_middle_east: 2.5,
+  usa_canada: 3,
+  us_west_europe_aus_nz: 3,
+  west_europe: 3,
+};
+
+const WORKBOOK_ABILITY: Record<string, number> = {
+  yes: 0.5,
+  prefer_not_to_say: 1,
+  no: 1,
+};
+
+const WORKBOOK_LIFESTYLE_CIRCUMSTANCES: Record<string, number> = {
+  high_pressure: 0.5,
+  balanced: 1,
+  manageable: 1.5,
+  comfortable: 2,
+  well_supported: 2.5,
+  ideal: 3,
+};
+
+export function profileMultipliersFromWorkbookProfile(
+  profile: {
+    role?: string;
+    reach?: string;
+    followers?: string;
+    educationWorkbook?: string;
+    education?: string;
+    specializedFieldWorkbook?: string;
+    specializedField?: string;
+    managementWorkbook?: string;
+    managesMoneyPeopleSystem?: string;
+    disability?: string;
+    physicalIntellectualLimitations?: string;
+    lifestyle?: string;
+    region?: string;
+    opposedPosts?: number;
+  },
+  perEvent?: { repetitionPattern?: number; intent?: number; circumstances?: number }
+): EventMultipliers {
+  const reach = profile.reach ?? profile.followers;
+  const specialized = profile.specializedFieldWorkbook ?? profile.specializedField;
+  const education = profile.educationWorkbook ?? profile.education;
+  const management = profile.managementWorkbook ?? profile.managesMoneyPeopleSystem;
+  const ability = profile.disability ?? profile.physicalIntellectualLimitations;
+  const repetition = perEvent?.repetitionPattern ?? Math.min(3, 0.5 + ((profile.opposedPosts ?? 0) / 10));
+
+  return {
+    reputation: repetition,
+    intent: perEvent?.intent ?? 1,
+    identity: Math.min(3, lookupWorkbookValue(specialized, WORKBOOK_SPECIALIZED_IDENTITY, 1)),
+    power: lookupWorkbookValue(profile.role, WORKBOOK_ROLE_POWER, 1),
+    means: lookupWorkbookValue(management, WORKBOOK_MANAGEMENT_MEANS, 1),
+    environment: lookupWorkbookValue(profile.region, WORKBOOK_REGION_ENVIRONMENT, 1),
+    ability: lookupWorkbookValue(ability, WORKBOOK_ABILITY, 1),
+    circumstances: perEvent?.circumstances ?? lookupWorkbookValue(profile.lifestyle, WORKBOOK_LIFESTYLE_CIRCUMSTANCES, 1),
+    responsibility: lookupWorkbookValue(reach, WORKBOOK_REACH_RESPONSIBILITY, 1),
+    awareness: Math.max(
+      lookupWorkbookValue(education, WORKBOOK_EDUCATION_AWARENESS, 1),
+      Math.min(3, lookupWorkbookValue(specialized, WORKBOOK_SPECIALIZED_IDENTITY, 1) + 0.5)
+    ),
+  };
+}
+
+export const calcWorkbookMultiplierQuotient = calcMultiplierQuotient;
+
 // Δ = BaseScore × (RP × IN × IY × P × M × E × AB × C × RY × AW) / 10
 export function calcDelta(baseImpact: number, m: EventMultipliers): number {
   return roundTo((baseImpact * calcMultiplierQuotient(m)) / 10, 1);
 }
+
+export const calcWorkbookDelta = calcDelta;
 
 export type SheetDeltaLedgerRow = {
   baseScore: number;
@@ -402,27 +548,34 @@ export function createSheetDeltaLedgerRow(input: {
 
 export function sheetDecay(delta: number): number {
   const abs = Math.abs(delta);
-  return abs / (abs + 1);
+  return abs / (abs + WORKBOOK_DECAY_DENOMINATOR);
 }
 
 export function applySheetScore(previousScore: number, delta: number): { decay: number; score: number } {
   const decay = sheetDecay(delta);
   return {
     decay,
-    score: roundTo(previousScore + delta * decay, 1),
+    score: roundTo(previousScore + delta * (decay + 1), 1),
   };
 }
+
+export const workbookDecay = sheetDecay;
+export const applyWorkbookScore = applySheetScore;
 
 export function calcSheetScoreTracker(input: {
   baseScore?: number;
   w1Delta: number;
   w2P?: number;
   w2N?: number;
+  w2Delta?: number;
+  w3Delta?: number;
 }) {
   const baseScore = input.baseScore ?? BASE_SCORE;
   const w1 = applySheetScore(baseScore, input.w1Delta);
-  const w2Delta = (input.w2P ?? 0) + (input.w2N ?? 0);
+  const w2Delta = input.w2Delta ?? (input.w2P ?? 0) + (input.w2N ?? 0);
   const w2 = applySheetScore(w1.score, w2Delta);
+  const w3Delta = input.w3Delta ?? 0;
+  const w3 = applySheetScore(w2.score, w3Delta);
   return {
     baseScore,
     w1Delta: input.w1Delta,
@@ -433,8 +586,14 @@ export function calcSheetScoreTracker(input: {
     w2Delta,
     w2Decay: w2.decay,
     w2Score: w2.score,
+    w3Delta,
+    w3Decay: w3.decay,
+    w3Score: w3.score,
+    finalScore: w3.score,
   };
 }
+
+export const calcWorkbookScoreTracker = calcSheetScoreTracker;
 
 export function calcProfileCredibility(input: {
   baseCredibility?: number;
@@ -445,9 +604,9 @@ export function calcProfileCredibility(input: {
 }) {
   const baseCredibility = input.baseCredibility ?? 80;
   const trustBadgeBonus = input.trustBadgeBonus ?? 0;
-  const totalCredibility = baseCredibility + trustBadgeBonus;
+  const totalCredibility = clamp(baseCredibility + trustBadgeBonus, 0, 100);
   const updatedCredibility = clamp(
-    baseCredibility -
+    totalCredibility -
       (input.opposedPosts ?? 0) -
       (input.disputeLosses ?? 0) * 2.5 -
       (input.aiFlaggedPosts ?? 0) * 5,
@@ -463,6 +622,38 @@ export function calcProfileCredibility(input: {
     aiFlaggedPosts: input.aiFlaggedPosts ?? 0,
     updatedCredibility,
   };
+}
+
+export function credibilityWeight(credibility: number | undefined, fallback = 50): number {
+  return clamp(typeof credibility === 'number' ? credibility : fallback, 0, 100) / 100;
+}
+
+export function sumDeltasByAge(entries: Array<{ delta: number; t?: string; timestamp?: string }>, now = new Date()) {
+  let w1Delta = 0;
+  let w2Delta = 0;
+  let w3Delta = 0;
+  const nowMs = now.getTime();
+  for (const entry of entries) {
+    const when = entry.t ?? entry.timestamp;
+    if (!when || typeof entry.delta !== 'number') continue;
+    const ageDays = Math.max(0, (nowMs - new Date(when).getTime()) / (24 * 60 * 60 * 1000));
+    if (ageDays <= 7) w1Delta += entry.delta;
+    else if (ageDays <= 30) w2Delta += entry.delta;
+    else w3Delta += entry.delta;
+  }
+  return {
+    w1Delta: roundTo(w1Delta, 1),
+    w2Delta: roundTo(w2Delta, 1),
+    w3Delta: roundTo(w3Delta, 1),
+  };
+}
+
+export function calcWorkbookScoreFromEntries(
+  entries: Array<{ delta: number; t?: string; timestamp?: string }>,
+  baseScore = BASE_SCORE,
+  now = new Date()
+) {
+  return calcWorkbookScoreTracker({ baseScore, ...sumDeltasByAge(entries, now) });
 }
 
 export type LedgerEntry = {

@@ -6,12 +6,15 @@ import * as accountsRepo from '@/lib/repos/accounts';
 import * as subscriptionsRepo from '@/lib/repos/subscriptions';
 import {
   DEFAULT_MULTIPLIERS,
-  applySheetScore,
+  WORKBOOK_FORMULA_VERSION,
+  calcWorkbookScoreFromEntries,
   calcDelta,
   calcMultiplierQuotient,
   resolveSheetBaseImpact,
+  workbookDecay,
   type EventMultipliers,
 } from '@/lib/scoring';
+import * as ledgerEntriesRepo from '@/lib/repos/ledgerEntries';
 import { z } from 'zod';
 
 const eventCreateSchema = z.object({
@@ -97,7 +100,7 @@ export async function POST(request: Request) {
     const multiplierQuotient = calcMultiplierQuotient(multipliers);
     const delta = calcDelta(baseImpact, multipliers);
     const scoreBefore = account.score ?? 1000;
-    const { score: scoreAfter, decay } = applySheetScore(scoreBefore, delta);
+    const decay = workbookDecay(delta);
 
     // Deduplication check
     const duplicate = await eventsRepo.findDuplicate(parsed.data.subjectId, parsed.data.description);
@@ -118,11 +121,11 @@ export async function POST(request: Request) {
       multiplierQuotient,
       delta,
       scoreBefore,
-      scoreAfter,
+      scoreAfter: scoreBefore,
       decay,
       category: scoringRow.category,
       deed: scoringRow.deed,
-      formulaVersion: 'sheet-v1',
+      formulaVersion: WORKBOOK_FORMULA_VERSION,
       proofLinks: parsed.data.proofLinks,
       location: parsed.data.location,
       timestamp: new Date().toISOString(),
@@ -132,9 +135,28 @@ export async function POST(request: Request) {
       stats: { aligns: 0, opposes: 0, comments: 0, shares: 0 },
     });
 
+    await ledgerEntriesRepo.createWithId(`event_${event._id}`, {
+      profileId: account._id,
+      reportId: `event:${event._id}`,
+      baseScore: baseImpact,
+      multipliers,
+      multiplierQuotient,
+      delta,
+      timestamp: event.timestamp,
+      formulaVersion: WORKBOOK_FORMULA_VERSION,
+    });
+    const ledgerEntries = await ledgerEntriesRepo.listForProfile(account._id);
+    const tracker = calcWorkbookScoreFromEntries(ledgerEntries);
+    const scoreAfter = tracker.finalScore;
+    const globalScore = ledgerEntries.reduce((sum, entry) => sum + entry.delta, 0);
+    await eventsRepo.update(event._id, { scoreAfter });
+
     // Update account score
     await accountsRepo.update(account._id, {
       score: scoreAfter,
+      displayScore: scoreAfter,
+      globalScore,
+      windowScores: tracker,
       scoreHistory: [
         ...(account.scoreHistory ?? []),
         {

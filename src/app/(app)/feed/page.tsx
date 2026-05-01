@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Search, Bell, Plus, X } from 'lucide-react';
 import { FeedItem, type FeedItemProps } from '@/components/feed/FeedItem';
-import { ReportModal } from '@/components/report/ReportModal';
+import { useReportModal } from '@/components/report/ReportModalProvider';
 import { cn } from '@/lib/utils';
 
 type FeedFilter = 'for_you' | 'top' | 'positive' | 'negative' | 'following';
@@ -16,6 +16,11 @@ type FeedReport = {
   stats?: FeedItemProps['stats'];
   aiVerdict?: { proposedImpact?: number } | null;
   adminDecision?: { finalImpact?: number } | null;
+  category?: string;
+  deed?: string;
+  disputeStatus?: string;
+  reportScore?: number;
+  baseScore?: number;
   viewer?: FeedItemProps['viewer'];
   account: {
     username: string;
@@ -58,6 +63,10 @@ function toFeedItem(report: FeedReport): FeedItemProps {
     title: report.description,
     location: 'Global',
     media: report.media,
+    category: report.category,
+    deed: report.deed,
+    disputeStatus: report.disputeStatus,
+    reportScore: report.reportScore ?? report.baseScore,
     stats: report.stats ?? { aligns: 0, opposes: 0, comments: 0, shares: 0 },
     delta: report.adminDecision?.finalImpact ?? report.aiVerdict?.proposedImpact ?? 0,
     viewer: report.viewer
@@ -65,12 +74,12 @@ function toFeedItem(report: FeedReport): FeedItemProps {
 }
 
 export default function FeedPage() {
+  const reportModal = useReportModal();
   const [activeTab, setActiveTab] = useState<FeedFilter>('for_you');
   const [feed, setFeed] = useState<FeedReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const [reportOpen, setReportOpen] = useState(false);
 
   useEffect(() => {
     const backendFilter = activeTab === 'positive' || activeTab === 'negative' ? 'for_you' : activeTab;
@@ -102,7 +111,7 @@ export default function FeedPage() {
   }, [activeTab, feed, query]);
 
   return (
-    <main className="min-h-screen bg-background pb-24">
+    <main className="min-h-screen bg-background safe-bottom">
       <header className="sticky top-0 z-50 bg-background/80 p-4 backdrop-blur-xl">
         <div className="mx-auto flex max-w-2xl items-center justify-between">
           <div className="font-serif text-[28px] font-black text-foreground">
@@ -119,7 +128,7 @@ export default function FeedPage() {
             </button>
             <button
               type="button"
-              onClick={() => setReportOpen(true)}
+              onClick={() => reportModal.open()}
               className="text-muted-foreground transition-colors hover:text-foreground"
               aria-label="Create report"
             >
@@ -197,7 +206,6 @@ export default function FeedPage() {
         </div>
       </div>
 
-      <ReportModal open={reportOpen} onClose={() => setReportOpen(false)} />
     </main>
   );
 }

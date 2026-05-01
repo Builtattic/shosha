@@ -21,25 +21,22 @@ export function ScoreGauge({
   change = '+126',
   className
 }: ScoreGaugeProps) {
-  // Calculate percentage for the arc (0 to 1)
   const percentage = (score - min) / (max - min);
   const clampedPercentage = Math.max(0, Math.min(1, percentage));
-  
-  // SVG parameters
+
   const radius = 120;
   const strokeWidth = 14;
   const normalizedRadius = radius - strokeWidth / 2;
-  const circumference = normalizedRadius * Math.PI; // Semicircle
+  const circumference = normalizedRadius * Math.PI;
   const strokeDashoffset = circumference - clampedPercentage * circumference;
 
   return (
     <div className={cn("flex flex-col items-center justify-center p-4", className)}>
-      <div className="relative h-[160px] w-[300px]">
+      <div className="relative h-[150px] w-[min(300px,calc(100vw-48px))] sm:h-[160px] sm:w-[300px]">
         <svg
           viewBox={`0 0 ${radius * 2} ${radius + 20}`}
           className="h-full w-full transform overflow-visible"
         >
-          {/* Background Arc */}
           <path
             d={`M ${radius - normalizedRadius} ${radius} A ${normalizedRadius} ${normalizedRadius} 0 0 1 ${radius + normalizedRadius} ${radius}`}
             fill="none"
@@ -48,16 +45,14 @@ export function ScoreGauge({
             strokeLinecap="round"
           />
           
-          {/* Gradient Definition */}
           <defs>
             <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#f87171" /> {/* brand-red */}
-              <stop offset="50%" stopColor="#e5e7eb" /> {/* greyish neutral */}
-              <stop offset="100%" stopColor="#4ade80" /> {/* brand-green */}
+              <stop offset="0%" stopColor="#ef4444" />
+              <stop offset="50%" stopColor="#d4d4d4" />
+              <stop offset="100%" stopColor="#1a1a1a" />
             </linearGradient>
           </defs>
 
-          {/* Active Progress Arc */}
           <motion.path
             d={`M ${radius - normalizedRadius} ${radius} A ${normalizedRadius} ${normalizedRadius} 0 0 1 ${radius + normalizedRadius} ${radius}`}
             fill="none"
@@ -72,7 +67,6 @@ export function ScoreGauge({
             }}
           />
 
-          {/* Indicator Dot on the Arc */}
           <motion.circle
             r="7"
             fill="white"
@@ -87,18 +81,16 @@ export function ScoreGauge({
             className="shadow-sm"
           />
 
-          {/* Labels */}
           <text x={radius - normalizedRadius} y={radius + 20} textAnchor="middle" className="fill-muted text-[10px] font-medium">{min}</text>
           <text x={radius + normalizedRadius} y={radius + 20} textAnchor="middle" className="fill-muted text-[10px] font-medium">{max}</text>
           <text x={radius} y={radius - 40} textAnchor="middle" className="fill-muted text-[10px] font-bold uppercase tracking-widest">SHOSHA SCORE</text>
         </svg>
 
-        {/* Center Score Text */}
         <div className="absolute inset-0 flex flex-col items-center justify-end pb-2">
           <motion.span 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-[64px] font-bold leading-none tracking-tight text-foreground"
+            className="max-w-full truncate px-2 text-[48px] font-bold leading-none text-foreground sm:text-[64px]"
           >
             {score.toLocaleString()}
           </motion.span>

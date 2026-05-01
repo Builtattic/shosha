@@ -174,7 +174,7 @@ export default function EditProfilePage() {
   }
 
   return (
-    <main className="min-h-screen bg-background pb-24 font-sans max-w-xl mx-auto border-x border-border/50 shadow-sm">
+    <main className="min-h-screen bg-background safe-bottom font-sans max-w-xl mx-auto border-x border-border/50 shadow-sm">
       {/* Header */}
       <header className="flex items-center justify-between p-4 bg-background sticky top-0 z-50 border-b border-border/40 backdrop-blur-md bg-background/95">
         <button onClick={() => router.back()} className="text-foreground hover:opacity-80">

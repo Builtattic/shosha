@@ -6,6 +6,7 @@ import {
   applySheetScore,
   profileMultipliersFromUser,
   DEFAULT_MULTIPLIERS,
+  resolveSheetBaseImpact,
   resolveSheetBaseImpactFromAdminImpact,
   type EventMultipliers,
 } from '@/lib/scoring';
@@ -51,21 +52,29 @@ export async function replayUserLedger(userId: string): Promise<ReplayResult | n
 
   const entries: LedgerEntryRecord[] = [];
   for (const report of allReports) {
-    const finalImpact = report.adminDecision?.finalImpact ?? 0;
-    if (finalImpact === 0) continue;
-    const scoringRow = resolveSheetBaseImpactFromAdminImpact(finalImpact, report.type);
-    const baseImpact = scoringRow.baseScore;
-    const delta = calcDelta(baseImpact, multipliers);
+    const finalImpact = report.adminDecision?.finalImpact ?? report.reportScore ?? 0;
+    if (finalImpact === 0 && !report.deed && !report.baseScore) continue;
+    const scoringRow = report.deed
+      ? resolveSheetBaseImpact(report.deed, report.type)
+      : resolveSheetBaseImpactFromAdminImpact(finalImpact, report.type);
+    const baseImpact = typeof report.baseScore === 'number' ? report.baseScore : scoringRow.baseScore;
+    const reportMultipliers: EventMultipliers = {
+      ...multipliers,
+      reputation: Number(report.repetitionPattern ?? report.adminDecision?.repetitionPattern ?? multipliers.reputation),
+      intent: Number(report.intent ?? report.adminDecision?.intent ?? multipliers.intent),
+      circumstances: Number(report.circumstances ?? report.adminDecision?.circumstances ?? multipliers.circumstances),
+    };
+    const delta = typeof report.reportScore === 'number' ? report.reportScore : calcDelta(baseImpact, reportMultipliers);
     if (delta === 0) continue;
     entries.push({
       t: report.adminDecision?.decidedAt ?? report.createdAt ?? new Date().toISOString(),
       delta,
       cause: 'report',
-      category: scoringRow.category,
+      category: report.category ?? scoringRow.category,
       eventId: report._id,
       baseScore: baseImpact,
-      multiplierQuotient: calcMultiplierQuotient(multipliers),
-      multipliers: multipliers as unknown as Record<string, number>,
+      multiplierQuotient: calcMultiplierQuotient(reportMultipliers),
+      multipliers: reportMultipliers as unknown as Record<string, number>,
     });
   }
 

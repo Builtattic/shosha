@@ -68,12 +68,13 @@ select {
 }
 
 .safe-bottom {
-  padding-bottom: calc(88px + env(safe-area-inset-bottom));
+  /* Clears the floating bottom nav including its raised center FAB */
+  padding-bottom: calc(112px + env(safe-area-inset-bottom));
 }
 
 @media (min-width: 1024px) {
   .safe-bottom {
-    padding-bottom: 0;
+    padding-bottom: 2rem;
   }
 }
 
@@ -87,6 +88,61 @@ select {
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Smooth focus rings for keyboard users only */
+:focus-visible {
+  outline: 2px solid #1a1a1a;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Tap highlight cleanup on mobile */
+button, a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Subtle scale-press utility */
+.press {
+  transition: transform 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.press:active {
+  transform: scale(0.97);
+}
+
+/* Soft card lift on hover */
+.lift {
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+
+/* Gentle shimmer for skeleton loading */
+@keyframes shimmer {
+  0% { background-position: -480px 0; }
+  100% { background-position: 480px 0; }
+}
+.shimmer {
+  background: linear-gradient(90deg, #f3f4f6 0px, #e9eaee 80px, #f3f4f6 160px);
+  background-size: 480px 100%;
+  animation: shimmer 1.4s linear infinite;
 }
 
 @layer components {

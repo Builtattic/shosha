@@ -15,6 +15,11 @@ type FeedReport = {
   stats?: FeedItemProps['stats'];
   aiVerdict?: { proposedImpact?: number } | null;
   adminDecision?: { finalImpact?: number } | null;
+  category?: string;
+  deed?: string;
+  disputeStatus?: string;
+  reportScore?: number;
+  baseScore?: number;
   viewer?: FeedItemProps['viewer'];
   account: {
     _id: string;
@@ -62,6 +67,10 @@ function toFeedItem(report: FeedReport): FeedItemProps {
     title: report.description,
     location: 'Global',
     media: report.media,
+    category: report.category,
+    deed: report.deed,
+    disputeStatus: report.disputeStatus,
+    reportScore: report.reportScore ?? report.baseScore,
     stats: report.stats ?? { aligns: 0, opposes: 0, comments: 0, shares: 0 },
     delta: report.adminDecision?.finalImpact ?? report.aiVerdict?.proposedImpact ?? 0,
     viewer: report.viewer
@@ -114,7 +123,7 @@ export default function SearchPage() {
   const total = useMemo(() => reports.length + accounts.length, [reports, accounts]);
 
   return (
-    <main className="min-h-screen bg-background pb-24">
+    <main className="min-h-screen bg-background safe-bottom">
       <header className="sticky top-0 z-50 bg-background/80 p-4 backdrop-blur-xl border-b border-border">
         <div className="mx-auto max-w-2xl">
           <div className="flex items-center gap-3 mb-3">

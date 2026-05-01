@@ -172,7 +172,7 @@ export default function DisputesPage() {
   );
 
   return (
-    <main className="min-h-screen bg-background pb-24 pt-8 px-4 lg:px-12">
+    <main className="min-h-screen bg-background safe-bottom pt-8 px-4 lg:px-12">
       <div className="max-w-3xl mx-auto">
         <div className="flex items-start justify-between gap-4 mb-8">
           <div className="flex items-center gap-3">

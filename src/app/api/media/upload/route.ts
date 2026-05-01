@@ -2,7 +2,8 @@ import { v4 as uuid } from 'uuid';
 import path from 'path';
 import { mkdir, writeFile } from 'fs/promises';
 import { fail, ok } from '@/lib/api';
-import { requireUser } from '@/lib/auth';
+import { anonymousHash } from '@/lib/anonymous';
+import { getCurrentUser } from '@/lib/auth';
 import { adminBucket } from '@/lib/firebase/admin';
 
 export const runtime = 'nodejs';
@@ -31,12 +32,7 @@ function isMissingBucketError(error: unknown) {
 }
 
 export async function POST(request: Request) {
-  let user;
-  try {
-    user = await requireUser();
-  } catch {
-    return fail('unauthorized', 'Sign in before uploading evidence.', 401);
-  }
+  const user = await getCurrentUser();
 
   let formData: FormData;
   try {
@@ -58,7 +54,8 @@ export async function POST(request: Request) {
 
   const ext = (file.name.split('.').pop() || (isVideo ? 'mp4' : 'jpg')).toLowerCase().replace(/[^a-z0-9]/g, '');
   const folder = isVideo ? 'video' : 'image';
-  const filePath = `uploads/${user._id}/${folder}/${uuid()}.${ext}`;
+  const actorId = user?._id ?? `anon_${anonymousHash(request).slice(0, 16)}`;
+  const filePath = `uploads/${actorId}/${folder}/${uuid()}.${ext}`;
 
   const buffer = Buffer.from(await file.arrayBuffer());
   let url: string;

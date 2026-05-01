@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
@@ -20,6 +20,7 @@ import { useToast } from '@/components/ui/Toast';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { CIRCUMSTANCES_LABELS, SHEET_SCORING_INDEX } from '@/lib/scoring';
 
 type UploadedMedia = {
   url: string;
@@ -93,6 +94,9 @@ export function ReportModal({
   const [type, setType] = useState<'positive' | 'negative' | null>(null);
   const [repetitionPattern, setRepetitionPattern] = useState<string>('0.5');
   const [intent, setIntent] = useState<string>('0.5');
+  const [circumstances, setCircumstances] = useState<string>('1');
+  const [category, setCategory] = useState('');
+  const [deed, setDeed] = useState('');
   const [description, setDescription] = useState('');
   const [feelings, setFeelings] = useState('');
   const [aiConsent, setAiConsent] = useState(false);
@@ -114,6 +118,20 @@ export function ReportModal({
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
+  const deedOptions = useMemo(
+    () => SHEET_SCORING_INDEX.filter((row) => !type || row.type === type),
+    [type]
+  );
+  const categoryOptions = useMemo(
+    () => Array.from(new Set(deedOptions.map((row) => row.category))),
+    [deedOptions]
+  );
+  const filteredDeeds = useMemo(
+    () => deedOptions.filter((row) => !category || row.category === category),
+    [category, deedOptions]
+  );
+  const selectedScoringRow = deedOptions.find((row) => row.category === category && row.deed === deed) ?? null;
+
   // New Profile State
   const [view, setView] = useState<'report' | 'add_profile'>('report');
   const [newProfileName, setNewProfileName] = useState('');
@@ -130,6 +148,8 @@ export function ReportModal({
   function reset() {
     setStep(1);
     setType(null);
+    setCategory('');
+    setDeed('');
     setDescription('');
     setFeelings('');
     setAiConsent(false);
@@ -146,6 +166,7 @@ export function ReportModal({
     setSearchingCandidates(false);
     setResolvedAccountId(null);
     setLocation('');
+    setCircumstances('1');
     setMedia(null);
     setUploading(false);
     setSubmitting(false);
@@ -191,19 +212,43 @@ export function ReportModal({
     setResolvedAccountId(null);
   }
 
+  useEffect(() => {
+    if (!type) {
+      setCategory('');
+      setDeed('');
+      return;
+    }
+    const first = SHEET_SCORING_INDEX.find((row) => row.type === type);
+    if (first && (!selectedScoringRow || selectedScoringRow.type !== type)) {
+      setCategory(first.category);
+      setDeed(first.deed);
+    }
+  }, [selectedScoringRow, type]);
+
   function close() {
     reset();
     onClose();
   }
 
+  // Body scroll lock + Escape close while open
+  useEffect(() => {
+    if (!open) return;
+    const original = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !submitting && !uploading) close();
+    };
+    window.addEventListener('keydown', handler);
+    return () => {
+      document.body.style.overflow = original;
+      window.removeEventListener('keydown', handler);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, submitting, uploading]);
+
   async function handleFile(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    if (!user) {
-      toast.push('Sign in before uploading evidence.');
-      router.push('/sign-in');
-      return;
-    }
     setUploading(true);
     try {
       const form = new FormData();
@@ -289,6 +334,11 @@ export function ReportModal({
       return;
     }
 
+    if (!selectedScoringRow) {
+      showSubmitError('Choose a valid workbook deed for this report.');
+      return;
+    }
+
     setSubmitError('');
     setSubmitting(true);
     let targetAccountId: string | null = null;
@@ -312,13 +362,18 @@ export function ReportModal({
         body: JSON.stringify({
           accountId: targetAccountId,
           type,
+          category: selectedScoringRow.category,
+          deed: selectedScoringRow.deed,
+          baseScore: selectedScoringRow.baseScore,
           description,
           feelings: feelings || description,
           media: { url: media.url, type: media.type, bytes: media.bytes },
           location: location || undefined,
           tags: taggedPerson ? [taggedPerson] : [],
           repetitionPattern,
-          intent
+          intent,
+          circumstances,
+          aiUndertaking: aiConsent
         })
       });
       const payload = await readApiPayload(response, 'Submission failed. Please try again.');
@@ -334,26 +389,44 @@ export function ReportModal({
     }
   }
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-[200] flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center p-0 sm:p-4">
-      <motion.div
-        initial={{ y: '100%' }}
-        animate={{ y: 0 }}
-        exit={{ y: '100%' }}
-        className="w-full max-w-lg rounded-t-[32px] sm:rounded-[32px] bg-background border-x border-t border-border p-6 max-h-[90vh] overflow-y-auto no-scrollbar"
-      >
-        <div className="flex items-center justify-between mb-6">
-          <button onClick={() => {
-            if (view === 'add_profile') setView('report');
-            else if (step > 1) setStep(step - 1);
-            else close();
-          }} className="text-muted-foreground">
-            {view === 'add_profile' || step > 1 ? <ChevronLeft size={24} /> : <X size={24} />}
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          key="report-modal-backdrop"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-[200] flex items-end justify-center overflow-hidden bg-black/60 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !submitting && !uploading) close();
+          }}
+        >
+          <motion.div
+            key="report-modal-card"
+            initial={{ y: '100%', opacity: 0.5 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: '100%', opacity: 0.5 }}
+            transition={{ type: 'spring', stiffness: 360, damping: 36 }}
+            className="max-h-[92dvh] w-full max-w-lg overflow-x-hidden overflow-y-auto rounded-t-3xl border-x border-t border-border bg-background p-3 shadow-2xl no-scrollbar overscroll-contain sm:rounded-3xl sm:p-6"
+          >
+        <div className="sticky top-0 z-10 -mx-3 -mt-3 mb-4 flex items-center justify-between gap-2 border-b border-border bg-background/95 px-3 py-3 backdrop-blur sm:-mx-6 sm:-mt-6 sm:mb-6 sm:px-6 sm:py-4">
+          <button
+            onClick={() => {
+              if (view === 'add_profile') setView('report');
+              else if (step > 1) setStep(step - 1);
+              else close();
+            }}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            aria-label={view === 'add_profile' || step > 1 ? 'Back' : 'Close'}
+          >
+            {view === 'add_profile' || step > 1 ? <ChevronLeft size={22} /> : <X size={22} />}
           </button>
-          <h2 className="text-[18px] font-bold">{view === 'add_profile' ? 'Add Profile to Platform' : 'Create Report'}</h2>
-          <div className="w-6" />
+          <h2 className="min-w-0 flex-1 truncate text-center text-[16px] font-black sm:text-[18px]">
+            {view === 'add_profile' ? 'Add Profile' : 'Create Report'}
+          </h2>
+          <div className="h-9 w-9 shrink-0" />
         </div>
 
         {view === 'add_profile' ? (
@@ -400,30 +473,27 @@ export function ReportModal({
             </div>
             
             <div className="flex gap-3 pt-4">
-              <Button variant="secondary" className="flex-1 py-6 rounded-[20px]" onClick={() => setView('report')}>
+              <Button variant="secondary" className="flex-1 rounded-2xl py-6" onClick={() => setView('report')}>
                 Cancel
               </Button>
-              <Button 
-                className="flex-1 py-6 rounded-[20px] bg-foreground text-background hover:bg-foreground/90" 
-                disabled={!newProfileName || submitting}
-                onClick={async () => {
-                  setSubmitting(true);
-                  try {
-                    const payload = {
-                      displayName: newProfileName,
-                      username: newProfileUsername,
-                      bio: newProfileEmail ? `Contact: ${newProfileEmail}` : '',
-                      platform: normalizeUrl(newProfileUrl) ? targetPlatform : 'website',
-                      sourceUrl: normalizeUrl(newProfileUrl),
-                      verified: false,
-                      confidence: 1
-                    };
-                    pickCandidate(payload as any);
-                    setTargetManual(!payload.sourceUrl);
-                    setView('report');
-                  } finally {
-                    setSubmitting(false);
-                  }
+              <Button
+                className="flex-1 rounded-2xl bg-foreground py-6 text-background hover:bg-foreground/90"
+                disabled={!newProfileName.trim() || !newProfileUsername.trim() || submitting}
+                onClick={() => {
+                  const sourceUrl = normalizeUrl(newProfileUrl);
+                  const candidate: AccountCandidate = {
+                    platform: sourceUrl ? targetPlatform : 'website',
+                    username: newProfileUsername,
+                    displayName: newProfileName.trim(),
+                    sourceUrl: sourceUrl || '',
+                    bio: '',
+                    verified: false,
+                    confidence: 1,
+                    reason: 'Manually added profile',
+                  };
+                  pickCandidate(candidate);
+                  setTargetManual(!sourceUrl);
+                  setView('report');
                 }}
               >
                 Confirm & Add
@@ -431,14 +501,14 @@ export function ReportModal({
             </div>
           </div>
         ) : (
-          <div className="space-y-8 pb-12">
+          <div className="space-y-6 sm:space-y-8">
           {/* Step 1: Who */}
           {!accountId && (
             <section className="space-y-4">
-              <div className="rounded-[24px] border border-border bg-card/50 p-5 shadow-sm">
-                <h3 className="text-[17px] font-bold mb-1">Who is this report about?</h3>
-                <p className="text-[13px] text-muted-foreground mb-4">We will create or reuse the public dossier behind this filing.</p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
+              <div className="rounded-2xl border border-border bg-card/50 p-4 shadow-sm sm:p-5">
+                <h3 className="text-[15px] font-bold mb-1 sm:text-[17px]">Who is this report about?</h3>
+                <p className="text-[12px] text-muted-foreground mb-3 sm:text-[13px] sm:mb-4">We will create or reuse the public dossier behind this filing.</p>
+                <div className="grid grid-cols-2 gap-1.5 mb-3 sm:grid-cols-4 sm:gap-2 sm:mb-4">
                   {(['instagram', 'facebook', 'x', 'youtube', 'tiktok', 'linkedin', 'reddit', 'snapchat'] as const).map((platform) => (
                     <button
                       key={platform}
@@ -449,7 +519,7 @@ export function ReportModal({
                         setResolvedAccountId(null);
                       }}
                       className={cn(
-                        'rounded-full border py-2.5 text-[12px] font-bold transition-all active:scale-95',
+                        'truncate rounded-full border px-2 py-2 text-[11px] font-bold transition-all active:scale-95 sm:py-2.5 sm:text-[12px]',
                         targetPlatform === platform
                           ? 'border-foreground bg-foreground text-background shadow-md'
                           : 'border-border bg-background text-muted-foreground hover:border-foreground/30'
@@ -474,7 +544,7 @@ export function ReportModal({
                       setResolvedAccountId(null);
                     }}
                     placeholder="Search name, brand, or @username"
-                    className="w-full rounded-full border border-border bg-background px-5 py-4 text-[14px] focus:outline-none focus:ring-2 focus:ring-primary/20 transition-shadow"
+                    className="w-full rounded-full border border-border bg-background px-4 py-3 text-[13px] focus:outline-none focus:ring-2 focus:ring-primary/20 transition-shadow sm:px-5 sm:py-4 sm:text-[14px]"
                   />
                   {searchingCandidates && (
                     <div className="absolute right-4 top-1/2 -translate-y-1/2">
@@ -572,74 +642,138 @@ export function ReportModal({
           )}
 
           {/* Impact Type */}
-          <section className="space-y-4">
+          <section className="space-y-3 sm:space-y-4">
             <div>
-              <h3 className="text-[17px] font-bold mb-1">What type of impact is this?</h3>
-              <p className="text-[13px] text-muted-foreground">Help us understand the nature of this report.</p>
+              <h3 className="text-[15px] font-bold mb-1 sm:text-[17px]">What type of impact is this?</h3>
+              <p className="text-[12px] text-muted-foreground sm:text-[13px]">Help us understand the nature of this report.</p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <button
+            <div className="grid grid-cols-2 gap-2 sm:gap-4">
+              <motion.button
                 onClick={() => setType('positive')}
+                whileTap={{ scale: 0.97 }}
+                transition={{ type: 'spring', stiffness: 380, damping: 25 }}
                 className={cn(
-                  'flex flex-col items-start gap-3 rounded-[24px] border p-5 transition-all text-left group',
-                  type === 'positive' ? 'border-primary bg-primary/5 shadow-sm' : 'border-border bg-card hover:border-primary/30'
+                  'flex flex-col items-start gap-2 rounded-2xl border p-3 text-left transition-colors duration-200 group sm:gap-3 sm:p-5',
+                  type === 'positive' ? 'border-primary bg-primary/5 shadow-md' : 'border-border bg-card hover:border-primary/30'
                 )}
               >
-                <div className={cn('flex h-11 w-11 items-center justify-center rounded-full transition-transform group-active:scale-90', type === 'positive' ? 'bg-primary text-background' : 'bg-primary/10 text-primary')}>
-                  <Heart size={22} fill={type === 'positive' ? 'currentColor' : 'none'} />
+                <motion.div
+                  animate={type === 'positive' ? { scale: [1, 1.15, 1] } : { scale: 1 }}
+                  transition={{ duration: 0.4 }}
+                  className={cn('flex h-9 w-9 items-center justify-center rounded-full transition-colors sm:h-11 sm:w-11', type === 'positive' ? 'bg-primary text-background' : 'bg-primary/10 text-primary')}
+                >
+                  <Heart size={18} fill={type === 'positive' ? 'currentColor' : 'none'} className="sm:h-[22px] sm:w-[22px]" />
+                </motion.div>
+                <div className="min-w-0">
+                  <div className={cn('text-[13px] font-bold sm:text-[15px]', type === 'positive' ? 'text-primary' : 'text-foreground')}>Positive</div>
+                  <div className="text-[11px] text-muted-foreground sm:text-[12px]">Someone did good</div>
                 </div>
-                <div>
-                  <div className={cn('text-[15px] font-bold', type === 'positive' ? 'text-primary' : 'text-foreground')}>Positive Impact</div>
-                  <div className="text-[12px] text-muted-foreground">Someone did good</div>
-                </div>
-              </button>
+              </motion.button>
 
-              <button
+              <motion.button
                 onClick={() => setType('negative')}
+                whileTap={{ scale: 0.97 }}
+                transition={{ type: 'spring', stiffness: 380, damping: 25 }}
                 className={cn(
-                  'flex flex-col items-start gap-3 rounded-[24px] border p-5 transition-all text-left group',
-                  type === 'negative' ? 'border-destructive bg-destructive/5 shadow-sm' : 'border-border bg-card hover:border-destructive/30'
+                  'flex flex-col items-start gap-2 rounded-2xl border p-3 text-left transition-colors duration-200 group sm:gap-3 sm:p-5',
+                  type === 'negative' ? 'border-destructive bg-destructive/5 shadow-md' : 'border-border bg-card hover:border-destructive/30'
                 )}
               >
-                <div className={cn('flex h-11 w-11 items-center justify-center rounded-full transition-transform group-active:scale-90', type === 'negative' ? 'bg-destructive text-background' : 'bg-destructive/10 text-destructive')}>
-                  <AlertTriangle size={22} fill={type === 'negative' ? 'currentColor' : 'none'} />
+                <motion.div
+                  animate={type === 'negative' ? { scale: [1, 1.15, 1] } : { scale: 1 }}
+                  transition={{ duration: 0.4 }}
+                  className={cn('flex h-9 w-9 items-center justify-center rounded-full transition-colors sm:h-11 sm:w-11', type === 'negative' ? 'bg-destructive text-background' : 'bg-destructive/10 text-destructive')}
+                >
+                  <AlertTriangle size={18} fill={type === 'negative' ? 'currentColor' : 'none'} className="sm:h-[22px] sm:w-[22px]" />
+                </motion.div>
+                <div className="min-w-0">
+                  <div className={cn('text-[13px] font-bold sm:text-[15px]', type === 'negative' ? 'text-destructive' : 'text-foreground')}>Negative</div>
+                  <div className="text-[11px] text-muted-foreground sm:text-[12px]">Harmful or unethical</div>
                 </div>
-                <div>
-                  <div className={cn('text-[15px] font-bold', type === 'negative' ? 'text-destructive' : 'text-foreground')}>Negative Impact</div>
-                  <div className="text-[12px] text-muted-foreground">Harmful or unethical</div>
-                </div>
-              </button>
+              </motion.button>
             </div>
           </section>
 
+          {/* Workbook deed */}
+          {type && (
+            <section className="space-y-4">
+              <div>
+                <h3 className="text-[17px] font-bold mb-1">Choose the workbook deed</h3>
+                <p className="text-[13px] text-muted-foreground">This determines the base score before multipliers.</p>
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="text-[13px] font-bold block mb-2">Category</label>
+                  <select
+                    value={category}
+                    onChange={(e) => {
+                      const nextCategory = e.target.value;
+                      const first = deedOptions.find((row) => row.category === nextCategory);
+                      setCategory(nextCategory);
+                      setDeed(first?.deed ?? '');
+                    }}
+                    className="w-full rounded-[12px] border border-border bg-card p-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  >
+                    {categoryOptions.map((option) => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[13px] font-bold block mb-2">Deed</label>
+                  <select
+                    value={deed}
+                    onChange={(e) => setDeed(e.target.value)}
+                    className="w-full rounded-[12px] border border-border bg-card p-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  >
+                    {filteredDeeds.map((row) => (
+                      <option key={`${row.category}:${row.deed}`} value={row.deed}>{row.deed}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              {selectedScoringRow && (
+                <div className="rounded-[18px] border border-border bg-card p-4 text-[13px] font-bold">
+                  Base score: <span className={selectedScoringRow.baseScore >= 0 ? 'text-primary' : 'text-destructive'}>
+                    {selectedScoringRow.baseScore > 0 ? '+' : ''}{selectedScoringRow.baseScore}
+                  </span>
+                </div>
+              )}
+            </section>
+          )}
+
           {/* Description */}
-          <section className="space-y-4">
+          <section className="space-y-3 sm:space-y-4">
             <div>
-              <h3 className="text-[17px] font-bold mb-1">Tell us what happened</h3>
-              <p className="text-[13px] text-muted-foreground">Be clear, specific and honest.</p>
+              <h3 className="text-[15px] font-bold mb-1 sm:text-[17px]">Tell us what happened</h3>
+              <p className="text-[12px] text-muted-foreground sm:text-[13px]">Be clear, specific and honest.</p>
             </div>
             <div className="relative">
               <textarea
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e) => setDescription(e.target.value.slice(0, 500))}
+                maxLength={500}
                 placeholder="Write a detailed description of the impact..."
-                className="w-full min-h-[140px] rounded-[24px] border border-border bg-card p-5 text-[15px] focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none transition-shadow"
+                className="min-h-[120px] w-full resize-none rounded-2xl border border-border bg-card p-4 pb-8 text-[14px] transition-shadow focus:outline-none focus:ring-2 focus:ring-primary/20 sm:min-h-[140px] sm:p-5 sm:text-[15px]"
               />
-              <div className="absolute bottom-4 right-5 text-[11px] font-medium text-muted-foreground bg-background/50 px-2 py-0.5 rounded-full backdrop-blur-sm">
-                {description.length}/500
+              <div className={cn(
+                "absolute bottom-3 right-3 text-[10px] font-medium px-2 py-0.5 rounded-full backdrop-blur-sm transition-colors sm:bottom-4 sm:right-4",
+                description.length < 10 ? "bg-destructive/10 text-destructive" : description.length > 450 ? "bg-amber-100/80 text-amber-700" : "bg-background/80 text-muted-foreground"
+              )}>
+                {description.length}/500{description.length < 10 && ' · min 10'}
               </div>
             </div>
           </section>
 
           {/* EVIDENCE - COMPULSORY */}
-          <section className="space-y-4">
+          <section className="space-y-3 sm:space-y-4">
             <div>
-              <div className="flex items-center justify-between">
-                <h3 className="text-[17px] font-bold mb-1">Add Proof</h3>
-                <span className="text-[10px] font-bold uppercase tracking-widest text-primary bg-primary/10 px-2 py-0.5 rounded-full">Required</span>
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-[15px] font-bold mb-1 sm:text-[17px]">Add Proof</h3>
+                <span className="shrink-0 text-[10px] font-bold uppercase tracking-widest text-primary bg-primary/10 px-2 py-0.5 rounded-full">Required</span>
               </div>
-              <p className="text-[13px] text-muted-foreground">Upload a photo or video as evidence. This is compulsory.</p>
+              <p className="text-[12px] text-muted-foreground sm:text-[13px]">Upload a photo or video as evidence. This is compulsory.</p>
             </div>
 
             <input
@@ -651,7 +785,7 @@ export function ReportModal({
             />
 
             {media ? (
-              <div className="rounded-[24px] border border-border bg-card p-4 group relative overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+              <div className="group relative overflow-hidden rounded-2xl border border-border bg-card p-4 animate-in fade-in zoom-in-95 duration-300">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
                   {media.type === 'video' ? <Video size={14} className="text-primary" /> : <ImageIcon size={14} className="text-primary" />}
                   Evidence Uploaded · {(media.bytes / (1024 * 1024)).toFixed(2)} MB
@@ -676,21 +810,21 @@ export function ReportModal({
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
                 className={cn(
-                  "w-full rounded-[24px] border-2 border-dashed p-8 text-center transition-all duration-300 active:scale-[0.98]",
+                  "w-full rounded-2xl border-2 border-dashed p-5 text-center transition-all duration-300 active:scale-[0.98] sm:p-8",
                   uploading ? "bg-muted border-border" : "bg-card border-border hover:border-primary/40 hover:bg-primary/[0.02]"
                 )}
               >
-                <div className="flex flex-col items-center justify-center gap-3">
-                  <div className={cn("flex h-14 w-14 items-center justify-center rounded-full transition-colors", uploading ? "bg-muted-foreground/10" : "bg-primary/5 text-primary")}>
+                <div className="flex flex-col items-center justify-center gap-2 sm:gap-3">
+                  <div className={cn("flex h-12 w-12 items-center justify-center rounded-full transition-colors sm:h-14 sm:w-14", uploading ? "bg-muted-foreground/10" : "bg-primary/5 text-primary")}>
                     {uploading ? (
                       <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                     ) : (
-                      <Plus size={32} />
+                      <Plus size={26} className="sm:h-8 sm:w-8" />
                     )}
                   </div>
-                  <div className="space-y-1">
-                    <span className="block text-[15px] font-bold text-foreground">{uploading ? 'Uploading Evidence...' : 'Upload Evidence'}</span>
-                    <span className="block text-[12px] text-muted-foreground">Photos or Videos up to 50MB</span>
+                  <div className="space-y-0.5 sm:space-y-1">
+                    <span className="block text-[14px] font-bold text-foreground sm:text-[15px]">{uploading ? 'Uploading Evidence...' : 'Upload Evidence'}</span>
+                    <span className="block text-[11px] text-muted-foreground sm:text-[12px]">Photos or Videos up to 50MB</span>
                   </div>
                 </div>
               </button>
@@ -698,27 +832,25 @@ export function ReportModal({
           </section>
 
           {/* AI Undertaking */}
-          <section className="rounded-[24px] bg-primary/5 p-5 border border-primary/10 shadow-sm">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <ShieldCheck size={18} />
+          <section className="rounded-2xl border border-primary/10 bg-primary/5 p-4 shadow-sm sm:p-5">
+            <div className="flex items-center gap-2 mb-3 sm:gap-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <ShieldCheck size={16} />
               </div>
-              <h3 className="text-[15px] font-bold text-foreground">AI Undertaking</h3>
+              <h3 className="text-[14px] font-bold text-foreground sm:text-[15px]">AI Undertaking</h3>
             </div>
-            <label className="flex items-start gap-4 cursor-pointer group">
-              <div className="relative flex items-center mt-0.5">
-                <input
-                  type="checkbox"
-                  checked={aiConsent}
-                  onChange={(e) => setAiConsent(e.target.checked)}
-                  className="peer h-5 w-5 rounded-md border-border bg-background text-primary focus:ring-primary/20 transition-all cursor-pointer"
-                />
-              </div>
-              <div className="space-y-1">
-                <span className="block text-[13px] font-medium text-foreground/90 leading-snug group-hover:text-foreground transition-colors">
+            <label className="flex items-start gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={aiConsent}
+                onChange={(e) => setAiConsent(e.target.checked)}
+                className="peer mt-0.5 h-5 w-5 shrink-0 rounded-md border-border bg-background text-primary focus:ring-primary/20 transition-all cursor-pointer"
+              />
+              <div className="min-w-0 space-y-1">
+                <span className="block text-[12px] font-medium text-foreground/90 leading-snug group-hover:text-foreground transition-colors sm:text-[13px]">
                   I confirm that this content is not AI-made or fabricated and is shared in good faith.
                 </span>
-                <span className="block text-[11px] text-muted-foreground/70 italic">
+                <span className="block text-[10px] text-muted-foreground/70 italic sm:text-[11px]">
                   False or misleading reports may lead to permanent platform ban.
                 </span>
               </div>
@@ -726,12 +858,12 @@ export function ReportModal({
           </section>
 
           {/* Scoring Options */}
-          <section className="space-y-4">
+          <section className="space-y-3 sm:space-y-4">
             <div>
-              <h3 className="text-[17px] font-bold mb-1">Repetition & Intent</h3>
-              <p className="text-[13px] text-muted-foreground">Classify the pattern and intent of this incident.</p>
+              <h3 className="text-[15px] font-bold mb-1 sm:text-[17px]">Repetition & Intent</h3>
+              <p className="text-[12px] text-muted-foreground sm:text-[13px]">Classify the pattern and intent of this incident.</p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
               <div>
                 <label className="text-[13px] font-bold block mb-2">Repetition Pattern (RP)</label>
                 <select 
@@ -762,36 +894,49 @@ export function ReportModal({
                   <option value="3">Fully Planned (3)</option>
                 </select>
               </div>
+              <div>
+                <label className="text-[13px] font-bold block mb-2">Circumstances (C)</label>
+                <select
+                  value={circumstances}
+                  onChange={(e) => setCircumstances(e.target.value)}
+                  className="w-full rounded-[12px] border border-border bg-card p-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-primary/20"
+                >
+                  {Object.entries(CIRCUMSTANCES_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>{label} ({value})</option>
+                  ))}
+                </select>
+              </div>
             </div>
           </section>
 
           {/* Optional Details */}
-          <section className="space-y-6">
+          <section className="space-y-4 sm:space-y-6">
             <div>
-              <h3 className="text-[16px] font-bold mb-4 flex items-center justify-between">
-                Additional Details <span className="text-[11px] font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded-full uppercase tracking-wider">Optional</span>
+              <h3 className="text-[14px] font-bold mb-3 flex items-center justify-between gap-2 sm:text-[16px] sm:mb-4">
+                <span className="truncate">Additional Details</span>
+                <span className="shrink-0 text-[10px] font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded-full uppercase tracking-wider sm:text-[11px]">Optional</span>
               </h3>
-              
-              <div className="space-y-4">
+
+              <div className="space-y-3 sm:space-y-4">
                 <div className="relative group">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={16} />
                   <input
                     type="text"
                     value={taggedPerson}
                     onChange={(e) => setTaggedPerson(e.target.value)}
                     placeholder="Tag person(s) involved"
-                    className="w-full rounded-full border border-border bg-card py-3.5 pl-12 pr-4 text-[14px] focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                    className="w-full rounded-full border border-border bg-card py-3 pl-11 pr-4 text-[13px] focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all sm:py-3.5 sm:pl-12 sm:text-[14px]"
                   />
                 </div>
 
                 <div className="relative group">
-                  <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
+                  <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={16} />
                   <input
                     type="text"
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
                     placeholder="Where did this happen?"
-                    className="w-full rounded-full border border-border bg-card py-3.5 pl-12 pr-4 text-[14px] focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                    className="w-full rounded-full border border-border bg-card py-3 pl-11 pr-4 text-[13px] focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all sm:py-3.5 sm:pl-12 sm:text-[14px]"
                   />
                 </div>
               </div>
@@ -799,19 +944,19 @@ export function ReportModal({
           </section>
 
           {/* Submit Action */}
-          <div className="sticky bottom-0 bg-background pt-4 border-t border-border mt-8">
+          <div className="sticky bottom-0 -mx-3 -mb-3 mt-6 border-t border-border bg-background/95 px-3 pb-3 pt-3 backdrop-blur sm:-mx-6 sm:-mb-6 sm:mt-8 sm:px-6 sm:pb-6 sm:pt-4">
             {submitError && (
-              <p className="mb-3 rounded-2xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-[13px] font-medium text-destructive">
+              <p className="mb-3 rounded-2xl border border-destructive/20 bg-destructive/10 px-3 py-2.5 text-[12px] font-medium text-destructive sm:px-4 sm:py-3 sm:text-[13px]">
                 {submitError}
               </p>
             )}
             <button
               type="button"
               onClick={submit}
-              disabled={submitting || uploading || !type || description.length < 10 || !media || (!accountId && !targetHandle.trim())}
+              disabled={submitting || uploading || !type || !selectedScoringRow || description.length < 10 || !media || (!accountId && !targetHandle.trim())}
               className={cn(
-                "w-full rounded-full py-4.5 text-[16px] font-bold transition-all active:scale-[0.98] shadow-lg",
-                (submitting || uploading || !type || description.length < 10 || !media || (!accountId && !targetHandle.trim()))
+                "w-full rounded-full py-4 text-[15px] font-bold transition-all active:scale-[0.98] shadow-lg sm:text-[16px]",
+                (submitting || uploading || !type || !selectedScoringRow || description.length < 10 || !media || (!accountId && !targetHandle.trim()))
                   ? "bg-muted text-muted-foreground cursor-not-allowed opacity-70 shadow-none"
                   : "bg-foreground text-background hover:bg-foreground/90 hover:shadow-xl"
               )}
@@ -827,14 +972,16 @@ export function ReportModal({
                 'Submit Report'
               )}
             </button>
-            <p className="text-center text-[11px] text-muted-foreground mt-3 flex items-center justify-center gap-1.5 font-medium">
-              <ShieldCheck size={12} className="text-primary" />
-              Your identity will remain 100% anonymous
+            <p className="text-center text-[10px] text-muted-foreground mt-2 flex items-center justify-center gap-1.5 font-medium sm:mt-3 sm:text-[11px]">
+              <ShieldCheck size={11} className="text-primary shrink-0" />
+              <span className="truncate">{user ? 'Reporter identity is hidden on public surfaces' : 'Anonymous filing uses a private hash'}</span>
             </p>
           </div>
         </div>
         )}
-      </motion.div>
-    </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

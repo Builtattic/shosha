@@ -62,6 +62,10 @@ export interface FeedItemProps {
     url: string;
     count?: number;
   };
+  category?: string;
+  deed?: string;
+  disputeStatus?: string;
+  reportScore?: number;
   stats: {
     aligns: number;
     opposes: number;
@@ -83,6 +87,10 @@ export function FeedItem({
   title,
   location,
   media,
+  category,
+  deed,
+  disputeStatus,
+  reportScore,
   stats,
   viewer
 }: FeedItemProps) {
@@ -183,21 +191,22 @@ export function FeedItem({
   }
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }}
+    <motion.div
+      initial={{ opacity: 0, y: 24 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-50px" }}
-      className="mb-6 overflow-hidden rounded-[24px] border border-border bg-card shadow-sm transition-all hover:shadow-md"
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      className="mb-6 overflow-hidden rounded-[24px] border border-border bg-card shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 hover:border-foreground/10"
     >
       {/* Header */}
       <div className="flex items-start justify-between p-5 pb-3">
         <div className="flex items-center gap-3">
           <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full border border-border bg-muted shadow-sm flex items-center justify-center">
              {user.avatar && user.avatar !== 'null' && user.avatar !== 'undefined' ? (
-                <img 
-                  src={user.avatar} 
-                  alt={user.name} 
-                  className="h-full w-full object-cover" 
+                <img
+                  src={user.avatar}
+                  alt={user.name}
+                  className="h-full w-full object-cover"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
                     target.style.display = 'none';
@@ -230,14 +239,21 @@ export function FeedItem({
             </div>
           </div>
         </div>
-        
-        <div className={cn(
-          "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest transition-all",
-          isPositive ? "bg-primary/10 text-primary border border-primary/20" : "bg-destructive/10 text-destructive border border-destructive/20"
-        )}>
-          {isPositive ? <Plus size={12} strokeWidth={3} /> : <Minus size={12} strokeWidth={3} />}
+
+        <motion.div
+          initial={{ opacity: 0, scale: 0.85 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.15, duration: 0.3 }}
+          className={cn(
+            "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.12em] transition-all",
+            isPositive
+              ? "bg-primary/10 text-primary ring-1 ring-primary/20"
+              : "bg-destructive/10 text-destructive ring-1 ring-destructive/20"
+          )}
+        >
+          {isPositive ? <Plus size={12} strokeWidth={3.5} /> : <Minus size={12} strokeWidth={3.5} />}
           {type}
-        </div>
+        </motion.div>
       </div>
 
       {/* Media Content */}
@@ -281,6 +297,30 @@ export function FeedItem({
 
       {/* Body */}
       <div className="px-5 py-4">
+        {(category || deed || reportScore !== undefined || disputeStatus) && (
+          <div className="mb-3 flex flex-wrap gap-2">
+            {category && (
+              <span className="rounded-full border border-border bg-muted px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                {category}
+              </span>
+            )}
+            {deed && (
+              <span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-primary">
+                {deed}
+              </span>
+            )}
+            {reportScore !== undefined && (
+              <span className="rounded-full border border-border bg-background px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-foreground">
+                Score {reportScore > 0 ? '+' : ''}{Math.round(reportScore)}
+              </span>
+            )}
+            {disputeStatus && disputeStatus !== 'none' && (
+              <span className="rounded-full border border-border bg-muted px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                {disputeStatus}
+              </span>
+            )}
+          </div>
+        )}
         <h3 className="text-[18px] font-bold leading-snug text-foreground">{title}</h3>
         {location && (
           <div className="mt-2 flex items-center gap-1.5 text-[12px] font-medium text-muted-foreground">
@@ -292,34 +332,38 @@ export function FeedItem({
 
       {/* Action Buttons */}
       <div className="flex gap-3 px-5 pb-5">
-        <button
+        <motion.button
           type="button"
           disabled={busy === 'align'}
           onClick={() => interact('align')}
+          whileTap={{ scale: 0.96 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 25 }}
           className={cn(
-            'flex flex-1 items-center justify-center gap-2 rounded-xl py-3.5 text-[15px] font-bold transition-all active:scale-[0.98] border disabled:opacity-60',
+            'flex flex-1 items-center justify-center gap-2 rounded-2xl py-3.5 text-[15px] font-black transition-colors duration-200 border disabled:opacity-60',
             viewerState.vote === 'align'
-              ? 'bg-primary text-background border-primary'
-              : 'bg-primary/10 text-primary hover:bg-primary/20 border-primary/20'
+              ? 'bg-primary text-background border-primary shadow-md'
+              : 'bg-primary/10 text-primary hover:bg-primary/15 border-primary/20'
           )}
         >
-          <Plus size={18} strokeWidth={3} />
-          {compact(localStats.aligns)}
-        </button>
-        <button
+          <Plus size={18} strokeWidth={3.2} />
+          <span className="tabular-nums">{compact(localStats.aligns)}</span>
+        </motion.button>
+        <motion.button
           type="button"
           disabled={busy === 'oppose'}
           onClick={() => interact('oppose')}
+          whileTap={{ scale: 0.96 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 25 }}
           className={cn(
-            'flex flex-1 items-center justify-center gap-2 rounded-xl py-3.5 text-[15px] font-bold transition-all active:scale-[0.98] border disabled:opacity-60',
+            'flex flex-1 items-center justify-center gap-2 rounded-2xl py-3.5 text-[15px] font-black transition-colors duration-200 border disabled:opacity-60',
             viewerState.vote === 'oppose'
-              ? 'bg-destructive text-background border-destructive'
-              : 'bg-destructive/10 text-destructive hover:bg-destructive/20 border-destructive/20'
+              ? 'bg-destructive text-background border-destructive shadow-md'
+              : 'bg-destructive/10 text-destructive hover:bg-destructive/15 border-destructive/20'
           )}
         >
-          <Minus size={18} strokeWidth={3} />
-          {compact(localStats.opposes)}
-        </button>
+          <Minus size={18} strokeWidth={3.2} />
+          <span className="tabular-nums">{compact(localStats.opposes)}</span>
+        </motion.button>
       </div>
 
       {/* Footer Actions */}

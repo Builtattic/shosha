@@ -24,7 +24,7 @@ import { cn } from '@/lib/utils';
 
 export default function TrustUpgradePage() {
   return (
-    <main className="min-h-screen bg-background pb-24">
+    <main className="min-h-screen bg-background safe-bottom">
       {/* Top Header */}
       <header className="flex items-center justify-between p-4 bg-background/80 backdrop-blur-md sticky top-0 z-50">
         <button className="text-muted-foreground hover:text-foreground">

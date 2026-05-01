@@ -3,24 +3,28 @@ import { fail, fromZod, ok } from '@/lib/api';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
 import { idSchema } from '@/lib/validators';
 import {
-  DEFAULT_MULTIPLIERS,
-  applySheetScore,
+  WORKBOOK_FORMULA_VERSION,
+  calcWorkbookScoreFromEntries,
   calcDelta,
   calcMultiplierQuotient,
-  profileMultipliersFromUser,
+  credibilityWeight,
+  profileMultipliersFromWorkbookProfile,
   resolveSheetBaseImpact,
+  workbookDecay,
 } from '@/lib/scoring';
 import * as accountsRepo from '@/lib/repos/accounts';
 import * as adminActionsRepo from '@/lib/repos/adminActions';
 import * as eventsRepo from '@/lib/repos/events';
 import * as evidenceRepo from '@/lib/repos/evidenceProposals';
+import * as ledgerEntriesRepo from '@/lib/repos/ledgerEntries';
+import * as reportMetadataRepo from '@/lib/repos/reportMetadata';
 import * as reportsRepo from '@/lib/repos/reports';
-import * as usersRepo from '@/lib/repos/users';
+import * as siteSettingsRepo from '@/lib/repos/siteSettings';
 
 const schema = z.object({
   verdict: z.enum(['approved', 'rejected']),
   note: z.string().max(500).default('Shosha evidence review.'),
-  finalImpact: z.number().int().min(-10).max(10).optional()
+  finalImpact: z.number().int().min(-100000).max(100000).optional()
 });
 
 function evidenceMediaUrl(proposalId: string, sourceUrls: string[]) {
@@ -71,20 +75,27 @@ export async function POST(request: Request, { params }: { params: { id: string 
   }
 
   const scoringRow = resolveSheetBaseImpact(proposal.scoringDeed, proposal.type);
-  const claimant = account.claimedBy ? await usersRepo.findById(account.claimedBy) : null;
-  const multipliers = claimant?.onboardingComplete ? profileMultipliersFromUser(claimant) : DEFAULT_MULTIPLIERS;
+  const multipliers = profileMultipliersFromWorkbookProfile(account);
   const multiplierQuotient = calcMultiplierQuotient(multipliers);
-  const delta = calcDelta(scoringRow.baseScore, multipliers);
+  const settings = await siteSettingsRepo.get();
+  const rawDelta = calcDelta(scoringRow.baseScore, multipliers);
+  const delta = Math.max(-settings.singleReportDeltaCap, Math.min(settings.singleReportDeltaCap, rawDelta));
   const scoreBefore = account.score ?? 1000;
-  const { score: scoreAfter, decay } = applySheetScore(scoreBefore, delta);
+  const decay = workbookDecay(delta);
   const decidedAt = new Date().toISOString();
-  const finalImpact = parsed.data.finalImpact ?? proposal.suggestedImpact;
+  const finalImpact = parsed.data.finalImpact ?? Math.round(delta);
 
   const report = await reportsRepo.create({
     accountId: account._id,
     reporterId: user!._id,
     anonymousTag: user!.username,
+    hashedUserId: user!._id,
     type: proposal.type,
+    category: scoringRow.category,
+    deed: scoringRow.deed,
+    baseScore: scoringRow.baseScore,
+    reportScore: rawDelta,
+    credibilityWeight: credibilityWeight(user!.reporterScore, 80),
     description: proposal.summary,
     feelings: `Shosha evidence: ${proposal.title}`,
     media: {
@@ -109,6 +120,12 @@ export async function POST(request: Request, { params }: { params: { id: string 
       verdict: 'approved',
       finalImpact,
       note: parsed.data.note,
+      category: scoringRow.category,
+      deed: scoringRow.deed,
+      baseScore: scoringRow.baseScore,
+      repetitionPattern: String(multipliers.reputation),
+      intent: String(multipliers.intent),
+      circumstances: String(multipliers.circumstances),
       decidedAt
     },
     visibility: 'public',
@@ -118,6 +135,38 @@ export async function POST(request: Request, { params }: { params: { id: string 
     source: 'admin',
     stats: { aligns: 0, opposes: 0, comments: 0, shares: 0 }
   });
+
+  const ledgerEntry = await ledgerEntriesRepo.createWithId(`report_${report._id}`, {
+    profileId: account._id,
+    reportId: report._id,
+    baseScore: scoringRow.baseScore,
+    multipliers,
+    multiplierQuotient,
+    delta,
+    timestamp: decidedAt,
+    formulaVersion: WORKBOOK_FORMULA_VERSION,
+    capped: delta !== rawDelta,
+  });
+
+  await reportMetadataRepo.upsert(report._id, {
+    reportId: report._id,
+    profileId: account._id,
+    multipliers,
+    multiplierQuotient,
+    formulaVersion: WORKBOOK_FORMULA_VERSION,
+    sourceFields: {
+      category: scoringRow.category,
+      deed: scoringRow.deed,
+      baseScore: scoringRow.baseScore,
+      ledgerEntryId: ledgerEntry._id,
+      evidenceProposalId: proposal._id,
+    },
+  });
+
+  const ledgerEntries = await ledgerEntriesRepo.listForProfile(account._id);
+  const tracker = calcWorkbookScoreFromEntries(ledgerEntries);
+  const scoreAfter = tracker.finalScore;
+  const globalScore = ledgerEntries.reduce((sum, entry) => sum + entry.delta, 0);
 
   const event = await eventsRepo.create({
     subjectId: account._id,
@@ -135,7 +184,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     decay,
     category: scoringRow.category,
     deed: scoringRow.deed,
-    formulaVersion: 'sheet-v1',
+    formulaVersion: WORKBOOK_FORMULA_VERSION,
     proofLinks: proposal.sourceUrls,
     location: account.region ?? 'Global',
     timestamp: proposal.eventDate ?? decidedAt,
@@ -145,9 +194,12 @@ export async function POST(request: Request, { params }: { params: { id: string 
     stats: { aligns: 0, opposes: 0, comments: 0, shares: 0 }
   });
 
-  const updatedReport = await reportsRepo.update(report._id, { eventId: event._id });
+  const updatedReport = await reportsRepo.update(report._id, { eventId: event._id, ledgerEntryId: ledgerEntry._id });
   const updatedAccount = await accountsRepo.update(account._id, {
     score: scoreAfter,
+    displayScore: scoreAfter,
+    globalScore,
+    windowScores: tracker,
     credibility: account.credibility ?? 80,
     scoreHistory: [
       ...(account.scoreHistory ?? []),

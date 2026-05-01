@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Input, Textarea } from '@/components/ui/Input';
 import { useToast } from '@/components/ui/Toast';
-import { ReportModal } from '@/components/report/ReportModal';
+import { useReportModal } from '@/components/report/ReportModalProvider';
 import { cn } from '@/lib/utils';
 
 type UploadedMedia = {
@@ -30,7 +30,7 @@ export function DossierActions({
 }) {
   const { user } = useAuth();
   const toast = useToast();
-  const [reportOpen, setReportOpen] = useState(false);
+  const reportModal = useReportModal();
   const [claimOpen, setClaimOpen] = useState(false);
   const [auditOpen, setAuditOpen] = useState(false);
   const [reason, setReason] = useState('');
@@ -143,7 +143,7 @@ export function DossierActions({
   return (
     <>
       <div className="grid grid-cols-1 gap-2 px-4 sm:grid-cols-3">
-        <Button onClick={() => setReportOpen(true)}>
+        <Button onClick={() => reportModal.open({ accountId })}>
           <FileWarning size={16} />
           Report
         </Button>
@@ -163,7 +163,6 @@ export function DossierActions({
           Audit
         </Button>
       </div>
-      <ReportModal open={reportOpen} accountId={accountId} onClose={() => setReportOpen(false)} />
       <Modal open={claimOpen} title={claimStep === 4 ? "Verification Submitted" : claimStep === 1 ? "Claim Profile" : claimStep === 2 ? "Verify Your Identity" : "Liveness Check"} onClose={() => { setClaimOpen(false); setClaimStep(1); }}>
         <div className="space-y-6 pb-2 text-sm">
           {claimStep === 1 && (

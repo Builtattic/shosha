@@ -7,6 +7,7 @@ import * as notificationsRepo from '@/lib/repos/notifications';
 import * as reportsRepo from '@/lib/repos/reports';
 import * as accountsRepo from '@/lib/repos/accounts';
 import * as usersRepo from '@/lib/repos/users';
+import * as siteSettingsRepo from '@/lib/repos/siteSettings';
 
 async function notifyReporter(
   reportId: string,
@@ -76,6 +77,13 @@ export async function POST(request: Request, { params }: { params: { id: string 
   if (parsed.data.action === 'align' || parsed.data.action === 'oppose') {
     const result = await interactionsRepo.setVote(id.data, user._id, parsed.data.action);
     if (!result) return fail('not_found', 'No filing exists for that id.', 404);
+    const settings = await siteSettingsRepo.get();
+    if (parsed.data.action === 'oppose' && result.stats?.opposes >= settings.disputeThreshold) {
+      const report = await reportsRepo.findById(id.data);
+      if (report && report.disputeStatus !== 'open') {
+        await reportsRepo.update(id.data, { disputeStatus: 'open' });
+      }
+    }
     // Only notify when the vote was newly set (not when toggled off).
     if (result.vote === parsed.data.action) {
       await notifyReporter(

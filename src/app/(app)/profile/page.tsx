@@ -163,7 +163,7 @@ export default function ProfilePage() {
   ] as const;
 
   return (
-    <main className="min-h-screen bg-[#fafafa] pb-24 font-sans">
+    <main className="min-h-screen bg-[#fafafa] safe-bottom font-sans">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-[#fafafa]/80 px-4 py-4 backdrop-blur-xl">
         <div className="mx-auto flex max-w-2xl items-center justify-between">

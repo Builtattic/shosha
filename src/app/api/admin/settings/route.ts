@@ -14,6 +14,11 @@ const patchSchema = z.object({
   scoreImpactMax: z.number().int().min(-100).max(100).optional(),
   uploadMaxBytes: z.number().int().positive().optional(),
   liveFeedEnabled: z.boolean().optional(),
+  disputeThreshold: z.number().int().min(1).max(100).optional(),
+  duplicateThreshold: z.number().min(0).max(1).optional(),
+  singleReportDeltaCap: z.number().int().positive().optional(),
+  dailyProfileDeltaCap: z.number().int().positive().optional(),
+  reportCooldownHours: z.number().int().min(1).max(24 * 30).optional(),
 });
 
 export async function GET() {
