@@ -67,7 +67,7 @@ export async function POST(request: Request) {
     await bucket.file(filePath).save(buffer, { contentType, resumable: false });
     url = process.env.FIREBASE_STORAGE_EMULATOR_HOST
       ? publicEmulatorUrl(filePath)
-      : (await bucket.file(filePath).getSignedUrl({ action: 'read', expires: Date.now() + 7 * 24 * 60 * 60 * 1000 }))[0];
+      : `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media`;
   } catch (error) {
     if (!isMissingBucketError(error) && process.env.NODE_ENV === 'production') {
       console.error('[POST /api/media/upload] Firebase Storage upload failed:', error);

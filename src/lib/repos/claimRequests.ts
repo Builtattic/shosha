@@ -2,7 +2,7 @@ import { adminDb } from '@/lib/firebase/admin';
 import { withId } from '@/lib/repos/_serialize';
 
 export type ClaimStatus = 'pending' | 'approved' | 'rejected';
-export type ClaimProofType = 'bio_code' | 'dm_screenshot' | 'oauth';
+export type ClaimProofType = 'bio_code' | 'dm_screenshot' | 'oauth' | 'wizard_flow';
 
 export type ClaimRequestRecord = {
   _id: string;

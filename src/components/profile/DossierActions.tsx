@@ -1,13 +1,21 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { BadgeCheck, FileWarning, RefreshCcw } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { BadgeCheck, FileWarning, RefreshCcw, UploadCloud, CheckCircle2, ChevronLeft, Loader2, Video, Image as ImageIcon } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
-import { Textarea } from '@/components/ui/Input';
+import { Input, Textarea } from '@/components/ui/Input';
 import { useToast } from '@/components/ui/Toast';
 import { ReportModal } from '@/components/report/ReportModal';
+import { cn } from '@/lib/utils';
+
+type UploadedMedia = {
+  url: string;
+  type: 'image' | 'video';
+  bytes: number;
+};
+
 
 type ClaimMethod = 'bio_code' | 'dm_screenshot' | 'oauth';
 
@@ -26,6 +34,14 @@ export function DossierActions({
   const [claimOpen, setClaimOpen] = useState(false);
   const [auditOpen, setAuditOpen] = useState(false);
   const [reason, setReason] = useState('');
+  // Claim Wizard State
+  const [claimStep, setClaimStep] = useState(1);
+  const [claimEmail, setClaimEmail] = useState('');
+  const [claimIdMedia, setClaimIdMedia] = useState<UploadedMedia | null>(null);
+  const [claimLivenessMedia, setClaimLivenessMedia] = useState<UploadedMedia | null>(null);
+  const [uploadTarget, setUploadTarget] = useState<'id' | 'liveness' | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [claimNote, setClaimNote] = useState('');
   const [claimMethod, setClaimMethod] = useState<ClaimMethod>('bio_code');
   const [submitting, setSubmitting] = useState(false);
@@ -56,6 +72,37 @@ export function DossierActions({
     };
   }, [user]);
 
+  async function handleFile(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file || !uploadTarget) return;
+    setUploading(true);
+    try {
+      const form = new FormData();
+      form.set('file', file);
+      const res = await fetch('/api/media/upload', { method: 'POST', body: form });
+      const payload = await res.json();
+      if (!payload.ok) throw new Error(payload.error?.message ?? 'Upload failed');
+      
+      const mediaInfo = {
+        url: payload.data.url,
+        type: file.type.startsWith('video/') ? 'video' as const : 'image' as const,
+        bytes: file.size
+      };
+      
+      if (uploadTarget === 'id') {
+        setClaimIdMedia(mediaInfo);
+      } else {
+        setClaimLivenessMedia(mediaInfo);
+      }
+    } catch (error) {
+      toast.push(error instanceof Error ? error.message : 'Upload failed');
+    } finally {
+      setUploading(false);
+      setUploadTarget(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }
+
   async function submitClaim() {
     setSubmitting(true);
     try {
@@ -63,15 +110,17 @@ export function DossierActions({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          proofType: claimMethod,
-          proofPayload: claimNote.trim() ? { note: claimNote.trim() } : {}
+          proofType: 'wizard_flow',
+          proofPayload: {
+            email: claimEmail,
+            idMedia: claimIdMedia,
+            livenessMedia: claimLivenessMedia
+          }
         })
       });
       const payload = await response.json();
       if (payload.ok) {
-        toast.push('Claim submitted — pending admin review.');
-        setClaimOpen(false);
-        setClaimNote('');
+        setClaimStep(4);
       } else {
         toast.push(payload.error?.message ?? 'Claim could not be submitted.');
       }
@@ -99,9 +148,9 @@ export function DossierActions({
           Report
         </Button>
         {claimable ? (
-          <Button variant="secondary" disabled={!user} onClick={() => setClaimOpen(true)}>
+          <Button className="bg-foreground text-background hover:bg-foreground/90" disabled={!user} onClick={() => setClaimOpen(true)}>
             <BadgeCheck size={16} />
-            Claim
+            Claim This Profile
           </Button>
         ) : (
           <Button variant="secondary" disabled>
@@ -115,33 +164,125 @@ export function DossierActions({
         </Button>
       </div>
       <ReportModal open={reportOpen} accountId={accountId} onClose={() => setReportOpen(false)} />
-      <Modal open={claimOpen} title="Claim account" onClose={() => setClaimOpen(false)}>
-        <div className="space-y-3 text-sm">
-          <p className="text-muted">
-            All claims are reviewed manually by an admin. Pick the proof method you intend to provide and add any context.
-          </p>
-          <div className="space-y-2">
-            {(['bio_code', 'dm_screenshot', 'oauth'] as ClaimMethod[]).map((method) => (
-              <label key={method} className="flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="claim-method"
-                  value={method}
-                  checked={claimMethod === method}
-                  onChange={() => setClaimMethod(method)}
-                />
-                <span className="capitalize">{method.replace('_', ' ')}</span>
-              </label>
-            ))}
-          </div>
-          <Textarea
-            value={claimNote}
-            onChange={(event) => setClaimNote(event.target.value)}
-            placeholder="Optional: paste a link to your proof or notes for the admin."
+      <Modal open={claimOpen} title={claimStep === 4 ? "Verification Submitted" : claimStep === 1 ? "Claim Profile" : claimStep === 2 ? "Verify Your Identity" : "Liveness Check"} onClose={() => { setClaimOpen(false); setClaimStep(1); }}>
+        <div className="space-y-6 pb-2 text-sm">
+          {claimStep === 1 && (
+            <div className="space-y-4">
+              <p className="text-[13px] text-muted-foreground">To claim this profile, please provide your email address. We will use this to contact you regarding your verification status.</p>
+              <div>
+                <label className="text-[13px] font-bold">Email Address</label>
+                <Input value={claimEmail} onChange={(e) => setClaimEmail(e.target.value)} placeholder="email@example.com" className="mt-1.5 bg-background border-border" />
+              </div>
+              <Button className="w-full bg-foreground text-background" onClick={() => setClaimStep(2)} disabled={!claimEmail || !claimEmail.includes('@')}>Continue</Button>
+            </div>
+          )}
+          
+          {claimStep === 2 && (
+            <div className="space-y-4">
+              <p className="text-[13px] text-muted-foreground">Please upload a valid government-issued ID (Passport, Driver License, or National ID).</p>
+              
+              <button
+                onClick={() => { setUploadTarget('id'); fileInputRef.current?.click(); }}
+                className={cn(
+                  "flex w-full flex-col items-center justify-center gap-3 rounded-[24px] border-2 border-dashed bg-card/50 p-8 transition-colors",
+                  claimIdMedia ? "border-primary/50 bg-primary/5" : "border-border hover:bg-muted/50"
+                )}
+              >
+                {claimIdMedia ? (
+                  <>
+                    <div className="rounded-full bg-primary/10 p-3 text-primary"><CheckCircle2 size={24} /></div>
+                    <div className="text-center">
+                      <p className="text-[14px] font-bold text-primary">ID Uploaded Successfully</p>
+                      <p className="text-[12px] text-muted-foreground">Click to change file</p>
+                    </div>
+                  </>
+                ) : uploading && uploadTarget === 'id' ? (
+                  <>
+                    <Loader2 size={24} className="animate-spin text-muted-foreground" />
+                    <p className="text-[13px] font-medium text-muted-foreground">Uploading...</p>
+                  </>
+                ) : (
+                  <>
+                    <div className="rounded-full bg-muted p-3 text-muted-foreground"><UploadCloud size={24} /></div>
+                    <div className="text-center">
+                      <p className="text-[14px] font-bold">Upload Government ID</p>
+                      <p className="text-[12px] text-muted-foreground">Front side only (JPEG, PNG)</p>
+                    </div>
+                  </>
+                )}
+              </button>
+              
+              <div className="flex gap-3 pt-2">
+                <Button variant="secondary" className="flex-1" onClick={() => setClaimStep(1)}>Back</Button>
+                <Button className="flex-1 bg-foreground text-background" onClick={() => setClaimStep(3)} disabled={!claimIdMedia || uploading}>Continue</Button>
+              </div>
+            </div>
+          )}
+          
+          {claimStep === 3 && (
+            <div className="space-y-4">
+              <p className="text-[13px] text-muted-foreground">Please record or upload a short selfie video to confirm your identity matches the provided ID.</p>
+              
+              <button
+                onClick={() => { setUploadTarget('liveness'); fileInputRef.current?.click(); }}
+                className={cn(
+                  "flex w-full flex-col items-center justify-center gap-3 rounded-[24px] border-2 border-dashed bg-card/50 p-8 transition-colors",
+                  claimLivenessMedia ? "border-primary/50 bg-primary/5" : "border-border hover:bg-muted/50"
+                )}
+              >
+                {claimLivenessMedia ? (
+                  <>
+                    <div className="rounded-full bg-primary/10 p-3 text-primary"><CheckCircle2 size={24} /></div>
+                    <div className="text-center">
+                      <p className="text-[14px] font-bold text-primary">Video Uploaded Successfully</p>
+                      <p className="text-[12px] text-muted-foreground">Click to change file</p>
+                    </div>
+                  </>
+                ) : uploading && uploadTarget === 'liveness' ? (
+                  <>
+                    <Loader2 size={24} className="animate-spin text-muted-foreground" />
+                    <p className="text-[13px] font-medium text-muted-foreground">Uploading...</p>
+                  </>
+                ) : (
+                  <>
+                    <div className="rounded-full bg-muted p-3 text-muted-foreground"><Video size={24} /></div>
+                    <div className="text-center">
+                      <p className="text-[14px] font-bold">Upload Selfie Video</p>
+                      <p className="text-[12px] text-muted-foreground">MP4 or MOV format</p>
+                    </div>
+                  </>
+                )}
+              </button>
+              
+              <div className="flex gap-3 pt-2">
+                <Button variant="secondary" className="flex-1" onClick={() => setClaimStep(2)}>Back</Button>
+                <Button className="flex-1 bg-foreground text-background" onClick={submitClaim} disabled={!claimLivenessMedia || submitting}>
+                  {submitting ? 'Submitting...' : 'Submit Verification'}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {claimStep === 4 && (
+            <div className="flex flex-col items-center justify-center space-y-4 py-6 text-center">
+              <div className="rounded-full bg-primary/10 p-4 text-primary">
+                <CheckCircle2 size={32} />
+              </div>
+              <div>
+                <h3 className="text-[18px] font-bold mb-2">Verification Submitted</h3>
+                <p className="text-[13px] text-muted-foreground max-w-[280px]">Your claim is currently under review by an administrator. We will notify you via email once approved.</p>
+              </div>
+              <Button className="w-full mt-4 bg-foreground text-background" onClick={() => { setClaimOpen(false); setClaimStep(1); }}>Done</Button>
+            </div>
+          )}
+          
+          <input
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            accept={uploadTarget === 'liveness' ? "video/*" : "image/*"}
+            onChange={handleFile}
           />
-          <Button className="w-full" onClick={submitClaim} disabled={submitting}>
-            {submitting ? 'Submitting…' : 'Submit for review'}
-          </Button>
         </div>
       </Modal>
       <Modal open={auditOpen} title="Request audit" onClose={() => setAuditOpen(false)}>

@@ -1,4 +1,5 @@
 import { fail, fromZod, ok } from '@/lib/api';
+import { anonymousTag } from '@/lib/anonymous';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
 import { idSchema, mediaSchema, reportStatusSchema, reportTypeSchema, reportVisibilitySchema } from '@/lib/validators';
 import * as accountsRepo from '@/lib/repos/accounts';
@@ -40,8 +41,8 @@ export async function POST(request: Request) {
     : null;
   const report = await reportsRepo.create({
     accountId: parsed.data.accountId,
-    reporterId: user!._id,
-    anonymousTag: user!.username,
+    reporterId: null,
+    anonymousTag: anonymousTag(request),
     type: parsed.data.type,
     description: parsed.data.description,
     feelings: parsed.data.feelings,

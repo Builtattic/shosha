@@ -101,7 +101,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       proposedImpact: finalImpact,
       reasoning: `Approved Shosha evidence mapped to ${scoringRow.deed}.`,
       categoryTags: [scoringRow.category],
-      abuseFlags: [],
+      abuseFlags: [], isAiFabricated: false,
       analyzedAt: decidedAt
     },
     adminDecision: {

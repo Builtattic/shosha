@@ -22,6 +22,21 @@ export async function POST(request: Request) {
   const existing = await accountsRepo.findByPlatformUsername(parsed.data.platform, parsed.data.username);
   if (existing) return ok(existing, 200);
 
+  const socialLinks = {
+    ...(parsed.data.socialLinks ?? {}),
+    ...(parsed.data.sourceUrl
+      ? {
+          [parsed.data.platform]: {
+            url: parsed.data.sourceUrl,
+            username: parsed.data.username,
+            displayName: parsed.data.displayName ?? parsed.data.username,
+            followers: parsed.data.followers ?? '0',
+            verified: parsed.data.verified ?? false,
+            lastCheckedAt: new Date().toISOString()
+          }
+        }
+      : {})
+  };
   const account = await accountsRepo.create({
     platform: parsed.data.platform,
     username: parsed.data.username,
@@ -38,7 +53,7 @@ export async function POST(request: Request) {
     role: parsed.data.role,
     region: parsed.data.region,
     quote: parsed.data.quote,
-    socialLinks: parsed.data.socialLinks as never,
+    socialLinks: socialLinks as never,
     evidenceSummary: parsed.data.evidenceSummary,
     score: BASE_SCORE,
     scoreHistory: [{ t: new Date().toISOString(), s: BASE_SCORE, cause: 'seed' }],

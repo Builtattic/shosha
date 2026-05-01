@@ -19,6 +19,8 @@ export function AdminReviewControls({
   const toast = useToast();
   const [impact, setImpact] = useState(proposedImpact);
   const [note, setNote] = useState('');
+  const [repetitionPattern, setRepetitionPattern] = useState('0.5');
+  const [intent, setIntent] = useState('0.5');
   const [confirmReject, setConfirmReject] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -35,7 +37,7 @@ export function AdminReviewControls({
       const response = await fetch(`/api/reports/${reportId}/adjudicate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ verdict, finalImpact: impact, note }),
+        body: JSON.stringify({ verdict, finalImpact: impact, note, repetitionPattern, intent }),
       });
       const payload = await response.json();
       if (!payload.ok) throw new Error(payload.error?.message ?? 'Decision failed');
@@ -80,6 +82,40 @@ export function AdminReviewControls({
         <span className="text-[13px] font-bold text-primary/70">Current Shosha Score</span>
         <div className="flex items-center gap-3">
           <span className={`text-2xl font-black font-mono ${scoreColor}`}>{score.toLocaleString()}</span>
+        </div>
+      </div>
+
+      {/* Repetition & Intent */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground ml-1 mb-2 block">Repetition (RP)</label>
+          <select 
+            value={repetitionPattern} 
+            onChange={(e) => setRepetitionPattern(e.target.value)}
+            className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-[14px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all font-medium"
+          >
+            <option value="0.5">No Clear Pattern (0.5)</option>
+            <option value="1">Balanced (1)</option>
+            <option value="1.5">Mixed Signals (1.5)</option>
+            <option value="2">Leaning Off (2)</option>
+            <option value="2.5">Pattern Forming (2.5)</option>
+            <option value="3">Consistent Pattern (3)</option>
+          </select>
+        </div>
+        <div>
+          <label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground ml-1 mb-2 block">Intent (IN)</label>
+          <select 
+            value={intent} 
+            onChange={(e) => setIntent(e.target.value)}
+            className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-[14px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all font-medium"
+          >
+            <option value="0.5">Didn&apos;t mean to (0.5)</option>
+            <option value="1">Not Aware (1)</option>
+            <option value="1.5">Not Careful (1.5)</option>
+            <option value="2">Meant to (2)</option>
+            <option value="2.5">Thought Through (2.5)</option>
+            <option value="3">Fully Planned (3)</option>
+          </select>
         </div>
       </div>
 

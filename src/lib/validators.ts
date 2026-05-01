@@ -70,17 +70,21 @@ export const reportCreateSchema = z.object({
   type: reportTypeSchema,
   description: z.string().min(10).max(500),
   feelings: z.string().min(10).max(500),
-  media: mediaSchema
+  media: mediaSchema,
+  repetitionPattern: z.enum(['0.5', '1', '1.5', '2', '2.5', '3']).optional(),
+  intent: z.enum(['0.5', '1', '1.5', '2', '2.5', '3']).optional()
 });
 
 export const adjudicateSchema = z.object({
   verdict: z.enum(['approved', 'rejected']),
   finalImpact: z.number().int().min(-10).max(10),
-  note: z.string().max(500).default('')
+  note: z.string().max(500).default(''),
+  repetitionPattern: z.enum(['0.5', '1', '1.5', '2', '2.5', '3']).optional(),
+  intent: z.enum(['0.5', '1', '1.5', '2', '2.5', '3']).optional()
 });
 
 export const claimSchema = z.object({
-  proofType: z.enum(['bio_code', 'dm_screenshot', 'oauth']),
+  proofType: z.enum(['bio_code', 'dm_screenshot', 'oauth', 'wizard_flow']),
   proofPayload: z.record(z.unknown()).default({})
 });
 
