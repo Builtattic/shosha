@@ -210,7 +210,7 @@ export default async function AdminPage() {
                       "text-3xl font-mono font-black leading-none",
                       report.aiVerdict?.proposedImpact && report.aiVerdict.proposedImpact > 0 ? "text-emerald-500" : "text-red-500"
                     )}>
-                      {report.aiVerdict?.proposedImpact > 0 ? '+' : ''}{report.aiVerdict?.proposedImpact ?? 0}
+                      {(report.aiVerdict?.proposedImpact ?? 0) > 0 ? '+' : ''}{report.aiVerdict?.proposedImpact ?? 0}
                     </p>
                     <p className="text-[9px] font-black text-muted-foreground/30 uppercase tracking-[0.2em] mt-1">Delta</p>
                   </div>
