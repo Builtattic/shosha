@@ -139,7 +139,7 @@ export const ProfileShareCard = forwardRef<HTMLDivElement, ProfileShareCardProps
           {/* Avatar */}
           <div style={{ position: 'relative', flexShrink: 0 }}>
             <div style={{ width: 64, height: 64, borderRadius: 14, border: `1px solid ${C.border}`, background: C.surface, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {avatarUrl
+              {(avatarUrl && avatarUrl !== 'null' && avatarUrl !== 'undefined')
                 ? <img src={avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 : <span style={{ fontSize: 24, fontWeight: 900, color: C.muted }}>{displayName.slice(0, 1).toUpperCase()}</span>
               }

@@ -1,34 +1,58 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, ChevronUp, ChevronDown, Trash2, MoreHorizontal, CheckCircle, Edit3, ExternalLink } from 'lucide-react';
+import { 
+  Search, 
+  ChevronUp, 
+  ChevronDown, 
+  Trash2, 
+  MoreHorizontal, 
+  CheckCircle, 
+  Edit3, 
+  ExternalLink,
+  Filter,
+  Users,
+  ShieldCheck,
+  Globe,
+  AlertTriangle,
+  X
+} from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import Link from 'next/link';
 import type { AccountRecord } from '@/lib/repos/accounts';
 import { BASE_SCORE } from '@/lib/scoring';
+import { motion, AnimatePresence } from 'framer-motion';
 
-const PLATFORM_ICONS: Record<string, string> = {
-  x: '𝕏',
-  instagram: '📸',
-  facebook: '📘',
-  youtube: '▶️',
-  tiktok: '🎵',
-  linkedin: '💼',
-  website: '🌐',
+const PLATFORM_ICONS: Record<string, any> = {
+  x: <span className="font-serif italic font-black">X</span>,
+  instagram: <span className="text-pink-500">📸</span>,
+  facebook: <span className="text-blue-600">📘</span>,
+  youtube: <span className="text-red-600">▶️</span>,
+  tiktok: <span className="text-foreground">🎵</span>,
+  linkedin: <span className="text-blue-700">💼</span>,
+  website: <Globe size={14} />,
 };
 
-function ScoreBar({ score }: { score: number }) {
-  const color = score >= BASE_SCORE ? 'bg-emerald-500' : score >= 0 ? 'bg-amber-500' : 'bg-red-500';
-  const width = Math.max(0, Math.min(100, (score / (BASE_SCORE * 2)) * 100));
+function ScoreIndicator({ score }: { score: number }) {
+  const color = score >= BASE_SCORE ? 'text-emerald-500' : score >= 0 ? 'text-amber-500' : 'text-red-500';
+  const bgColor = score >= BASE_SCORE ? 'bg-emerald-500/10' : score >= 0 ? 'bg-amber-500/10' : 'bg-red-500/10';
+  const borderColor = score >= BASE_SCORE ? 'border-emerald-500/20' : score >= 0 ? 'border-amber-500/20' : 'border-red-500/20';
+
   return (
-    <div className="flex items-center gap-2">
-      <div className="w-16 h-1.5 rounded-full bg-secondary overflow-hidden">
-        <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${width}%` }} />
+    <div className={`flex items-center gap-3 ${bgColor} ${borderColor} border px-3 py-1.5 rounded-full`}>
+      <div className="flex flex-col">
+        <span className={`font-mono text-sm font-black leading-none ${color}`}>
+          {score}
+        </span>
       </div>
-      <span className={`font-mono text-[11px] font-black ${score >= BASE_SCORE ? 'text-emerald-600' : score >= 0 ? 'text-amber-600' : 'text-red-600'}`}>
-        {score}
-      </span>
+      <div className="w-12 h-1 bg-white/5 rounded-full overflow-hidden">
+        <motion.div 
+          initial={{ width: 0 }}
+          animate={{ width: `${Math.max(5, Math.min(100, (score / (BASE_SCORE * 1.5)) * 100))}%` }}
+          className={`h-full rounded-full ${score >= BASE_SCORE ? 'bg-emerald-500' : 'bg-amber-500'}`}
+        />
+      </div>
     </div>
   );
 }
@@ -46,32 +70,29 @@ export function AccountsTable({ initialAccounts }: { initialAccounts: AccountRec
   const router = useRouter();
   const toast = useToast();
 
-  const platforms = ['all', ...Array.from(new Set(initialAccounts.map((a) => a.platform)))];
+  const platforms = useMemo(() => ['all', ...Array.from(new Set(initialAccounts.map((a) => a.platform)))], [initialAccounts]);
 
-  const filtered = accounts
-    .filter((a) => {
-      if (platform !== 'all' && a.platform !== platform) return false;
-      if (!search) return true;
-      return (
-        a.displayName.toLowerCase().includes(search.toLowerCase()) ||
-        a.username.toLowerCase().includes(search.toLowerCase())
-      );
-    })
-    .sort((a, b) => {
-      const va = sortBy === 'score' ? a.score : sortBy === 'displayName' ? a.displayName : parseInt(a.followers || '0');
-      const vb = sortBy === 'score' ? b.score : sortBy === 'displayName' ? b.displayName : parseInt(b.followers || '0');
-      if (typeof va === 'string' && typeof vb === 'string') return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
-      return sortDir === 'asc' ? (va as number) - (vb as number) : (vb as number) - (va as number);
-    });
+  const filtered = useMemo(() => {
+    return accounts
+      .filter((a) => {
+        if (platform !== 'all' && a.platform !== platform) return false;
+        if (!search) return true;
+        return (
+          a.displayName.toLowerCase().includes(search.toLowerCase()) ||
+          a.username.toLowerCase().includes(search.toLowerCase())
+        );
+      })
+      .sort((a, b) => {
+        const va = sortBy === 'score' ? a.score : sortBy === 'displayName' ? a.displayName : parseInt(a.followers || '0');
+        const vb = sortBy === 'score' ? b.score : sortBy === 'displayName' ? b.displayName : parseInt(b.followers || '0');
+        if (typeof va === 'string' && typeof vb === 'string') return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+        return sortDir === 'asc' ? (va as number) - (vb as number) : (vb as number) - (va as number);
+      });
+  }, [accounts, platform, search, sortBy, sortDir]);
 
   function toggleSort(col: typeof sortBy) {
     if (sortBy === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
     else { setSortBy(col); setSortDir('desc'); }
-  }
-
-  function SortIcon({ col }: { col: typeof sortBy }) {
-    if (sortBy !== col) return <ChevronUp size={12} className="opacity-20" />;
-    return sortDir === 'asc' ? <ChevronUp size={12} className="text-foreground" /> : <ChevronDown size={12} className="text-foreground" />;
   }
 
   async function saveScore(accountId: string) {
@@ -110,14 +131,12 @@ export function AccountsTable({ initialAccounts }: { initialAccounts: AccountRec
           claimed: editAccount.claimed,
           claimedBy: editAccount.claimedBy,
           score: Number(editAccount.score),
-          breakdown: editAccount.breakdown,
-          posts: editAccount.posts,
         }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error?.message ?? 'Failed');
       setAccounts((prev) => prev.map((a) => (a._id === editAccount._id ? data.data : a)));
-      toast.push('Account updated.');
+      toast.push('Account dossier updated.');
       setEditAccount(null);
       startTransition(() => router.refresh());
     } catch (e) {
@@ -141,183 +160,330 @@ export function AccountsTable({ initialAccounts }: { initialAccounts: AccountRec
   }
 
   return (
-    <div className="bg-card">
-      {/* Filters */}
-      <div className="p-4 border-b border-border flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+    <div className="relative">
+      {/* Filtering Header */}
+      <div className="p-6 border-b border-white/5 bg-white/[0.02] flex flex-col md:flex-row items-center gap-4">
+        <div className="relative flex-1 group">
+          <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" />
           <input
             type="text"
-            placeholder="Search accounts..."
+            placeholder="Search dossier by name or handle..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full h-11 rounded-xl border border-border bg-secondary/50 pl-10 pr-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all"
+            className="w-full h-12 bg-black/20 border border-white/10 rounded-2xl pl-12 pr-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all placeholder:text-muted-foreground/50"
           />
         </div>
-        <select
-          value={platform}
-          onChange={(e) => setPlatform(e.target.value)}
-          className="h-11 rounded-xl border border-border bg-secondary/50 px-4 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all"
-        >
-          {platforms.map((p) => (
-            <option key={p} value={p}>{p === 'all' ? 'All platforms' : p}</option>
-          ))}
-        </select>
+        
+        <div className="flex items-center gap-2 w-full md:w-auto">
+          <div className="relative flex-1 md:w-48">
+            <Filter size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <select
+              value={platform}
+              onChange={(e) => setPlatform(e.target.value)}
+              className="w-full h-12 bg-black/20 border border-white/10 rounded-2xl pl-10 pr-4 text-sm font-bold appearance-none focus:outline-none focus:border-primary/40 transition-all"
+            >
+              {platforms.map((p) => (
+                <option key={p} value={p} className="bg-background">{p === 'all' ? 'All Platforms' : p.charAt(0).toUpperCase() + p.slice(1)}</option>
+              ))}
+            </select>
+          </div>
+          
+          <button 
+            onClick={() => { setSearch(''); setPlatform('all'); }}
+            className="h-12 w-12 flex items-center justify-center bg-black/20 border border-white/10 rounded-2xl text-muted-foreground hover:text-foreground transition-all"
+          >
+            <X size={16} />
+          </button>
+        </div>
       </div>
 
-      {/* Score edit modal */}
-      {editScore && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[2px]" onClick={() => setEditScore(null)}>
-          <div className="rounded-2xl border border-border bg-background p-6 w-80 shadow-2xl animate-in zoom-in-95 duration-100" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-foreground font-black text-lg mb-1">Override Score</h3>
-            <p className="text-muted-foreground text-[13px] mb-6">Manually set the Shosha score.</p>
-            <input
-              type="number"
-              value={editScore.value}
-              onChange={(e) => setEditScore({ ...editScore, value: Number(e.target.value) })}
-              className="w-full h-20 rounded-2xl border-2 border-primary/20 bg-secondary/50 px-4 py-2 text-foreground text-4xl font-mono font-black text-center focus:outline-none focus:border-primary mb-6 transition-all"
-              autoFocus
-            />
-            <div className="flex gap-3">
-              <button onClick={() => setEditScore(null)} className="flex-1 h-11 rounded-xl border border-border py-2 text-[13px] font-bold text-muted-foreground hover:bg-secondary transition-colors">Cancel</button>
-              <button onClick={() => saveScore(editScore.id)} className="flex-1 h-11 rounded-xl bg-primary text-primary-foreground py-2 text-[13px] font-black hover:opacity-90 transition-opacity">Save Changes</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {editAccount && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-[2px]" onClick={() => setEditAccount(null)}>
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-border bg-background p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-foreground font-black text-lg mb-1">Edit Account</h3>
-            <p className="text-muted-foreground text-[13px] mb-6">Full admin override for this dossier.</p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <input value={editAccount.displayName} onChange={(e) => setEditAccount({ ...editAccount, displayName: e.target.value })} className="admin-input" />
-              <input value={editAccount.username} onChange={(e) => setEditAccount({ ...editAccount, username: e.target.value })} className="admin-input" />
-              <input value={editAccount.followers} onChange={(e) => setEditAccount({ ...editAccount, followers: e.target.value })} className="admin-input" />
-              <input type="number" value={editAccount.score} onChange={(e) => setEditAccount({ ...editAccount, score: Number(e.target.value) })} className="admin-input" />
-              <input value={editAccount.avatarUrl} onChange={(e) => setEditAccount({ ...editAccount, avatarUrl: e.target.value })} placeholder="Avatar URL" className="admin-input sm:col-span-2" />
-              <textarea value={editAccount.bio} onChange={(e) => setEditAccount({ ...editAccount, bio: e.target.value })} className="admin-input sm:col-span-2" rows={3} />
-              <input value={editAccount.claimedBy ?? ''} onChange={(e) => setEditAccount({ ...editAccount, claimedBy: e.target.value || null, claimed: Boolean(e.target.value) })} placeholder="Claimed by user id" className="admin-input sm:col-span-2" />
-              <label className="admin-check"><input type="checkbox" checked={editAccount.verified} onChange={(e) => setEditAccount({ ...editAccount, verified: e.target.checked })} /> Verified</label>
-              <label className="admin-check"><input type="checkbox" checked={editAccount.claimed} onChange={(e) => setEditAccount({ ...editAccount, claimed: e.target.checked, claimedBy: e.target.checked ? editAccount.claimedBy : null })} /> Claimed</label>
-            </div>
-            <div className="mt-6 flex gap-3">
-              <button onClick={() => setEditAccount(null)} className="flex-1 h-11 rounded-xl border border-border py-2 text-[13px] font-bold text-muted-foreground hover:bg-secondary transition-colors">Cancel</button>
-              <button onClick={saveAccount} className="flex-1 h-11 rounded-xl bg-primary text-primary-foreground py-2 text-[13px] font-black hover:opacity-90 transition-opacity">Save Account</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Table */}
+      {/* Table Section */}
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full border-collapse">
           <thead>
-            <tr className="bg-secondary/30">
-              <th className="text-left px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground border-b border-border">
-                <button onClick={() => toggleSort('displayName')} className="flex items-center gap-1 hover:text-foreground transition-colors">
-                  Account <SortIcon col="displayName" />
+            <tr className="border-b border-white/5">
+              <th className="text-left px-8 py-5">
+                <button onClick={() => toggleSort('displayName')} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors">
+                  Dossier
+                  {sortBy === 'displayName' && (sortDir === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
                 </button>
               </th>
-              <th className="text-left px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground border-b border-border hidden md:table-cell">Platform</th>
-              <th className="text-right px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground border-b border-border">
-                <button onClick={() => toggleSort('score')} className="flex items-center gap-1 ml-auto hover:text-foreground transition-colors">
-                  Score <SortIcon col="score" />
+              <th className="text-left px-8 py-5 hidden lg:table-cell">
+                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Network</span>
+              </th>
+              <th className="text-right px-8 py-5">
+                <button onClick={() => toggleSort('score')} className="flex items-center gap-2 ml-auto text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors">
+                  Shosha Score
+                  {sortBy === 'score' && (sortDir === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
                 </button>
               </th>
-              <th className="text-right px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground border-b border-border hidden lg:table-cell">
-                <button onClick={() => toggleSort('followers')} className="flex items-center gap-1 ml-auto hover:text-foreground transition-colors">
-                  Followers <SortIcon col="followers" />
+              <th className="text-right px-8 py-5 hidden md:table-cell">
+                <button onClick={() => toggleSort('followers')} className="flex items-center gap-2 ml-auto text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors">
+                  Reach
+                  {sortBy === 'followers' && (sortDir === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
                 </button>
               </th>
-              <th className="text-center px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground border-b border-border hidden sm:table-cell">Claimed</th>
-              <th className="px-6 py-4 w-12 border-b border-border" />
+              <th className="text-center px-8 py-5 hidden sm:table-cell">
+                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Status</span>
+              </th>
+              <th className="px-8 py-5 w-20" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
-            {filtered.map((account) => (
-              <tr key={account._id} className="hover:bg-secondary/20 transition-colors group">
-                <td className="px-6 py-4">
-                  <Link href={`/account/${account._id}`} className="group inline-block">
-                    <p className="font-bold text-foreground group-hover:text-primary transition-colors flex items-center gap-1.5">
-                      {account.displayName}
-                      <ExternalLink size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </p>
-                    <p className="text-xs text-muted-foreground">@{account.username}</p>
-                  </Link>
-                </td>
-                <td className="px-6 py-4 hidden md:table-cell">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">{PLATFORM_ICONS[account.platform] ?? '?'}</span>
-                    <span className="text-[12px] font-bold text-muted-foreground capitalize">{account.platform}</span>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex justify-end">
-                    <ScoreBar score={account.score} />
-                  </div>
-                </td>
-                <td className="px-6 py-4 text-right hidden lg:table-cell">
-                  <span className="text-[12px] text-muted-foreground font-mono font-bold">{account.followers ?? '—'}</span>
-                </td>
-                <td className="px-6 py-4 text-center hidden sm:table-cell">
-                  {account.claimed
-                    ? <div className="h-6 w-6 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 mx-auto">
-                        <CheckCircle size={14} />
+          <tbody className="divide-y divide-white/5">
+            <AnimatePresence mode="popLayout">
+              {filtered.map((account) => (
+                <motion.tr 
+                  layout
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  key={account._id} 
+                  className="group hover:bg-primary/[0.02] transition-colors"
+                >
+                  <td className="px-8 py-6">
+                    <div className="flex items-center gap-4">
+                      <div className="h-10 w-10 rounded-xl bg-secondary/50 border border-white/5 overflow-hidden flex-shrink-0">
+                        {account.avatarUrl ? (
+                          <img src={account.avatarUrl} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="h-full w-full flex items-center justify-center text-muted-foreground/30">
+                            <Users size={16} />
+                          </div>
+                        )}
                       </div>
-                    : <span className="text-muted-foreground/30 text-xs">—</span>
-                  }
-                </td>
-                <td className="px-6 py-4 text-right relative">
-                  <button
-                    onClick={() => setOpenMenu(openMenu === account._id ? null : account._id)}
-                    className="p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-all"
-                  >
-                    <MoreHorizontal size={16} />
-                  </button>
-                  {openMenu === account._id && (
-                    <>
-                      <div className="fixed inset-0 z-10" onClick={() => setOpenMenu(null)} />
-                      <div className="absolute right-6 top-12 z-20 w-48 rounded-xl border border-border bg-background shadow-xl overflow-hidden animate-in fade-in zoom-in duration-100">
-                        <button
-                          onClick={() => { setEditAccount(account); setOpenMenu(null); }}
-                          className="w-full flex items-center gap-3 px-4 py-3 text-[13px] font-bold text-foreground hover:bg-secondary transition-colors text-left"
-                        >
-                          <Edit3 size={14} className="text-primary" />
-                          Edit details
-                        </button>
-                        <button
-                          onClick={() => { setEditScore({ id: account._id, value: account.score }); setOpenMenu(null); }}
-                          className="w-full flex items-center gap-3 px-4 py-3 text-[13px] font-bold text-foreground hover:bg-secondary transition-colors text-left"
-                        >
-                          <Edit3 size={14} className="text-primary" />
-                          Override score
-                        </button>
-                        <div className="h-px bg-border mx-2" />
-                        <button
-                          onClick={() => deleteAccount(account._id, account.displayName)}
-                          className="w-full flex items-center gap-3 px-4 py-3 text-[13px] font-bold text-destructive hover:bg-destructive/5 transition-colors text-left"
-                        >
-                          <Trash2 size={14} />
-                          Delete account
-                        </button>
+                      <div>
+                        <Link href={`/account/${account._id}`} className="block group/link">
+                          <span className="text-sm font-black text-foreground group-hover/link:text-primary transition-colors flex items-center gap-1.5">
+                            {account.displayName}
+                            <ExternalLink size={12} className="opacity-0 group-hover/link:opacity-100 transition-opacity" />
+                          </span>
+                        </Link>
+                        <span className="text-[11px] font-bold text-muted-foreground tracking-tight">@{account.username}</span>
                       </div>
-                    </>
-                  )}
-                </td>
-              </tr>
-            ))}
+                    </div>
+                  </td>
+                  
+                  <td className="px-8 py-6 hidden lg:table-cell">
+                    <div className="flex items-center gap-2 text-xs font-black uppercase tracking-tighter text-muted-foreground/80">
+                      <span className="h-6 w-6 rounded-lg bg-black/20 flex items-center justify-center border border-white/5">
+                        {PLATFORM_ICONS[account.platform] || <Globe size={10} />}
+                      </span>
+                      {account.platform}
+                    </div>
+                  </td>
+
+                  <td className="px-8 py-6">
+                    <div className="flex justify-end">
+                      <ScoreIndicator score={account.score} />
+                    </div>
+                  </td>
+
+                  <td className="px-8 py-6 text-right hidden md:table-cell">
+                    <span className="text-xs font-mono font-black text-foreground opacity-80">
+                      {account.followers ? parseInt(account.followers).toLocaleString() : '—'}
+                    </span>
+                  </td>
+
+                  <td className="px-8 py-6 hidden sm:table-cell">
+                    <div className="flex justify-center">
+                      {account.claimed ? (
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 text-[10px] font-black uppercase tracking-widest">
+                          <CheckCircle size={10} />
+                          Claimed
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 text-muted-foreground/50 border border-white/5 text-[10px] font-black uppercase tracking-widest">
+                          Unclaimed
+                        </div>
+                      )}
+                    </div>
+                  </td>
+
+                  <td className="px-8 py-6 text-right relative">
+                    <button
+                      onClick={() => setOpenMenu(openMenu === account._id ? null : account._id)}
+                      className={`p-2 rounded-xl transition-all ${openMenu === account._id ? 'bg-primary text-primary-foreground' : 'hover:bg-white/5 text-muted-foreground'}`}
+                    >
+                      <MoreHorizontal size={18} />
+                    </button>
+                    
+                    <AnimatePresence>
+                      {openMenu === account._id && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setOpenMenu(null)} />
+                          <motion.div 
+                            initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                            className="absolute right-8 top-full mt-2 z-50 w-56 rounded-2xl border border-white/10 bg-background/95 backdrop-blur-xl shadow-2xl shadow-black/50 overflow-hidden"
+                          >
+                            <div className="p-2 space-y-1">
+                              <button
+                                onClick={() => { setEditAccount(account); setOpenMenu(null); }}
+                                className="w-full flex items-center gap-3 px-4 py-3 text-xs font-black text-foreground hover:bg-primary hover:text-primary-foreground rounded-xl transition-all text-left"
+                              >
+                                <Edit3 size={14} />
+                                Edit Dossier
+                              </button>
+                              <button
+                                onClick={() => { setEditScore({ id: account._id, value: account.score }); setOpenMenu(null); }}
+                                className="w-full flex items-center gap-3 px-4 py-3 text-xs font-black text-foreground hover:bg-primary hover:text-primary-foreground rounded-xl transition-all text-left"
+                              >
+                                <ShieldCheck size={14} />
+                                Override Score
+                              </button>
+                              <div className="h-px bg-white/5 mx-2 my-1" />
+                              <button
+                                onClick={() => deleteAccount(account._id, account.displayName)}
+                                className="w-full flex items-center gap-3 px-4 py-3 text-xs font-black text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-all text-left"
+                              >
+                                <Trash2 size={14} />
+                                Purge Record
+                              </button>
+                            </div>
+                          </motion.div>
+                        </>
+                      )}
+                    </AnimatePresence>
+                  </td>
+                </motion.tr>
+              ))}
+            </AnimatePresence>
+            
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-6 py-20 text-center text-muted-foreground text-[13px] font-medium">
-                  No accounts match your filters.
+                <td colSpan={6} className="px-8 py-32 text-center">
+                  <div className="flex flex-col items-center gap-3 opacity-20">
+                    <Search size={48} strokeWidth={1} />
+                    <p className="text-sm font-bold uppercase tracking-[0.2em]">No records found</p>
+                  </div>
                 </td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
+
+      {/* Overlays / Modals */}
+      <AnimatePresence>
+        {editScore && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm" 
+              onClick={() => setEditScore(null)} 
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-md rounded-[2.5rem] border border-white/10 bg-card p-10 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="h-16 w-16 rounded-3xl bg-primary/10 flex items-center justify-center text-primary mb-8">
+                <ShieldCheck size={32} />
+              </div>
+              <h3 className="text-2xl font-serif font-black text-foreground mb-2">Score Override</h3>
+              <p className="text-sm text-muted-foreground font-medium mb-10">Manually adjust the authenticity metrics for this dossier. This bypasses automated scoring logic.</p>
+              
+              <div className="relative mb-10">
+                <input
+                  type="number"
+                  value={editScore.value}
+                  onChange={(e) => setEditScore({ ...editScore, value: Number(e.target.value) })}
+                  className="w-full h-32 rounded-3xl border-2 border-primary/20 bg-black/20 px-6 text-foreground text-7xl font-mono font-black text-center focus:outline-none focus:border-primary transition-all"
+                  autoFocus
+                />
+                <div className="absolute top-4 right-6 text-[10px] font-black uppercase tracking-widest text-primary/40">Point Value</div>
+              </div>
+              
+              <div className="flex gap-4">
+                <button onClick={() => setEditScore(null)} className="flex-1 h-14 rounded-2xl border border-white/10 text-sm font-black hover:bg-white/5 transition-colors">Discard</button>
+                <button onClick={() => saveScore(editScore.id)} className="flex-1 h-14 rounded-2xl bg-primary text-primary-foreground text-sm font-black hover:opacity-90 transition-opacity">Deploy Change</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {editAccount && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm" 
+              onClick={() => setEditAccount(null)} 
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-[2.5rem] border border-white/10 bg-card p-10 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-4">
+                  <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                    <Edit3 size={28} />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-serif font-black text-foreground leading-tight">Edit Dossier</h3>
+                    <p className="text-xs font-black text-muted-foreground uppercase tracking-widest mt-1">Manual Override Protocol</p>
+                  </div>
+                </div>
+                <button onClick={() => setEditAccount(null)} className="h-10 w-10 rounded-full hover:bg-white/5 flex items-center justify-center transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="grid gap-6 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Display Name</label>
+                  <input value={editAccount.displayName} onChange={(e) => setEditAccount({ ...editAccount, displayName: e.target.value })} className="admin-input h-14" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Handle / Username</label>
+                  <input value={editAccount.username} onChange={(e) => setEditAccount({ ...editAccount, username: e.target.value })} className="admin-input h-14" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Reach (Followers)</label>
+                  <input value={editAccount.followers || ''} onChange={(e) => setEditAccount({ ...editAccount, followers: e.target.value })} className="admin-input h-14" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Base Score</label>
+                  <input type="number" value={editAccount.score} onChange={(e) => setEditAccount({ ...editAccount, score: Number(e.target.value) })} className="admin-input h-14" />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Avatar Resource URL</label>
+                  <input value={editAccount.avatarUrl || ''} onChange={(e) => setEditAccount({ ...editAccount, avatarUrl: e.target.value })} className="admin-input h-14" />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Profile Biography</label>
+                  <textarea value={editAccount.bio || ''} onChange={(e) => setEditAccount({ ...editAccount, bio: e.target.value })} className="admin-input min-h-[100px] py-4" />
+                </div>
+                
+                <div className="sm:col-span-2 grid grid-cols-2 gap-4">
+                  <label className="flex items-center gap-3 p-4 rounded-2xl bg-white/5 border border-white/5 cursor-pointer hover:bg-white/[0.08] transition-colors">
+                    <input type="checkbox" checked={editAccount.verified} onChange={(e) => setEditAccount({ ...editAccount, verified: e.target.checked })} className="h-5 w-5 rounded-lg border-white/10 bg-black/20 text-primary focus:ring-primary/20 transition-all" />
+                    <span className="text-xs font-black uppercase tracking-widest">Verified Status</span>
+                  </label>
+                  <label className="flex items-center gap-3 p-4 rounded-2xl bg-white/5 border border-white/5 cursor-pointer hover:bg-white/[0.08] transition-colors">
+                    <input type="checkbox" checked={editAccount.claimed} onChange={(e) => setEditAccount({ ...editAccount, claimed: e.target.checked, claimedBy: e.target.checked ? editAccount.claimedBy : null })} className="h-5 w-5 rounded-lg border-white/10 bg-black/20 text-primary focus:ring-primary/20 transition-all" />
+                    <span className="text-xs font-black uppercase tracking-widest">Claimed Status</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="mt-10 flex gap-4">
+                <button onClick={() => setEditAccount(null)} className="flex-1 h-14 rounded-2xl border border-white/10 text-sm font-black hover:bg-white/5 transition-colors">Cancel</button>
+                <button onClick={saveAccount} className="flex-1 h-14 rounded-2xl bg-primary text-primary-foreground text-sm font-black hover:opacity-90 transition-opacity">Commit Changes</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

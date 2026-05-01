@@ -3,6 +3,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { LogIn, LogOut } from 'lucide-react';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 export function SignInChip() {
   const { user, loading, signOut } = useAuth();
@@ -21,16 +22,32 @@ export function SignInChip() {
     );
   }
 
+  const photo = user.photoURL && user.photoURL !== 'null' && user.photoURL !== 'undefined' ? user.photoURL : null;
+
   return (
     <div className="flex items-center gap-3">
       <div className="flex items-center gap-2">
-        {user.photoURL ? (
-          <img src={user.photoURL} alt="" className="h-8 w-8 rounded-full" />
-        ) : (
-          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
+        <div className="h-8 w-8 overflow-hidden rounded-full border border-border bg-muted flex items-center justify-center">
+          {photo ? (
+            <img 
+              src={photo} 
+              alt="" 
+              className="h-full w-full object-cover" 
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                const fallback = target.parentElement?.querySelector('.avatar-fallback');
+                if (fallback) fallback.classList.remove('hidden');
+              }}
+            />
+          ) : null}
+          <div className={cn(
+            "avatar-fallback text-primary font-bold text-sm",
+            photo && "hidden"
+          )}>
             {(user.displayName?.[0] ?? user.email?.[0] ?? '?').toUpperCase()}
           </div>
-        )}
+        </div>
       </div>
       <button
         onClick={() => signOut()}

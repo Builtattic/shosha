@@ -6,7 +6,11 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: 'Shoशा — The Ledger',
-  description: 'Every action. Every consequence. Counted.'
+  description: 'Every action. Every consequence. Counted.',
+  icons: {
+    icon: '/icon.png',
+    apple: '/icon.png',
+  }
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

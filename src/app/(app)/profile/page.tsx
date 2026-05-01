@@ -124,7 +124,10 @@ export default function ProfilePage() {
 
   const displayName = appUser?.name || firebaseUser?.displayName || firebaseUser?.email?.split('@')[0] || 'Unknown User';
   const username = appUser?.username || 'user';
-  const avatarUrl = appUser?.photoUrl ?? firebaseUser?.photoURL ?? `https://api.dicebear.com/9.x/initials/svg?seed=${displayName}&backgroundColor=1a1a1a&textColor=ffffff`;
+  const rawAvatarUrl = appUser?.photoUrl ?? firebaseUser?.photoURL;
+  const avatarUrl = (rawAvatarUrl && rawAvatarUrl !== 'null' && rawAvatarUrl !== 'undefined') 
+    ? rawAvatarUrl 
+    : `https://api.dicebear.com/9.x/initials/svg?seed=${displayName}&backgroundColor=1a1a1a&textColor=ffffff`;
 
   const recentEvents: any[] = data?.recentEvents ?? [];
   const positiveEvents = recentEvents.filter(e => (e.eventType ?? e.type) === 'positive');
@@ -204,13 +207,25 @@ export default function ProfilePage() {
         {/* Profile Info */}
         <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4 min-w-0">
-            <div className="relative h-20 w-20 shrink-0">
+            <div className="relative h-20 w-20 shrink-0 group">
               <img
                 src={avatarUrl}
                 alt={displayName}
-                className="h-full w-full rounded-full bg-[#b5e5af] object-cover shadow-sm"
+                className="h-full w-full rounded-full bg-[#b5e5af] object-cover shadow-sm transition-opacity duration-300"
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  target.style.opacity = '0';
+                  const fallback = target.nextElementSibling as HTMLElement;
+                  if (fallback) fallback.style.display = 'flex';
+                }}
               />
-              <div className="absolute -bottom-1 -right-1 rounded-full border-2 border-[#fafafa] bg-foreground p-0.5">
+              <div 
+                className="absolute inset-0 items-center justify-center bg-primary/10 text-primary font-black text-2xl hidden rounded-full"
+                style={{ display: 'none' }}
+              >
+                {displayName.charAt(0).toUpperCase()}
+              </div>
+              <div className="absolute -bottom-1 -right-1 rounded-full border-2 border-[#fafafa] bg-foreground p-0.5 z-10">
                 <CheckCircle2 size={16} fill="currentColor" className="text-background" />
               </div>
             </div>

@@ -17,7 +17,8 @@
       "Bash(git commit --allow-empty -m ' *)",
       "Bash(git push *)",
       "Bash(pnpm test *)",
-      "Bash(pnpm build *)"
+      "Bash(pnpm build *)",
+      "Bash(gh issue *)"
     ]
   }
 }

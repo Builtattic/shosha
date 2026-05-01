@@ -219,7 +219,10 @@ export default function DashboardPage() {
   const credibility = contextPercent;
   const hasOnboarded = !!(meData?.user?.onboardingComplete || meData?.user?.name || meData?.user?.occupationRole);
   const displayName = meData?.user?.name || firebaseUser?.displayName || firebaseUser?.email?.split('@')[0] || 'You';
-  const avatarUrl = meData?.user?.photoUrl ?? firebaseUser?.photoURL ?? null;
+  
+  const photo = meData?.user?.photoUrl || firebaseUser?.photoURL;
+  const avatarUrl = (photo && photo !== 'null' && photo !== 'undefined') ? photo : null;
+
   const displayScore = ledgerScore;
   const scoreLabel = 'Shosha Score';
   const scoreContext = hasOnboarded
@@ -333,14 +336,26 @@ export default function DashboardPage() {
 
               {/* ── Row 1: Avatar + Name ── */}
               <div className="flex items-center gap-4">
-                <div className="h-14 w-14 overflow-hidden rounded-2xl border border-border shadow-sm shrink-0">
+                <div className="h-14 w-14 overflow-hidden rounded-2xl border border-border bg-muted shadow-sm shrink-0 flex items-center justify-center relative">
                   {avatarUrl ? (
-                    <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-muted text-lg font-black">
-                      {displayName.slice(0, 1).toUpperCase()}
-                    </div>
-                  )}
+                    <img 
+                      src={avatarUrl} 
+                      alt="" 
+                      className="h-full w-full object-cover" 
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const fallback = target.parentElement?.querySelector('.avatar-fallback');
+                        if (fallback) fallback.classList.remove('hidden');
+                      }}
+                    />
+                  ) : null}
+                  <div className={cn(
+                    "avatar-fallback flex h-full w-full items-center justify-center text-lg font-black",
+                    avatarUrl && "hidden"
+                  )}>
+                    {displayName.slice(0, 1).toUpperCase()}
+                  </div>
                 </div>
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">

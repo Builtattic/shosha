@@ -192,14 +192,26 @@ export function FeedItem({
       {/* Header */}
       <div className="flex items-start justify-between p-5 pb-3">
         <div className="flex items-center gap-3">
-          <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full border border-border bg-muted shadow-sm">
-             {user.avatar ? (
-                <img src={user.avatar} alt={user.name} className="h-full w-full object-cover" />
-             ) : (
-                <div className="flex h-full w-full items-center justify-center font-bold text-muted-foreground">
-                  {user.name[0]}
-                </div>
-             )}
+          <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full border border-border bg-muted shadow-sm flex items-center justify-center">
+             {user.avatar && user.avatar !== 'null' && user.avatar !== 'undefined' ? (
+                <img 
+                  src={user.avatar} 
+                  alt={user.name} 
+                  className="h-full w-full object-cover" 
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    const fallback = target.parentElement?.querySelector('.avatar-fallback');
+                    if (fallback) fallback.classList.remove('hidden');
+                  }}
+                />
+             ) : null}
+             <div className={cn(
+               "avatar-fallback font-bold text-muted-foreground",
+               (user.avatar && user.avatar !== 'null' && user.avatar !== 'undefined') && "hidden"
+             )}>
+               {user.name[0]}
+             </div>
           </div>
           <div className="flex flex-col">
             <div className="flex items-center gap-1">

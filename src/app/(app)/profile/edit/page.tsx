@@ -108,7 +108,9 @@ export default function EditProfilePage() {
             igUrl: u.igUrl || '',
             xUrl: u.xUrl || '',
             websiteUrl: u.websiteUrl || '',
-            photoUrl: u.photoUrl || 'https://images.unsplash.com/photo-1628157588553-5eeea00af15c?w=128&h=128&fit=crop',
+            photoUrl: (u.photoUrl && u.photoUrl !== 'null' && u.photoUrl !== 'undefined') 
+              ? u.photoUrl 
+              : 'https://api.dicebear.com/9.x/initials/svg?seed=' + (u.name || 'User') + '&backgroundColor=1a1a1a&textColor=ffffff',
           }));
         }
         setLoading(false);
@@ -193,12 +195,24 @@ export default function EditProfilePage() {
       {/* Profile Photo */}
       <section className="flex flex-col items-center py-6">
         <div className="relative group">
-          <div className="h-28 w-28 rounded-full border border-border p-1 bg-card overflow-hidden">
+          <div className="h-28 w-28 rounded-full border border-border p-1 bg-card overflow-hidden relative">
             <img 
               src={form.photoUrl} 
               alt="Profile" 
-              className="h-full w-full rounded-full object-cover" 
+              className="h-full w-full rounded-full object-cover transition-opacity duration-300" 
+              onError={(e) => {
+                const target = e.currentTarget;
+                target.style.opacity = '0';
+                const fallback = target.nextElementSibling as HTMLElement;
+                if (fallback) fallback.style.display = 'flex';
+              }}
             />
+            <div 
+              className="absolute inset-0 items-center justify-center bg-primary/10 text-primary font-black text-2xl hidden rounded-full"
+              style={{ display: 'none' }}
+            >
+              {(form.name || 'U').charAt(0).toUpperCase()}
+            </div>
           </div>
           <label className="absolute bottom-0 right-0 h-9 w-9 rounded-full bg-background text-foreground flex items-center justify-center border border-border cursor-pointer shadow-md hover:scale-105 transition-transform">
             <Camera size={18} />

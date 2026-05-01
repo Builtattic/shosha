@@ -1,6 +1,18 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Brain, AlertTriangle, Tag, CheckCircle2 } from 'lucide-react';
+import { 
+  ArrowLeft, 
+  Brain, 
+  AlertTriangle, 
+  Tag, 
+  CheckCircle2, 
+  ShieldCheck, 
+  FileText, 
+  Video, 
+  Image as ImageIcon,
+  ExternalLink,
+  Zap
+} from 'lucide-react';
 import { AdminReviewControls } from '@/components/admin/AdminReviewControls';
 import { BASE_SCORE } from '@/lib/scoring';
 import { idSchema } from '@/lib/validators';
@@ -9,13 +21,15 @@ import * as reportsRepo from '@/lib/repos/reports';
 
 export const dynamic = 'force-dynamic';
 
-function ConfidenceRing({ value }: { value: number }) {
+function ConfidenceIndicator({ value }: { value: number }) {
   const pct = Math.round(value * 100);
-  const color = pct >= 75 ? 'text-emerald-600' : pct >= 50 ? 'text-amber-600' : 'text-destructive';
+  const color = pct >= 75 ? 'text-emerald-500' : pct >= 50 ? 'text-amber-500' : 'text-red-500';
+  const bgColor = pct >= 75 ? 'bg-emerald-500/10' : pct >= 50 ? 'bg-amber-500/10' : 'bg-red-500/10';
+
   return (
-    <div className="flex flex-col items-center">
-      <span className={`text-4xl font-black font-mono ${color}`}>{pct}%</span>
-      <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mt-1">AI Confidence</span>
+    <div className={`flex flex-col items-center p-6 rounded-[2rem] ${bgColor} border border-white/5`}>
+      <span className={`text-5xl font-black font-mono ${color}`}>{pct}%</span>
+      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mt-2">AI Confidence</span>
     </div>
   );
 }
@@ -28,127 +42,199 @@ export default async function ReviewPage({ params }: { params: { reportId: strin
   const account = await accountsRepo.findById(report.accountId);
 
   return (
-    <div className="space-y-6">
-      {/* Back */}
-      <Link href="/admin/queue" className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors">
-        <ArrowLeft size={14} />
-        Back to queue
-      </Link>
-
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-lg ${
-              report.type === 'positive' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
-            }`}>
-              {report.type} filing
-            </span>
-            <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-lg bg-secondary text-muted-foreground border border-border">
-              {report.status.replace('_', ' ')}
-            </span>
-            {(report.aiVerdict?.abuseFlags?.length ?? 0) > 0 && (
-              <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-lg bg-red-100 text-red-700 flex items-center gap-1.5">
-                <AlertTriangle size={10} /> abuse
-              </span>
-            )}
+    <div className="space-y-10 pb-20">
+      {/* Navigation & Actions */}
+      <div className="flex items-center justify-between">
+        <Link href="/admin/queue" className="group flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground hover:text-primary transition-all">
+          <div className="h-8 w-8 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-primary/10 transition-all">
+            <ArrowLeft size={14} />
           </div>
-          <h1 className="text-4xl font-black text-foreground tracking-tight">{account?.displayName ?? 'Case file'}</h1>
+          Back to operations queue
+        </Link>
+        
+        <div className="flex items-center gap-2">
+          <span className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${
+            report.type === 'positive' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20'
+          }`}>
+            {report.type} filing
+          </span>
+          <span className="text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-white/5 text-muted-foreground border border-white/10">
+            {report.status.replace('_', ' ')}
+          </span>
+        </div>
+      </div>
+
+      {/* Hero Section */}
+      <div className="relative p-12 rounded-[3rem] border border-white/5 bg-white/[0.02] overflow-hidden">
+        <div className="absolute top-0 right-0 p-8 opacity-5">
+          <ShieldCheck size={200} />
+        </div>
+        
+        <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-8">
+          <div className="max-w-2xl">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="h-20 w-20 rounded-[2rem] bg-secondary/50 border border-white/10 overflow-hidden shadow-2xl">
+                {account?.avatarUrl ? (
+                  <img src={account.avatarUrl} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="h-full w-full flex items-center justify-center text-muted-foreground/20">
+                    <ShieldCheck size={32} />
+                  </div>
+                )}
+              </div>
+              <div>
+                <h1 className="text-5xl font-serif font-black text-foreground tracking-tight italic">
+                  {account?.displayName ?? 'Case File'}
+                </h1>
+                <div className="flex items-center gap-3 mt-2">
+                  <span className="text-sm font-bold text-muted-foreground/60">@{account?.username}</span>
+                  <span className="h-1 w-1 rounded-full bg-white/10" />
+                  <span className="text-[10px] font-black text-primary uppercase tracking-widest bg-primary/5 px-2 py-0.5 rounded border border-primary/10">{account?.platform}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
+              <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
+                <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-1">Current Score</p>
+                <p className="text-2xl font-mono font-black text-foreground">{account?.score ?? BASE_SCORE}</p>
+              </div>
+              <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
+                <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-1">Network Reach</p>
+                <p className="text-2xl font-mono font-black text-foreground">{account?.followers ? parseInt(account.followers).toLocaleString() : '—'}</p>
+              </div>
+              <div className="p-4 rounded-2xl bg-white/5 border border-white/5 hidden sm:block">
+                <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-1">Dossier ID</p>
+                <p className="text-[10px] font-mono font-bold text-muted-foreground/40 truncate">{report.accountId}</p>
+              </div>
+            </div>
+          </div>
+          
           {account && (
-            <p className="text-muted-foreground text-sm font-medium mt-1">
-              @{account.username} · {account.platform} · Shosha Score: <span className="font-black text-foreground">{account.score}</span>
-            </p>
+            <Link 
+              href={`/account/${account._id}`} 
+              className="flex items-center gap-2 px-6 py-4 rounded-2xl bg-primary text-primary-foreground text-xs font-black uppercase tracking-widest hover:opacity-90 transition-all shadow-xl shadow-primary/20"
+            >
+              Inspect Dossier
+              <ExternalLink size={14} />
+            </Link>
           )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="space-y-6">
-          {/* Description */}
-          <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
-            <h3 className="text-[11px] font-black uppercase tracking-widest text-muted-foreground mb-4">Filing Description</h3>
-            <p className="text-foreground leading-relaxed text-[15px] font-medium">{report.description}</p>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Left Column: Evidence & Description */}
+        <div className="lg:col-span-2 space-y-8">
+          {/* Description Card */}
+          <div className="rounded-[2.5rem] border border-white/5 bg-card p-10 shadow-2xl relative overflow-hidden">
+            <div className="flex items-center gap-3 mb-8">
+              <FileText size={16} className="text-primary" />
+              <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Filing Statement</h3>
+            </div>
+            <p className="text-xl font-medium text-foreground leading-relaxed italic">
+              &ldquo;{report.description}&rdquo;
+            </p>
             {report.feelings && (
-              <blockquote className="mt-6 border-l-4 border-primary/20 pl-6 text-sm text-muted-foreground italic leading-relaxed">
-                &ldquo;{report.feelings}&rdquo;
-              </blockquote>
+              <div className="mt-10 p-6 rounded-2xl bg-white/5 border-l-4 border-primary/20 text-sm text-muted-foreground leading-relaxed">
+                <p className="text-[9px] font-black uppercase tracking-widest text-primary/40 mb-2">Contextual Feelings</p>
+                {report.feelings}
+              </div>
             )}
           </div>
 
-          {/* Media */}
+          {/* Evidence Gallery */}
           {report.media?.url && (
-            <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
-              <h3 className="text-[11px] font-black uppercase tracking-widest text-muted-foreground mb-4">Evidence</h3>
-              <div className="rounded-2xl overflow-hidden bg-secondary border border-border">
+            <div className="rounded-[2.5rem] border border-white/5 bg-card p-10 shadow-2xl">
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-3">
+                  {report.media.type === 'video' ? <Video size={16} className="text-primary" /> : <ImageIcon size={16} className="text-primary" />}
+                  <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Digital Evidence</h3>
+                </div>
+                <span className="text-[10px] font-mono font-bold text-muted-foreground/30">ID: {report.media.url.split('/').pop()?.slice(0, 12)}</span>
+              </div>
+              
+              <div className="rounded-3xl overflow-hidden bg-black/40 border border-white/10 group relative">
                 {report.media.type === 'video' ? (
-                  <video src={report.media.url} className="w-full max-h-[400px] object-contain" controls />
+                  <video src={report.media.url} className="w-full aspect-video object-contain" controls />
                 ) : (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={report.media.url} alt="Evidence" className="w-full max-h-[400px] object-contain" />
+                  <img src={report.media.url} alt="Evidence" className="w-full object-contain max-h-[600px] group-hover:scale-[1.02] transition-transform duration-700" />
                 )}
+                <div className="absolute top-4 right-4 h-8 w-8 rounded-full bg-black/60 backdrop-blur-md flex items-center justify-center text-white/40">
+                  <Zap size={14} />
+                </div>
               </div>
             </div>
           )}
         </div>
 
-        <div className="space-y-6">
-          {/* AI Verdict */}
+        {/* Right Column: AI Analysis & Tribunal Actions */}
+        <div className="space-y-8">
+          {/* AI Analysis Card */}
           {report.aiVerdict && (
-            <div className="rounded-3xl border border-primary/20 bg-primary/5 p-8 shadow-sm relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-4 opacity-10">
-                <Brain size={120} className="text-primary" />
+            <div className="rounded-[2.5rem] border border-primary/20 bg-primary/[0.03] p-10 shadow-2xl relative overflow-hidden">
+              <div className="absolute -top-10 -right-10 opacity-5 rotate-12">
+                <Brain size={180} />
               </div>
               
-              <div className="flex items-center gap-2 mb-8 relative z-10">
+              <div className="flex items-center gap-3 mb-10">
                 <Brain size={16} className="text-primary" />
-                <h3 className="text-[11px] font-black uppercase tracking-widest text-primary">System Verdict</h3>
+                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">System Analysis</h3>
               </div>
 
-              <div className="grid grid-cols-2 gap-8 mb-8 relative z-10">
-                <ConfidenceRing value={report.aiVerdict.confidence} />
-                <div className="flex flex-col items-center">
-                  <span className={`text-4xl font-black font-mono ${
-                    report.aiVerdict.proposedImpact > 0 ? 'text-emerald-600' : report.aiVerdict.proposedImpact < 0 ? 'text-destructive' : 'text-muted-foreground'
+              <div className="grid grid-cols-1 gap-6 mb-10">
+                <ConfidenceIndicator value={report.aiVerdict.confidence} />
+                <div className="p-6 rounded-[2rem] bg-white/5 border border-white/5 flex flex-col items-center">
+                  <span className={`text-5xl font-mono font-black ${
+                    report.aiVerdict.proposedImpact > 0 ? 'text-emerald-500' : report.aiVerdict.proposedImpact < 0 ? 'text-red-500' : 'text-muted-foreground'
                   }`}>
                     {report.aiVerdict.proposedImpact > 0 ? '+' : ''}{report.aiVerdict.proposedImpact}
                   </span>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mt-1">Proposed Impact</span>
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mt-2">Proposed Delta</span>
                 </div>
               </div>
 
-              <div className="space-y-4 relative z-10">
-                <p className="text-sm text-foreground/80 leading-relaxed font-medium bg-background/50 p-4 rounded-2xl border border-primary/10">
+              <div className="space-y-6">
+                <div className="p-6 rounded-2xl bg-background/60 border border-primary/10 text-sm text-foreground/80 leading-relaxed font-medium">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-primary/40 mb-3 leading-none">Automated Reasoning</p>
                   {report.aiVerdict.reasoning}
-                </p>
+                </div>
 
                 {report.aiVerdict.categoryTags?.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {report.aiVerdict.categoryTags.map((tag) => (
-                      <span key={tag} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/10 border border-primary/10 text-[11px] font-black text-primary uppercase">
-                        <Tag size={10} />
-                        {tag}
+                      <span key={tag} className="px-3 py-1.5 rounded-xl bg-primary/10 border border-primary/10 text-[10px] font-black text-primary uppercase tracking-widest">
+                        #{tag}
                       </span>
                     ))}
                   </div>
                 )}
 
                 {(report.aiVerdict.abuseFlags?.length ?? 0) > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {report.aiVerdict.abuseFlags.map((flag) => (
-                      <span key={flag} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-destructive/10 border border-destructive/10 text-[11px] font-black text-destructive uppercase">
-                        <AlertTriangle size={10} />
-                        {flag.replace(/_/g, ' ')}
-                      </span>
-                    ))}
+                  <div className="pt-4 border-t border-primary/10">
+                    <div className="flex items-center gap-2 mb-3">
+                      <AlertTriangle size={12} className="text-red-500" />
+                      <span className="text-[10px] font-black text-red-500 uppercase tracking-widest">Abuse Markers</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {report.aiVerdict.abuseFlags.map((flag) => (
+                        <span key={flag} className="px-3 py-1.5 rounded-xl bg-red-500/10 border border-red-500/10 text-[10px] font-black text-red-500 uppercase tracking-widest">
+                          {flag.replace(/_/g, ' ')}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
             </div>
           )}
 
-          {/* Admin Controls */}
-          <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
-            <h3 className="text-[11px] font-black uppercase tracking-widest text-muted-foreground mb-6">Tribunal Action</h3>
+          {/* Tribunal Action Card */}
+          <div className="rounded-[2.5rem] border border-white/5 bg-card p-10 shadow-2xl">
+            <div className="flex items-center gap-3 mb-10">
+              <Zap size={16} className="text-amber-500" />
+              <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Tribunal Action</h3>
+            </div>
+            
             <AdminReviewControls
               reportId={report._id}
               proposedImpact={report.aiVerdict?.proposedImpact ?? 0}

@@ -49,8 +49,24 @@ export function ProfileHeader({ user, score, stats, activeTab, onTabChange }: Pr
       {/* User Info */}
       <div className="flex flex-col items-center px-4 text-center">
         <div className="relative mb-3">
-          <div className="h-24 w-24 overflow-hidden rounded-full border-2 border-border p-1 bg-card">
-            <img src={user.avatar} alt={user.name} className="h-full w-full rounded-full object-cover" />
+          <div className="h-24 w-24 overflow-hidden rounded-full border-2 border-border p-1 bg-card relative">
+            <img 
+              src={(user.avatar && user.avatar !== 'null' && user.avatar !== 'undefined') ? user.avatar : `https://api.dicebear.com/9.x/initials/svg?seed=${user.name}&backgroundColor=1a1a1a&textColor=ffffff`} 
+              alt={user.name} 
+              className="h-full w-full rounded-full object-cover transition-opacity duration-300" 
+              onError={(e) => {
+                const target = e.currentTarget;
+                target.style.opacity = '0';
+                const fallback = target.nextElementSibling as HTMLElement;
+                if (fallback) fallback.style.display = 'flex';
+              }}
+            />
+            <div 
+              className="absolute inset-0 items-center justify-center bg-primary/10 text-primary font-black text-2xl hidden rounded-full"
+              style={{ display: 'none' }}
+            >
+              {(user.name || 'U').charAt(0).toUpperCase()}
+            </div>
           </div>
           {user.isVerified && (
             <div className="absolute bottom-0 right-0 rounded-full bg-background p-1 border border-border">
