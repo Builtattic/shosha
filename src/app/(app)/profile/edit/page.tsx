@@ -151,10 +151,10 @@ export default function EditProfilePage() {
         body: formData,
       });
       const data = await res.json();
-      if (data.ok && data.url) {
-        setForm((f) => ({ ...f, photoUrl: data.url }));
+      if (data.ok && data.data?.url) {
+        setForm((f) => ({ ...f, photoUrl: data.data.url }));
       } else {
-        setError(data.error || 'Failed to upload photo');
+        setError(data.error?.message || 'Failed to upload photo');
       }
     } catch (err) {
       setError('Photo upload failed');

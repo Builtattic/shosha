@@ -18,6 +18,7 @@ export type AiVerdictRecord = {
   reasoning: string;
   categoryTags: string[];
   abuseFlags: string[];
+  isAiFabricated: boolean;
   analyzedAt: string;
 };
 
@@ -26,6 +27,8 @@ export type AdminDecisionRecord = {
   verdict: 'approved' | 'rejected';
   finalImpact: number;
   note: string;
+  repetitionPattern?: string;
+  intent?: string;
   decidedAt: string;
 };
 
@@ -39,6 +42,8 @@ export type ReportRecord = {
   description: string;
   feelings: string;
   media: ReportMedia;
+  repetitionPattern?: string;
+  intent?: string;
   status: ReportStatus;
   aiVerdict: AiVerdictRecord | null;
   adminDecision: AdminDecisionRecord | null;

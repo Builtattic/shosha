@@ -128,7 +128,7 @@ async function main() {
           proposedImpact: positive ? 3 : -3,
           reasoning: 'Seeded filing with concrete public context.',
           categoryTags: positive ? ['community', 'professionalism'] : ['community', 'content'],
-          abuseFlags: [],
+          abuseFlags: [], isAiFabricated: false,
           analyzedAt: new Date().toISOString()
         },
         adminDecision: {

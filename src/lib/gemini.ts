@@ -19,6 +19,7 @@ export type AiVerdict = {
   reasoning: string;
   categoryTags: string[];
   abuseFlags: string[];
+  isAiFabricated: boolean;
   analyzedAt: Date;
 };
 
@@ -37,7 +38,8 @@ Return strict JSON only:
   "proposedImpact": 3,
   "reasoning": "brief reason",
   "categoryTags": ["community"],
-  "abuseFlags": []
+  "abuseFlags": [],
+  "isAiFabricated": false
 }
 
 Scoring guidance:
@@ -45,6 +47,7 @@ Scoring guidance:
 - Concrete dated incidents with evidence: high confidence, larger magnitude (up to -10 or +10).
 - Positive filings produce positive proposedImpact, negative filings produce negative.
 - Flag coordinated brigading, off-topic vendettas, doxxing, or pure opinion as abuse. Set valid=false and list flags.
+- Also evaluate if the report text appears to be AI-generated/fabricated and set isAiFabricated to true if it does.
 
 Categorize each filing with up to 3 tags from: authenticity, engagement, community, content, impact, harassment, misinformation, philanthropy, professionalism, controversy.`;
 
@@ -165,6 +168,7 @@ function heuristicAdjudication(input: AdjudicationInput): AiVerdict {
     reasoning: 'Shosha heuristic fallback.',
     categoryTags: text.includes('harass') ? ['community', 'harassment'] : ['community'],
     abuseFlags,
+    isAiFabricated: false,
     analyzedAt: new Date()
   };
 }
@@ -215,6 +219,7 @@ ${input.mediaType === 'video' && input.mediaUrl ? `A video proof was uploaded bu
       reasoning: String(json.reasoning ?? '').slice(0, 500),
       categoryTags: Array.isArray(json.categoryTags) ? json.categoryTags.slice(0, 3).map(String) : [],
       abuseFlags: Array.isArray(json.abuseFlags) ? json.abuseFlags.map(String) : [],
+      isAiFabricated: Boolean(json.isAiFabricated),
       analyzedAt: new Date()
     };
   } catch {
