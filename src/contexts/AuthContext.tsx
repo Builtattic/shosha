@@ -144,6 +144,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function signOut() {
     await firebaseSignOut(auth);
     clearSessionCookie();
+    if (typeof window !== 'undefined') {
+      window.location.assign('/sign-in');
+    }
   }
 
   async function getIdToken(): Promise<string | null> {
