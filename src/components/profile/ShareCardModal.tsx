@@ -2,23 +2,11 @@
 
 import { useRef, useState } from 'react';
 import { X, Download, Image as ImageIcon, Loader2 } from 'lucide-react';
-import { ProfileShareCard } from './ProfileShareCard';
+import { ProfileShareCard, type ProfileShareCardProps } from './ProfileShareCard';
 
-interface Props {
+interface Props extends ProfileShareCardProps {
   open: boolean;
   onClose: () => void;
-  displayName: string;
-  username: string;
-  avatarUrl?: string | null;
-  ledgerScore: number;
-  credibility: number;
-  weeklyDelta: number;
-  eventsCount: number;
-  dimensions: Array<{ key: string; fullName: string; value: number; levelLabel: string }>;
-  recentEvents: Array<{ title?: string; description?: string; delta?: number; impact?: number; type?: string; eventType?: string }>;
-  role?: string;
-  location?: string;
-  isVerified?: boolean;
 }
 
 type ExportFormat = 'pdf' | 'png';

@@ -175,8 +175,12 @@ export function SearchFeed({ initialAccounts }: { initialAccounts: AccountRow[] 
               <Link href={`/account/${account._id}`} className="block p-5 text-text lg:p-6">
                 <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-start">
                   <div className="flex min-w-0 gap-4">
-                    <div className="flex size-11 shrink-0 items-center justify-center border border-border bg-dim font-serif text-2xl text-accent">
-                      {account.displayName.slice(0, 1)}
+                    <div className="flex size-11 shrink-0 items-center justify-center border border-border bg-dim overflow-hidden">
+                      {account.avatarUrl ? (
+                        <img src={account.avatarUrl} alt={account.displayName} className="h-full w-full object-cover" />
+                      ) : (
+                        <span className="font-serif text-2xl text-accent">{account.displayName.slice(0, 1)}</span>
+                      )}
                     </div>
                     <div className="min-w-0">
                       <h2 className="font-serif text-3xl leading-none sm:text-4xl">{account.displayName}</h2>

@@ -2,339 +2,354 @@
 
 import { forwardRef } from 'react';
 
-interface Dimension {
-  key: string;
-  fullName: string;
-  value: number;
-  levelLabel: string;
-}
-
-interface RecentEvent {
-  title?: string;
-  description?: string;
-  delta?: number;
-  impact?: number;
-  type?: string;
-  eventType?: string;
-}
-
-interface ProfileShareCardProps {
+export interface ProfileShareCardProps {
   displayName: string;
   username: string;
   avatarUrl?: string | null;
   ledgerScore: number;
   credibility: number;
   weeklyDelta: number;
-  eventsCount: number;
-  dimensions: Dimension[];
-  recentEvents: RecentEvent[];
+  totalImpact: string;
+  followers: string;
   role?: string;
   location?: string;
   isVerified?: boolean;
+  platform?: string;
+  multipliers?: {
+    massiveAction?: string;
+    people?: string;
+    reach?: string;
+    impact?: string;
+    credibility?: string;
+    momentum?: string;
+    innovation?: string;
+    community?: string;
+    resource?: string;
+    legacy?: string;
+  };
 }
 
-// ── App light-mode palette ────────────────────────────────────────────────────
+const FONT = "'Inter','Instrument Sans',system-ui,-apple-system,sans-serif";
+
 const C = {
   bg:       '#ffffff',
-  surface:  '#f5f5f5',
-  surface2: '#e8e8e8',
-  border:   '#e5e5e5',
-  text:     '#1a1a1a',
+  surface:  '#f7f7f8',
+  border:   '#e5e7eb',
+  text:     '#111827',
   muted:    '#6b7280',
   dim:      '#9ca3af',
   green:    '#16a34a',
-  greenBg:  '#f0fdf4',
-  greenBdr: '#bbf7d0',
+  greenBg:  '#dcfce7',
   red:      '#dc2626',
-  redBg:    '#fef2f2',
-  amber:    '#d97706',
+  accent:   '#1a1a1a',
 };
-const FONT = "'Instrument Sans','Inter',system-ui,sans-serif";
-const MONO = "'DM Mono','IBM Plex Mono',monospace";
 
-// ── Tiny inline sparkline SVG ─────────────────────────────────────────────────
-function Spark({ points, color }: { points: string; color: string }) {
-  return (
-    <svg width="60" height="16" viewBox="0 0 60 16" style={{ display: 'block' }}>
-      <polyline
-        points={points}
-        fill="none"
-        stroke={color}
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-// Fixed rising / mixed / flat spark shapes
-const SPARK_UP   = '0,14 10,11 20,9 30,6 40,4 50,3 60,1';
-const SPARK_DOWN = '0,2 10,5 20,7 30,9 40,11 50,13 60,15';
-const SPARK_FLAT = '0,8 10,7 20,8 30,7 40,8 50,7 60,8';
-
-/** Fixed 640×853 (3:4). Rendered to DOM, captured by html2canvas. */
+/** Fixed 640×900 card rendered offscreen and captured by html2canvas. */
 export const ProfileShareCard = forwardRef<HTMLDivElement, ProfileShareCardProps>(
   function ProfileShareCard(
-    { displayName, username, avatarUrl, ledgerScore, credibility,
-      weeklyDelta, eventsCount, dimensions, recentEvents, role, location, isVerified },
+    {
+      displayName, username, avatarUrl, ledgerScore, credibility,
+      weeklyDelta, totalImpact, followers, role, location, isVerified,
+      platform, multipliers,
+    },
     ref
   ) {
-    const isUp   = weeklyDelta > 0;
+    const isUp = weeklyDelta > 0;
     const isDown = weeklyDelta < 0;
-    const scoreColor  = ledgerScore >= 1000 ? C.green : C.red;
-    const deltaColor  = isUp ? C.green : isDown ? C.red : C.muted;
-    const trendLabel  = isUp ? '↑ Trending Up' : isDown ? '↓ Declining' : '→ Stable';
-    const trendColor  = isUp ? C.green : isDown ? C.red : C.muted;
-    const trendBg     = isUp ? C.greenBg : isDown ? C.redBg : C.surface;
-    const trendBorder = isUp ? C.greenBdr : isDown ? '#fecaca' : C.border;
+    const trendLabel = isUp ? 'Trending Up' : isDown ? 'Declining' : 'Stable';
+    const trendIcon = isUp ? '↗' : isDown ? '↘' : '→';
+    const scoreColor = ledgerScore >= 1000 ? C.green : C.red;
 
-    // Momentum bar: 50% = neutral, +delta shifts right
-    const momentumPct = Math.min(100, Math.max(4, 50 + (weeklyDelta / 20)));
+    // Score gauge ring geometry
+    const R = 72;
+    const CIRC = 2 * Math.PI * R;
+    const scorePercent = Math.min(1, Math.max(0, ledgerScore / 2000));
+    const ringFilled = scorePercent * CIRC;
 
-    // Percentile: proxy from credibility (0-100 → label)
-    const percentile  = Math.max(1, Math.min(99, credibility));
-
-    // Credibility ring geometry
-    const R     = 38;
-    const CIRC  = 2 * Math.PI * R;
-    const ringFilled = (credibility / 100) * CIRC;
-    const ringColor  = credibility >= 67 ? C.green : credibility >= 33 ? C.amber : C.red;
-
-    // Top 6 dims, top 3 events
-    const topDims   = dimensions.slice(0, 6);
-    const topEvents = recentEvents.slice(0, 3);
+    // Multiplier display data
+    const mults = [
+      { icon: '⭐', label: 'Massive\nAction', value: multipliers?.massiveAction || 'Standard' },
+      { icon: '👥', label: 'People\nMultiplier', value: multipliers?.people || 'Growing' },
+      { icon: '🌐', label: 'Reach\nMultiplier', value: multipliers?.reach || 'Local' },
+      { icon: '🎯', label: 'Impact\nMultiplier', value: multipliers?.impact || 'Moderate' },
+      { icon: '🛡️', label: 'Credibility\nMultiplier', value: multipliers?.credibility || 'Trusted' },
+      { icon: '🚀', label: 'Momentum\nMultiplier', value: multipliers?.momentum || 'Rising' },
+      { icon: '💡', label: 'Innovation\nMultiplier', value: multipliers?.innovation || 'Creative' },
+      { icon: '🤝', label: 'Community\nMultiplier', value: multipliers?.community || 'Active' },
+      { icon: '💰', label: 'Resource\nMultiplier', value: multipliers?.resource || 'Resourceful' },
+      { icon: '🏛️', label: 'Legacy\nMultiplier', value: multipliers?.legacy || 'Building' },
+    ];
 
     return (
       <div
         ref={ref}
         style={{
-          width: 640, height: 853,
-          background: C.bg, color: C.text,
+          width: 640,
+          height: 900,
+          position: 'relative',
+          overflow: 'hidden',
           fontFamily: FONT,
-          position: 'relative', overflow: 'hidden',
-          border: `1px solid ${C.border}`,
-          display: 'flex', flexDirection: 'column',
+          color: C.text,
           flexShrink: 0,
         }}
       >
-
-        {/* ── HEADER ────────────────────────────────────────────────── */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 28px', borderBottom: `1px solid ${C.border}` }}>
-          <div style={{ fontSize: 20, fontWeight: 900, color: C.text, letterSpacing: '-0.5px' }}>
-            Sho<span style={{ fontWeight: 400, fontStyle: 'italic', color: C.muted }}>शा</span>
-          </div>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.dim }}>
-              Public Ledger
-            </div>
-            <div style={{ fontSize: 9, color: C.dim, marginTop: 2, fontFamily: MONO }}>
-              {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
-            </div>
-          </div>
-        </div>
-
-        {/* ── IDENTITY ──────────────────────────────────────────────── */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 18, padding: '18px 28px', borderBottom: `1px solid ${C.border}` }}>
-          {/* Avatar */}
-          <div style={{ position: 'relative', flexShrink: 0 }}>
-            <div style={{ width: 64, height: 64, borderRadius: 14, border: `1px solid ${C.border}`, background: C.surface, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {(avatarUrl && avatarUrl !== 'null' && avatarUrl !== 'undefined')
-                ? <img src={avatarUrl} alt={displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                : <span style={{ fontSize: 24, fontWeight: 900, color: C.muted }}>{displayName.slice(0, 1).toUpperCase()}</span>
-              }
-            </div>
-            {isVerified && (
-              <div style={{ position: 'absolute', bottom: -3, right: -3, width: 16, height: 16, borderRadius: '50%', background: C.green, border: `2px solid ${C.bg}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ color: '#fff', fontSize: 8, fontWeight: 900 }}>✓</span>
+        {/* Rainbow gradient border - outer frame */}
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            borderRadius: 24,
+            background: 'conic-gradient(from 0deg, #ef4444, #f59e0b, #22c55e, #06b6d4, #6366f1, #ec4899, #ef4444)',
+            padding: 4,
+          }}
+        >
+          {/* Inner white card */}
+          <div
+            style={{
+              width: '100%',
+              height: '100%',
+              borderRadius: 20,
+              background: C.bg,
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+            }}
+          >
+            {/* ── HEADER BAR ─────────────────────────────────────────── */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 28px 0 28px' }}>
+              <div style={{ fontSize: 22, fontWeight: 900, color: C.text, letterSpacing: '-0.5px' }}>
+                Sho<span style={{ fontWeight: 400, fontStyle: 'italic', color: C.muted }}>शा</span>
               </div>
-            )}
-          </div>
-
-          {/* Name block */}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 24, fontWeight: 900, color: C.text, lineHeight: 1.1, letterSpacing: '-0.5px' }}>
-              {displayName}
-            </div>
-            <div style={{ fontSize: 12, color: C.muted, marginTop: 2, fontFamily: MONO }}>{username}</div>
-            {(role || location) && (
-              <div style={{ fontSize: 11, color: C.muted, marginTop: 5, display: 'flex', gap: 10 }}>
-                {role && <span>{role}</span>}
-                {role && location && <span style={{ color: C.border }}>·</span>}
-                {location && <span>{location}</span>}
-              </div>
-            )}
-          </div>
-
-          {/* Credibility ring */}
-          <div style={{ flexShrink: 0, textAlign: 'center' }}>
-            <svg width="80" height="80" viewBox="0 0 100 100">
-              <circle cx="50" cy="50" r={R} fill="none" stroke={C.surface2} strokeWidth="5" />
-              <circle cx="50" cy="50" r={R} fill="none"
-                stroke={ringColor} strokeWidth="5"
-                strokeDasharray={`${ringFilled} ${CIRC - ringFilled}`}
-                strokeLinecap="round"
-                transform="rotate(-90 50 50)"
-              />
-              <text x="50" y="46" textAnchor="middle" fontFamily={MONO} fontSize="7" fill={C.dim} letterSpacing="1">CRED</text>
-              <text x="50" y="62" textAnchor="middle" fontFamily={FONT} fontSize="20" fontWeight="900" fill={C.text}>{credibility}</text>
-              <text x="50" y="73" textAnchor="middle" fontFamily={MONO} fontSize="6" fill={C.dim}>/100</text>
-            </svg>
-            <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.dim, marginTop: 2 }}>Credibility</div>
-          </div>
-        </div>
-
-        {/* ── SCORE + TRENDING + MOMENTUM ───────────────────────────── */}
-        <div style={{ padding: '18px 28px', borderBottom: `1px solid ${C.border}`, display: 'grid', gridTemplateColumns: '1fr auto', gap: 24, alignItems: 'start' }}>
-          {/* Left: number + trend tag + momentum */}
-          <div>
-            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.dim, marginBottom: 6 }}>
-              Shosha Score
-            </div>
-            <div style={{ fontSize: 68, fontWeight: 900, lineHeight: 1.15, color: scoreColor, fontVariantNumeric: 'tabular-nums', display: 'block', paddingBottom: 2 }}>
-              {ledgerScore.toLocaleString()}
-            </div>
-            <div style={{ fontSize: 12, color: deltaColor, marginTop: 2, fontWeight: 700 }}>
-              {isUp ? '↑' : isDown ? '↓' : '→'} {isUp ? '+' : ''}{weeklyDelta} this week
-            </div>
-            <div style={{ fontSize: 11, color: C.dim, marginTop: 2 }}>
-              Base 1,000 · Ledger never resets
-            </div>
-
-            {/* Trending tag */}
-            <div style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 6, background: trendBg, border: `1px solid ${trendBorder}`, borderRadius: 6, padding: '4px 10px' }}>
-              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: trendColor }}>
-                {trendLabel}
-              </span>
-            </div>
-
-            {/* Momentum bar */}
-            <div style={{ marginTop: 12 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.dim, marginBottom: 5 }}>
-                <span>Momentum</span>
-                <span style={{ color: trendColor }}>{isUp ? 'Positive' : isDown ? 'Negative' : 'Neutral'}</span>
-              </div>
-              <div style={{ height: 3, background: C.surface2, borderRadius: 2, overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${momentumPct}%`, background: trendColor, borderRadius: 2, maxWidth: '100%' }} />
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.muted }}>Real People. Real Impact.</div>
+                <div style={{ fontSize: 10, color: C.dim, marginTop: 1 }}>Powered by Sho<span style={{ fontStyle: 'italic' }}>शा</span></div>
               </div>
             </div>
-          </div>
 
-          {/* Right: trending label — right-aligned */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'flex-start', paddingTop: 4, gap: 8 }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: trendBg, border: `1px solid ${trendBorder}`, borderRadius: 6, padding: '6px 12px' }}>
-              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: trendColor }}>
-                {trendLabel}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* ── STATS ROW WITH SPARKLINES ─────────────────────────────── */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', borderBottom: `1px solid ${C.border}` }}>
-          {[
-            {
-              label: 'This Week',
-              value: `${isUp ? '+' : ''}${weeklyDelta}`,
-              valueColor: deltaColor,
-              sub: 'Score change',
-              spark: isUp ? SPARK_UP : isDown ? SPARK_DOWN : SPARK_FLAT,
-              sparkColor: deltaColor,
-            },
-            {
-              label: 'Base Score',
-              value: '1,000',
-              valueColor: C.text,
-              sub: 'Starting ledger',
-              spark: SPARK_FLAT,
-              sparkColor: C.dim,
-            },
-            {
-              label: 'Credibility',
-              value: `${credibility}%`,
-              valueColor: C.text,
-              sub: 'Context score',
-              spark: credibility >= 60 ? SPARK_UP : credibility >= 40 ? SPARK_FLAT : SPARK_DOWN,
-              sparkColor: ringColor,
-            },
-            {
-              label: 'Events Filed',
-              value: String(eventsCount),
-              valueColor: C.text,
-              sub: 'Documented',
-              spark: eventsCount > 0 ? SPARK_UP : SPARK_FLAT,
-              sparkColor: C.dim,
-            },
-          ].map((s, i) => (
-            <div key={i} style={{ background: C.bg, padding: '12px 14px', borderRight: i < 3 ? `1px solid ${C.border}` : 'none' }}>
-              <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.dim, marginBottom: 5 }}>{s.label}</div>
-              <div style={{ fontSize: 18, fontWeight: 900, color: s.valueColor, fontVariantNumeric: 'tabular-nums', lineHeight: 1.2 }}>{s.value}</div>
-              <div style={{ fontSize: 8, color: C.dim, marginTop: 2, marginBottom: 6 }}>{s.sub}</div>
-              <Spark points={s.spark} color={s.sparkColor} />
-            </div>
-          ))}
-        </div>
-
-        {/* ── CONTEXT FACTORS ───────────────────────────────────────── */}
-        {topDims.length > 0 && (
-          <div style={{ padding: '14px 28px', borderBottom: topEvents.length > 0 ? `1px solid ${C.border}` : 'none', flex: topEvents.length > 0 ? undefined : 1 }}>
-            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.dim, marginBottom: 10 }}>
-              Context Factors · Applied to all events
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 6 }}>
-              {dimensions.slice(0, 10).map((d) => {
-                const accent = d.value >= 2 ? C.green : d.value >= 1 ? C.text : C.muted;
-                return (
-                  <div key={d.key} style={{ background: C.surface, borderRadius: 8, padding: '8px 10px' }}>
-                    <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.dim, marginBottom: 3 }}>
-                      {d.fullName}
-                    </div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: accent }}>{d.levelLabel}</div>
+            {/* ── PROFILE + SCORE SECTION ─────────────────────────────── */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 28, padding: '22px 28px 16px 28px' }}>
+              {/* Left: Avatar + Name */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0, width: 190 }}>
+                {/* Avatar */}
+                <div
+                  style={{
+                    width: 110,
+                    height: 110,
+                    borderRadius: '50%',
+                    overflow: 'hidden',
+                    border: `3px solid ${C.border}`,
+                    background: C.surface,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {avatarUrl && avatarUrl !== 'null' && avatarUrl !== 'undefined' ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={`/api/proxy-image?url=${encodeURIComponent(avatarUrl)}`} alt={displayName} crossOrigin="anonymous" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <span style={{ fontSize: 42, fontWeight: 900, color: C.dim }}>{displayName[0]?.toUpperCase() ?? '?'}</span>
+                  )}
+                </div>
+                {/* Name + handle */}
+                <div style={{ marginTop: 12, textAlign: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                    <span style={{ fontSize: 18, fontWeight: 900, color: C.text, lineHeight: 1.2 }}>{displayName}</span>
+                    {isVerified && (
+                      <span style={{ fontSize: 16, color: C.green }}>✓</span>
+                    )}
                   </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* ── RECENT EVENTS ─────────────────────────────────────────── */}
-        {topEvents.length > 0 && (
-          <div style={{ padding: '14px 28px', flex: 1 }}>
-            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.dim, marginBottom: 10 }}>
-              Recent Events · Documented
-            </div>
-            {topEvents.map((ev, i) => {
-              const delta   = ev.delta ?? ev.impact ?? 0;
-              const type    = ev.eventType ?? ev.type;
-              const isPos   = type === 'positive' || delta > 0;
-              const isNeg   = type === 'negative' || delta < 0;
-              const dColor  = isPos ? C.green : isNeg ? C.red : C.muted;
-              return (
-                <div key={i} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 16, padding: '10px 0', borderBottom: i < topEvents.length - 1 ? `1px solid ${C.border}` : 'none' }}>
-                  <div style={{ fontSize: 12, color: C.text, lineHeight: 1.5, flex: 1 }}>
-                    {ev.title || ev.description || 'Event'}
-                  </div>
-                  {delta !== 0 && (
-                    <div style={{ fontSize: 14, fontWeight: 900, color: dColor, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', fontFamily: MONO }}>
-                      {delta > 0 ? '+' : ''}{delta}
+                  <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>@{username.replace(/^@/, '')}</div>
+                  {role && (
+                    <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>{role}</div>
+                  )}
+                  {location && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, marginTop: 4, fontSize: 11, color: C.muted }}>
+                      <span>📍</span> {location}
                     </div>
                   )}
                 </div>
-              );
-            })}
-          </div>
-        )}
+              </div>
 
-        {/* ── FOOTER ────────────────────────────────────────────────── */}
-        <div style={{ padding: '12px 28px', borderTop: `1px solid ${C.border}`, background: C.surface, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto' }}>
-          <div style={{ fontSize: 10, fontWeight: 900, color: C.text }}>
-            Sho<span style={{ fontWeight: 400, fontStyle: 'italic', color: C.muted }}>शा</span>
-          </div>
-          <div style={{ fontSize: 10, color: C.dim, fontFamily: MONO }}>
-            shosha.io / {username}
+              {/* Right: Score Gauge */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 4 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase' as const, color: C.muted, marginBottom: 10 }}>
+                  SHOSHA SCORE
+                </div>
+                {/* Circular gauge */}
+                <div style={{ position: 'relative', width: 180, height: 180 }}>
+                  <svg width="180" height="180" viewBox="0 0 180 180">
+                    {/* Track */}
+                    <circle cx="90" cy="90" r={R} fill="none" stroke={C.surface} strokeWidth="10" />
+                    {/* Filled arc */}
+                    <circle
+                      cx="90" cy="90" r={R}
+                      fill="none"
+                      stroke={scoreColor}
+                      strokeWidth="10"
+                      strokeDasharray={`${ringFilled} ${CIRC - ringFilled}`}
+                      strokeLinecap="round"
+                      transform="rotate(-90 90 90)"
+                      style={{ transition: 'stroke-dasharray 0.5s ease-out' }}
+                    />
+                    {/* Endpoint dot */}
+                    <circle
+                      cx={90 + R * Math.cos(Math.PI * 2 * scorePercent - Math.PI / 2)}
+                      cy={90 + R * Math.sin(Math.PI * 2 * scorePercent - Math.PI / 2)}
+                      r="6"
+                      fill={C.bg}
+                      stroke={C.text}
+                      strokeWidth="2"
+                    />
+                  </svg>
+                  {/* Score number centered */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <span style={{ fontSize: 42, fontWeight: 900, color: C.text, lineHeight: 1 }}>
+                      {ledgerScore.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+                {/* Weekly delta */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: isUp ? C.green : isDown ? C.red : C.muted }}>
+                    {trendIcon} {isUp ? '+' : ''}{weeklyDelta.toLocaleString()} (All Time)
+                  </span>
+                </div>
+                {/* Trend pill */}
+                <div
+                  style={{
+                    marginTop: 8,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    background: isUp ? C.greenBg : C.surface,
+                    border: `1px solid ${isUp ? '#bbf7d0' : C.border}`,
+                    borderRadius: 20,
+                    padding: '5px 16px',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: isUp ? C.green : isDown ? C.red : C.muted,
+                  }}
+                >
+                  {trendIcon} {trendLabel}
+                </div>
+              </div>
+            </div>
+
+            {/* ── STATS ROW ──────────────────────────────────────────── */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(4, 1fr)',
+                gap: 10,
+                padding: '0 28px 16px 28px',
+              }}
+            >
+              {[
+                {
+                  icon: isUp ? '↗' : isDown ? '↘' : '→',
+                  iconColor: isUp ? C.green : isDown ? C.red : C.muted,
+                  value: `${isUp ? '+' : ''}${weeklyDelta.toLocaleString()}`,
+                  label: 'This Week',
+                },
+                {
+                  icon: '🔥',
+                  iconColor: C.red,
+                  value: totalImpact,
+                  label: 'Total Impact',
+                },
+                {
+                  icon: '🛡️',
+                  iconColor: C.text,
+                  value: `${credibility}%`,
+                  label: 'Credibility',
+                },
+                {
+                  icon: '👥',
+                  iconColor: C.text,
+                  value: followers || '—',
+                  label: 'Followers',
+                },
+              ].map((stat, i) => (
+                <div
+                  key={i}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    background: C.surface,
+                    borderRadius: 14,
+                    padding: '12px 8px',
+                    border: `1px solid ${C.border}`,
+                  }}
+                >
+                  <span style={{ fontSize: 18, marginBottom: 4 }}>{stat.icon}</span>
+                  <span style={{ fontSize: 18, fontWeight: 900, color: C.text }}>{stat.value}</span>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: C.muted, marginTop: 2 }}>{stat.label}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* ── 10X MULTIPLIERS ─────────────────────────────────────── */}
+            <div style={{ padding: '0 28px 16px 28px' }}>
+              <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase' as const, color: C.text, textAlign: 'center', marginBottom: 12 }}>
+                10X MULTIPLIERS
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8 }}>
+                {mults.map((m, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      textAlign: 'center',
+                      background: C.bg,
+                      border: `1px solid ${C.border}`,
+                      borderRadius: 12,
+                      padding: '10px 4px 8px',
+                    }}
+                  >
+                    <span style={{ fontSize: 20, marginBottom: 4 }}>{m.icon}</span>
+                    <span style={{ fontSize: 8, fontWeight: 700, color: C.text, lineHeight: 1.3, whiteSpace: 'pre-line' as const }}>{m.label}</span>
+                    <span style={{ fontSize: 9, fontWeight: 700, color: C.green, marginTop: 4 }}>{m.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ── FOOTER CTA ─────────────────────────────────────────── */}
+            <div
+              style={{
+                marginTop: 'auto',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '14px 28px',
+                borderTop: `1px solid ${C.border}`,
+                background: C.surface,
+              }}
+            >
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: C.text }}>Discover. Measure. Amplify Impact.</div>
+                <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>Join thousands of changemakers on Shoशा.</div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.green }}>Get your report →</div>
+                <div style={{ fontSize: 11, fontWeight: 800, color: C.text, marginTop: 1 }}>shosha.com</div>
+              </div>
+            </div>
           </div>
         </div>
-
       </div>
     );
   }

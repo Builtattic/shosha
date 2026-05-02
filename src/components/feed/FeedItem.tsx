@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -19,10 +20,14 @@ import {
   Instagram,
   Facebook,
   AtSign,
-  Send
+  Send,
+  Loader2,
+  X,
+  Download
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/Toast';
+import { FeedShareCard } from './FeedShareCard';
 
 type CommentItem = {
   id: string;
@@ -103,6 +108,7 @@ export function FeedItem({
   reportScore,
   evidenceSourceUrl,
   stats,
+  delta,
   viewer,
   reporter
 }: FeedItemProps) {
@@ -116,6 +122,80 @@ export function FeedItem({
   const [comments, setComments] = useState<CommentItem[] | null>(null);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentDraft, setCommentDraft] = useState('');
+
+  // Share Card State
+  const [generatingImage, setGeneratingImage] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  async function handleShareClick() {
+    setGeneratingImage(true);
+    try {
+      // interact('share') just to bump the count and optionally log
+      fetch(`/api/reports/${id}/interactions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'share' })
+      }).catch(console.error);
+
+      // Wait a tick for portal to mount
+      await new Promise(r => setTimeout(r, 200));
+
+      const { default: html2canvas } = await import('html2canvas');
+      if (!cardRef.current) throw new Error('Card element not found');
+
+      const canvas = await html2canvas(cardRef.current, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: false,
+        backgroundColor: '#f5f5f5',
+        logging: false,
+        width: 600,
+      });
+
+      setPreviewUrl(canvas.toDataURL('image/png'));
+    } catch (error) {
+      console.error('Failed to generate share image:', error);
+      toast.push('Could not generate share image. Fallback to link copied.');
+      await navigator.clipboard?.writeText(window.location.href);
+    } finally {
+      setGeneratingImage(false);
+    }
+  }
+
+  async function handleDownload() {
+    if (!previewUrl) return;
+    const link = document.createElement('a');
+    link.download = `shosha_report_${id}.png`;
+    link.href = previewUrl;
+    link.click();
+    toast.push('Image downloaded!');
+  }
+
+  async function handleNativeShare() {
+    if (!previewUrl) return;
+    try {
+      const blob = await (await fetch(previewUrl)).blob();
+      const file = new File([blob], `shosha_${id}.png`, { type: 'image/png' });
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: title,
+          text: `Check out this report on Shosha: ${title}`,
+        });
+        return;
+      }
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      toast.push('Image copied to clipboard!');
+    } catch {
+      toast.push('Share cancelled or not supported.');
+    }
+  }
+
+  function closePreview() {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
+  }
 
   async function loadComments() {
     setCommentsLoading(true);
@@ -427,12 +507,11 @@ export function FeedItem({
           </button>
           <button
             type="button"
-            onClick={() => interact('share')}
-            disabled={busy === 'share'}
+            onClick={handleShareClick}
+            disabled={busy === 'share' || generatingImage}
             className="flex items-center gap-2 transition-colors hover:text-foreground active:scale-95 disabled:opacity-60"
           >
-            <Share2 size={18} />
-            <span className="text-[13px] font-bold">{localStats.shares}</span>
+            {generatingImage ? <Loader2 size={18} className="animate-spin" /> : <Share2 size={18} />}
           </button>
         </div>
         <button
@@ -525,6 +604,86 @@ export function FeedItem({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Hidden offscreen card for html2canvas capture */}
+      {generatingImage && typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            style={{
+              position: 'fixed',
+              left: '-9999px',
+              top: 0,
+              zIndex: -1,
+              pointerEvents: 'none',
+              opacity: 0,
+            }}
+            aria-hidden
+          >
+            <FeedShareCard
+              ref={cardRef}
+              id={id}
+              user={user}
+              timestamp={timestamp}
+              type={type}
+              title={title}
+              location={location}
+              media={media}
+              category={category}
+              deed={deed}
+              disputeStatus={disputeStatus}
+              reportScore={reportScore}
+              evidenceSourceUrl={evidenceSourceUrl}
+              stats={localStats}
+              viewer={viewerState}
+              reporter={reporter}
+              delta={delta}
+            />
+          </div>,
+          document.body
+        )
+      }
+
+      {/* Preview Modal */}
+      {previewUrl && typeof document !== 'undefined' &&
+        createPortal(
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/90 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="relative flex max-h-full max-w-2xl flex-col items-center gap-6">
+              <button
+                type="button"
+                onClick={closePreview}
+                className="absolute -right-4 -top-12 rounded-full bg-muted/50 p-2 text-foreground transition-colors hover:bg-muted"
+                aria-label="Close preview"
+              >
+                <X size={24} />
+              </button>
+
+              <div className="relative overflow-hidden rounded-xl border border-border/50 shadow-2xl">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={previewUrl} alt="Share Preview" className="max-h-[70vh] w-auto object-contain" />
+              </div>
+
+              <div className="flex w-full flex-col gap-3 sm:flex-row sm:justify-center">
+                <button
+                  type="button"
+                  onClick={handleDownload}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-full bg-muted px-6 py-3 font-semibold text-foreground transition-all hover:bg-muted/80 active:scale-95 sm:flex-none"
+                >
+                  <Download size={20} />
+                  Save Image
+                </button>
+                <button
+                  type="button"
+                  onClick={handleNativeShare}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-full bg-foreground px-6 py-3 font-semibold text-background transition-all hover:opacity-90 active:scale-95 sm:flex-none shadow-lg"
+                >
+                  <Share2 size={20} />
+                  Share to Socials
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </motion.div>
   );
 }

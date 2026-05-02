@@ -793,12 +793,24 @@ export default function ProfilePage() {
         ledgerScore={ledgerScore}
         credibility={credibility}
         weeklyDelta={weeklyDelta}
-        eventsCount={recentEvents.length}
-        dimensions={scores}
-        recentEvents={recentEvents}
+        totalImpact={positiveDeltaWeek > 0 ? `+${positiveDeltaWeek}` : String(positiveDeltaWeek)}
+        followers={appUser?.networkSize ? (NETWORK_LABELS[appUser.networkSize] || appUser.networkSize) : '—'}
         role={appUser?.occupationRole ? (ROLE_LABELS[appUser.occupationRole] ?? appUser.occupationRole) : undefined}
         location={[appUser?.city, appUser?.country].filter(Boolean).join(', ') || undefined}
         isVerified={Boolean(appUser?.onboardingComplete)}
+        platform={appUser?.platform || 'website'}
+        multipliers={{
+          massiveAction: appUser?.massiveAction,
+          people: appUser?.peopleMultiplier,
+          reach: appUser?.reachMultiplier,
+          impact: appUser?.impactMultiplier,
+          credibility: appUser?.credibilityMultiplier,
+          momentum: appUser?.momentumMultiplier,
+          innovation: appUser?.innovationMultiplier,
+          community: appUser?.communityMultiplier,
+          resource: appUser?.resourceMultiplier,
+          legacy: appUser?.legacyMultiplier,
+        }}
       />
     </main>
   );
