@@ -1,5 +1,5 @@
 import { adminDb } from '@/lib/firebase/admin';
-import { withId } from '@/lib/repos/_serialize';
+import { omitUndefinedDeep, withId } from '@/lib/repos/_serialize';
 import { BASE_SCORE, applySheetScore, calcWorkbookScoreFromEntries } from '@/lib/scoring';
 import type { Breakdown, Platform, ScoreCause } from '@/types';
 
@@ -107,6 +107,9 @@ export function deriveId(platform: Platform, username: string) {
     .toLowerCase()
     .replace(/https?:\/\//g, '')
     .replace(/[^a-z0-9_.-]+/g, '-')
+    // Firebase RTDB keys cannot contain ".", "#", "$", "[", "]" — dots are common in generated handles (e.g. l.6436).
+    .replace(/[.#$\[\]]/g, '-')
+    .replace(/-+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 140);
   return `${platform}_${safeUsername || 'profile'}`;
@@ -123,7 +126,8 @@ export async function findById(id: string): Promise<AccountRecord | null> {
 }
 
 export async function findByPlatformUsername(platform: Platform, username: string): Promise<AccountRecord | null> {
-  return findById(deriveId(platform, username));
+  const safeId = deriveId(platform, username);
+  return findById(safeId);
 }
 
 export async function create(input: Omit<AccountRecord, '_id' | 'createdAt' | 'updatedAt' | 'usernameLower' | 'displayNameLower'>): Promise<AccountRecord> {
@@ -136,16 +140,16 @@ export async function createWithId(
   input: Omit<AccountRecord, '_id' | 'createdAt' | 'updatedAt' | 'usernameLower' | 'displayNameLower'>
 ): Promise<AccountRecord> {
   const now = new Date().toISOString();
-  const payload = {
+  const payload = omitUndefinedDeep({
     ...input,
     username: input.username.toLowerCase(),
     usernameLower: input.username.toLowerCase(),
     displayNameLower: input.displayName.toLowerCase(),
     createdAt: now,
     updatedAt: now
-  };
+  }) as Omit<AccountRecord, '_id'> & Record<string, unknown>;
   await ref().child(id).set(payload);
-  return { _id: id, ...payload };
+  return { _id: id, ...payload } as AccountRecord;
 }
 
 export async function update(id: string, partial: Partial<AccountRecord>): Promise<AccountRecord | null> {

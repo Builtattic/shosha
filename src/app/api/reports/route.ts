@@ -11,6 +11,7 @@ import {
   credibilityWeight,
   profileMultipliersFromWorkbookProfile,
   resolveSheetBaseImpact,
+  type EventMultipliers,
 } from '@/lib/scoring';
 import * as accountsRepo from '@/lib/repos/accounts';
 import * as reportsRepo from '@/lib/repos/reports';
@@ -80,11 +81,21 @@ export async function POST(request: Request) {
       return fail('cooldown_active', 'A similar filing from this account is cooling down for this profile.', 429);
     }
 
-    const multipliers = profileMultipliersFromWorkbookProfile(account, {
+    const baseMultipliers = profileMultipliersFromWorkbookProfile(account, {
       repetitionPattern: Number(parsed.data.repetitionPattern),
       intent: Number(parsed.data.intent),
       circumstances: Number(parsed.data.circumstances),
     });
+    const multipliers: EventMultipliers = {
+      ...baseMultipliers,
+      ...(parsed.data.identity && { identity: Number(parsed.data.identity) }),
+      ...(parsed.data.power && { power: Number(parsed.data.power) }),
+      ...(parsed.data.means && { means: Number(parsed.data.means) }),
+      ...(parsed.data.environment && { environment: Number(parsed.data.environment) }),
+      ...(parsed.data.ability && { ability: Number(parsed.data.ability) }),
+      ...(parsed.data.responsibility && { responsibility: Number(parsed.data.responsibility) }),
+      ...(parsed.data.awareness && { awareness: Number(parsed.data.awareness) }),
+    };
     const multiplierQuotient = calcMultiplierQuotient(multipliers);
     const reportScore = calcDelta(scoringRow.baseScore, multipliers);
     const weight = credibilityWeight(user?.reporterScore, user ? 80 : 50);

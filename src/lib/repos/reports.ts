@@ -1,5 +1,5 @@
 import { adminDb } from '@/lib/firebase/admin';
-import { withId } from '@/lib/repos/_serialize';
+import { omitUndefinedDeep, withId } from '@/lib/repos/_serialize';
 import type { ReportType, ReportStatus, Platform, ReportSource, ReportVisibility } from '@/types';
 
 export type ReportMedia = {
@@ -94,7 +94,7 @@ export type CreateReportInput = Omit<ReportRecord, '_id' | 'createdAt' | 'update
 export async function create(input: CreateReportInput): Promise<ReportRecord> {
   const now = new Date().toISOString();
   const newRef = ref().push();
-  const payload = {
+  const sanitized = omitUndefinedDeep({
     ...input,
     visibility: input.visibility ?? 'public',
     pinned: input.pinned ?? false,
@@ -103,9 +103,9 @@ export async function create(input: CreateReportInput): Promise<ReportRecord> {
     stats: input.stats ?? { aligns: 0, opposes: 0, comments: 0, shares: 0 },
     createdAt: now,
     updatedAt: now
-  };
-  await newRef.set(payload);
-  return { _id: newRef.key!, ...payload };
+  }) as Omit<ReportRecord, '_id'> & Record<string, unknown>;
+  await newRef.set(sanitized);
+  return { _id: newRef.key!, ...sanitized } as ReportRecord;
 }
 
 export async function update(id: string, partial: Partial<ReportRecord>): Promise<ReportRecord | null> {

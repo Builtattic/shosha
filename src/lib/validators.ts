@@ -80,6 +80,13 @@ export const reportCreateSchema = z.object({
   repetitionPattern: workbookScaleSchema.default('1'),
   intent: workbookScaleSchema.default('1'),
   circumstances: workbookScaleSchema.default('1'),
+  identity: z.string().optional(),
+  power: z.string().optional(),
+  means: z.string().optional(),
+  environment: z.string().optional(),
+  ability: z.string().optional(),
+  responsibility: z.string().optional(),
+  awareness: z.string().optional(),
   aiUndertaking: z.literal(true),
   location: z.string().max(160).optional(),
   tags: z.array(z.string().min(1).max(80)).max(10).optional()

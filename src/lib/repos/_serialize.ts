@@ -26,3 +26,18 @@ export function stripId(data: Record<string, unknown>): Record<string, unknown> 
   const { _id, ...rest } = data;
   return rest;
 }
+
+/** Firebase RTDB rejects `undefined` anywhere in a `.set()` payload. */
+export function omitUndefinedDeep(value: unknown): unknown {
+  if (value === undefined) return undefined;
+  if (value === null || typeof value !== 'object') return value;
+  if (Array.isArray(value)) {
+    return value.map(omitUndefinedDeep);
+  }
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+    if (v === undefined) continue;
+    out[k] = omitUndefinedDeep(v);
+  }
+  return out;
+}

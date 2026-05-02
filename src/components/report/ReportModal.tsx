@@ -95,6 +95,13 @@ export function ReportModal({
   const [repetitionPattern, setRepetitionPattern] = useState<string>('0.5');
   const [intent, setIntent] = useState<string>('0.5');
   const [circumstances, setCircumstances] = useState<string>('1');
+  const [identity, setIdentity] = useState('1');
+  const [power, setPower] = useState('1');
+  const [means, setMeans] = useState('1');
+  const [environment, setEnvironment] = useState('1');
+  const [ability, setAbility] = useState('1');
+  const [responsibility, setResponsibility] = useState('1');
+  const [awareness, setAwareness] = useState('1');
   const [category, setCategory] = useState('');
   const [deed, setDeed] = useState('');
   const [description, setDescription] = useState('');
@@ -167,6 +174,13 @@ export function ReportModal({
     setResolvedAccountId(null);
     setLocation('');
     setCircumstances('1');
+    setIdentity('1');
+    setPower('1');
+    setMeans('1');
+    setEnvironment('1');
+    setAbility('1');
+    setResponsibility('1');
+    setAwareness('1');
     setMedia(null);
     setUploading(false);
     setSubmitting(false);
@@ -373,6 +387,13 @@ export function ReportModal({
           repetitionPattern,
           intent,
           circumstances,
+          identity,
+          power,
+          means,
+          environment,
+          ability,
+          responsibility,
+          awareness,
           aiUndertaking: aiConsent
         })
       });
@@ -871,12 +892,12 @@ export function ReportModal({
                   onChange={(e) => setRepetitionPattern(e.target.value)}
                   className="w-full rounded-[12px] border border-border bg-card p-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-primary/20"
                 >
-                  <option value="0.5">No Clear Pattern (0.5)</option>
-                  <option value="1">Balanced (1)</option>
-                  <option value="1.5">Mixed Signals (1.5)</option>
-                  <option value="2">Leaning Off (2)</option>
-                  <option value="2.5">Pattern Forming (2.5)</option>
-                  <option value="3">Consistent Pattern (3)</option>
+                  <option value="0.5">No Clear Pattern</option>
+                  <option value="1">Balanced</option>
+                  <option value="1.5">Mixed Signals</option>
+                  <option value="2">Leaning Off</option>
+                  <option value="2.5">Pattern Forming</option>
+                  <option value="3">Consistent Pattern</option>
                 </select>
               </div>
               <div>
@@ -886,12 +907,12 @@ export function ReportModal({
                   onChange={(e) => setIntent(e.target.value)}
                   className="w-full rounded-[12px] border border-border bg-card p-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-primary/20"
                 >
-                  <option value="0.5">Didn&apos;t mean to (0.5)</option>
-                  <option value="1">Not Aware (1)</option>
-                  <option value="1.5">Not Careful (1.5)</option>
-                  <option value="2">Meant to (2)</option>
-                  <option value="2.5">Thought Through (2.5)</option>
-                  <option value="3">Fully Planned (3)</option>
+                  <option value="0.5">Didn&apos;t mean to</option>
+                  <option value="1">Not Aware</option>
+                  <option value="1.5">Not Careful</option>
+                  <option value="2">Meant to</option>
+                  <option value="2.5">Thought Through</option>
+                  <option value="3">Fully Planned</option>
                 </select>
               </div>
               <div>
@@ -902,10 +923,136 @@ export function ReportModal({
                   className="w-full rounded-[12px] border border-border bg-card p-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-primary/20"
                 >
                   {Object.entries(CIRCUMSTANCES_LABELS).map(([value, label]) => (
-                    <option key={value} value={value}>{label} ({value})</option>
+                    <option key={value} value={value}>{label}</option>
                   ))}
                 </select>
               </div>
+            </div>
+          </section>
+
+          <section className="space-y-3 sm:space-y-4">
+            <div>
+              <h3 className="text-[15px] font-bold mb-1 sm:text-[17px]">
+                Context Multipliers
+              </h3>
+              <p className="text-[12px] text-muted-foreground sm:text-[13px]">
+                These factors adjust the weight of this report.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+
+              {/* IY — Identity */}
+              <div>
+                <label className="text-[13px] font-bold block mb-2">
+                  Identity Weight (IY)
+                </label>
+                <select value={identity} onChange={e => setIdentity(e.target.value)}
+                  className="w-full rounded-[12px] border border-border bg-card p-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-primary/20">
+                  <option value="0.5">Marginalized / Vulnerable</option>
+                  <option value="1">Average</option>
+                  <option value="1.5">Privileged</option>
+                  <option value="2">High Status</option>
+                  <option value="2.5">Public Figure</option>
+                  <option value="3">Institutional / Global Power</option>
+                </select>
+              </div>
+
+              {/* P — Power */}
+              <div>
+                <label className="text-[13px] font-bold block mb-2">
+                  Power (P)
+                </label>
+                <select value={power} onChange={e => setPower(e.target.value)}
+                  className="w-full rounded-[12px] border border-border bg-card p-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-primary/20">
+                  <option value="0.5">No Power</option>
+                  <option value="1">Limited</option>
+                  <option value="1.5">Moderate</option>
+                  <option value="2">Significant</option>
+                  <option value="2.5">High</option>
+                  <option value="3">Absolute</option>
+                </select>
+              </div>
+
+              {/* M — Means */}
+              <div>
+                <label className="text-[13px] font-bold block mb-2">
+                  Means (M)
+                </label>
+                <select value={means} onChange={e => setMeans(e.target.value)}
+                  className="w-full rounded-[12px] border border-border bg-card p-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-primary/20">
+                  <option value="0.5">No Means</option>
+                  <option value="1">Limited</option>
+                  <option value="1.5">Moderate</option>
+                  <option value="2">Sufficient</option>
+                  <option value="2.5">Abundant</option>
+                  <option value="3">Unlimited</option>
+                </select>
+              </div>
+
+              {/* E — Environment */}
+              <div>
+                <label className="text-[13px] font-bold block mb-2">
+                  Environment (E)
+                </label>
+                <select value={environment} onChange={e => setEnvironment(e.target.value)}
+                  className="w-full rounded-[12px] border border-border bg-card p-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-primary/20">
+                  <option value="0.5">Hostile / Crisis</option>
+                  <option value="1">Difficult</option>
+                  <option value="1.5">Neutral</option>
+                  <option value="2">Supportive</option>
+                  <option value="2.5">Highly Enabling</option>
+                  <option value="3">Optimal</option>
+                </select>
+              </div>
+
+              {/* AB — Ability */}
+              <div>
+                <label className="text-[13px] font-bold block mb-2">
+                  Ability (AB)
+                </label>
+                <select value={ability} onChange={e => setAbility(e.target.value)}
+                  className="w-full rounded-[12px] border border-border bg-card p-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-primary/20">
+                  <option value="0.5">Severely Limited</option>
+                  <option value="1">Below Average</option>
+                  <option value="1.5">Average</option>
+                  <option value="2">Above Average</option>
+                  <option value="2.5">Expert</option>
+                  <option value="3">Elite / Exceptional</option>
+                </select>
+              </div>
+
+              {/* RY — Responsibility */}
+              <div>
+                <label className="text-[13px] font-bold block mb-2">
+                  Responsibility (RY)
+                </label>
+                <select value={responsibility} onChange={e => setResponsibility(e.target.value)}
+                  className="w-full rounded-[12px] border border-border bg-card p-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-primary/20">
+                  <option value="0.5">No Responsibility</option>
+                  <option value="1">Minimal</option>
+                  <option value="1.5">Partial</option>
+                  <option value="2">Significant</option>
+                  <option value="2.5">High</option>
+                  <option value="3">Full / Direct</option>
+                </select>
+              </div>
+
+              {/* AW — Awareness */}
+              <div>
+                <label className="text-[13px] font-bold block mb-2">
+                  Awareness (AW)
+                </label>
+                <select value={awareness} onChange={e => setAwareness(e.target.value)}
+                  className="w-full rounded-[12px] border border-border bg-card p-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-primary/20">
+                  <option value="0.5">Completely Unaware</option>
+                  <option value="1">Vaguely Aware</option>
+                  <option value="1.5">Partially Aware</option>
+                  <option value="2">Mostly Aware</option>
+                  <option value="2.5">Fully Aware</option>
+                  <option value="3">Deliberately Aware</option>
+                </select>
+              </div>
+
             </div>
           </section>
 
