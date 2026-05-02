@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { CIRCUMSTANCES_LABELS, SHEET_SCORING_INDEX } from '@/lib/scoring';
+import type { AccountRecord } from '@/lib/repos/accounts';
 
 type UploadedMedia = {
   url: string;
@@ -38,9 +39,13 @@ type AccountCandidate = {
   bio: string;
   followers?: string;
   verified?: boolean;
+  avatarUrl?: string;
   confidence: number;
   reason: string;
+  existingAccountId?: string;
 };
+
+type AdditionalSocialLinkRow = { platform: Platform; url: string };
 
 type ApiPayload<T = unknown> = {
   ok?: boolean;
@@ -145,6 +150,10 @@ export function ReportModal({
   const [newProfileEmail, setNewProfileEmail] = useState('');
   const [newProfileUrl, setNewProfileUrl] = useState('');
   const [newProfileUsername, setNewProfileUsername] = useState('');
+  const [addProfileStep, setAddProfileStep] = useState<1 | 2>(1);
+  const [additionalSocialLinks, setAdditionalSocialLinks] = useState<AdditionalSocialLinkRow[]>([]);
+  const [extraLinkPlatform, setExtraLinkPlatform] = useState<Platform>('instagram');
+  const [extraLinkUrl, setExtraLinkUrl] = useState('');
 
   useEffect(() => {
     if (newProfileName && !newProfileUsername) {
@@ -190,6 +199,10 @@ export function ReportModal({
     setNewProfileEmail('');
     setNewProfileUrl('');
     setNewProfileUsername('');
+    setAddProfileStep(1);
+    setAdditionalSocialLinks([]);
+    setExtraLinkPlatform('instagram');
+    setExtraLinkUrl('');
   }
 
   useEffect(() => {
@@ -202,8 +215,28 @@ export function ReportModal({
       setSearchingCandidates(true);
       try {
         const response = await fetch(`/api/accounts/search?q=${encodeURIComponent(targetHandle)}&discover=1`);
-        const payload = await response.json();
-        if (payload.ok) setCandidates(payload.data.candidates ?? []);
+        const payload = await readApiPayload<{ candidates?: AccountCandidate[]; accounts?: AccountRecord[] }>(
+          response,
+          'Search failed.'
+        );
+        if (!payload.ok || !payload.data) {
+          setCandidates([]);
+          return;
+        }
+        const rtdbAccounts = (payload.data.accounts ?? []).map((acc: AccountRecord) => ({
+          platform: acc.platform,
+          username: acc.username,
+          displayName: acc.displayName,
+          bio: acc.bio,
+          avatarUrl: acc.avatarUrl,
+          followers: acc.followers,
+          verified: acc.verified,
+          sourceUrl: acc.socialLinks?.[acc.platform]?.url ?? '',
+          confidence: 1,
+          reason: 'In directory',
+          existingAccountId: acc._id
+        }));
+        setCandidates([...rtdbAccounts, ...(payload.data.candidates ?? [])]);
       } catch {
         setCandidates([]);
       } finally {
@@ -223,7 +256,8 @@ export function ReportModal({
     setTargetFollowers(candidate.followers ?? '');
     setTargetVerified(Boolean(candidate.verified));
     setTargetManual(false);
-    setResolvedAccountId(null);
+    if (candidate.existingAccountId) setResolvedAccountId(candidate.existingAccountId);
+    else setResolvedAccountId(null);
   }
 
   useEffect(() => {
@@ -307,7 +341,10 @@ export function ReportModal({
         skipDiscovery: targetManual || undefined,
         bio: targetBio || undefined,
         followers: targetFollowers || undefined,
-        verified: targetVerified || undefined
+        verified: targetVerified || undefined,
+        email: newProfileEmail.trim() || undefined,
+        socialUrl: newProfileUrl.trim() ? normalizeUrl(newProfileUrl) : undefined,
+        additionalSocialLinks: additionalSocialLinks.length ? additionalSocialLinks : undefined
       })
     });
     const payload = await readApiPayload<{ _id: string }>(response, 'Could not open target dossier.');
@@ -435,8 +472,15 @@ export function ReportModal({
         <div className="sticky top-0 z-10 -mx-3 -mt-3 mb-4 flex items-center justify-between gap-2 border-b border-border bg-background/95 px-3 py-3 backdrop-blur sm:-mx-6 sm:-mt-6 sm:mb-6 sm:px-6 sm:py-4">
           <button
             onClick={() => {
-              if (view === 'add_profile') setView('report');
-              else if (step > 1) setStep(step - 1);
+              if (view === 'add_profile' && addProfileStep === 2) {
+                setAddProfileStep(1);
+                return;
+              }
+              if (view === 'add_profile') {
+                setView('report');
+                return;
+              }
+              if (step > 1) setStep(step - 1);
               else close();
             }}
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
@@ -445,81 +489,186 @@ export function ReportModal({
             {view === 'add_profile' || step > 1 ? <ChevronLeft size={22} /> : <X size={22} />}
           </button>
           <h2 className="min-w-0 flex-1 truncate text-center text-[16px] font-black sm:text-[18px]">
-            {view === 'add_profile' ? 'Add Profile' : 'Create Report'}
+            {view === 'add_profile'
+              ? addProfileStep === 2
+                ? 'Social handles (optional)'
+                : 'Add Profile'
+              : 'Create Report'}
           </h2>
           <div className="h-9 w-9 shrink-0" />
         </div>
 
         {view === 'add_profile' ? (
           <div className="space-y-6 pb-6">
-            <div className="space-y-4">
-              <div>
-                <label className="text-[13px] font-bold">Full Name</label>
-                <Input
-                  value={newProfileName}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewProfileName(e.target.value)}
-                  placeholder="e.g. John Doe"
-                  className="mt-1.5 bg-background border-border"
-                />
-              </div>
-              <div>
-                <label className="text-[13px] font-bold">Email / Contact (Optional)</label>
-                <Input
-                  value={newProfileEmail}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewProfileEmail(e.target.value)}
-                  placeholder="email@example.com"
-                  className="mt-1.5 bg-background border-border"
-                />
-              </div>
-              <div>
-                <label className="text-[13px] font-bold">Link to Social Media (Optional)</label>
-                <Input
-                  value={newProfileUrl}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewProfileUrl(e.target.value)}
-                  placeholder="https://instagram.com/johndoe"
-                  className="mt-1.5 bg-background border-border"
-                />
-              </div>
-              <div>
-                <label className="text-[13px] font-bold">System Generated Username</label>
-                <Input
-                  value={newProfileUsername}
-                  readOnly
-                  className="mt-1.5 bg-muted/50 text-muted-foreground font-mono"
-                />
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  This handle is automatically assigned and cannot be changed here.
+            {addProfileStep === 1 ? (
+              <>
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-[13px] font-bold">Full Name</label>
+                    <Input
+                      value={newProfileName}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewProfileName(e.target.value)}
+                      placeholder="e.g. John Doe"
+                      className="mt-1.5 bg-background border-border"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[13px] font-bold">Email / Contact (Optional)</label>
+                    <Input
+                      value={newProfileEmail}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewProfileEmail(e.target.value)}
+                      placeholder="email@example.com"
+                      className="mt-1.5 bg-background border-border"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[13px] font-bold">Link to Social Media (Optional)</label>
+                    <Input
+                      value={newProfileUrl}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewProfileUrl(e.target.value)}
+                      placeholder="https://instagram.com/johndoe"
+                      className="mt-1.5 bg-background border-border"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[13px] font-bold">System Generated Username</label>
+                    <Input
+                      value={newProfileUsername}
+                      readOnly
+                      className="mt-1.5 bg-muted/50 text-muted-foreground font-mono"
+                    />
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      This handle is automatically assigned and cannot be changed here.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <Button variant="secondary" className="flex-1 rounded-2xl py-6" onClick={() => setView('report')}>
+                    Cancel
+                  </Button>
+                  <Button
+                    className="flex-1 rounded-2xl bg-foreground py-6 text-background hover:bg-foreground/90"
+                    disabled={!newProfileName.trim() || !newProfileUsername.trim() || submitting}
+                    onClick={() => setAddProfileStep(2)}
+                  >
+                    Continue
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-[13px] text-muted-foreground">
+                  Add their social media handles (optional). You can skip this and add links later.
                 </p>
-              </div>
-            </div>
-            
-            <div className="flex gap-3 pt-4">
-              <Button variant="secondary" className="flex-1 rounded-2xl py-6" onClick={() => setView('report')}>
-                Cancel
-              </Button>
-              <Button
-                className="flex-1 rounded-2xl bg-foreground py-6 text-background hover:bg-foreground/90"
-                disabled={!newProfileName.trim() || !newProfileUsername.trim() || submitting}
-                onClick={() => {
-                  const sourceUrl = normalizeUrl(newProfileUrl);
-                  const candidate: AccountCandidate = {
-                    platform: sourceUrl ? targetPlatform : 'website',
-                    username: newProfileUsername,
-                    displayName: newProfileName.trim(),
-                    sourceUrl: sourceUrl || '',
-                    bio: '',
-                    verified: false,
-                    confidence: 1,
-                    reason: 'Manually added profile',
-                  };
-                  pickCandidate(candidate);
-                  setTargetManual(!sourceUrl);
-                  setView('report');
-                }}
-              >
-                Confirm & Add
-              </Button>
-            </div>
+                <div className="space-y-3 rounded-2xl border border-border bg-card/50 p-4">
+                  <div>
+                    <label className="text-[13px] font-bold">Platform</label>
+                    <select
+                      value={extraLinkPlatform}
+                      onChange={(e) => setExtraLinkPlatform(e.target.value as Platform)}
+                      className="mt-1.5 w-full rounded-[12px] border border-border bg-background p-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    >
+                      <option value="instagram">Instagram</option>
+                      <option value="x">Twitter / X</option>
+                      <option value="linkedin">LinkedIn</option>
+                      <option value="youtube">YouTube</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[13px] font-bold">Handle or URL</label>
+                    <Input
+                      value={extraLinkUrl}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setExtraLinkUrl(e.target.value)}
+                      placeholder="@handle or full profile URL"
+                      className="mt-1.5 bg-background border-border"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="w-full rounded-xl"
+                    disabled={!extraLinkUrl.trim()}
+                    onClick={() => {
+                      const u = extraLinkUrl.trim();
+                      if (!u) return;
+                      setAdditionalSocialLinks((prev) => [...prev, { platform: extraLinkPlatform, url: u }]);
+                      setExtraLinkUrl('');
+                    }}
+                  >
+                    Add link
+                  </Button>
+                </div>
+                {additionalSocialLinks.length > 0 && (
+                  <ul className="space-y-2 text-[13px]">
+                    {additionalSocialLinks.map((row, i) => (
+                      <li
+                        key={`${row.platform}-${i}-${row.url}`}
+                        className="flex items-center justify-between gap-2 rounded-xl border border-border bg-muted/30 px-3 py-2"
+                      >
+                        <span className="min-w-0 truncate font-medium">
+                          {row.platform === 'x' ? 'X' : row.platform} · {row.url}
+                        </span>
+                        <button
+                          type="button"
+                          className="shrink-0 text-[12px] font-bold text-destructive hover:underline"
+                          onClick={() => setAdditionalSocialLinks((prev) => prev.filter((_, j) => j !== i))}
+                        >
+                          Remove
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <div className="flex flex-col gap-3 pt-2 sm:flex-row">
+                  <Button
+                    variant="secondary"
+                    className="flex-1 rounded-2xl py-6"
+                    onClick={() => {
+                      const sourceUrl = normalizeUrl(newProfileUrl);
+                      const candidate: AccountCandidate = {
+                        platform: sourceUrl ? targetPlatform : 'website',
+                        username: newProfileUsername,
+                        displayName: newProfileName.trim(),
+                        sourceUrl: sourceUrl || '',
+                        bio: '',
+                        verified: false,
+                        confidence: 1,
+                        reason: 'Manually added profile'
+                      };
+                      pickCandidate(candidate);
+                      setTargetManual(!sourceUrl);
+                      setAddProfileStep(1);
+                      setView('report');
+                    }}
+                  >
+                    Skip
+                  </Button>
+                  <Button
+                    className="flex-1 rounded-2xl bg-foreground py-6 text-background hover:bg-foreground/90"
+                    onClick={() => {
+                      const sourceUrl = normalizeUrl(newProfileUrl);
+                      const candidate: AccountCandidate = {
+                        platform: sourceUrl ? targetPlatform : 'website',
+                        username: newProfileUsername,
+                        displayName: newProfileName.trim(),
+                        sourceUrl: sourceUrl || '',
+                        bio: '',
+                        verified: false,
+                        confidence: 1,
+                        reason: 'Manually added profile'
+                      };
+                      pickCandidate(candidate);
+                      setTargetManual(!sourceUrl);
+                      setAddProfileStep(1);
+                      setView('report');
+                    }}
+                  >
+                    Continue to report
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         ) : (
           <div className="space-y-6 sm:space-y-8">
@@ -622,7 +771,7 @@ export function ReportModal({
                   <div className="mt-3 space-y-2">
                     {candidates.slice(0, 4).map((candidate) => (
                       <button
-                        key={`${candidate.platform}:${candidate.username}:${candidate.sourceUrl}`}
+                        key={`${candidate.existingAccountId ?? ''}:${candidate.platform}:${candidate.username}:${candidate.sourceUrl}`}
                         type="button"
                         onClick={() => pickCandidate(candidate)}
                         className="w-full rounded-[18px] border border-border bg-background p-3.5 text-left transition hover:bg-muted/50 hover:border-foreground/20 group"
@@ -649,7 +798,13 @@ export function ReportModal({
                           <Button 
                             variant="secondary" 
                             className="w-full text-[13px]"
-                            onClick={() => setView('add_profile')}
+                            onClick={() => {
+                              setAddProfileStep(1);
+                              setAdditionalSocialLinks([]);
+                              setExtraLinkPlatform('instagram');
+                              setExtraLinkUrl('');
+                              setView('add_profile');
+                            }}
                           >
                             Add profile to the platform
                           </Button>

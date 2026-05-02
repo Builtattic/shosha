@@ -6,7 +6,7 @@
       ".indexOn": ["createdAt", "accountId", "reporterId", "hashedUserId", "disputeStatus"]
     },
     "accounts": {
-      ".indexOn": ["score", "usernameLower", "claimedBy"]
+      ".indexOn": ["score", "usernameLower", "displayNameLower", "claimedBy"]
     },
     "users": {
       ".indexOn": ["username", "createdAt"]

@@ -43,7 +43,17 @@ export const accountCreateSchema = z.object({
   region: z.string().max(120).optional(),
   quote: z.string().max(280).optional(),
   evidenceSummary: z.string().max(500).optional(),
-  socialLinks: z.record(z.unknown()).optional()
+  socialLinks: z.record(z.unknown()).optional(),
+  email: z.string().email().max(200).optional(),
+  socialUrl: z.string().url().optional(),
+  additionalSocialLinks: z
+    .array(
+      z.object({
+        platform: platformSchema,
+        url: z.string().min(1).max(500)
+      })
+    )
+    .optional()
 });
 
 export const accountPatchSchema = z.object({
