@@ -201,7 +201,7 @@ export function ReportModal({
     const timer = window.setTimeout(async () => {
       setSearchingCandidates(true);
       try {
-        const response = await fetch(`/api/accounts/search?q=${encodeURIComponent(targetHandle)}&discover=1`);
+        const response = await fetch(`/api/accounts/search?q=${encodeURIComponent(targetHandle)}&discover=0`);
         const payload = await readApiPayload<{ candidates?: AccountCandidate[]; accounts?: AccountRecord[] }>(
           response,
           'Search failed.'
