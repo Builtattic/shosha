@@ -100,7 +100,7 @@ export async function POST(request: Request) {
 
   if (isImage) {
     const compressed = await compressImage(rawBuffer);
-    uploadBuffer = compressed.main;
+    uploadBuffer = compressed.main as typeof uploadBuffer;
     thumbBuffer = compressed.thumb;
     finalContentType = compressed.contentType;
     finalExt = compressed.contentType === 'image/webp' ? 'webp' : rawExt;
