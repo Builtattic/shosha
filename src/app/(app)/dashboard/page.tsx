@@ -32,12 +32,19 @@ type FeedReport = {
   viewer?: FeedItemProps['viewer'];
   account: {
     _id: string;
-    username: string;
     displayName: string;
+    username: string;
     avatarUrl?: string;
     verified?: boolean;
     score: number;
+    platform?: string;
   };
+  reporter?: {
+    username: string;
+    name?: string;
+    photoUrl?: string;
+    role?: string;
+  } | null;
 };
 
 type Notification = { id: string; title: string; body: string; link?: string; read?: boolean };
@@ -84,11 +91,19 @@ function toFeedItem(report: FeedReport): FeedItemProps {
   return {
     id: report._id,
     user: {
-      name: report.account.displayName,
-      handle: report.account.username,
+      name: report.account.displayName.replace(/^@/, ''),
+      handle: report.account.username.replace(/^@/, ''),
       avatar: report.account.avatarUrl ?? '',
-      isVerified: Boolean(report.account.verified)
+      isVerified: Boolean(report.account.verified),
+      accountId: report.account._id,
+      platform: report.account.platform
     },
+    reporter: report.reporter ? {
+      name: report.reporter.name || report.reporter.username.replace(/^@/, ''),
+      handle: report.reporter.username.replace(/^@/, ''),
+      avatar: report.reporter.photoUrl ?? '',
+      isVerified: report.reporter.role === 'admin' || report.reporter.role === 'moderator'
+    } : undefined,
     timestamp: timestamp(report.createdAt),
     type: report.type,
     title: report.description,
@@ -342,8 +357,8 @@ export default function DashboardPage() {
                     href={`/account/${account._id}`}
                     className="block rounded-[14px] px-3 py-3 transition hover:bg-muted"
                   >
-                    <p className="text-[13px] font-bold">{account.displayName}</p>
-                    <p className="text-[11px] text-muted-foreground">{account.platform} / @{account.username}</p>
+                    <Link href={`/account/${account._id}`} className="text-[13px] font-bold hover:underline">{account.displayName}</Link>
+                    <p className="text-[11px] text-muted-foreground">{account.platform}</p>
                   </Link>
                 ))}
                 {accountCandidates.map((candidate) => (
@@ -356,7 +371,7 @@ export default function DashboardPage() {
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
                         <p className="truncate text-[13px] font-bold">{candidate.displayName}</p>
-                        <p className="truncate text-[11px] text-muted-foreground">{candidate.platform} / @{candidate.username}</p>
+                        <p className="truncate text-[11px] text-muted-foreground">{candidate.platform}</p>
                       </div>
                       <span className="rounded-full bg-foreground px-2 py-1 text-[10px] font-bold text-background">
                         {Math.round(candidate.confidence * 100)}%

@@ -71,20 +71,29 @@ function aiKey() {
 }
 
 function aiModel() {
-  return process.env.GEMINI_MODEL || process.env.GEMINI_DISCOVERY_MODEL || 'gemini-3-pro-preview';
+  return process.env.GEMINI_MODEL || 'gemini-1.5-pro-latest';
 }
 
 function discoveryModel() {
-  return process.env.GEMINI_DISCOVERY_MODEL || 'gemini-3-pro-preview';
+  return process.env.GEMINI_DISCOVERY_MODEL || 'gemini-1.5-flash-latest';
 }
 
-function timeout<T>(promise: Promise<T>, ms: number) {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) => {
-      setTimeout(() => reject(new Error('Shosha analysis timeout')), ms);
+function timeout<T>(promise: (signal: AbortSignal) => Promise<T>, ms: number, context: string) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), ms);
+
+  return promise(controller.signal)
+    .then((res) => {
+      clearTimeout(timeoutId);
+      return res;
     })
-  ]);
+    .catch((err) => {
+      clearTimeout(timeoutId);
+      if (err.name === 'AbortError') {
+        throw new Error(`Shosha analysis timeout [${context}] after ${ms}ms`);
+      }
+      throw err;
+    });
 }
 
 function extractJsonObject(text: string): unknown {
@@ -132,16 +141,18 @@ async function callShoshaModel(body: unknown, timeoutMs = 30_000) {
     throw new Error('Shosha analysis is not configured.');
   }
   const response = await timeout(
-    fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+    (signal) => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'x-goog-api-key': key
       },
       body: JSON.stringify(body),
-      cache: 'no-store'
+      cache: 'no-store',
+      signal
     }),
-    timeoutMs
+    timeoutMs,
+    'callShoshaModel'
   );
   if (!response.ok) {
     const detail = await response.text().catch(() => '');
@@ -191,7 +202,11 @@ ${input.mediaType === 'video' && input.mediaUrl ? `A video proof was uploaded bu
     const parts: Array<Record<string, unknown>> = [{ text: promptText }];
     if (input.mediaType === 'image' && input.mediaUrl) {
       try {
-        const mediaRes = await timeout(fetch(input.mediaUrl, { cache: 'no-store' }), 8_000);
+        const mediaRes = await timeout(
+          (signal) => fetch(input.mediaUrl!, { cache: 'no-store', signal }),
+          8_000,
+          'mediaFetch'
+        );
         if (mediaRes.ok) {
           const contentType = mediaRes.headers.get('content-type') ?? 'image/jpeg';
           const buffer = Buffer.from(await mediaRes.arrayBuffer());
@@ -272,15 +287,18 @@ export async function runFullAudit(input: {
   }
 }
 
-export async function generateGroundedJson(prompt: string, timeoutMs = 3_000): Promise<{ json: unknown; sources: Array<{ uri: string; title: string }>; searchQueries: string[]; grounded: boolean }> {
+export async function generateGroundedJson(prompt: string, timeoutMs = 60_000): Promise<{ json: unknown; sources: Array<{ uri: string; title: string }>; searchQueries: string[]; grounded: boolean }> {
   const key = aiKey();
   const model = discoveryModel();
   if (!key || !model) {
     throw new Error('Shosha discovery is not configured.');
   }
 
+  const start = Date.now();
+  console.log(`[shosha-ai] discovery starting with model=${model} (timeout=${timeoutMs}ms)`);
+
   const response = await timeout(
-    fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+    (signal) => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -291,10 +309,14 @@ export async function generateGroundedJson(prompt: string, timeoutMs = 3_000): P
         tools: [{ google_search: {} }],
         generationConfig: { temperature: 0.2 }
       }),
-      cache: 'no-store'
+      cache: 'no-store',
+      signal
     }),
-    timeoutMs
+    timeoutMs,
+    'generateGroundedJson'
   );
+
+  console.log(`[shosha-ai] discovery finished in ${Date.now() - start}ms`);
 
   if (!response.ok) {
     const detail = await response.text().catch(() => '');

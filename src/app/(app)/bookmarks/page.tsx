@@ -20,12 +20,19 @@ type FeedReport = {
   baseScore?: number;
   viewer?: FeedItemProps['viewer'];
   account: {
+    _id: string;
     username: string;
     displayName: string;
     avatarUrl?: string;
     verified?: boolean;
     platform?: string;
   };
+  reporter?: {
+    username: string;
+    name?: string;
+    photoUrl?: string;
+    role?: string;
+  } | null;
 };
 
 function timestamp(value?: string) {
@@ -45,8 +52,15 @@ function toFeedItem(report: FeedReport): FeedItemProps {
       handle: report.account.username,
       avatar: report.account.avatarUrl ?? '',
       isVerified: Boolean(report.account.verified),
-      platform: report.account.platform
+      platform: report.account.platform,
+      accountId: report.account._id
     },
+    reporter: report.reporter ? {
+      name: report.reporter.name || report.reporter.username,
+      handle: report.reporter.username,
+      avatar: report.reporter.photoUrl ?? '',
+      isVerified: report.reporter.role === 'admin' || report.reporter.role === 'moderator'
+    } : undefined,
     timestamp: timestamp(report.createdAt),
     type: report.type,
     title: report.description,

@@ -104,6 +104,7 @@ export function ReportModal({
   const [deed, setDeed] = useState('');
   const [description, setDescription] = useState('');
   const [feelings, setFeelings] = useState('');
+  const [evidenceSourceUrl, setEvidenceSourceUrl] = useState('');
   const [aiConsent, setAiConsent] = useState(false);
   const [taggedPerson, setTaggedPerson] = useState('');
   const [targetPlatform, setTargetPlatform] = useState<Platform>('instagram');

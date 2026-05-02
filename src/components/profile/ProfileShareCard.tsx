@@ -156,7 +156,7 @@ export const ProfileShareCard = forwardRef<HTMLDivElement, ProfileShareCardProps
             <div style={{ fontSize: 24, fontWeight: 900, color: C.text, lineHeight: 1.1, letterSpacing: '-0.5px' }}>
               {displayName}
             </div>
-            <div style={{ fontSize: 12, color: C.muted, marginTop: 2, fontFamily: MONO }}>@{username}</div>
+            <div style={{ fontSize: 12, color: C.muted, marginTop: 2, fontFamily: MONO }}>{username}</div>
             {(role || location) && (
               <div style={{ fontSize: 11, color: C.muted, marginTop: 5, display: 'flex', gap: 10 }}>
                 {role && <span>{role}</span>}
@@ -331,7 +331,7 @@ export const ProfileShareCard = forwardRef<HTMLDivElement, ProfileShareCardProps
             Sho<span style={{ fontWeight: 400, fontStyle: 'italic', color: C.muted }}>शा</span>
           </div>
           <div style={{ fontSize: 10, color: C.dim, fontFamily: MONO }}>
-            shosha.io / @{username}
+            shosha.io / {username}
           </div>
         </div>
 

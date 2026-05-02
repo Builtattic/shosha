@@ -94,7 +94,7 @@ export default async function ReviewPage({ params }: { params: { reportId: strin
                   {account?.displayName ?? 'Case File'}
                 </h1>
                 <div className="flex items-center gap-3 mt-2">
-                  <span className="text-sm font-bold text-muted-foreground/60">@{account?.username}</span>
+                  <span className="text-sm font-bold text-muted-foreground/60">{account?.username}</span>
                   <span className="h-1 w-1 rounded-full bg-border" />
                   <span className="text-[10px] font-black text-primary uppercase tracking-widest bg-primary/5 px-2 py-0.5 rounded border border-primary/10">{account?.platform}</span>
                 </div>

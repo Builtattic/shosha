@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { cn } from '@/lib/utils';
 
@@ -15,7 +16,9 @@ type Filing = {
   disputeStatus?: string;
   aiVerdict?: { proposedImpact: number; confidence: number; reasoning: string };
   adminDecision?: { finalImpact?: number };
+  evidenceSourceUrl?: string;
   createdAt: string;
+  reporter?: { name?: string; username: string };
 };
 
 function formatScore(value?: number) {
@@ -49,9 +52,18 @@ export function FilingsList({ filings }: { filings: Filing[] }) {
           <article key={filing._id} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0 space-y-1">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  {filing.anonymousTag} {createdAt ? `/ ${createdAt}` : ''}
-                </p>
+                <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <Link 
+                    href={filing.reporter && filing.reporter.username !== 'anonymous' ? `/account/website_${filing.reporter.username.replace(/^@/, '')}` : '#'}
+                    className={cn(
+                      "hover:text-foreground hover:underline",
+                      (!filing.reporter || filing.reporter.username === 'anonymous') && "pointer-events-none opacity-70"
+                    )}
+                  >
+                    {filing.reporter?.name || filing.reporter?.username.replace(/^@/, '') || filing.anonymousTag}
+                  </Link>
+                  {createdAt ? ` / ${createdAt}` : ''}
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {filing.category ? (
                     <span className="rounded-full border border-border bg-background px-2.5 py-1 text-[11px] font-semibold text-foreground">
@@ -83,6 +95,16 @@ export function FilingsList({ filings }: { filings: Filing[] }) {
                   <span className="rounded-full border border-border bg-background px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-foreground">
                     {disputeLabel}
                   </span>
+                ) : null}
+                {filing.evidenceSourceUrl ? (
+                  <a
+                    href={filing.evidenceSourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-primary hover:bg-primary/10 transition-colors"
+                  >
+                    View Source
+                  </a>
                 ) : null}
               </div>
             </div>

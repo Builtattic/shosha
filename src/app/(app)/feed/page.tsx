@@ -21,14 +21,22 @@ type FeedReport = {
   disputeStatus?: string;
   reportScore?: number;
   baseScore?: number;
+  evidenceSourceUrl?: string;
   viewer?: FeedItemProps['viewer'];
   account: {
+    _id: string;
     username: string;
     displayName: string;
     avatarUrl?: string;
     verified?: boolean;
     platform?: string;
   };
+  reporter?: {
+    username: string;
+    name?: string;
+    photoUrl?: string;
+    role?: string;
+  } | null;
 };
 
 const tabs: Array<{ label: string; value: FeedFilter }> = [
@@ -52,12 +60,19 @@ function toFeedItem(report: FeedReport): FeedItemProps {
   return {
     id: report._id,
     user: {
-      name: report.account.displayName,
-      handle: report.account.username,
+      name: report.account.displayName.replace(/^@/, ''),
+      handle: report.account.username.replace(/^@/, ''),
       avatar: report.account.avatarUrl ?? '',
       isVerified: Boolean(report.account.verified),
-      platform: report.account.platform
+      platform: report.account.platform,
+      accountId: report.account._id
     },
+    reporter: report.reporter ? {
+      name: report.reporter.name || report.reporter.username.replace(/^@/, ''),
+      handle: report.reporter.username.replace(/^@/, ''),
+      avatar: report.reporter.photoUrl ?? '',
+      isVerified: report.reporter.role === 'admin' || report.reporter.role === 'moderator'
+    } : undefined,
     timestamp: timestamp(report.createdAt),
     type: report.type,
     title: report.description,
@@ -67,6 +82,7 @@ function toFeedItem(report: FeedReport): FeedItemProps {
     deed: report.deed,
     disputeStatus: report.disputeStatus,
     reportScore: report.reportScore ?? report.baseScore,
+    evidenceSourceUrl: report.evidenceSourceUrl,
     stats: report.stats ?? { aligns: 0, opposes: 0, comments: 0, shares: 0 },
     delta: report.adminDecision?.finalImpact ?? report.aiVerdict?.proposedImpact ?? 0,
     viewer: report.viewer

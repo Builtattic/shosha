@@ -27,17 +27,25 @@ export function stripId(data: Record<string, unknown>): Record<string, unknown> 
   return rest;
 }
 
-/** Firebase RTDB rejects `undefined` anywhere in a `.set()` payload. */
-export function omitUndefinedDeep(value: unknown): unknown {
-  if (value === undefined) return undefined;
-  if (value === null || typeof value !== 'object') return value;
+/**
+ * Remove all properties with undefined values from an object.
+ * RTDB throws error if a payload contains undefined.
+ */
+export function stripUndefined<T>(value: T): T {
+  if (value === undefined) return undefined as any;
+  if (value === null || typeof value !== 'object' || value instanceof Date) return value;
+  
   if (Array.isArray(value)) {
-    return value.map(omitUndefinedDeep);
+    return value.map(stripUndefined) as any;
   }
-  const out: Record<string, unknown> = {};
+
+  const result: any = {};
   for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
     if (v === undefined) continue;
-    out[k] = omitUndefinedDeep(v);
+    result[k] = stripUndefined(v);
   }
-  return out;
+  return result;
 }
+
+/** Legacy alias for stripUndefined used in some branches. */
+export const omitUndefinedDeep = stripUndefined;

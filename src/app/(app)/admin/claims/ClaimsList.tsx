@@ -75,7 +75,7 @@ export function ClaimsList({ initialClaims }: { initialClaims: ClaimRow[] }) {
                 <h2 className="text-xl font-black text-foreground">{claim.account?.displayName ?? 'Unknown Account'}</h2>
                 {claim.account && (
                   <p className="text-xs font-bold text-muted-foreground mt-1 uppercase tracking-widest">
-                    @{claim.account.username} · {claim.account.platform}
+                    {claim.account.username} · {claim.account.platform}
                   </p>
                 )}
                 
@@ -91,7 +91,7 @@ export function ClaimsList({ initialClaims }: { initialClaims: ClaimRow[] }) {
                       <User size={12} />
                     </div>
                     <p className="text-[12px] font-bold text-muted-foreground">
-                      Filed by <span className="text-foreground">@{claim.user.username}</span>
+                      Filed by <span className="text-foreground">{claim.user.username}</span>
                       {claim.user.email ? <span className="ml-1 opacity-50 font-medium">({claim.user.email})</span> : ''}
                     </p>
                   </div>

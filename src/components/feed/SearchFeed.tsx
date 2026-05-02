@@ -77,7 +77,7 @@ export function SearchFeed({ initialAccounts }: { initialAccounts: AccountRow[] 
 
     const timer = window.setTimeout(async () => {
       setLoading(true);
-      const response = await fetch(`/api/accounts/search?q=${encodeURIComponent(q)}&discover=1`);
+      const response = await fetch(`/api/accounts/search?q=${encodeURIComponent(q)}&discover=0`);
       const payload = await response.json();
       if (payload.ok) {
         if (Array.isArray(payload.data)) {
@@ -121,7 +121,8 @@ export function SearchFeed({ initialAccounts }: { initialAccounts: AccountRow[] 
           sourceUrl: candidate?.sourceUrl,
           bio: candidate?.bio,
           followers: candidate?.followers,
-          verified: candidate?.verified
+          verified: candidate?.verified,
+          skipDiscovery: !candidate
         })
       });
       const payload = await response.json();
@@ -180,7 +181,7 @@ export function SearchFeed({ initialAccounts }: { initialAccounts: AccountRow[] 
                     <div className="min-w-0">
                       <h2 className="font-serif text-3xl leading-none sm:text-4xl">{account.displayName}</h2>
                       <p className="mt-1 truncate text-[10px] uppercase tracking-[0.28em] text-muted">
-                        {formatPlatform(account.platform)} / @{account.username}
+                        {formatPlatform(account.platform)} / {account.username.replace(/^@/, '')}
                         {account.followers ? ` / ${account.followers}` : ''}
                       </p>
                     </div>
@@ -242,16 +243,16 @@ export function SearchFeed({ initialAccounts }: { initialAccounts: AccountRow[] 
         {!loading && filteredAccounts.length === 0 ? (
           <div className="space-y-3">
             <EmptyState
-              title="No file yet."
+              title="Account doesn't exist"
               body={
                 validHandle
-                  ? 'This handle has not entered the archive. Open the first dossier from a live platform lookup.'
+                  ? "This profile isn't in our archive yet. You can find them using AI or add manually to start a new dossier."
                   : 'The archive has no matching trace.'
               }
             />
             {validHandle ? (
               <div className="border border-border bg-raised p-4">
-                <p className="text-xs uppercase text-muted">Track @{normalizedHandle}</p>
+                <p className="text-xs uppercase text-muted">Track {normalizedHandle}</p>
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   {(['instagram', 'facebook', 'x', 'youtube', 'tiktok', 'linkedin', 'reddit', 'snapchat'] as const).map((option) => (
                     <button
@@ -267,10 +268,37 @@ export function SearchFeed({ initialAccounts }: { initialAccounts: AccountRow[] 
                     </button>
                   ))}
                 </div>
-                <Button className="mt-3 w-full" disabled={tracking} onClick={() => trackHandle()}>
-                  <Plus size={16} />
-                  {tracking ? 'Fetching live account' : user ? 'Open live dossier' : 'Sign in to track'}
-                </Button>
+                <div className="flex flex-col gap-2 mt-3">
+                  <Button 
+                    className="w-full bg-primary text-background" 
+                    disabled={tracking || loading} 
+                    onClick={async () => {
+                      setLoading(true);
+                      try {
+                        const res = await fetch(`/api/accounts/search?q=${encodeURIComponent(q)}&discover=force`);
+                        const payload = await res.json();
+                        if (payload.ok) {
+                          setCandidates(payload.data.candidates ?? []);
+                          toast.push('AI discovery complete. See matches below.');
+                        }
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                  >
+                    <Search size={16} />
+                    {loading ? 'Searching live platforms...' : 'Find with AI'}
+                  </Button>
+                  <Button 
+                    variant="secondary"
+                    className="w-full" 
+                    disabled={tracking} 
+                    onClick={() => trackHandle()}
+                  >
+                    <Plus size={16} />
+                    {tracking ? 'Creating dossier...' : user ? 'Add manually' : 'Sign in to add'}
+                  </Button>
+                </div>
                 {candidates.length > 0 ? (
                   <div className="mt-4 space-y-2">
                     <p className="text-xs uppercase text-muted">Shosha-ranked public matches</p>
@@ -287,7 +315,7 @@ export function SearchFeed({ initialAccounts }: { initialAccounts: AccountRow[] 
                           <span className="text-[10px] uppercase text-accent">{Math.round(candidate.confidence * 100)}%</span>
                         </div>
                         <p className="mt-1 truncate text-xs text-muted">
-                          {formatPlatform(candidate.platform)} / @{candidate.username}
+                          {formatPlatform(candidate.platform)} / {candidate.username.replace(/^@/, '')}
                         </p>
                         <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted">{candidate.reason}</p>
                       </button>

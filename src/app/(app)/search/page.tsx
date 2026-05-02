@@ -21,14 +21,15 @@ type FeedReport = {
   reportScore?: number;
   baseScore?: number;
   viewer?: FeedItemProps['viewer'];
-  account: {
-    _id: string;
-    username: string;
-    displayName: string;
-    avatarUrl?: string;
     verified?: boolean;
     platform?: string;
   };
+  reporter?: {
+    username: string;
+    name?: string;
+    photoUrl?: string;
+    role?: string;
+  } | null;
 };
 
 type AccountResult = {
@@ -56,12 +57,19 @@ function toFeedItem(report: FeedReport): FeedItemProps {
   return {
     id: report._id,
     user: {
-      name: report.account.displayName,
-      handle: report.account.username,
+      name: report.account.displayName.replace(/^@/, ''),
+      handle: report.account.username.replace(/^@/, ''),
       avatar: report.account.avatarUrl ?? '',
       isVerified: Boolean(report.account.verified),
-      platform: report.account.platform
+      platform: report.account.platform,
+      accountId: report.account._id
     },
+    reporter: report.reporter ? {
+      name: report.reporter.name || report.reporter.username.replace(/^@/, ''),
+      handle: report.reporter.username.replace(/^@/, ''),
+      avatar: report.reporter.photoUrl ?? '',
+      isVerified: report.reporter.role === 'admin' || report.reporter.role === 'moderator'
+    } : undefined,
     timestamp: timestamp(report.createdAt),
     type: report.type,
     title: report.description,
@@ -230,9 +238,9 @@ export default function SearchPage() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[14px] font-bold text-foreground truncate">{a.displayName}</p>
+                    <p className="text-[14px] font-bold text-foreground truncate">{a.displayName.replace(/^@/, '')}</p>
                     <p className="text-[12px] text-muted-foreground truncate">
-                      @{a.username} · {a.platform}
+                      {a.platform}
                     </p>
                   </div>
                   {typeof a.score === 'number' && (

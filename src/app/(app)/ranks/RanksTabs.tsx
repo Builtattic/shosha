@@ -64,7 +64,6 @@ function RankItem({ row, rank, isNegative = false, index = 0 }: { row: RankRow; 
               <span className="text-[15px] font-bold text-foreground truncate">{row.name}</span>
               {row.isVerified && <CheckCircle2 size={14} className="text-foreground shrink-0" />}
             </div>
-            <p className="text-[12px] text-muted-foreground truncate">@{row.handle}</p>
             <p className="text-[11px] text-muted-foreground/60 capitalize">{row.platform}</p>
           </div>
         </div>

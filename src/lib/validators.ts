@@ -92,7 +92,8 @@ export const reportCreateSchema = z.object({
   circumstances: workbookScaleSchema.default('1'),
   aiUndertaking: z.literal(true),
   location: z.string().max(160).optional(),
-  tags: z.array(z.string().min(1).max(80)).max(10).optional()
+  tags: z.array(z.string().min(1).max(80)).max(10).optional(),
+  evidenceSourceUrl: z.string().url().max(500).optional().or(z.literal(''))
 });
 
 export const adjudicateSchema = z.object({

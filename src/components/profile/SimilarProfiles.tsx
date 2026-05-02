@@ -52,7 +52,7 @@ export function SimilarProfiles({ accounts }: Props) {
                   {acc.displayName}
                 </p>
                 <p className="truncate text-[11px] text-muted-foreground">
-                  @{acc.username} · {formatPlatform(acc.platform)}
+                  {formatPlatform(acc.platform)}
                 </p>
                 {acc.followers && (
                   <p className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-muted-foreground/70">

@@ -122,7 +122,7 @@ export default function ProfilePage() {
     .filter(h => h.t && new Date(h.t).getTime() >= weekAgo && h.delta < 0)
     .reduce((sum, h) => sum + Math.abs(h.delta), 0);
 
-  const displayName = appUser?.name || firebaseUser?.displayName || firebaseUser?.email?.split('@')[0] || 'Unknown User';
+  const displayName = (appUser?.name || firebaseUser?.displayName || firebaseUser?.email?.split('@')[0] || 'Unknown User').replace(/^@/, '');
   const username = appUser?.username || 'user';
   const rawAvatarUrl = appUser?.photoUrl ?? firebaseUser?.photoURL;
   const avatarUrl = (rawAvatarUrl && rawAvatarUrl !== 'null' && rawAvatarUrl !== 'undefined') 
@@ -234,7 +234,7 @@ export default function ProfilePage() {
                 <h1 className="text-[22px] font-bold text-foreground leading-none truncate">{displayName}</h1>
                 <CheckCircle2 size={16} fill="currentColor" className="text-foreground shrink-0" />
               </div>
-              <p className="mt-1 text-[13px] text-muted-foreground">@{username}</p>
+              {/* Username removed for standardization */}
               <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 text-[12px] font-medium text-muted-foreground items-center">
                 {appUser?.occupationRole && (
                   <span className="flex items-center gap-1">
@@ -651,10 +651,7 @@ export default function ProfilePage() {
                       <dd className="text-[13px] font-semibold text-foreground">{appUser.name}</dd>
                     </div>
                   )}
-                  <div className="flex items-center justify-between">
-                    <dt className="text-[13px] text-muted-foreground">Username</dt>
-                    <dd className="text-[13px] font-semibold text-foreground">@{username}</dd>
-                  </div>
+                  {/* Username removed for standardization */}
                   {appUser?.dob && (
                     <div className="flex items-center justify-between">
                       <dt className="text-[13px] text-muted-foreground">Date of Birth</dt>

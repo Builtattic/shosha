@@ -61,11 +61,22 @@ export default async function AdminPage() {
   ]);
 
   const accountIds = Array.from(new Set(queue.map((r) => r.accountId)));
-  const accounts = await Promise.all(accountIds.map((id) => accountsRepo.findById(id)));
+  const reporterIds = Array.from(new Set(queue.map((r) => r.reporterId).filter(Boolean) as string[]));
+
+  const [accounts, reporters] = await Promise.all([
+    Promise.all(accountIds.map((id) => accountsRepo.findById(id))),
+    Promise.all(reporterIds.map((id) => usersRepo.findById(id))),
+  ]);
+
   const accountMap = new Map(accounts.filter(Boolean).map((a) => [a!._id, a!]));
+  const reporterMap = new Map(reporters.filter(Boolean).map((u) => [u!._id, u!]));
 
   const queueRows = queue
-    .map((r) => ({ ...r, account: accountMap.get(r.accountId) ?? null }))
+    .map((r) => ({
+      ...r,
+      account: accountMap.get(r.accountId) ?? null,
+      reporter: r.reporterId ? reporterMap.get(r.reporterId) ?? null : null,
+    }))
     .filter((r) => r.account !== null)
     .slice(0, 5);
 
@@ -193,7 +204,15 @@ export default async function AdminPage() {
                   
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-4 mb-2">
-                      <p className="text-foreground font-black text-xl truncate leading-none italic">{report.account?.displayName}</p>
+                      <div className="flex items-baseline gap-2 min-w-0">
+                        <p className="text-foreground font-black text-xl truncate leading-none italic">
+                          {report.reporter ? (report.reporter.name || report.reporter.username.replace(/^@/, '')) : 'System'}
+                        </p>
+                        <span className="text-muted-foreground/30 text-xs uppercase font-black tracking-tighter">on</span>
+                        <p className="text-muted-foreground font-bold text-sm truncate leading-none">
+                          {report.account?.displayName.replace(/^@/, '')}
+                        </p>
+                      </div>
                       {report.status === 'flagged' && (
                         <span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20">
                           <AlertTriangle size={10} /> Flagged
@@ -262,8 +281,7 @@ export default async function AdminPage() {
                     </div>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-base text-foreground font-black italic truncate group-hover:text-primary transition-colors">{account.displayName}</p>
-                    <p className="text-[11px] text-muted-foreground/40 truncate font-black uppercase tracking-wider">@{account.username}</p>
+                    <Link href={`/account/${account._id}`} className="text-base text-foreground font-black italic truncate group-hover:text-primary transition-colors hover:underline block">{account.displayName.replace(/^@/, '')}</Link>
                   </div>
                   <div className="flex flex-col items-end shrink-0">
                     <ScoreBadge score={account.score} />

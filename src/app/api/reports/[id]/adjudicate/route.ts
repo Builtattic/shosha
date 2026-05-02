@@ -25,207 +25,214 @@ import * as notificationsRepo from '@/lib/repos/notifications';
 import * as siteSettingsRepo from '@/lib/repos/siteSettings';
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
-  const user = await getCurrentUser();
-  if (!isAdmin(user)) return fail('forbidden', 'Only tribunal staff can decide a filing.', 403);
-  const id = idSchema.safeParse(params.id);
-  if (!id.success) return fail('not_found', 'No filing exists for that id.', 404);
-  const json = await request.json().catch(() => null);
-  const parsed = adjudicateSchema.safeParse(json);
-  if (!parsed.success) return fromZod(parsed.error);
+  try {
+    const user = await getCurrentUser();
+    if (!isAdmin(user)) return fail('forbidden', 'Only tribunal staff can decide a filing.', 403);
+    const id = idSchema.safeParse(params.id);
+    if (!id.success) return fail('not_found', 'No filing exists for that id.', 404);
+    const json = await request.json().catch(() => null);
+    if (!json) return fail('bad_request', 'Invalid JSON payload.', 400);
+    const parsed = adjudicateSchema.safeParse(json);
+    if (!parsed.success) return fromZod(parsed.error);
 
-  const report = await reportsRepo.findById(id.data);
-  if (!report) return fail('not_found', 'No filing exists for that id.', 404);
-  const account = await accountsRepo.findById(report.accountId);
-  if (!account) return fail('not_found', 'No dossier exists for that filing.', 404);
+    const report = await reportsRepo.findById(id.data);
+    if (!report) return fail('not_found', 'No filing exists for that id.', 404);
+    const account = await accountsRepo.findById(report.accountId);
+    if (!account) return fail('not_found', 'No dossier exists for that filing.', 404);
 
-  const adminDecision = {
-    adminId: user!._id,
-    verdict: parsed.data.verdict,
-    finalImpact: parsed.data.verdict === 'approved' ? parsed.data.finalImpact : 0,
-    note: parsed.data.note,
-    category: parsed.data.category ?? report.category,
-    deed: parsed.data.deed ?? report.deed,
-    baseScore: parsed.data.baseScore ?? report.baseScore,
-    repetitionPattern: parsed.data.repetitionPattern ?? report.repetitionPattern,
-    intent: parsed.data.intent ?? report.intent,
-    circumstances: parsed.data.circumstances ?? report.circumstances,
-    decidedAt: new Date().toISOString()
-  };
-  const status = parsed.data.verdict === 'approved' ? 'approved' : 'rejected';
+    const wasApproved = report.status === 'approved';
+    const isApproved = parsed.data.verdict === 'approved';
+    const wasRejected = report.status === 'rejected';
+    const isRejected = parsed.data.verdict === 'rejected';
 
-  let updatedAccount = account;
-  let eventId = report.eventId;
+    const adminDecision = {
+      adminId: user!._id,
+      verdict: parsed.data.verdict,
+      finalImpact: isApproved ? parsed.data.finalImpact : 0,
+      note: parsed.data.note,
+      category: parsed.data.category ?? report.category,
+      deed: parsed.data.deed ?? report.deed,
+      baseScore: parsed.data.baseScore ?? report.baseScore,
+      repetitionPattern: parsed.data.repetitionPattern ?? report.repetitionPattern,
+      intent: parsed.data.intent ?? report.intent,
+      circumstances: parsed.data.circumstances ?? report.circumstances,
+      decidedAt: new Date().toISOString()
+    };
 
-  if (report.reporterId) {
-    const delta = parsed.data.verdict === 'approved' ? 2 : -3;
-    const reporter = await usersRepo.findById(report.reporterId);
-    if (reporter) await usersRepo.setReporterScore(reporter._id, clamp(reporter.reporterScore + delta));
-  }
+    const status = isApproved ? 'approved' : 'rejected';
 
-  const shouldApplySheetScore =
-    parsed.data.verdict === 'approved' &&
-    (adminDecision.baseScore ?? 0) !== 0 &&
-    report.adminDecision?.verdict !== 'approved';
+    // Ledger and Event Lifecycle
+    if (isApproved) {
+      const scoringRow = adminDecision.deed
+        ? resolveSheetBaseImpact(adminDecision.deed, report.type)
+        : resolveSheetBaseImpactFromAdminImpact(parsed.data.finalImpact, report.type);
 
-  if (shouldApplySheetScore) {
-    const existingLedger = await ledgerEntriesRepo.findByReportId(report._id);
-    const scoringRow = adminDecision.deed
-      ? resolveSheetBaseImpact(adminDecision.deed, report.type)
-      : resolveSheetBaseImpactFromAdminImpact(parsed.data.finalImpact, report.type);
-    if (
-      adminDecision.deed &&
-      (scoringRow.deed !== adminDecision.deed ||
-        scoringRow.category !== adminDecision.category ||
-        scoringRow.baseScore !== adminDecision.baseScore)
-    ) {
-      return fail('validation_error', 'The selected deed and base score do not match the workbook scoring index.', 422);
-    }
-    const multipliers: EventMultipliers = profileMultipliersFromWorkbookProfile(account, {
-      repetitionPattern: Number(adminDecision.repetitionPattern ?? report.repetitionPattern ?? 1),
-      intent: Number(adminDecision.intent ?? report.intent ?? 1),
-      circumstances: Number(adminDecision.circumstances ?? report.circumstances ?? 1),
-    }) ?? DEFAULT_MULTIPLIERS;
-    const multiplierQuotient = calcMultiplierQuotient(multipliers);
-    const settings = await siteSettingsRepo.get();
-    const rawDelta = calcDelta(scoringRow.baseScore, multipliers);
-    const existingProfileLedger = await ledgerEntriesRepo.listForProfile(account._id);
-    const dayStart = Date.now() - 24 * 60 * 60 * 1000;
-    const dailyDelta = existingProfileLedger
-      .filter((entry) => new Date(entry.timestamp).getTime() >= dayStart)
-      .reduce((sum, entry) => sum + entry.delta, 0);
-    const singleCappedDelta = Math.max(-settings.singleReportDeltaCap, Math.min(settings.singleReportDeltaCap, rawDelta));
-    const remainingPositive = Math.max(0, settings.dailyProfileDeltaCap - Math.max(0, dailyDelta));
-    const remainingNegative = Math.max(0, settings.dailyProfileDeltaCap - Math.max(0, -dailyDelta));
-    const delta = singleCappedDelta >= 0
-      ? Math.min(singleCappedDelta, remainingPositive)
-      : Math.max(singleCappedDelta, -remainingNegative);
-    const scoreBefore = account.score ?? 1000;
-    const { score: scoreAfter, decay } = applySheetScore(scoreBefore, delta);
-    const ledgerEntryId = existingLedger?._id ?? `report_${report._id}`;
+      const multipliers: EventMultipliers = profileMultipliersFromWorkbookProfile(account, {
+        repetitionPattern: Number(adminDecision.repetitionPattern ?? 1),
+        intent: Number(adminDecision.intent ?? 1),
+        circumstances: Number(adminDecision.circumstances ?? 1),
+      }) ?? DEFAULT_MULTIPLIERS;
 
-    const event = await eventsRepo.create({
-      subjectId: account._id,
-      reporterId: report.reporterId,
-      anonymousTag: report.anonymousTag,
-      eventType: report.type,
-      description: report.description,
-      baseImpactKey: scoringRow.deed,
-      baseImpact: scoringRow.baseScore,
-      multipliers,
-      multiplierQuotient,
-      delta,
-      scoreBefore,
-      scoreAfter,
-      decay,
-      category: scoringRow.category,
-      deed: scoringRow.deed,
-      formulaVersion: WORKBOOK_FORMULA_VERSION,
-      proofLinks: report.media?.url ? [report.media.url] : [],
-      location: 'Global',
-      timestamp: adminDecision.decidedAt,
-      status: 'approved',
-      aiVerdict: report.aiVerdict ? { valid: report.aiVerdict.valid, reasoning: report.aiVerdict.reasoning } : null,
-      adminDecision: { verdict: 'approved', note: parsed.data.note, decidedAt: adminDecision.decidedAt },
-      stats: { aligns: 0, opposes: 0, comments: 0, shares: 0 },
-    });
-    eventId = event._id;
-
-    const ledgerEntry = await ledgerEntriesRepo.createWithId(ledgerEntryId, {
-      profileId: account._id,
-      reportId: report._id,
-      baseScore: scoringRow.baseScore,
-      multipliers,
-      multiplierQuotient,
-      delta,
-      timestamp: adminDecision.decidedAt,
-      formulaVersion: WORKBOOK_FORMULA_VERSION,
-      capped: delta !== rawDelta,
-    });
-
-    await reportMetadataRepo.upsert(report._id, {
-      reportId: report._id,
-      profileId: account._id,
-      multipliers,
-      multiplierQuotient,
-      formulaVersion: WORKBOOK_FORMULA_VERSION,
-      adminOverrides: {
-        reputation: multipliers.reputation,
-        intent: multipliers.intent,
-        circumstances: multipliers.circumstances,
-      },
-      sourceFields: {
+      const multiplierQuotient = calcMultiplierQuotient(multipliers);
+      const rawDelta = calcDelta(scoringRow.baseScore, multipliers);
+      const settings = await siteSettingsRepo.get();
+      const singleCappedDelta = Math.max(-settings.singleReportDeltaCap, Math.min(settings.singleReportDeltaCap, rawDelta));
+      
+      // Create/Update Ledger
+      const ledgerEntryId = report.ledgerEntryId || `report_${report._id}`;
+      await ledgerEntriesRepo.createWithId(ledgerEntryId, {
+        profileId: account._id,
+        reportId: report._id,
+        baseScore: scoringRow.baseScore,
+        multipliers,
+        multiplierQuotient,
+        delta: singleCappedDelta,
+        timestamp: adminDecision.decidedAt,
+        formulaVersion: WORKBOOK_FORMULA_VERSION,
+        capped: singleCappedDelta !== rawDelta,
         category: scoringRow.category,
         deed: scoringRow.deed,
-        baseScore: scoringRow.baseScore,
-        ledgerEntryId: ledgerEntry._id,
-      },
-    });
+      });
 
-    const ledgerEntries = await ledgerEntriesRepo.listForProfile(account._id);
-    const tracker = calcWorkbookScoreFromEntries(ledgerEntries);
-    const globalScore = ledgerEntries.reduce((sum, entry) => sum + entry.delta, 0);
-    const persisted = await accountsRepo.update(account._id, {
-      score: tracker.finalScore,
-      displayScore: tracker.finalScore,
-      globalScore,
-      windowScores: tracker,
-      scoreHistory: [
-        ...(account.scoreHistory ?? []),
-        {
-          t: adminDecision.decidedAt,
-          s: tracker.finalScore,
-          cause: 'report',
-          delta,
-          baseScore: scoringRow.baseScore,
-          profileId: account._id,
-          eventId: event._id,
+      // Create/Update Event
+      if (report.eventId) {
+        await eventsRepo.update(report.eventId, {
+          description: report.description,
+          baseImpactKey: scoringRow.deed,
+          baseImpact: scoringRow.baseScore,
+          multipliers,
           multiplierQuotient,
-          decay,
+          delta: singleCappedDelta,
           category: scoringRow.category,
           deed: scoringRow.deed,
+          timestamp: adminDecision.decidedAt,
+          status: 'approved',
+          adminDecision: { verdict: 'approved', note: parsed.data.note, decidedAt: adminDecision.decidedAt },
+        });
+      } else {
+        const event = await eventsRepo.create({
+          subjectId: account._id,
+          reporterId: report.reporterId,
+          anonymousTag: report.anonymousTag,
+          eventType: report.type,
+          description: report.description,
+          baseImpactKey: scoringRow.deed,
+          baseImpact: scoringRow.baseScore,
           multipliers,
-        },
-      ],
-    });
-    if (persisted) {
-      updatedAccount = persisted;
+          multiplierQuotient,
+          delta: singleCappedDelta,
+          category: scoringRow.category,
+          deed: scoringRow.deed,
+          formulaVersion: WORKBOOK_FORMULA_VERSION,
+          proofLinks: report.media?.url ? [report.media.url] : [],
+          location: report.location || 'Global',
+          timestamp: adminDecision.decidedAt,
+          status: 'approved',
+          aiVerdict: report.aiVerdict ? { valid: report.aiVerdict.valid, reasoning: report.aiVerdict.reasoning } : null,
+          adminDecision: { verdict: 'approved', note: parsed.data.note, decidedAt: adminDecision.decidedAt },
+          stats: { aligns: 0, opposes: 0, comments: 0, shares: 0 },
+        });
+        report.eventId = event._id;
+      }
+      report.ledgerEntryId = ledgerEntryId;
+      adminDecision.finalImpact = singleCappedDelta;
+    } else if (isRejected && wasApproved) {
+      // Reverse Approved -> Rejected
+      if (report.ledgerEntryId) await ledgerEntriesRepo.remove(report.ledgerEntryId);
+      if (report.eventId) await eventsRepo.deleteById(report.eventId);
     }
-  }
 
-  const persistedReport = await reportsRepo.update(id.data, {
-    adminDecision,
-    status,
-    eventId,
-    ledgerEntryId: shouldApplySheetScore ? `report_${report._id}` : report.ledgerEntryId,
-    category: adminDecision.category,
-    deed: adminDecision.deed,
-    baseScore: adminDecision.baseScore,
-    repetitionPattern: adminDecision.repetitionPattern,
-    intent: adminDecision.intent,
-    circumstances: adminDecision.circumstances,
-    reportScore: adminDecision.baseScore ? calcDelta(adminDecision.baseScore, profileMultipliersFromWorkbookProfile(account, {
-      repetitionPattern: Number(adminDecision.repetitionPattern ?? 1),
-      intent: Number(adminDecision.intent ?? 1),
-      circumstances: Number(adminDecision.circumstances ?? 1),
-    })) : undefined,
-  });
-  await adminActionsRepo.create({ actor: user!, action: 'report.adjudicate', entityType: 'report', entityId: id.data, before: { report, account }, after: { report: persistedReport, account: updatedAccount } });
+    // Rebuild Account Score (Always rebuild if it was or is approved to ensure consistency)
+    let updatedAccount = account;
+    if (isApproved || wasApproved) {
+      const entries = await ledgerEntriesRepo.listForProfile(account._id);
+      const scoreHistory: accountsRepo.ScoreHistoryPoint[] = entries.map(e => ({
+        t: e.timestamp,
+        s: 0, // rebuilt
+        cause: 'report',
+        delta: e.delta,
+        baseScore: e.baseScore,
+        profileId: e.profileId,
+        multiplierQuotient: e.multiplierQuotient,
+        multipliers: e.multipliers,
+        category: e.category,
+        deed: e.deed
+      }));
+      const rebuilt = await accountsRepo.rebuildLedger(account._id, scoreHistory);
+      if (rebuilt) updatedAccount = rebuilt;
+    }
 
-  // Notify the reporter of the verdict (skip anonymous filings).
-  if (report.reporterId) {
-    const approved = parsed.data.verdict === 'approved';
-    const subjectName = updatedAccount.displayName || updatedAccount.username || 'an account';
-    await notificationsRepo.create({
-      userId: report.reporterId,
-      kind: approved ? 'report_approved' : 'report_rejected',
-      title: approved ? 'Filing approved' : 'Filing rejected',
-      body: approved
-        ? `Your ${report.type} filing on ${subjectName} was approved (impact ${adminDecision.finalImpact >= 0 ? '+' : ''}${adminDecision.finalImpact}). Reporter score ${approved ? '+2' : '-3'}.`
-        : `Your ${report.type} filing on ${subjectName} was rejected. Reporter score -3.`,
-      link: `/account/${updatedAccount._id}`,
-      meta: { reportId: id.data, accountId: updatedAccount._id, finalImpact: adminDecision.finalImpact }
+    // Update Report
+    const persistedReport = await reportsRepo.update(id.data, {
+      adminDecision,
+      status,
+      eventId: isApproved ? report.eventId : null,
+      ledgerEntryId: isApproved ? report.ledgerEntryId : null,
+      category: adminDecision.category,
+      deed: adminDecision.deed,
+      baseScore: adminDecision.baseScore,
+      repetitionPattern: adminDecision.repetitionPattern,
+      intent: adminDecision.intent,
+      circumstances: adminDecision.circumstances,
+      reportScore: isApproved ? adminDecision.finalImpact : 0,
     });
-  }
 
-  return ok({ report: persistedReport, account: updatedAccount });
+    // Update Reporter Score (Only on state transitions)
+    if (report.reporterId) {
+      const reporter = await usersRepo.findById(report.reporterId);
+      if (reporter) {
+        let reporterDelta = 0;
+        
+        // Transitions to Approved
+        if (isApproved && !wasApproved) {
+          reporterDelta = wasRejected ? 15 : 5;
+        } 
+        // Transitions to Rejected
+        else if (isRejected && !wasRejected) {
+          reporterDelta = wasApproved ? -15 : -10;
+        }
+        // Transitions back to Pending
+        else if (parsed.data.verdict === 'pending' && (wasApproved || wasRejected)) {
+          reporterDelta = wasApproved ? -5 : 10;
+        }
+
+        if (reporterDelta !== 0) {
+          const nextScore = clamp((reporter.reporterScore ?? 50) + reporterDelta, 0, 100);
+          if (nextScore !== reporter.reporterScore) {
+            await usersRepo.setReporterScore(report.reporterId, nextScore);
+          }
+        }
+      }
+    }
+
+    // Log Action
+    await adminActionsRepo.create({
+      actor: user!,
+      action: 'report.adjudicate',
+      entityType: 'report',
+      entityId: id.data,
+      before: { report, account },
+      after: { report: persistedReport, account: updatedAccount }
+    });
+
+    // Notify
+    if (report.reporterId) {
+      const subjectName = updatedAccount.displayName || updatedAccount.username || 'an account';
+      await notificationsRepo.create({
+        userId: report.reporterId,
+        kind: isApproved ? 'report_approved' : 'report_rejected',
+        title: isApproved ? 'Filing approved' : 'Filing rejected',
+        body: isApproved
+          ? `Your filing on ${subjectName} was approved. Impact: ${adminDecision.finalImpact >= 0 ? '+' : ''}${adminDecision.finalImpact}.`
+          : `Your filing on ${subjectName} was rejected.`,
+        link: `/account/${updatedAccount._id}`,
+        meta: { reportId: id.data, accountId: updatedAccount._id }
+      });
+    }
+
+    return ok({ report: persistedReport, account: updatedAccount });
+  } catch (error) {
+    console.error('[adjudicate api] failure:', error);
+    return fail('internal_error', error instanceof Error ? error.message : 'Decision failed', 500);
+  }
 }

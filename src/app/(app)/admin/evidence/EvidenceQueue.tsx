@@ -89,7 +89,7 @@ export function EvidenceQueue({
         <datalist id="evidence-accounts">
           {accounts.map((account) => (
             <option key={account._id} value={account._id}>
-              {account.displayName} @{account.username}
+              {account.displayName}
             </option>
           ))}
         </datalist>

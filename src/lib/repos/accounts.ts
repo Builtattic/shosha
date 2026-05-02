@@ -1,5 +1,5 @@
 import { adminDb } from '@/lib/firebase/admin';
-import { omitUndefinedDeep, withId } from '@/lib/repos/_serialize';
+import { withId, stripUndefined } from '@/lib/repos/_serialize';
 import { BASE_SCORE, applySheetScore, calcWorkbookScoreFromEntries } from '@/lib/scoring';
 import type { Breakdown, Platform, ScoreCause } from '@/types';
 
@@ -141,14 +141,14 @@ export async function createWithId(
   input: Omit<AccountRecord, '_id' | 'createdAt' | 'updatedAt' | 'usernameLower' | 'displayNameLower'>
 ): Promise<AccountRecord> {
   const now = new Date().toISOString();
-  const payload = omitUndefinedDeep({
+  const payload = stripUndefined({
     ...input,
     username: input.username.toLowerCase(),
     usernameLower: input.username.toLowerCase(),
     displayNameLower: (input.displayName ?? '').toLowerCase(),
     createdAt: now,
     updatedAt: now
-  }) as Omit<AccountRecord, '_id'> & Record<string, unknown>;
+  });
   await ref().child(id).set(payload);
   return { _id: id, ...payload } as AccountRecord;
 }
@@ -160,7 +160,7 @@ export async function update(id: string, partial: Partial<AccountRecord>): Promi
   if (typeof partial.displayName === 'string') patch.displayNameLower = (partial.displayName ?? '').toLowerCase();
   if (typeof partial.username === 'string') patch.usernameLower = partial.username.toLowerCase();
   delete patch._id;
-  await ref().child(id).update(patch);
+  await ref().child(id).update(stripUndefined(patch));
   return (await findById(id))!;
 }
 
@@ -170,7 +170,7 @@ export async function listTop(limit = 50): Promise<AccountRecord[]> {
   snap.forEach((child) => {
     results.push(withId<AccountRecord>(child.key!, child.val()));
   });
-  return results.reverse(); // limitToLast gives ascending, we want descending
+  return results.reverse();
 }
 
 export async function listBottom(limit = 50): Promise<AccountRecord[]> {
@@ -194,6 +194,7 @@ export function normalizeSocialUrl(url: string): string {
 export async function search(q: string, limit = 20): Promise<AccountRecord[]> {
   const cleaned = q.trim().toLowerCase();
   if (!cleaned) return listTop(limit);
+  
   // Username matches first, then display-name prefix matches (deduped by _id).
   const rangeQuery = (field: 'usernameLower' | 'displayNameLower') =>
     ref()
@@ -205,13 +206,16 @@ export async function search(q: string, limit = 20): Promise<AccountRecord[]> {
 
   const [snapUser, snapDisplay] = await Promise.all([rangeQuery('usernameLower'), rangeQuery('displayNameLower')]);
   const byId = new Map<string, AccountRecord>();
+  
   snapUser.forEach((child) => {
     byId.set(child.key!, withId<AccountRecord>(child.key!, child.val()));
   });
+  
   snapDisplay.forEach((child) => {
     const id = child.key!;
     if (!byId.has(id)) byId.set(id, withId<AccountRecord>(id, child.val()));
   });
+  
   return Array.from(byId.values()).slice(0, limit);
 }
 
@@ -290,7 +294,7 @@ export async function ensureLedger(id: string): Promise<AccountRecord | null> {
   }
   if (Object.keys(patch).length === 0) return existing;
   patch.updatedAt = new Date().toISOString();
-  await ref().child(id).update(patch);
+  await ref().child(id).update(stripUndefined(patch));
   return findById(id);
 }
 
@@ -308,13 +312,13 @@ export async function rebuildLedger(id: string, entries: ScoreHistoryPoint[]): P
     score = applied.score;
     seededHistory.push({ ...entry, s: score, decay: entry.decay ?? applied.decay });
   }
-  await ref().child(id).update({
+  await ref().child(id).update(stripUndefined({
     score: tracker.finalScore,
     displayScore: tracker.finalScore,
     globalScore,
     windowScores: tracker,
     scoreHistory: seededHistory,
     updatedAt: new Date().toISOString(),
-  });
+  }));
   return findById(id);
 }

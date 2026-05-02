@@ -193,14 +193,13 @@ export default function AdminDisputesPage() {
                     </div>
 
                     <p className="text-[13px] text-foreground/90">
-                      <span className="font-bold">Filer:</span> {d.filer?.name ?? d.userId}{' '}
-                      <span className="text-muted-foreground">(@{d.filer?.username ?? '?'})</span>
+                      <span className="font-bold">Filer:</span> {d.filer?.name || d.filer?.username || d.userId}
                     </p>
                     {d.account && (
                       <p className="text-[13px] text-foreground/90">
                         <span className="font-bold">Account:</span>{' '}
                         <Link className="hover:underline" href={`/account/${d.account._id}`}>
-                          {d.account.displayName} (@{d.account.username})
+                          {d.account.displayName} ({d.account.username})
                         </Link>
                       </p>
                     )}

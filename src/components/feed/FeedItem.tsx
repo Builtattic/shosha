@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
   MessageSquare,
   Share2,
@@ -52,11 +53,14 @@ export interface FeedItemProps {
     avatar: string;
     isVerified: boolean;
     platform?: string;
+    accountId?: string;
   };
   timestamp: string;
   type: 'positive' | 'negative';
   title: string;
-  location?: string;
+  description: string;
+  reportScore?: number;
+  evidenceSourceUrl?: string;
   media?: {
     type: 'image' | 'video';
     url: string;
@@ -77,6 +81,12 @@ export interface FeedItemProps {
     vote: 'align' | 'oppose' | null;
     bookmarked: boolean;
   };
+  reporter?: {
+    name: string;
+    handle: string;
+    avatar: string;
+    isVerified: boolean;
+  };
 }
 
 export function FeedItem({
@@ -91,8 +101,10 @@ export function FeedItem({
   deed,
   disputeStatus,
   reportScore,
+  evidenceSourceUrl,
   stats,
-  viewer
+  viewer,
+  reporter
 }: FeedItemProps) {
   const router = useRouter();
   const toast = useToast();
@@ -190,6 +202,13 @@ export function FeedItem({
     return value > 1000 ? `${(value / 1000).toFixed(1)}K` : value;
   }
 
+    const isLiveNews = id.startsWith('twitter-') || id.startsWith('ig-') || id.startsWith('fb-') || id.startsWith('news-') || id.startsWith('reddit-');
+  const displayAuthor = reporter || (isLiveNews ? user : { name: 'Anonymous', handle: 'anonymous', avatar: '', isVerified: false });
+  const displaySubject = isLiveNews ? null : user;
+
+  const authorLink = displayAuthor.handle === 'anonymous' ? '#' : `/account/website_${displayAuthor.handle.replace(/^@/, '')}`;
+  const subjectLink = displaySubject ? `/account/${displaySubject.accountId || displaySubject.handle}` : null;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 24 }}
@@ -199,61 +218,75 @@ export function FeedItem({
       className="mb-6 overflow-hidden rounded-[24px] border border-border bg-card shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 hover:border-foreground/10"
     >
       {/* Header */}
-      <div className="flex items-start justify-between p-5 pb-3">
-        <div className="flex items-center gap-3">
-          <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full border border-border bg-muted shadow-sm flex items-center justify-center">
-             {user.avatar && user.avatar !== 'null' && user.avatar !== 'undefined' ? (
-                <img
-                  src={user.avatar}
-                  alt={user.name}
-                  className="h-full w-full object-cover"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = 'none';
-                    const fallback = target.parentElement?.querySelector('.avatar-fallback');
-                    if (fallback) fallback.classList.remove('hidden');
-                  }}
-                />
-             ) : null}
-             <div className={cn(
-               "avatar-fallback font-bold text-muted-foreground",
-               (user.avatar && user.avatar !== 'null' && user.avatar !== 'undefined') && "hidden"
-             )}>
-               {user.name[0]}
-             </div>
-          </div>
-          <div className="flex flex-col">
-            <div className="flex items-center gap-1">
-              <span className="text-[16px] font-bold text-foreground leading-tight">{user.name}</span>
-              {user.isVerified && <CheckCircle2 size={16} className="text-foreground fill-foreground/10" />}
-            </div>
-            <p className="text-[12px] text-muted-foreground">@{user.handle}</p>
-            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground/70 mt-0.5">
-              <span>{timestamp}</span>
-              <span className="text-[8px]">●</span>
-              {user.platform === 'twitter' ? <Twitter size={10} /> :
-               user.platform === 'instagram' ? <Instagram size={10} /> :
-               user.platform === 'facebook' ? <Facebook size={10} /> :
-               user.platform === 'threads' ? <AtSign size={10} /> :
-               <Globe size={10} />}
-            </div>
-          </div>
-        </div>
+      <div className="flex flex-col gap-3 p-5 pb-3">
 
-        <motion.div
-          initial={{ opacity: 0, scale: 0.85 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.15, duration: 0.3 }}
-          className={cn(
-            "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.12em] transition-all",
-            isPositive
-              ? "bg-primary/10 text-primary ring-1 ring-primary/20"
-              : "bg-destructive/10 text-destructive ring-1 ring-destructive/20"
-          )}
-        >
-          {isPositive ? <Plus size={12} strokeWidth={3.5} /> : <Minus size={12} strokeWidth={3.5} />}
-          {type}
-        </motion.div>
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-3">
+            <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full border border-border bg-muted shadow-sm flex items-center justify-center">
+               {displayAuthor.avatar && displayAuthor.avatar !== 'null' && displayAuthor.avatar !== 'undefined' ? (
+                  <img
+                    src={displayAuthor.avatar}
+                    alt={displayAuthor.name}
+                    className="h-full w-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      const fallback = target.parentElement?.querySelector('.avatar-fallback');
+                      if (fallback) fallback.classList.remove('hidden');
+                    }}
+                  />
+               ) : null}
+               <div className={cn(
+                 "avatar-fallback font-bold text-muted-foreground",
+                 (displayAuthor.avatar && displayAuthor.avatar !== 'null' && displayAuthor.avatar !== 'undefined') && "hidden"
+               )}>
+                 {displayAuthor.name[0]}
+               </div>
+            </div>
+            <div className="flex flex-col">
+              <div className="flex items-center gap-1">
+                <Link href={authorLink} className="text-[16px] font-bold text-foreground leading-tight hover:underline transition-all">
+                  {displayAuthor.name}
+                </Link>
+                {displayAuthor.isVerified && <CheckCircle2 size={16} className="text-foreground fill-foreground/10" />}
+              </div>
+              
+              {displaySubject && (
+                <p className="text-[12px] text-muted-foreground">
+                  <span className="text-muted-foreground/70">reported</span>{' '}
+                  <Link href={subjectLink || '#'} className="font-semibold text-foreground hover:underline">
+                    {displaySubject.name}
+                  </Link>
+                </p>
+              )}
+
+              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground/70 mt-0.5">
+                <span>{timestamp}</span>
+                <span className="text-[8px]">●</span>
+                {user.platform === 'twitter' ? <Twitter size={10} /> :
+                 user.platform === 'instagram' ? <Instagram size={10} /> :
+                 user.platform === 'facebook' ? <Facebook size={10} /> :
+                 user.platform === 'threads' ? <AtSign size={10} /> :
+                 <Globe size={10} />}
+              </div>
+            </div>
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0, scale: 0.85 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.15, duration: 0.3 }}
+            className={cn(
+              "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.12em] transition-all",
+              isPositive
+                ? "bg-primary/10 text-primary ring-1 ring-primary/20"
+                : "bg-destructive/10 text-destructive ring-1 ring-destructive/20"
+            )}
+          >
+            {isPositive ? <Plus size={12} strokeWidth={3.5} /> : <Minus size={12} strokeWidth={3.5} />}
+            {type}
+          </motion.div>
+        </div>
       </div>
 
       {/* Media Content */}
@@ -303,6 +336,17 @@ export function FeedItem({
               <span className="rounded-full border border-border bg-muted px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                 {category}
               </span>
+            )}
+            {evidenceSourceUrl && (
+              <a
+                href={evidenceSourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-primary hover:bg-primary/10 transition-colors"
+              >
+                Source
+              </a>
             )}
             {deed && (
               <span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-primary">
@@ -460,9 +504,15 @@ export function FeedItem({
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-baseline gap-2">
-                          <span className="text-[13px] font-bold text-foreground truncate">
+                          <Link 
+                            href={c.author.username === 'anonymous' ? '#' : `/account/website_${c.author.username.replace(/^@/, '')}`} 
+                            className={cn(
+                              "text-[13px] font-bold text-foreground truncate hover:underline",
+                              c.author.username === 'anonymous' && "pointer-events-none opacity-70"
+                            )}
+                          >
                             {c.author.name}
-                          </span>
+                          </Link>
                           <span className="text-[11px] text-muted-foreground/70">{relativeTime(c.createdAt)}</span>
                         </div>
                         <p className="text-[13px] text-foreground/90 break-words">{c.text}</p>

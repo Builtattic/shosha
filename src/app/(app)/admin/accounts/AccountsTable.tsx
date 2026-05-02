@@ -16,13 +16,20 @@ import {
   ShieldCheck,
   Globe,
   AlertTriangle,
-  X
+  X,
+  Plus,
+  Camera,
+  Upload,
+  Loader2
 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import Link from 'next/link';
 import type { AccountRecord } from '@/lib/repos/accounts';
 import { BASE_SCORE } from '@/lib/scoring';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useRef } from 'react';
+
+const PLATFORMS = ['x', 'instagram', 'facebook', 'youtube', 'tiktok', 'linkedin', 'reddit', 'snapchat', 'website'];
 
 const PLATFORM_ICONS: Record<string, any> = {
   x: <span className="font-serif italic font-black">X</span>,
@@ -66,9 +73,29 @@ export function AccountsTable({ initialAccounts }: { initialAccounts: AccountRec
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [editScore, setEditScore] = useState<{ id: string; value: number } | null>(null);
   const [editAccount, setEditAccount] = useState<AccountRecord | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [newAccount, setNewAccount] = useState<Partial<AccountRecord>>({
+    platform: 'x',
+    username: '',
+    displayName: '',
+    bio: '',
+    avatarUrl: '',
+    followers: '0',
+    verified: false,
+    profileKind: 'standard',
+    claimable: true,
+    credibility: 50,
+    region: '',
+    role: '',
+    quote: '',
+    enrichmentStatus: 'none',
+  });
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
   const toast = useToast();
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const editAvatarInputRef = useRef<HTMLInputElement>(null);
 
   const platforms = useMemo(() => ['all', ...Array.from(new Set(initialAccounts.map((a) => a.platform)))], [initialAccounts]);
 
@@ -131,6 +158,11 @@ export function AccountsTable({ initialAccounts }: { initialAccounts: AccountRec
           claimed: editAccount.claimed,
           claimedBy: editAccount.claimedBy,
           score: Number(editAccount.score),
+          credibility: Number(editAccount.credibility),
+          region: editAccount.region,
+          role: editAccount.role,
+          quote: editAccount.quote,
+          enrichmentStatus: editAccount.enrichmentStatus,
         }),
       });
       const data = await res.json();
@@ -141,6 +173,78 @@ export function AccountsTable({ initialAccounts }: { initialAccounts: AccountRec
       startTransition(() => router.refresh());
     } catch (e) {
       toast.push(e instanceof Error ? e.message : 'Failed to update account');
+    }
+  }
+
+  async function handleCreateAccount() {
+    if (!newAccount.username || !newAccount.platform) {
+      toast.push('Username and Platform are required');
+      return;
+    }
+    try {
+      const res = await fetch('/api/admin/accounts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newAccount),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error?.message ?? 'Failed to create account');
+      
+      setAccounts((prev) => [data.data, ...prev]);
+      toast.push(`Dossier for ${data.data.displayName} created.`);
+      setIsCreating(false);
+      setNewAccount({
+        platform: 'x',
+        username: '',
+        displayName: '',
+        bio: '',
+        avatarUrl: '',
+        followers: '0',
+        verified: false,
+        profileKind: 'standard',
+        claimable: true,
+        credibility: 50,
+        region: '',
+        role: '',
+        quote: '',
+        enrichmentStatus: 'none',
+      });
+      startTransition(() => router.refresh());
+    } catch (e) {
+      toast.push(e instanceof Error ? e.message : 'Failed to create account');
+    }
+  }
+
+  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>, isEdit: boolean) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      setUploadingAvatar(true);
+      const res = await fetch('/api/media/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.ok && data.data?.url) {
+        if (isEdit) {
+          setEditAccount((prev) => prev ? { ...prev, avatarUrl: data.data.url } : null);
+        } else {
+          setNewAccount((prev) => ({ ...prev, avatarUrl: data.data.url }));
+        }
+        toast.push('Avatar uploaded successfully.');
+      } else {
+        throw new Error(data.error?.message || 'Failed to upload photo');
+      }
+    } catch (err) {
+      toast.push(err instanceof Error ? err.message : 'Photo upload failed');
+    } finally {
+      setUploadingAvatar(false);
+      if (avatarInputRef.current) avatarInputRef.current.value = '';
+      if (editAvatarInputRef.current) editAvatarInputRef.current.value = '';
     }
   }
 
@@ -193,6 +297,14 @@ export function AccountsTable({ initialAccounts }: { initialAccounts: AccountRec
             className="h-12 w-12 flex items-center justify-center bg-black/20 border border-white/10 rounded-2xl text-muted-foreground hover:text-foreground transition-all"
           >
             <X size={16} />
+          </button>
+
+          <button 
+            onClick={() => setIsCreating(true)}
+            className="h-12 px-6 flex items-center gap-2 bg-primary text-primary-foreground rounded-2xl text-xs font-black uppercase tracking-widest hover:opacity-90 transition-all whitespace-nowrap"
+          >
+            <Plus size={16} />
+            Create Dossier
           </button>
         </div>
       </div>
@@ -258,7 +370,6 @@ export function AccountsTable({ initialAccounts }: { initialAccounts: AccountRec
                             <ExternalLink size={12} className="opacity-0 group-hover/link:opacity-100 transition-opacity" />
                           </span>
                         </Link>
-                        <span className="text-[11px] font-bold text-muted-foreground tracking-tight">@{account.username}</span>
                       </div>
                     </div>
                   </td>
@@ -457,7 +568,17 @@ export function AccountsTable({ initialAccounts }: { initialAccounts: AccountRec
                 </div>
                 <div className="space-y-2 sm:col-span-2">
                   <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Avatar Resource URL</label>
-                  <input value={editAccount.avatarUrl || ''} onChange={(e) => setEditAccount({ ...editAccount, avatarUrl: e.target.value })} className="admin-input h-14" />
+                  <div className="flex gap-2">
+                    <input value={editAccount.avatarUrl || ''} onChange={(e) => setEditAccount({ ...editAccount, avatarUrl: e.target.value })} className="admin-input h-14 flex-1" />
+                    <button 
+                      onClick={() => editAvatarInputRef.current?.click()}
+                      disabled={uploadingAvatar}
+                      className="h-14 w-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors disabled:opacity-50"
+                    >
+                      {uploadingAvatar ? <Loader2 size={20} className="animate-spin" /> : <Camera size={20} />}
+                    </button>
+                    <input type="file" ref={editAvatarInputRef} onChange={(e) => handleAvatarUpload(e, true)} accept="image/*" className="hidden" />
+                  </div>
                 </div>
                 <div className="space-y-2 sm:col-span-2">
                   <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Profile Biography</label>
@@ -474,11 +595,184 @@ export function AccountsTable({ initialAccounts }: { initialAccounts: AccountRec
                     <span className="text-xs font-black uppercase tracking-widest">Claimed Status</span>
                   </label>
                 </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Credibility Score (0-100)</label>
+                  <input type="number" min="0" max="100" value={editAccount.credibility || 0} onChange={(e) => setEditAccount({ ...editAccount, credibility: Number(e.target.value) })} className="admin-input h-14" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Enrichment Status</label>
+                  <select value={editAccount.enrichmentStatus || 'none'} onChange={(e) => setEditAccount({ ...editAccount, enrichmentStatus: e.target.value as any })} className="admin-input h-14 bg-black/20 w-full">
+                    <option value="none" className="bg-background">NONE</option>
+                    <option value="pending" className="bg-background">PENDING</option>
+                    <option value="reviewed" className="bg-background">REVIEWED</option>
+                    <option value="stale" className="bg-background">STALE</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Geographic Region</label>
+                  <input placeholder="e.g. North America" value={editAccount.region || ''} onChange={(e) => setEditAccount({ ...editAccount, region: e.target.value })} className="admin-input h-14" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Professional Role</label>
+                  <input placeholder="e.g. Philanthropist" value={editAccount.role || ''} onChange={(e) => setEditAccount({ ...editAccount, role: e.target.value })} className="admin-input h-14" />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Primary Quote</label>
+                  <input placeholder="A defining statement..." value={editAccount.quote || ''} onChange={(e) => setEditAccount({ ...editAccount, quote: e.target.value })} className="admin-input h-14" />
+                </div>
               </div>
 
               <div className="mt-10 flex gap-4">
                 <button onClick={() => setEditAccount(null)} className="flex-1 h-14 rounded-2xl border border-white/10 text-sm font-black hover:bg-white/5 transition-colors">Cancel</button>
                 <button onClick={saveAccount} className="flex-1 h-14 rounded-2xl bg-primary text-primary-foreground text-sm font-black hover:opacity-90 transition-opacity">Commit Changes</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {isCreating && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm" 
+              onClick={() => setIsCreating(false)} 
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-[2.5rem] border border-white/10 bg-card p-10 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-4">
+                  <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                    <Plus size={28} />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-serif font-black text-foreground leading-tight">Create New Dossier</h3>
+                    <p className="text-xs font-black text-muted-foreground uppercase tracking-widest mt-1">Registry Enrollment Protocol</p>
+                  </div>
+                </div>
+                <button onClick={() => setIsCreating(false)} className="h-10 w-10 rounded-full hover:bg-white/5 flex items-center justify-center transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="grid gap-6 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Platform / Network</label>
+                  <select 
+                    value={newAccount.platform} 
+                    onChange={(e) => setNewAccount({ ...newAccount, platform: e.target.value as any })} 
+                    className="admin-input h-14 bg-black/20 w-full"
+                  >
+                    {PLATFORMS.map(p => (
+                      <option key={p} value={p} className="bg-background">{p.toUpperCase()}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Handle / Username</label>
+                  <input 
+                    placeholder="e.g. elonmusk"
+                    value={newAccount.username} 
+                    onChange={(e) => setNewAccount({ ...newAccount, username: e.target.value, displayName: newAccount.displayName || e.target.value })} 
+                    className="admin-input h-14" 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Display Name</label>
+                  <input 
+                    placeholder="e.g. Elon Musk"
+                    value={newAccount.displayName} 
+                    onChange={(e) => setNewAccount({ ...newAccount, displayName: e.target.value })} 
+                    className="admin-input h-14" 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Reach (Followers)</label>
+                  <input 
+                    placeholder="0"
+                    value={newAccount.followers || ''} 
+                    onChange={(e) => setNewAccount({ ...newAccount, followers: e.target.value })} 
+                    className="admin-input h-14" 
+                  />
+                </div>
+                
+                <div className="space-y-2 sm:col-span-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Avatar Resource URL</label>
+                  <div className="flex gap-2">
+                    <input 
+                      placeholder="https://..."
+                      value={newAccount.avatarUrl || ''} 
+                      onChange={(e) => setNewAccount({ ...newAccount, avatarUrl: e.target.value })} 
+                      className="admin-input h-14 flex-1" 
+                    />
+                    <button 
+                      onClick={() => avatarInputRef.current?.click()}
+                      disabled={uploadingAvatar}
+                      className="h-14 w-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors disabled:opacity-50"
+                    >
+                      {uploadingAvatar ? <Loader2 size={20} className="animate-spin" /> : <Camera size={20} />}
+                    </button>
+                    <input type="file" ref={avatarInputRef} onChange={(e) => handleAvatarUpload(e, false)} accept="image/*" className="hidden" />
+                  </div>
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Profile Biography</label>
+                  <textarea 
+                    placeholder="Tell the truth, modernize the noise..."
+                    value={newAccount.bio || ''} 
+                    onChange={(e) => setNewAccount({ ...newAccount, bio: e.target.value })} 
+                    className="admin-input min-h-[100px] py-4" 
+                  />
+                </div>
+                
+                <div className="sm:col-span-2 grid grid-cols-2 gap-4">
+                  <label className="flex items-center gap-3 p-4 rounded-2xl bg-white/5 border border-white/5 cursor-pointer hover:bg-white/[0.08] transition-colors">
+                    <input type="checkbox" checked={newAccount.verified} onChange={(e) => setNewAccount({ ...newAccount, verified: e.target.checked })} className="h-5 w-5 rounded-lg border-white/10 bg-black/20 text-primary focus:ring-primary/20 transition-all" />
+                    <span className="text-xs font-black uppercase tracking-widest">Verified Status</span>
+                  </label>
+                  <label className="flex items-center gap-3 p-4 rounded-2xl bg-white/5 border border-white/5 cursor-pointer hover:bg-white/[0.08] transition-colors">
+                    <input type="checkbox" checked={newAccount.claimable} onChange={(e) => setNewAccount({ ...newAccount, claimable: e.target.checked })} className="h-5 w-5 rounded-lg border-white/10 bg-black/20 text-primary focus:ring-primary/20 transition-all" />
+                    <span className="text-xs font-black uppercase tracking-widest">Claimable</span>
+                  </label>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Credibility Score (0-100)</label>
+                  <input type="number" min="0" max="100" value={newAccount.credibility} onChange={(e) => setNewAccount({ ...newAccount, credibility: Number(e.target.value) })} className="admin-input h-14" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Enrichment Status</label>
+                  <select value={newAccount.enrichmentStatus} onChange={(e) => setNewAccount({ ...newAccount, enrichmentStatus: e.target.value as any })} className="admin-input h-14 bg-black/20 w-full">
+                    <option value="none" className="bg-background">NONE</option>
+                    <option value="pending" className="bg-background">PENDING</option>
+                    <option value="reviewed" className="bg-background">REVIEWED</option>
+                    <option value="stale" className="bg-background">STALE</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Geographic Region</label>
+                  <input placeholder="e.g. North America" value={newAccount.region} onChange={(e) => setNewAccount({ ...newAccount, region: e.target.value })} className="admin-input h-14" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Professional Role</label>
+                  <input placeholder="e.g. Philanthropist" value={newAccount.role} onChange={(e) => setNewAccount({ ...newAccount, role: e.target.value })} className="admin-input h-14" />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Primary Quote</label>
+                  <input placeholder="A defining statement for this profile..." value={newAccount.quote} onChange={(e) => setNewAccount({ ...newAccount, quote: e.target.value })} className="admin-input h-14" />
+                </div>
+              </div>
+
+              <div className="mt-10 flex gap-4">
+                <button onClick={() => setIsCreating(false)} className="flex-1 h-14 rounded-2xl border border-white/10 text-sm font-black hover:bg-white/5 transition-colors">Abort</button>
+                <button onClick={handleCreateAccount} className="flex-1 h-14 rounded-2xl bg-primary text-primary-foreground text-sm font-black hover:opacity-90 transition-opacity">Deploy Dossier</button>
               </div>
             </motion.div>
           </div>

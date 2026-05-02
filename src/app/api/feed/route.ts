@@ -4,6 +4,7 @@ import * as accountsRepo from '@/lib/repos/accounts';
 import * as reportsRepo from '@/lib/repos/reports';
 import * as interactionsRepo from '@/lib/repos/reportInteractions';
 import * as siteSettingsRepo from '@/lib/repos/siteSettings';
+import * as usersRepo from '@/lib/repos/users';
 
 function scoreReport(report: reportsRepo.ReportRecord) {
   const reportScore = Math.abs(report.reportScore ?? report.baseScore ?? report.adminDecision?.finalImpact ?? report.aiVerdict?.proposedImpact ?? 0);
@@ -207,11 +208,22 @@ export async function GET(request: Request) {
 
   const reports = await reportsRepo.listPublicFeed(75, siteSettingsRepo.publicFeedStatuses(settings));
   const accountIds = Array.from(new Set(reports.map((report) => report.accountId)));
-  const accounts = await Promise.all(accountIds.map((id) => accountsRepo.findById(id)));
+  const reporterIds = Array.from(new Set(reports.map((report) => report.reporterId).filter(Boolean))) as string[];
+
+  const [accounts, reporters] = await Promise.all([
+    Promise.all(accountIds.map((id) => accountsRepo.findById(id))),
+    Promise.all(reporterIds.map((id) => usersRepo.findById(id)))
+  ]);
+  
   const accountMap = new Map(accounts.filter(Boolean).map((account) => [account!._id, account!]));
+  const reporterMap = new Map(reporters.filter(Boolean).map((reporter) => [reporter!._id, reporter!]));
 
   let feed: any[] = reports
-    .map((report) => ({ ...report, account: accountMap.get(report.accountId) ?? null }))
+    .map((report) => ({ 
+      ...report, 
+      account: accountMap.get(report.accountId) ?? null,
+      reporter: report.reporterId ? (reporterMap.get(report.reporterId) ?? null) : null
+    }))
     .filter((report) => report.account !== null);
 
   const liveNews = settings.liveFeedEnabled ? await getLiveNews() : [];

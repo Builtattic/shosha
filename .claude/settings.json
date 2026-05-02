@@ -23,7 +23,8 @@
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
       "Bash(rm 'src/app/\\(public\\)/account/[id]/page.tsx')",
-      "Bash(rmdir 'src/app/\\(public\\)/account/[id]')"
+      "Bash(rmdir 'src/app/\\(public\\)/account/[id]')",
+      "Bash(gh pr *)"
     ],
     "additionalDirectories": [
       "D:\\Shosha\\src\\app\\(app)\\account"

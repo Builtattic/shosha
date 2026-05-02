@@ -341,7 +341,7 @@ export default function DisputesPage() {
                   <option value="">Choose a claimed account…</option>
                   {claimed.map((a) => (
                     <option key={a._id} value={a._id}>
-                      {a.displayName} (@{a.username})
+                      {a.displayName}
                     </option>
                   ))}
                 </select>

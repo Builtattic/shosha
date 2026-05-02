@@ -1,4 +1,5 @@
 import { adminDb } from '@/lib/firebase/admin';
+import { stripUndefined } from '@/lib/repos/_serialize';
 
 export type NotificationKind =
   | 'report_approved'
@@ -48,7 +49,7 @@ export async function create(input: {
     read: false,
     createdAt: new Date().toISOString()
   };
-  const pushRef = await ref(input.userId).push(payload);
+  const pushRef = await ref(input.userId).push(stripUndefined(payload));
   return { _id: pushRef.key!, ...payload };
 }
 

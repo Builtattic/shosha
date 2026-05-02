@@ -79,7 +79,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         clearSessionCookie();
       }
     });
-    return unsubscribe;
+
+    // Proactively refresh the token every 10 minutes to keep the session cookie alive
+    // and prevent 'auth/id-token-expired' errors on the backend.
+    const refreshInterval = setInterval(async () => {
+      if (auth.currentUser) {
+        try {
+          // getIdToken(true) forces a refresh, but we'll use regular getIdToken()
+          // which refreshes if the token is close to expiry.
+          const token = await auth.currentUser.getIdToken();
+          setSessionCookie(token);
+        } catch (e) {
+          console.error("[auth] Failed to proactively refresh token:", e);
+        }
+      }
+    }, 10 * 60 * 1000); // 10 minutes
+
+    return () => {
+      unsubscribe();
+      clearInterval(refreshInterval);
+    };
+  }, []);
+
+  // Handle window focus to refresh token immediately if user returns after long absence
+  useEffect(() => {
+    const handleFocus = async () => {
+      if (auth.currentUser) {
+        try {
+          const token = await auth.currentUser.getIdToken();
+          setSessionCookie(token);
+        } catch (e) {
+          // Ignore focus errors
+        }
+      }
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
   }, []);
 
   async function signIn(email: string, password: string) {

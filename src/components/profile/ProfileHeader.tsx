@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { CheckCircle2, Globe, Bell, Share2, MoreHorizontal } from 'lucide-react';
+import Link from 'next/link';
 import { ScoreGauge } from '@/components/viz/ScoreGauge';
 import { StatCard } from '@/components/profile/StatCard';
 import { cn } from '@/lib/utils';
@@ -76,11 +77,10 @@ export function ProfileHeader({ user, score, stats, activeTab, onTabChange }: Pr
         </div>
         
         <div className="flex items-center gap-1">
-          <h1 className="text-[24px] font-bold text-foreground">{user.name}</h1>
+          <Link href="/profile" className="text-[24px] font-bold text-foreground hover:underline transition-all">{user.name.replace(/^@/, '')}</Link>
           {user.isVerified && <CheckCircle2 size={18} className="text-primary fill-primary/10" />}
         </div>
         
-        <p className="text-[14px] text-muted-foreground">@{user.handle}</p>
         <p className="mt-1 text-[14px] font-medium text-muted-foreground/80">{user.role}</p>
         
         <div className="mt-2 flex items-center gap-1 text-[12px] text-muted-foreground">

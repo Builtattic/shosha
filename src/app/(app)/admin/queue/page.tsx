@@ -107,7 +107,7 @@ export default async function AdminQueuePage() {
                         </span>
                       </div>
                       <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground/60 uppercase tracking-tight">
-                        <span className="truncate">@{report.account?.username}</span>
+                        <span className="truncate">{report.account?.username}</span>
                         <span>·</span>
                         <span className="capitalize">{report.account?.platform}</span>
                       </div>

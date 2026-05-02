@@ -1,5 +1,5 @@
 import { adminDb } from '@/lib/firebase/admin';
-import { omitUndefinedDeep, withId } from '@/lib/repos/_serialize';
+import { withId, stripUndefined } from '@/lib/repos/_serialize';
 import type { ReportType, ReportStatus, Platform, ReportSource, ReportVisibility } from '@/types';
 
 export type ReportMedia = {
@@ -60,6 +60,7 @@ export type ReportRecord = {
   location?: string;
   tags?: string[];
   aiUndertaking?: boolean;
+  evidenceSourceUrl?: string;
   disputeStatus?: 'none' | 'open' | 'resolved';
   status: ReportStatus;
   aiVerdict: AiVerdictRecord | null;
@@ -94,7 +95,7 @@ export type CreateReportInput = Omit<ReportRecord, '_id' | 'createdAt' | 'update
 export async function create(input: CreateReportInput): Promise<ReportRecord> {
   const now = new Date().toISOString();
   const newRef = ref().push();
-  const sanitized = omitUndefinedDeep({
+  const payload = stripUndefined({
     ...input,
     visibility: input.visibility ?? 'public',
     pinned: input.pinned ?? false,
@@ -103,9 +104,9 @@ export async function create(input: CreateReportInput): Promise<ReportRecord> {
     stats: input.stats ?? { aligns: 0, opposes: 0, comments: 0, shares: 0 },
     createdAt: now,
     updatedAt: now
-  }) as Omit<ReportRecord, '_id'> & Record<string, unknown>;
-  await newRef.set(sanitized);
-  return { _id: newRef.key!, ...sanitized } as ReportRecord;
+  });
+  await newRef.set(payload);
+  return { _id: newRef.key!, ...payload } as ReportRecord;
 }
 
 export async function update(id: string, partial: Partial<ReportRecord>): Promise<ReportRecord | null> {
@@ -113,7 +114,7 @@ export async function update(id: string, partial: Partial<ReportRecord>): Promis
   if (!existing) return null;
   const patch: Record<string, unknown> = { ...partial, updatedAt: new Date().toISOString() };
   delete patch._id;
-  await ref().child(id).update(patch);
+  await ref().child(id).update(stripUndefined(patch));
   return (await findById(id))!;
 }
 
@@ -150,10 +151,6 @@ export async function listPublicFeed(limit = 50, statusIn: ReportStatus[] = ['ap
   return results.reverse().slice(0, limit);
 }
 
-/**
- * Substring full-text search across description / feelings / category / deed.
- * Pulls a recent window from RTDB and filters in-memory — fine at our current scale.
- */
 export async function search(query: string, limit = 30, sampleSize = 500): Promise<ReportRecord[]> {
   const trimmed = query.trim().toLowerCase();
   if (!trimmed) return [];

@@ -32,6 +32,7 @@ import { BASE_SCORE } from '@/lib/scoring';
 import { idSchema } from '@/lib/validators';
 import * as accountsRepo from '@/lib/repos/accounts';
 import * as reportsRepo from '@/lib/repos/reports';
+import * as usersRepo from '@/lib/repos/users';
 import { enrichPublicProfileDetails, needsProfileEnrichment } from '@/lib/profileEnrichment';
 
 export const dynamic = 'force-dynamic';
@@ -54,7 +55,39 @@ export default async function AccountPage({
   if (!id.success) notFound();
 
   let account = await accountsRepo.findById(id.data);
-  if (!account) notFound();
+  if (!account) {
+    const [platform, ...rest] = id.data.split('_');
+    const username = rest.join('_');
+    if (platform === 'website') {
+      const { findByUsername } = await import('@/lib/repos/users');
+      const user = await findByUsername(username);
+      if (user) {
+        account = await accountsRepo.createWithId(id.data, {
+          platform: 'website',
+          username: user.username,
+          displayName: user.name || user.username,
+          bio: user.bio || 'Platform User',
+          avatarUrl: user.photoUrl || `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(user.name || user.username)}`,
+          verified: true,
+          followers: 'unknown',
+          claimable: true,
+          credibility: 80,
+          enrichmentStatus: 'none',
+          role: 'Platform User',
+          score: BASE_SCORE,
+          scoreHistory: [{ t: new Date().toISOString(), s: BASE_SCORE, cause: 'seed' }],
+          breakdown: { authenticity: 50, engagement: 50, community: 50, content: 50, impact: 50 },
+          posts: [],
+          claimed: false,
+          claimedBy: null
+        });
+      } else {
+        notFound();
+      }
+    } else {
+      notFound();
+    }
+  }
 
   if (needsProfileEnrichment(account)) {
     try {
@@ -70,10 +103,19 @@ export default async function AccountPage({
     }
   }
 
-  const [filings, allTop] = await Promise.all([
+  const [filingsRaw, allTop] = await Promise.all([
     reportsRepo.listForAccount(id.data, ['approved', 'ai_reviewed', 'flagged'], 30),
     accountsRepo.listAll(120).catch(() => []),
   ]);
+
+  const reporterIds = Array.from(new Set(filingsRaw.map(f => f.reporterId).filter(Boolean) as string[]));
+  const reporters = await Promise.all(reporterIds.map(rid => usersRepo.findById(rid)));
+  const reporterMap = new Map(reporters.filter(Boolean).map(u => [u!._id, u!]));
+
+  const filings = filingsRaw.map(f => ({
+    ...f,
+    reporter: f.reporterId ? reporterMap.get(f.reporterId) : undefined
+  }));
 
   // Real ledger history → derive deltas, total impact, weekly delta, area chart points
   const history = account.scoreHistory?.length
@@ -141,9 +183,8 @@ export default async function AccountPage({
           </Link>
           <div className="min-w-0 flex-1 text-center">
             <p className="truncate text-[13px] font-bold text-foreground sm:text-[14px]">
-              {account.displayName}
+              {account.displayName.replace(/^@/, '')}
             </p>
-            <p className="truncate text-[11px] text-muted-foreground">@{account.username}</p>
           </div>
           <div className="flex items-center gap-1">
             <AccountShareButton displayName={account.displayName} username={account.username} />
@@ -184,15 +225,12 @@ export default async function AccountPage({
             <div className="min-w-0 flex-1 pt-1">
               <div className="flex items-center gap-1.5">
                 <h1 className="text-[20px] font-bold text-foreground leading-tight truncate sm:text-[22px]">
-                  {account.displayName}
+                  {account.displayName.replace(/^@/, '')}
                 </h1>
                 {account.verified && (
                   <CheckCircle2 size={16} fill="currentColor" className="text-foreground shrink-0" />
                 )}
               </div>
-              <p className="mt-1 text-[12px] text-muted-foreground sm:text-[13px]">
-                @{account.username}
-              </p>
               <p className="text-[12px] text-muted-foreground capitalize sm:text-[13px]">
                 {account.profileKind === 'public_figure'
                   ? 'Public Figure'
@@ -405,14 +443,30 @@ export default async function AccountPage({
                             <h4 className="text-[13px] font-bold text-foreground line-clamp-2 leading-snug">
                               {filing.deed || filing.description || 'Filing recorded'}
                             </h4>
-                            <p className="mt-0.5 text-[11px] text-muted-foreground">
-                              {filing.createdAt
-                                ? new Date(filing.createdAt).toLocaleDateString('en-US', {
-                                    month: 'short',
-                                    day: 'numeric',
-                                    year: 'numeric',
-                                  })
-                                : 'Recent'}
+                            <p className="mt-0.5 text-[11px] text-muted-foreground flex items-center gap-1.5">
+                              {filing.reporter && (
+                                <>
+                                  <Link
+                                    href={filing.reporter.username === 'anonymous' ? '#' : `/account/website_${filing.reporter.username.replace(/^@/, '')}`}
+                                    className={cn(
+                                      "font-bold text-foreground/70 hover:text-primary transition-colors",
+                                      filing.reporter.username === 'anonymous' && "pointer-events-none opacity-50"
+                                    )}
+                                  >
+                                    {filing.reporter.name || filing.reporter.username.replace(/^@/, '')}
+                                  </Link>
+                                  <span>•</span>
+                                </>
+                              )}
+                              <span>
+                                {filing.createdAt
+                                  ? new Date(filing.createdAt).toLocaleDateString('en-US', {
+                                      month: 'short',
+                                      day: 'numeric',
+                                      year: 'numeric',
+                                    })
+                                  : 'Recent'}
+                              </span>
                             </p>
                           </div>
                           <span

@@ -100,13 +100,13 @@ export function UsersTable({ initialUsers }: { initialUsers: UserRow[] }) {
   }
 
   async function deleteUser(userId: string, username: string) {
-    if (!confirm(`Delete user @${username}? This cannot be undone.`)) return;
+    if (!confirm(`Delete user ${username}? This cannot be undone.`)) return;
     try {
       const res = await fetch(`/api/admin/users/${userId}`, { method: 'DELETE' });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error?.message ?? 'Failed');
       setUsers((prev) => prev.filter((u) => u._id !== userId));
-      toast.push(`User @${username} deleted.`);
+      toast.push(`User ${username} deleted.`);
       startTransition(() => router.refresh());
     } catch (e) {
       toast.push(e instanceof Error ? e.message : 'Failed to delete user');
@@ -120,7 +120,7 @@ export function UsersTable({ initialUsers }: { initialUsers: UserRow[] }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-[2px]" onClick={() => setEditUser(null)}>
           <div className="w-full max-w-lg rounded-2xl border border-border bg-background p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-foreground font-black text-lg mb-1">Edit User</h3>
-            <p className="text-muted-foreground text-[13px] mb-6">@{editUser.username}</p>
+            <p className="text-muted-foreground text-[13px] mb-6">{editUser.name || editUser.username}</p>
             <div className="space-y-3">
               <select value={editUser.role} onChange={(e) => setEditUser({ ...editUser, role: e.target.value as UserRow['role'] })} className="admin-input">
                 {roles.map((role) => <option key={role} value={role}>{role}</option>)}
@@ -186,7 +186,7 @@ export function UsersTable({ initialUsers }: { initialUsers: UserRow[] }) {
             {filtered.map((user) => (
               <tr key={user._id} className="hover:bg-secondary/20 transition-colors group">
                 <td className="px-6 py-4">
-                  <p className="font-bold text-foreground">@{user.username}</p>
+                  <p className="font-bold text-foreground">{user.name || user.username}</p>
                   <p className="text-xs text-muted-foreground truncate max-w-[180px]">{user.email}</p>
                 </td>
                 <td className="px-6 py-4 hidden md:table-cell">

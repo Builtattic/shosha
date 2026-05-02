@@ -70,7 +70,7 @@ export function AbuseList({ initialReports }: { initialReports: AbuseRow[] }) {
                 <h2 className="text-xl font-black text-foreground">{report.account?.displayName ?? 'Unknown Account'}</h2>
                 {report.account && (
                   <p className="text-xs font-bold text-muted-foreground mt-1 uppercase tracking-widest">
-                    @{report.account.username} · {report.account.platform}
+                    {report.account.username} · {report.account.platform}
                   </p>
                 )}
                 <p className="text-[15px] text-muted-foreground mt-4 leading-relaxed line-clamp-2 font-medium">{report.description}</p>

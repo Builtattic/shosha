@@ -247,7 +247,7 @@ export default function EditProfilePage() {
               value={form.username} 
               onChange={(e) => updateField('username', e.target.value)} 
               className="w-full bg-transparent text-[14px] font-medium outline-none text-foreground"
-              placeholder="@username"
+              placeholder="handle"
             />
           </div>
         </div>

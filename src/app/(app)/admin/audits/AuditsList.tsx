@@ -90,7 +90,7 @@ export function AuditsList({ initialAudits }: { initialAudits: AuditRow[] }) {
                 <h2 className="text-xl font-black text-foreground">{audit.account?.displayName ?? 'Unknown Account'}</h2>
                 {audit.account && (
                   <p className="text-xs font-bold text-muted-foreground mt-1 uppercase tracking-widest">
-                    @{audit.account.username} · {audit.account.platform}
+                    {audit.account.username} · {audit.account.platform}
                   </p>
                 )}
                 <p className="text-[15px] text-muted-foreground mt-4 leading-relaxed font-medium bg-secondary/30 p-4 rounded-2xl border border-border/50">
@@ -102,7 +102,7 @@ export function AuditsList({ initialAudits }: { initialAudits: AuditRow[] }) {
                       <User size={12} />
                     </div>
                     <p className="text-[12px] font-bold text-muted-foreground">
-                      Requested by <span className="text-foreground">@{audit.user.username}</span>
+                      Requested by <span className="text-foreground">{audit.user.username}</span>
                       {audit.user.email ? <span className="ml-1 opacity-50 font-medium">({audit.user.email})</span> : ''}
                     </p>
                   </div>

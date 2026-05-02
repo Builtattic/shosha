@@ -1,5 +1,5 @@
 import { adminDb } from '@/lib/firebase/admin';
-import { withId } from '@/lib/repos/_serialize';
+import { withId, stripUndefined } from '@/lib/repos/_serialize';
 import type { EventMultipliers } from '@/lib/scoring';
 
 export type LedgerEntryRecord = {
@@ -15,6 +15,8 @@ export type LedgerEntryRecord = {
   weight?: number;
   capped?: boolean;
   reversalOfLedgerId?: string;
+  category?: string;
+  deed?: string;
   createdAt?: string;
 };
 
@@ -27,7 +29,7 @@ export async function createWithId(id: string, input: Omit<LedgerEntryRecord, '_
   if (existing) return existing;
   const now = new Date().toISOString();
   const payload = { ...input, createdAt: now };
-  await ref().child(id).set(payload);
+  await ref().child(id).set(stripUndefined(payload));
   return { _id: id, ...payload };
 }
 
@@ -56,3 +58,11 @@ export async function listForProfile(profileId: string, limit = 1000): Promise<L
   return results.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
 }
 
+export async function remove(id: string): Promise<void> {
+  await ref().child(id).remove();
+}
+
+export async function removeByReportId(reportId: string): Promise<void> {
+  const entry = await findByReportId(reportId);
+  if (entry) await remove(entry._id);
+}

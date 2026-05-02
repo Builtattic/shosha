@@ -219,7 +219,7 @@ export function AdminCreatePanel({ initialAccounts, users }: { initialAccounts: 
                       className="admin-input h-14 bg-secondary/30 border-white/5"
                     >
                       {accounts.map((a) => (
-                        <option key={a._id} value={a._id}>{a.displayName} (@{a.username}) — {a.platform}</option>
+                        <option key={a._id} value={a._id}>{a.displayName} ({a.username}) — {a.platform}</option>
                       ))}
                     </select>
                   </div>
@@ -529,7 +529,7 @@ export function AdminCreatePanel({ initialAccounts, users }: { initialAccounts: 
                         className="admin-input h-16 bg-secondary/30 border-white/5"
                       >
                         {accounts.map((a) => (
-                          <option key={a._id} value={a._id}>{a.displayName} (@{a.username}) — {a.platform.toUpperCase()}</option>
+                          <option key={a._id} value={a._id}>{a.displayName} ({a.username}) — {a.platform.toUpperCase()}</option>
                         ))}
                       </select>
                     </div>
@@ -546,7 +546,7 @@ export function AdminCreatePanel({ initialAccounts, users }: { initialAccounts: 
                         className="admin-input h-16 bg-secondary/30 border-white/5"
                       >
                         {users.map((u) => (
-                          <option key={u._id} value={u._id}>@{u.username} — {u.email || 'No email'}</option>
+                          <option key={u._id} value={u._id}>{u.username} — {u.email || 'No email'}</option>
                         ))}
                       </select>
                     </div>

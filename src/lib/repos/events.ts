@@ -1,5 +1,5 @@
 import { adminDb } from '@/lib/firebase/admin';
-import { withId } from '@/lib/repos/_serialize';
+import { withId, stripUndefined } from '@/lib/repos/_serialize';
 
 export type MultiplierSnapshot = {
   identity: number;
@@ -51,7 +51,7 @@ export async function create(input: Omit<EventRecord, '_id' | 'createdAt'>): Pro
   const now = new Date().toISOString();
   const newRef = ref().push();
   const payload = { ...input, createdAt: now };
-  await newRef.set(payload);
+  await newRef.set(stripUndefined(payload));
   return { _id: newRef.key!, ...payload };
 }
 
@@ -65,7 +65,7 @@ export async function update(id: string, partial: Partial<EventRecord>): Promise
   const existing = await findById(id);
   if (!existing) return null;
   const { _id, ...clean } = partial as Record<string, unknown>;
-  await ref().child(id).update(clean);
+  await ref().child(id).update(stripUndefined(clean));
   return (await findById(id))!;
 }
 
@@ -132,4 +132,7 @@ export async function countSince(date: Date): Promise<number> {
   const iso = date.toISOString();
   const snap = await ref().orderByChild('timestamp').startAt(iso).once('value');
   return snap.numChildren();
+}
+export async function deleteById(id: string): Promise<void> {
+  await ref().child(id).remove();
 }

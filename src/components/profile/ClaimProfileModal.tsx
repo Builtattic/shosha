@@ -62,7 +62,7 @@ export function ClaimProfileModal({
                   <img src={targetUser.avatar} alt={targetUser.name} className="h-full w-full rounded-full object-cover" />
                 </div>
                 <h3 className="text-[18px] font-bold">{targetUser.name}</h3>
-                <p className="text-[14px] text-muted-foreground">@{targetUser.handle}</p>
+                <p className="text-[14px] text-muted-foreground">{targetUser.handle}</p>
               </div>
 
               <p className="text-[13px] text-muted-foreground text-center">To claim this profile, please verify your identity. We’ll send the credentials to your email after successful verification.</p>

@@ -12,7 +12,7 @@ export function AccountShareButton({ displayName, username }: { displayName: str
     const url = typeof window !== 'undefined' ? window.location.href : '';
     const shareData: ShareData = {
       title: `${displayName} on Shosha`,
-      text: `See ${displayName} (@${username}) on the Shosha public ledger.`,
+      text: `See ${displayName} (${username}) on the Shosha public ledger.`,
       url,
     };
     try {
