@@ -67,16 +67,16 @@ export function D3ActivityBar({ positive, negative, neutral, height = 8 }: Props
       .attr('y', 0)
       .attr('width', `${neuPct}%`)
       .attr('height', height)
-      .attr('fill', '#d1d5db'); // Gray
+      .attr('fill', 'var(--muted)'); // Neutral segment
 
-    // Add small white gaps between sections
+    // Add small gaps between sections (match page/card background)
     if (posPct > 0 && negPct > 0) {
       clippedGroup.append('rect')
         .attr('x', `calc(${posPct}% - 1px)`)
         .attr('y', 0)
         .attr('width', 2)
         .attr('height', height)
-        .attr('fill', '#ffffff');
+        .attr('fill', 'var(--background)');
     }
     if ((posPct > 0 || negPct > 0) && neuPct > 0) {
       clippedGroup.append('rect')
@@ -84,7 +84,7 @@ export function D3ActivityBar({ positive, negative, neutral, height = 8 }: Props
         .attr('y', 0)
         .attr('width', 2)
         .attr('height', height)
-        .attr('fill', '#ffffff');
+        .attr('fill', 'var(--background)');
     }
 
   }, [positive, negative, neutral, height]);

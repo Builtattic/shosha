@@ -163,9 +163,9 @@ export default function ProfilePage() {
   ] as const;
 
   return (
-    <main className="min-h-screen bg-[#fafafa] safe-bottom font-sans">
+    <main className="min-h-screen bg-background safe-bottom font-sans">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-[#fafafa]/80 px-4 py-4 backdrop-blur-xl">
+      <header className="sticky top-0 z-50 bg-background/80 px-4 py-4 backdrop-blur-xl">
         <div className="mx-auto flex max-w-2xl items-center justify-between">
           <div className="font-serif text-[26px] font-black tracking-tight text-foreground">
             Sho<span className="font-normal italic text-muted-foreground">शा</span>
@@ -225,7 +225,7 @@ export default function ProfilePage() {
               >
                 {displayName.charAt(0).toUpperCase()}
               </div>
-              <div className="absolute -bottom-1 -right-1 rounded-full border-2 border-[#fafafa] bg-foreground p-0.5 z-10">
+              <div className="absolute -bottom-1 -right-1 rounded-full border-2 border-background bg-foreground p-0.5 z-10">
                 <CheckCircle2 size={16} fill="currentColor" className="text-background" />
               </div>
             </div>
@@ -282,13 +282,13 @@ export default function ProfilePage() {
                   ? 'bg-green-50 text-green-600'
                   : weeklyDelta < 0
                   ? 'bg-red-50 text-red-600'
-                  : 'bg-[#f0f0f0] text-muted-foreground'
+                  : 'bg-muted text-muted-foreground'
               )}
             >
               {weeklyDelta > 0 ? <TrendingUp size={12} strokeWidth={3} /> : weeklyDelta < 0 ? <ThumbsDown size={12} strokeWidth={3} /> : <Minus size={12} strokeWidth={3} />}
               {weeklyDelta > 0 ? '+' : ''}{weeklyDelta} this week
             </span>
-            <span className="inline-flex items-center gap-1 rounded-lg bg-[#f0f0f0] px-3 py-1 text-[12px] font-bold text-foreground">
+            <span className="inline-flex items-center gap-1 rounded-lg bg-muted px-3 py-1 text-[12px] font-bold text-foreground">
               Context {contextPercent || '–'}/100
             </span>
           </div>
@@ -323,14 +323,14 @@ export default function ProfilePage() {
             <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">N (week)</p>
           </div>
           <div className="rounded-2xl border border-border bg-background p-3 text-center shadow-sm">
-            <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-[#f0f0f0] text-foreground">
+            <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-muted text-foreground">
               <Shield size={16} strokeWidth={2.5} />
             </div>
             <p className="mt-2 text-[16px] font-bold text-foreground">{credibility || '0'}%</p>
             <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Credibility</p>
           </div>
           <div className="rounded-2xl border border-border bg-background p-3 text-center shadow-sm">
-            <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-[#f0f0f0] text-foreground">
+            <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-muted text-foreground">
               <FileText size={16} strokeWidth={2.5} />
             </div>
             <p className="mt-2 text-[16px] font-bold text-foreground">{recentEvents.length}</p>
@@ -382,7 +382,7 @@ export default function ProfilePage() {
 
               {scores.length > 0 ? (
                 <>
-                  <div className="mt-6 rounded-2xl bg-[#fafafa] py-8 flex justify-center border border-border">
+                  <div className="mt-6 rounded-2xl bg-muted py-8 flex justify-center border border-border">
                     <ProfileScoreRadar dimensions={scores} size={380} />
                   </div>
                   <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -403,7 +403,7 @@ export default function ProfilePage() {
                   </div>
                 </>
               ) : (
-                <div className="mt-6 rounded-2xl bg-[#fafafa] py-12 flex flex-col items-center justify-center border border-border gap-3">
+                <div className="mt-6 rounded-2xl bg-muted py-12 flex flex-col items-center justify-center border border-border gap-3">
                   <PieChart size={32} className="text-muted-foreground opacity-30" />
                   <p className="text-[13px] text-muted-foreground">
                     Complete your profile to see dimension scores.
@@ -459,7 +459,7 @@ export default function ProfilePage() {
                               ? 'bg-green-50 text-green-600'
                               : isNegative
                               ? 'bg-red-50 text-red-600'
-                              : 'bg-[#f0f0f0] text-muted-foreground'
+                              : 'bg-muted text-muted-foreground'
                           )}
                         >
                           {isPositive ? (
@@ -497,7 +497,7 @@ export default function ProfilePage() {
                                 ? 'bg-green-50 text-green-600'
                                 : isNegative
                                 ? 'bg-red-50 text-red-600'
-                                : 'bg-[#f0f0f0] text-muted-foreground'
+                                : 'bg-muted text-muted-foreground'
                             )}
                           >
                             {event.impact > 0 ? '+' : ''}{event.impact}
@@ -564,7 +564,7 @@ export default function ProfilePage() {
                   Continuous trajectory from filed events. Base 1,000.
                 </p>
                 {areaChartData.length >= 2 ? (
-                  <D3AreaChart data={areaChartData} color="#1a1a1a" height={200} />
+                  <D3AreaChart data={areaChartData} height={200} />
                 ) : (
                   <div className="py-10 flex flex-col items-center gap-3 text-center">
                     <TrendingUp size={28} className="text-muted-foreground opacity-30" />
@@ -593,7 +593,7 @@ export default function ProfilePage() {
                         <span
                           className={cn(
                             'shrink-0 rounded-lg px-2.5 py-1 text-[12px] font-bold tabular-nums',
-                            entry.delta > 0 ? 'bg-green-50 text-green-600' : entry.delta < 0 ? 'bg-red-50 text-red-600' : 'bg-[#f0f0f0] text-muted-foreground'
+                            entry.delta > 0 ? 'bg-green-50 text-green-600' : entry.delta < 0 ? 'bg-red-50 text-red-600' : 'bg-muted text-muted-foreground'
                           )}
                         >
                           {entry.delta > 0 ? '+' : ''}{entry.delta}

@@ -128,9 +128,9 @@ export default async function AccountPage({
   const activeTab = searchParams.tab || 'overview';
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#fafafa] safe-bottom font-sans">
+    <main className="min-h-screen overflow-x-hidden bg-background safe-bottom font-sans">
       {/* Sticky header with back + share */}
-      <header className="sticky top-0 z-30 border-b border-border/60 bg-[#fafafa]/85 backdrop-blur-xl">
+      <header className="sticky top-0 z-30 border-b border-border/60 bg-background/85 backdrop-blur-xl">
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-2 px-3 py-3 sm:px-4">
           <Link
             href="/feed"
@@ -176,7 +176,7 @@ export default async function AccountPage({
                 </div>
               )}
               {account.verified && (
-                <div className="absolute bottom-0 right-0 rounded-full border-[3px] border-[#fafafa] bg-foreground text-background p-0.5">
+                <div className="absolute bottom-0 right-0 rounded-full border-[3px] border-background bg-foreground text-background p-0.5">
                   <CheckCircle2 size={14} fill="currentColor" />
                 </div>
               )}
@@ -491,7 +491,7 @@ export default async function AccountPage({
                   Continuous trajectory from the public ledger.
                 </p>
                 {areaChartData.length >= 2 ? (
-                  <D3AreaChart data={areaChartData} color="#1a1a1a" height={220} />
+                  <D3AreaChart data={areaChartData} height={220} />
                 ) : (
                   <div className="flex flex-col items-center gap-3 py-8 text-center">
                     <TrendingUp size={28} className="text-muted-foreground/40" />

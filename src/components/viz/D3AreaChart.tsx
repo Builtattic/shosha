@@ -14,7 +14,7 @@ interface Props {
   height?: number;
 }
 
-export function D3AreaChart({ data, color = '#4ade80', height = 240 }: Props) {
+export function D3AreaChart({ data, color = 'var(--foreground)', height = 240 }: Props) {
   const ref = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
@@ -54,10 +54,10 @@ export function D3AreaChart({ data, color = '#4ade80', height = 240 }: Props) {
     
     yGroup.selectAll('.domain').remove();
     yGroup.selectAll('.tick line')
-      .attr('stroke', '#e5e7eb')
+      .attr('stroke', 'var(--border)')
       .attr('stroke-dasharray', '2,2');
     yGroup.selectAll('.tick text')
-      .attr('fill', '#9ca3af')
+      .attr('fill', 'var(--muted-foreground)')
       .attr('font-size', '10px')
       .attr('font-weight', '500')
       .text((d: any) => d >= 1000 || d <= -1000 ? `${d / 1000}k` : d);
@@ -69,7 +69,7 @@ export function D3AreaChart({ data, color = '#4ade80', height = 240 }: Props) {
     
     xGroup.selectAll('.domain').remove();
     xGroup.selectAll('.tick text')
-      .attr('fill', '#9ca3af')
+      .attr('fill', 'var(--muted-foreground)')
       .attr('font-size', '10px')
       .attr('font-weight', '500');
 
@@ -118,7 +118,7 @@ export function D3AreaChart({ data, color = '#4ade80', height = 240 }: Props) {
         .attr('cx', x(lastPoint.date))
         .attr('cy', y(lastPoint.value))
         .attr('r', 4)
-        .attr('fill', '#fff')
+        .attr('fill', 'var(--background)')
         .attr('stroke', color)
         .attr('stroke-width', 2);
 
@@ -130,8 +130,8 @@ export function D3AreaChart({ data, color = '#4ade80', height = 240 }: Props) {
         .attr('width', 80)
         .attr('height', 35)
         .attr('rx', 6)
-        .attr('fill', '#fff')
-        .attr('stroke', '#e5e7eb')
+        .attr('fill', 'var(--card)')
+        .attr('stroke', 'var(--border)')
         .attr('stroke-width', 1)
         .attr('filter', 'drop-shadow(0 4px 6px rgba(0,0,0,0.05))');
       
@@ -139,7 +139,7 @@ export function D3AreaChart({ data, color = '#4ade80', height = 240 }: Props) {
         .attr('x', 40)
         .attr('y', 14)
         .attr('text-anchor', 'middle')
-        .attr('fill', '#6b7280')
+        .attr('fill', 'var(--muted-foreground)')
         .attr('font-size', '9px')
         .attr('font-weight', '500')
         .text(d3.timeFormat('%b %d, %Y')(lastPoint.date));
