@@ -166,8 +166,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const persistedReport = await reportsRepo.update(id.data, {
       adminDecision,
       status,
-      eventId: isApproved ? report.eventId : null,
-      ledgerEntryId: isApproved ? report.ledgerEntryId : null,
+      eventId: isApproved ? report.eventId : undefined,
+      ledgerEntryId: isApproved ? report.ledgerEntryId : undefined,
       category: adminDecision.category,
       deed: adminDecision.deed,
       baseScore: adminDecision.baseScore,
@@ -190,10 +190,6 @@ export async function POST(request: Request, { params }: { params: { id: string 
         // Transitions to Rejected
         else if (isRejected && !wasRejected) {
           reporterDelta = wasApproved ? -15 : -10;
-        }
-        // Transitions back to Pending
-        else if (parsed.data.verdict === 'pending' && (wasApproved || wasRejected)) {
-          reporterDelta = wasApproved ? -5 : 10;
         }
 
         if (reporterDelta !== 0) {

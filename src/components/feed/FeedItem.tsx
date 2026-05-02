@@ -58,7 +58,7 @@ export interface FeedItemProps {
   timestamp: string;
   type: 'positive' | 'negative';
   title: string;
-  description: string;
+  description?: string;
   reportScore?: number;
   evidenceSourceUrl?: string;
   media?: {
@@ -69,7 +69,7 @@ export interface FeedItemProps {
   category?: string;
   deed?: string;
   disputeStatus?: string;
-  reportScore?: number;
+  location?: string;
   stats: {
     aligns: number;
     opposes: number;

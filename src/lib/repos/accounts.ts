@@ -98,6 +98,7 @@ export type AccountRecord = {
   usernameLower?: string;
   displayNameLower?: string;
   email?: string;
+  sourceUrl?: string;
   createdAt?: string;
   updatedAt?: string;
 };

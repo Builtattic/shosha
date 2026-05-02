@@ -21,8 +21,13 @@ type FeedReport = {
   reportScore?: number;
   baseScore?: number;
   viewer?: FeedItemProps['viewer'];
+  account: {
+    _id: string;
+    username: string;
+    displayName: string;
+    avatarUrl?: string;
     verified?: boolean;
-    platform?: string;
+    platform: string;
   };
   reporter?: {
     username: string;
