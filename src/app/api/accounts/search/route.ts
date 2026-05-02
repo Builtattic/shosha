@@ -2,7 +2,14 @@ import { fail, ok } from '@/lib/api';
 import { assertLimit, getRequestKey, rateLimits } from '@/lib/ratelimit';
 import { searchSchema } from '@/lib/validators';
 import * as accountsRepo from '@/lib/repos/accounts';
-import { discoverSocialAccounts } from '@/lib/shoshaDiscovery';
+import { discoverSocialAccounts, type SocialDiscoveryResult } from '@/lib/shoshaDiscovery';
+
+const emptyDiscoveryResult: SocialDiscoveryResult = {
+  candidates: [],
+  sources: [],
+  searchQueries: [],
+  grounded: false
+};
 
 export async function GET(request: Request) {
   const limit = await assertLimit(rateLimits.search, getRequestKey(request));
@@ -12,12 +19,25 @@ export async function GET(request: Request) {
   const parsed = searchSchema.safeParse({ q: searchParams.get('q') ?? '' });
   if (!parsed.success) return fail('validation_error', 'Search query is too long.', 422);
 
-  const accounts = await accountsRepo.search(parsed.data.q, 20).catch(() => []);
   const discoverParam = searchParams.get('discover');
   const shouldDiscover = discoverParam !== '0' && discoverParam !== 'false';
-  if (!shouldDiscover || parsed.data.q.trim().length < 2) return ok({ accounts, candidates: [], sources: [], searchQueries: [] });
+  if (!shouldDiscover || parsed.data.q.trim().length < 2) {
+    const accounts = await accountsRepo.search(parsed.data.q, 20).catch(() => []);
+    return ok({ accounts, candidates: [], sources: [], searchQueries: [] });
+  }
 
-  const discovery = await discoverSocialAccounts(parsed.data.q);
+  const [accountsResult, discoveryResult] = await Promise.allSettled([
+    accountsRepo.search(parsed.data.q, 20).catch(() => []),
+    discoverSocialAccounts(parsed.data.q)
+  ]);
+
+  const accounts = accountsResult.status === 'fulfilled' ? accountsResult.value : [];
+
+  const discovery =
+    discoveryResult.status === 'fulfilled'
+      ? discoveryResult.value
+      : emptyDiscoveryResult;
+
   const existingIds = new Set(accounts.map((account) => `${account.platform}:${account.username.toLowerCase()}`));
   const candidates = discovery.candidates.filter((candidate) => !existingIds.has(`${candidate.platform}:${candidate.username}`));
 
