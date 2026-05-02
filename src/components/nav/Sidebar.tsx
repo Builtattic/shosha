@@ -6,11 +6,13 @@ import { usePathname } from 'next/navigation';
 import { Home, Target, TrendingUp, Info, User, ShieldAlert, Settings, Globe, ChevronDown, ShieldCheck, Newspaper, HelpCircle, Bookmark, Bell, Search, PlusCircle, Activity } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { useReportModal } from '@/components/report/ReportModalProvider';
 
 type LiveStats = { eventsToday: number; avgWeeklyDelta: number };
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { open: openReportModal } = useReportModal();
   const [scope, setScope] = useState('Global');
   const [scopeOpen, setScopeOpen] = useState(false);
   const [stats, setStats] = useState<LiveStats | null>(null);
@@ -126,9 +128,10 @@ export function Sidebar() {
       </nav>
 
       <div className="px-4">
-        <Link
-          href="/dashboard"
-          className="group block rounded-2xl border border-border bg-card p-4 transition-all hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-lg hover:shadow-foreground/5"
+        <button
+          type="button"
+          onClick={() => openReportModal()}
+          className="group block w-full text-left rounded-2xl border border-border bg-card p-4 transition-all hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-lg hover:shadow-foreground/5"
         >
           <div className="mb-3 flex items-center justify-between">
             <p className="text-[10px] font-black uppercase tracking-[3px] text-muted-foreground">Quick Action</p>
@@ -136,7 +139,7 @@ export function Sidebar() {
           </div>
           <p className="text-[13px] font-black text-foreground">Create a report</p>
           <p className="mt-1 text-[11px] leading-snug text-muted-foreground">Add proof, classify impact, and send it to review.</p>
-        </Link>
+        </button>
       </div>
 
       <div className="mt-6 px-4">

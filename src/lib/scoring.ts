@@ -65,7 +65,22 @@ const REPUTATION_LABELS: Record<string, string> = { '0.5': 'Strong Positive', '1
 
 // Per-event multipliers (not derived from onboarding — chosen at filing time).
 export const CIRCUMSTANCES_LABELS: Record<string, string> = { '0.5': 'Extreme Pressure', '1': 'Normal', '1.5': 'Manageable', '2': 'Favorable', '2.5': 'Highly Favorable', '3': 'Optimal' };
-export const INTENT_LABELS: Record<string, string> = { '0.5': 'Unintended', '1': 'Unaware', '1.5': 'Careless', '2': 'Intentional', '2.5': 'Calculated', '3': 'Strategic' };
+export const INTENT_LABELS: Record<string, string> = {
+  '0.5': "Didn't mean to",
+  '1': 'Not Aware',
+  '1.5': 'Not Careful',
+  '2': 'Meant to',
+  '2.5': 'Thought Through',
+  '3': 'Fully Planned',
+};
+export const REPETITION_LABELS: Record<string, string> = {
+  '0.5': 'No Clear Pattern',
+  '1': 'Balanced',
+  '1.5': 'Mixed Signals',
+  '2': 'Leaning Off',
+  '2.5': 'Pattern Forming',
+  '3': 'Consistent Pattern',
+};
 
 function snapToLabels(val: number, labels: Record<string, string>): { value: number; levelLabel: string } {
   const steps = Object.keys(labels).map(Number).sort((a, b) => a - b);

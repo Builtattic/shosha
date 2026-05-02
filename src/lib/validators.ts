@@ -43,7 +43,17 @@ export const accountCreateSchema = z.object({
   region: z.string().max(120).optional(),
   quote: z.string().max(280).optional(),
   evidenceSummary: z.string().max(500).optional(),
-  socialLinks: z.record(z.unknown()).optional()
+  socialLinks: z.record(z.unknown()).optional(),
+  email: z.string().email().max(200).optional(),
+  socialUrl: z.string().url().optional(),
+  additionalSocialLinks: z
+    .array(
+      z.object({
+        platform: platformSchema,
+        url: z.string().min(1).max(500)
+      })
+    )
+    .optional()
 });
 
 export const accountPatchSchema = z.object({
@@ -80,6 +90,13 @@ export const reportCreateSchema = z.object({
   repetitionPattern: workbookScaleSchema.default('1'),
   intent: workbookScaleSchema.default('1'),
   circumstances: workbookScaleSchema.default('1'),
+  identity: z.string().optional(),
+  power: z.string().optional(),
+  means: z.string().optional(),
+  environment: z.string().optional(),
+  ability: z.string().optional(),
+  responsibility: z.string().optional(),
+  awareness: z.string().optional(),
   aiUndertaking: z.literal(true),
   location: z.string().max(160).optional(),
   tags: z.array(z.string().min(1).max(80)).max(10).optional()

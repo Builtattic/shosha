@@ -1,5 +1,5 @@
 import { adminDb } from '@/lib/firebase/admin';
-import { withId } from '@/lib/repos/_serialize';
+import { omitUndefinedDeep, withId } from '@/lib/repos/_serialize';
 import { BASE_SCORE, applySheetScore, calcWorkbookScoreFromEntries } from '@/lib/scoring';
 import type { Breakdown, Platform, ScoreCause } from '@/types';
 
@@ -97,6 +97,7 @@ export type AccountRecord = {
   evidenceSummary?: string;
   usernameLower?: string;
   displayNameLower?: string;
+  email?: string;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -107,6 +108,9 @@ export function deriveId(platform: Platform, username: string) {
     .toLowerCase()
     .replace(/https?:\/\//g, '')
     .replace(/[^a-z0-9_.-]+/g, '-')
+    // Firebase RTDB keys cannot contain ".", "#", "$", "[", "]" — dots are common in generated handles (e.g. l.6436).
+    .replace(/[.#$\[\]]/g, '-')
+    .replace(/-+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 140);
   return `${platform}_${safeUsername || 'profile'}`;
@@ -123,7 +127,8 @@ export async function findById(id: string): Promise<AccountRecord | null> {
 }
 
 export async function findByPlatformUsername(platform: Platform, username: string): Promise<AccountRecord | null> {
-  return findById(deriveId(platform, username));
+  const safeId = deriveId(platform, username);
+  return findById(safeId);
 }
 
 export async function create(input: Omit<AccountRecord, '_id' | 'createdAt' | 'updatedAt' | 'usernameLower' | 'displayNameLower'>): Promise<AccountRecord> {
@@ -136,23 +141,23 @@ export async function createWithId(
   input: Omit<AccountRecord, '_id' | 'createdAt' | 'updatedAt' | 'usernameLower' | 'displayNameLower'>
 ): Promise<AccountRecord> {
   const now = new Date().toISOString();
-  const payload = {
+  const payload = omitUndefinedDeep({
     ...input,
     username: input.username.toLowerCase(),
     usernameLower: input.username.toLowerCase(),
-    displayNameLower: input.displayName.toLowerCase(),
+    displayNameLower: (input.displayName ?? '').toLowerCase(),
     createdAt: now,
     updatedAt: now
-  };
+  }) as Omit<AccountRecord, '_id'> & Record<string, unknown>;
   await ref().child(id).set(payload);
-  return { _id: id, ...payload };
+  return { _id: id, ...payload } as AccountRecord;
 }
 
 export async function update(id: string, partial: Partial<AccountRecord>): Promise<AccountRecord | null> {
   const existing = await findById(id);
   if (!existing) return null;
   const patch: Record<string, unknown> = { ...partial, updatedAt: new Date().toISOString() };
-  if (typeof partial.displayName === 'string') patch.displayNameLower = partial.displayName.toLowerCase();
+  if (typeof partial.displayName === 'string') patch.displayNameLower = (partial.displayName ?? '').toLowerCase();
   if (typeof partial.username === 'string') patch.usernameLower = partial.username.toLowerCase();
   delete patch._id;
   await ref().child(id).update(patch);
@@ -177,21 +182,71 @@ export async function listBottom(limit = 50): Promise<AccountRecord[]> {
   return results;
 }
 
+/** Normalize social URLs for dedup comparison: no scheme, no www, no trailing slash, lowercase. */
+export function normalizeSocialUrl(url: string): string {
+  let u = url.trim().toLowerCase();
+  u = u.replace(/^https?:\/\//, '');
+  u = u.replace(/^www\./, '');
+  u = u.replace(/\/+$/, '');
+  return u;
+}
+
 export async function search(q: string, limit = 20): Promise<AccountRecord[]> {
   const cleaned = q.trim().toLowerCase();
   if (!cleaned) return listTop(limit);
-  // RTDB doesn't support LIKE queries, so we do startAt/endAt on usernameLower
-  const snap = await ref()
-    .orderByChild('usernameLower')
-    .startAt(cleaned)
-    .endAt(cleaned + '\uf8ff')
-    .limitToFirst(limit)
-    .once('value');
-  const results: AccountRecord[] = [];
-  snap.forEach((child) => {
-    results.push(withId<AccountRecord>(child.key!, child.val()));
+  // Username matches first, then display-name prefix matches (deduped by _id).
+  const rangeQuery = (field: 'usernameLower' | 'displayNameLower') =>
+    ref()
+      .orderByChild(field)
+      .startAt(cleaned)
+      .endAt(cleaned + '\uf8ff')
+      .limitToFirst(limit)
+      .once('value');
+
+  const [snapUser, snapDisplay] = await Promise.all([rangeQuery('usernameLower'), rangeQuery('displayNameLower')]);
+  const byId = new Map<string, AccountRecord>();
+  snapUser.forEach((child) => {
+    byId.set(child.key!, withId<AccountRecord>(child.key!, child.val()));
   });
-  return results;
+  snapDisplay.forEach((child) => {
+    const id = child.key!;
+    if (!byId.has(id)) byId.set(id, withId<AccountRecord>(id, child.val()));
+  });
+  return Array.from(byId.values()).slice(0, limit);
+}
+
+/** Full scan of accounts — O(n); used server-side for URL dedup across nested socialLinks. */
+export async function findBySocialUrl(url: string): Promise<AccountRecord | null> {
+  const target = normalizeSocialUrl(url);
+  if (!target) return null;
+  const snap = await ref().once('value');
+  if (!snap.exists()) return null;
+  let match: AccountRecord | null = null;
+  snap.forEach((child) => {
+    if (match) return true;
+    const acc = withId<AccountRecord>(child.key!, child.val());
+    const links = acc.socialLinks;
+    if (!links) return;
+    for (const link of Object.values(links)) {
+      if (link?.url && normalizeSocialUrl(link.url) === target) {
+        match = acc;
+        return true;
+      }
+    }
+  });
+  return match;
+}
+
+export async function findByDisplayName(name: string): Promise<AccountRecord | null> {
+  const key = name.trim().toLowerCase();
+  if (!key) return null;
+  const snap = await ref().orderByChild('displayNameLower').equalTo(key).limitToFirst(1).once('value');
+  if (!snap.exists()) return null;
+  let found: AccountRecord | null = null;
+  snap.forEach((child) => {
+    found = withId<AccountRecord>(child.key!, child.val());
+  });
+  return found;
 }
 
 export async function count(): Promise<number> {
