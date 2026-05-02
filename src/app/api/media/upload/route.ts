@@ -40,7 +40,7 @@ async function compressImage(
   buffer: Buffer
 ): Promise<{ main: Buffer; thumb: Buffer; contentType: string }> {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const sharp = require('sharp') as typeof import('sharp');
     const [main, thumb] = await Promise.all([
       sharp(buffer)
