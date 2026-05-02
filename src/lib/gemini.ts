@@ -272,7 +272,7 @@ export async function runFullAudit(input: {
   }
 }
 
-export async function generateGroundedJson(prompt: string, timeoutMs = 45_000): Promise<{ json: unknown; sources: Array<{ uri: string; title: string }>; searchQueries: string[]; grounded: boolean }> {
+export async function generateGroundedJson(prompt: string, timeoutMs = 3_000): Promise<{ json: unknown; sources: Array<{ uri: string; title: string }>; searchQueries: string[]; grounded: boolean }> {
   const key = aiKey();
   const model = discoveryModel();
   if (!key || !model) {

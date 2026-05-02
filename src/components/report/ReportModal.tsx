@@ -790,7 +790,7 @@ export function ReportModal({
                       </button>
                     ))}
                     
-                    {targetHandle.length > 1 && !searchingCandidates && (
+                    {targetHandle.trim().length > 1 && (
                       <div className="pt-2">
                         <div className="rounded-[18px] border border-border bg-muted/30 p-4 text-center">
                           <p className="text-[13px] font-medium mb-1">No exact match found?</p>
