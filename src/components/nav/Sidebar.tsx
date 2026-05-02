@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, Target, TrendingUp, Info, User, ShieldAlert, Settings, Globe, ChevronDown, ShieldCheck, Newspaper, HelpCircle, Bookmark, Bell, Search, PlusCircle, Activity } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 type LiveStats = { eventsToday: number; avgWeeklyDelta: number };
 
@@ -83,8 +84,13 @@ export function Sidebar() {
           <span className="transition-transform duration-300 group-hover:-translate-y-0.5">Sho</span>
           <span className="font-normal italic text-muted-foreground transition-colors group-hover:text-foreground">शा</span>
         </Link>
-        <div className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card text-muted-foreground">
-          <Activity size={14} />
+        <div className="flex items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card text-muted-foreground">
+            <Activity size={14} />
+          </div>
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-card text-muted-foreground [&>button]:flex [&>button]:h-full [&>button]:w-full [&>button]:items-center [&>button]:justify-center [&>button]:rounded-full [&>button]:p-0">
+            <ThemeToggle />
+          </div>
         </div>
       </div>
 

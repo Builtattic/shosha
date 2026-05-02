@@ -54,7 +54,8 @@ export function ProfileScoreRadar({ dimensions, size = 320 }: Props) {
         .datum(dimensions.map((_, i) => pt(t, i)))
         .attr('d', d => lineGen(d) ?? '')
         .attr('fill', 'none')
-        .attr('stroke', lvl === levels ? '#d1d5db' : '#e5e7eb')
+        .attr('stroke', 'var(--border)')
+        .attr('stroke-opacity', lvl === levels ? 1 : 0.65)
         .attr('stroke-width', lvl === levels ? 1.5 : 0.8)
         .attr('stroke-dasharray', lvl === levels ? 'none' : '3,3');
     }
@@ -65,7 +66,7 @@ export function ProfileScoreRadar({ dimensions, size = 320 }: Props) {
       g.append('line')
         .attr('x1', 0).attr('y1', 0)
         .attr('x2', x).attr('y2', y)
-        .attr('stroke', '#e5e7eb')
+        .attr('stroke', 'var(--border)')
         .attr('stroke-width', 1);
     });
 
@@ -81,8 +82,9 @@ export function ProfileScoreRadar({ dimensions, size = 320 }: Props) {
     const dataPath = g.append('path')
       .datum(zeroPoints)
       .attr('d', d => lineGen(d) ?? '')
-      .attr('fill', 'rgba(26,26,26,0.08)')
-      .attr('stroke', '#1a1a1a')
+      .attr('fill', 'var(--foreground)')
+      .attr('fill-opacity', 0.08)
+      .attr('stroke', 'var(--foreground)')
       .attr('stroke-width', 2)
       .attr('stroke-linejoin', 'round');
 
@@ -101,8 +103,8 @@ export function ProfileScoreRadar({ dimensions, size = 320 }: Props) {
       const dot = g.append('circle')
         .attr('cx', x0).attr('cy', y0)
         .attr('r', 4)
-        .attr('fill', '#1a1a1a')
-        .attr('stroke', '#ffffff')
+        .attr('fill', 'var(--foreground)')
+        .attr('stroke', 'var(--background)')
         .attr('stroke-width', 1.5)
         .attr('cursor', 'pointer')
         .attr('opacity', 0);
@@ -118,7 +120,7 @@ export function ProfileScoreRadar({ dimensions, size = 320 }: Props) {
         .attr('fill', 'transparent')
         .attr('cursor', 'pointer')
         .on('mouseenter', (event: MouseEvent) => {
-          dot.attr('r', 6).attr('fill', '#1a1a1a');
+          dot.attr('r', 6).attr('fill', 'var(--foreground)');
           const svgRect = svgRef.current!.getBoundingClientRect();
           setTooltip({
             x: event.clientX - svgRect.left,
@@ -135,7 +137,7 @@ export function ProfileScoreRadar({ dimensions, size = 320 }: Props) {
           } : null);
         })
         .on('mouseleave', () => {
-          dot.attr('r', 4).attr('fill', '#1a1a1a');
+          dot.attr('r', 4).attr('fill', 'var(--foreground)');
           setTooltip(null);
         });
     });
@@ -156,14 +158,14 @@ export function ProfileScoreRadar({ dimensions, size = 320 }: Props) {
         .attr('width', badgeW)
         .attr('height', badgeH)
         .attr('rx', 3)
-        .attr('fill', '#1a1a1a');
+        .attr('fill', 'var(--foreground)');
 
       g.append('text')
         .attr('x', lx - (anchor === 'middle' ? 0 : anchor === 'start' ? -badgeW / 2 : badgeW / 2))
         .attr('y', ly + 1)
         .attr('text-anchor', 'middle')
         .attr('dominant-baseline', 'middle')
-        .attr('fill', '#ffffff')
+        .attr('fill', 'var(--background)')
         .attr('font-size', 9)
         .attr('font-weight', '800')
         .attr('font-family', 'var(--font-dm-mono), monospace')
@@ -176,7 +178,7 @@ export function ProfileScoreRadar({ dimensions, size = 320 }: Props) {
         .attr('y', ly + badgeH / 2 + 8)
         .attr('text-anchor', 'middle')
         .attr('dominant-baseline', 'middle')
-        .attr('fill', '#6b7280')
+        .attr('fill', 'var(--muted-foreground)')
         .attr('font-size', 8)
         .attr('font-family', 'var(--font-instrument-sans), sans-serif')
         .text(dim.levelLabel);

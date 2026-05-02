@@ -52,7 +52,7 @@ export function D3ScoreGauge({ score, size = 280 }: Props) {
       .attr('d', d => arcGen(d) ?? '')
       .attr('fill', 'currentColor')
       .attr('class', 'text-border')
-      .style('color', 'hsl(var(--border))');
+      .style('color', 'var(--border)');
 
     // Zone segments
     const scoreAngle = startAngle + (score / 100) * (endAngle - startAngle);
@@ -102,7 +102,7 @@ export function D3ScoreGauge({ score, size = 280 }: Props) {
         .attr('y1', Math.sin(a) * (innerR + 1))
         .attr('x2', Math.cos(a) * (outerR - 1))
         .attr('y2', Math.sin(a) * (outerR - 1))
-        .attr('stroke', 'hsl(var(--background))')
+        .attr('stroke', 'var(--background)')
         .attr('stroke-width', 2);
     });
 
@@ -129,7 +129,7 @@ export function D3ScoreGauge({ score, size = 280 }: Props) {
     g.append('circle')
       .attr('r', 4)
       .attr('fill', needleColor)
-      .attr('stroke', 'hsl(var(--background))')
+      .attr('stroke', 'var(--background)')
       .attr('stroke-width', 2);
 
     // ── End-cap labels: LOW / HIGH ──────────────────────────────────────────
@@ -141,7 +141,7 @@ export function D3ScoreGauge({ score, size = 280 }: Props) {
       .attr('x', Math.cos(leftA) * labelRadius)
       .attr('y', Math.sin(leftA) * labelRadius)
       .attr('text-anchor', 'middle').attr('dominant-baseline', 'middle')
-      .attr('fill', 'hsl(var(--muted-foreground))')
+      .attr('fill', 'var(--muted-foreground)')
       .attr('font-size', size * 0.058)
       .attr('font-weight', '600')
       .attr('font-family', 'var(--font-instrument-sans), sans-serif')
@@ -152,7 +152,7 @@ export function D3ScoreGauge({ score, size = 280 }: Props) {
       .attr('x', Math.cos(rightA) * labelRadius)
       .attr('y', Math.sin(rightA) * labelRadius)
       .attr('text-anchor', 'middle').attr('dominant-baseline', 'middle')
-      .attr('fill', 'hsl(var(--muted-foreground))')
+      .attr('fill', 'var(--muted-foreground)')
       .attr('font-size', size * 0.058)
       .attr('font-weight', '600')
       .attr('font-family', 'var(--font-instrument-sans), sans-serif')

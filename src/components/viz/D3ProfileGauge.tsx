@@ -64,8 +64,8 @@ export function D3ProfileGauge({ score, minScore = -1000, maxScore = 1000, size 
     // Start circle at the beginning of the arc, then animate
     const pointer = g.append('circle')
       .attr('r', arcWidth * 1.4)
-      .attr('fill', '#ffffff')
-      .attr('stroke', '#1a1a1a')
+      .attr('fill', 'var(--background)')
+      .attr('stroke', 'var(--foreground)')
       .attr('stroke-width', 2.5)
       .attr('cx', Math.cos(startAngle - Math.PI / 2) * radius)
       .attr('cy', Math.sin(startAngle - Math.PI / 2) * radius);
@@ -87,7 +87,7 @@ export function D3ProfileGauge({ score, minScore = -1000, maxScore = 1000, size 
       .attr('x', -radius)
       .attr('y', 20)
       .attr('text-anchor', 'middle')
-      .attr('fill', '#6b7280')
+      .attr('fill', 'var(--muted-foreground)')
       .attr('font-size', 10)
       .attr('font-weight', '500')
       .text(minScore);
@@ -96,7 +96,7 @@ export function D3ProfileGauge({ score, minScore = -1000, maxScore = 1000, size 
       .attr('x', radius)
       .attr('y', 20)
       .attr('text-anchor', 'middle')
-      .attr('fill', '#6b7280')
+      .attr('fill', 'var(--muted-foreground)')
       .attr('font-size', 10)
       .attr('font-weight', '500')
       .text(maxScore);

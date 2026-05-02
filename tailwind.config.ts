@@ -1,14 +1,15 @@
 import type { Config } from 'tailwindcss';
 
 const config: Config = {
+  darkMode: 'class',
   content: ['./src/**/*.{ts,tsx,mdx}'],
   theme: {
     extend: {
       colors: {
-        background: '#ffffff',
-        foreground: '#1a1a1a',
+        background: 'var(--background)',
+        foreground: 'var(--foreground)',
         card: {
-          DEFAULT: '#f9f9f9',
+          DEFAULT: 'var(--card)',
           foreground: '#1a1a1a',
         },
         popover: {
@@ -16,16 +17,16 @@ const config: Config = {
           foreground: '#1a1a1a',
         },
         primary: {
-          DEFAULT: '#1a1a1a',
-          foreground: '#ffffff',
+          DEFAULT: 'var(--primary)',
+          foreground: 'var(--primary-foreground)',
         },
         secondary: {
           DEFAULT: '#f3f4f6',
           foreground: '#1a1a1a',
         },
         muted: {
-          DEFAULT: '#f3f4f6',
-          foreground: '#6b7280',
+          DEFAULT: 'var(--muted)',
+          foreground: 'var(--muted-foreground)',
         },
         accent: {
           DEFAULT: '#1a1a1a',
@@ -35,14 +36,14 @@ const config: Config = {
           DEFAULT: '#f87171',
           foreground: '#ffffff',
         },
-        border: '#e5e7eb',
+        border: 'var(--border)',
         input: '#e5e7eb',
         ring: '#1a1a1a',
         /* Legacy / Custom names */
-        bg: '#ffffff',
+        bg: 'var(--background)',
         surface: '#f9f9f9',
         surface2: '#f3f4f6',
-        text: '#1a1a1a',
+        text: 'var(--foreground)',
         grey: '#9ca3af',
         'brand-green': '#1a1a1a',
         'brand-green-dim': 'rgba(26,26,26,0.05)',
@@ -50,6 +51,14 @@ const config: Config = {
         'brand-red-dim': 'rgba(248,113,113,0.1)',
         success: '#1a1a1a',
         danger: '#f87171',
+        darkTheme: {
+          background: 'var(--background)',
+          card: 'var(--card)',
+          border: 'var(--border)',
+          foreground: 'var(--foreground)',
+          muted: 'var(--muted)',
+          mutedFg: 'var(--muted-foreground)',
+        },
       },
       fontFamily: {
         sans: ['var(--font-instrument-sans)', 'sans-serif'],
