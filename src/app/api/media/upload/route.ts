@@ -41,7 +41,7 @@ async function compressImage(
 ): Promise<{ main: Buffer; thumb: Buffer; contentType: string }> {
   try {
     // eslint-disable-next-line
-    const sharp = require('sharp') as typeof import('sharp');
+    const sharp = require('sharp') as any;
     const [main, thumb] = await Promise.all([
       sharp(buffer)
         .resize({ width: 1920, withoutEnlargement: true })
