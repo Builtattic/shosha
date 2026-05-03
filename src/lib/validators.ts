@@ -34,7 +34,7 @@ export const accountCreateSchema = z.object({
   avatarUrl: z.string().url().optional(),
   followers: z.string().max(24).optional(),
   verified: z.boolean().optional(),
-  profileId: z.string().min(1).max(40).optional(),
+  profileId: z.string().min(1).max(200).optional(),
   profileKind: z.enum(['standard', 'public_figure']).optional(),
   claimable: z.boolean().optional(),
   credibility: z.number().min(0).max(100).optional(),
@@ -53,7 +53,24 @@ export const accountCreateSchema = z.object({
         url: z.string().min(1).max(500)
       })
     )
-    .optional()
+    .optional(),
+  profileUserType: z.string().max(80).optional(),
+  phone: z.string().max(40).optional(),
+  dob: z.string().max(32).optional(),
+  age: z.coerce.number().int().min(0).max(150).optional(),
+  cityCountry: z.string().max(160).optional(),
+  educationWorkbook: z.string().max(120).optional(),
+  specializedFieldWorkbook: z.string().max(120).optional(),
+  managementWorkbook: z.string().max(160).optional(),
+  disability: z.string().max(80).optional(),
+  lifestyle: z.string().max(80).optional(),
+  reach: z.string().max(80).optional(),
+  profileCompletion: z.coerce.number().min(0).max(100).optional(),
+  socialPostCount: z.coerce.number().int().min(0).max(1_000_000_000).optional(),
+  opposedPosts: z.coerce.number().int().min(0).max(1_000_000_000).optional(),
+  aiFlaggedPosts: z.coerce.number().int().min(0).max(1_000_000_000).optional(),
+  disputedPosts: z.coerce.number().int().min(0).max(1_000_000_000).optional(),
+  disputesLost: z.coerce.number().int().min(0).max(1_000_000_000).optional()
 });
 
 export const accountPatchSchema = z.object({

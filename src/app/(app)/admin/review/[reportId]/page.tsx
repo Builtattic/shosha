@@ -49,9 +49,9 @@ export default async function ReviewPage({ params }: { params: { reportId: strin
     : undefined;
 
   return (
-    <div className="space-y-10 safe-bottom">
+    <div className="space-y-10">
       {/* Navigation & Actions */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <Link href="/admin/queue" className="group flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground hover:text-primary transition-all">
           <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center group-hover:bg-secondary transition-all">
             <ArrowLeft size={14} />
@@ -59,7 +59,7 @@ export default async function ReviewPage({ params }: { params: { reportId: strin
           Back to operations queue
         </Link>
         
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
           <span className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${
             report.type === 'positive' ? 'bg-muted text-foreground border-border' : 'bg-destructive/10 text-destructive border-destructive/20'
           }`}>

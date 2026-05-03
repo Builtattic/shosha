@@ -2,80 +2,63 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import {
-  LayoutDashboard,
-  Activity,
-  Users,
-  Database,
-  ShieldAlert,
-  ClipboardList,
-  Search,
-  Gavel,
-  ArrowLeft,
-  Newspaper,
-  PlusCircle,
-  Settings,
-} from 'lucide-react';
+import { ArrowLeft, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-const navItems = [
-  { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
-  { href: '/admin/create', label: 'Create', icon: PlusCircle },
-  { href: '/admin/feed', label: 'Feed', icon: Newspaper },
-  { href: '/admin/queue', label: 'Queue', icon: Gavel },
-  { href: '/admin/users', label: 'Users', icon: Users },
-  { href: '/admin/accounts', label: 'Accounts', icon: Database },
-  { href: '/admin/claims', label: 'Claims', icon: ClipboardList },
-  { href: '/admin/audits', label: 'Audits', icon: Search },
-  { href: '/admin/abuse', label: 'Abuse', icon: ShieldAlert },
-  { href: '/admin/settings', label: 'Settings', icon: Settings },
-  { href: '/admin/activity', label: 'Activity', icon: Activity },
-];
+import { ADMIN_NAV_GROUPS, isAdminNavItemActive } from '@/lib/adminNavGroups';
 
 export function AdminSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="fixed left-0 top-0 bottom-0 z-40 w-56 border-r border-white/10 bg-[#111111] flex flex-col hidden lg:flex">
-      {/* Header */}
-      <div className="flex h-16 items-center gap-3 px-5 border-b border-white/10">
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-500/20 border border-red-500/30">
-          <Gavel size={14} className="text-red-400" />
+    <aside className="fixed left-64 top-0 bottom-0 z-30 hidden w-56 flex-col border-r border-border bg-background/95 backdrop-blur-xl lg:flex">
+      <div className="flex h-16 shrink-0 items-center gap-3 border-b border-border px-5">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
+          <ShieldCheck size={15} />
         </div>
         <div>
-          <p className="text-[13px] font-black text-white tracking-tight">Tribunal</p>
-          <p className="text-[10px] text-white/30 font-medium uppercase tracking-widest">Admin</p>
+          <p className="text-[13px] font-black leading-none tracking-tight text-foreground">Tribunal</p>
+          <p className="mt-0.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Admin</p>
         </div>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const active = item.exact ? pathname === item.href : pathname.startsWith(item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                'flex items-center gap-3 rounded-lg px-3 h-9 text-[13px] font-medium transition-all',
-                active
-                  ? 'bg-white/10 text-white'
-                  : 'text-white/40 hover:text-white/70 hover:bg-white/5'
-              )}
-            >
-              <Icon size={15} strokeWidth={active ? 2.5 : 2} />
-              {item.label}
-            </Link>
-          );
-        })}
+      <nav className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-3 py-4">
+        {ADMIN_NAV_GROUPS.map((group, groupIdx) => (
+          <div key={group.name} className={cn('flex flex-col gap-1', groupIdx > 0 && 'mt-5')}>
+            <div className="mb-1 flex items-center gap-2 px-3">
+              <div className="h-1 w-1 rounded-full bg-primary/40" />
+              <h3 className="text-[10px] font-black uppercase tracking-[0.25em] text-muted-foreground/50">{group.name}</h3>
+            </div>
+            {group.items.map((item) => {
+              const Icon = item.icon;
+              const active = isAdminNavItemActive(pathname, item);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    'flex h-9 items-center gap-3 rounded-lg px-3 text-[13px] font-medium transition-all',
+                    active
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
+                  )}
+                >
+                  <Icon
+                    size={15}
+                    strokeWidth={active ? 2.5 : 2}
+                    className={cn(active ? 'text-primary-foreground' : 'text-primary/70')}
+                  />
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
+        ))}
       </nav>
 
-      {/* Back to app */}
-      <div className="px-3 pb-6 border-t border-white/10 pt-4">
+      <div className="shrink-0 border-t border-border px-3 pb-6 pt-4">
         <Link
           href="/dashboard"
-          className="flex items-center gap-3 rounded-lg px-3 h-9 text-[12px] font-medium text-white/30 hover:text-white/60 hover:bg-white/5 transition-all"
+          className="flex h-9 items-center gap-3 rounded-lg px-3 text-[12px] font-bold text-muted-foreground transition-all hover:bg-muted/50 hover:text-foreground"
         >
           <ArrowLeft size={14} />
           Back to App

@@ -49,8 +49,8 @@ export function AdminFeedTable({ initialReports }: { initialReports: FeedRow[] }
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+    <div className="min-w-0 overflow-x-auto">
+      <table className="w-full text-sm min-w-[900px]">
         <thead><tr className="bg-secondary/30"><th className="px-5 py-4 text-left text-[10px] font-black uppercase tracking-widest text-muted-foreground">Claim</th><th className="px-5 py-4 text-left text-[10px] font-black uppercase tracking-widest text-muted-foreground">Status</th><th className="px-5 py-4 text-right text-[10px] font-black uppercase tracking-widest text-muted-foreground">Controls</th></tr></thead>
         <tbody className="divide-y divide-border">
           {reports.map((report) => {

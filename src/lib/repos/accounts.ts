@@ -78,6 +78,14 @@ export type AccountRecord = {
     finalScore: number;
   };
   profileUserType?: string;
+  /** City & country line from workbook (distinct from macro `region`). */
+  cityCountry?: string;
+  phone?: string;
+  /** ISO date string (YYYY-MM-DD). */
+  dob?: string;
+  age?: number;
+  /** External social post count (workbook “NO OF POSTS”). */
+  socialPostCount?: number;
   reach?: string;
   educationWorkbook?: string;
   specializedFieldWorkbook?: string;
