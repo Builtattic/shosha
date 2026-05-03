@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import Link from 'next/link';
 import { ShieldAlert, Plus, X, AlertTriangle, CheckCircle2, Clock, Hourglass, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/components/ui/Toast';
