@@ -2,11 +2,14 @@ import { adminDb } from '@/lib/firebase/admin';
 
 export type DisputeStatus = 'pending' | 'under_review' | 'accepted' | 'rejected' | 'withdrawn';
 
+export type DisputeType = 'factual_inaccuracy' | 'outdated_information' | 'missing_context' | 'mistaken_identity' | 'evidence_fabricated';
+
 export type DisputeRecord = {
   _id: string;
   userId: string;
   accountId: string;
   reportId: string;
+  disputeType?: DisputeType;
   reason: string;
   evidenceUrl?: string;
   status: DisputeStatus;
@@ -28,6 +31,7 @@ export async function create(input: {
   userId: string;
   accountId: string;
   reportId: string;
+  disputeType?: DisputeType;
   reason: string;
   evidenceUrl?: string;
 }): Promise<DisputeRecord> {
@@ -36,6 +40,7 @@ export async function create(input: {
     userId: input.userId,
     accountId: input.accountId,
     reportId: input.reportId,
+    disputeType: input.disputeType,
     reason: input.reason,
     evidenceUrl: input.evidenceUrl ?? '',
     status: 'pending',

@@ -173,9 +173,7 @@ export default function DashboardPage() {
         if (!payload.ok) return;
         setMeData({ user: payload.data.user, claimedAccounts: payload.data.claimedAccounts ?? [] });
         const claimedAccountId = payload.data.claimedAccounts?.[0]?._id;
-        const recentReportAccountId = payload.data.recentEvents?.[0]?.subjectId;
-        const target = claimedAccountId ?? recentReportAccountId;
-        setMyReportHref(target ? `/account/${target}` : '/profile');
+        setMyReportHref(claimedAccountId ? `/account/${claimedAccountId}` : '/profile');
       })
       .catch(() => undefined);
   }, []);

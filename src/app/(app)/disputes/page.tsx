@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ShieldAlert, Plus, X, AlertTriangle, CheckCircle2, Clock, Hourglass } from 'lucide-react';
+import Link from 'next/link';
+import { ShieldAlert, Plus, X, AlertTriangle, CheckCircle2, Clock, Hourglass, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/components/ui/Toast';
 import { cn } from '@/lib/utils';
@@ -66,6 +67,7 @@ export default function DisputesPage() {
   const [accountId, setAccountId] = useState<string>('');
   const [reportOptions, setReportOptions] = useState<ReportSummary[]>([]);
   const [reportId, setReportId] = useState<string>('');
+  const [disputeType, setDisputeType] = useState<string>('');
   const [reason, setReason] = useState('');
   const [evidenceUrl, setEvidenceUrl] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -125,6 +127,7 @@ export default function DisputesPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           reportId,
+          disputeType: disputeType || undefined,
           reason: reason.trim(),
           evidenceUrl: evidenceUrl.trim() || undefined
         })
@@ -137,6 +140,7 @@ export default function DisputesPage() {
       setEvidenceUrl('');
       setReportId('');
       setAccountId('');
+      setDisputeType('');
       await loadDisputes();
     } catch (error) {
       toast.push(error instanceof Error ? error.message : 'Failed to file dispute.');
@@ -199,12 +203,18 @@ export default function DisputesPage() {
         </div>
 
         {!canFile && (
-          <div className="rounded-[18px] border border-border bg-card p-5 mb-6">
+          <div className="rounded-[18px] border border-amber-500/30 bg-amber-500/5 p-5 mb-6">
             <p className="text-[14px] font-bold text-foreground">Claim an account first</p>
             <p className="text-[13px] text-muted-foreground mt-1">
               Disputes can only be filed by the verified owner of the subject account. Submit an ownership
               claim from the account&apos;s dossier and wait for admin approval.
             </p>
+            <Link
+              href="/search"
+              className="mt-3 inline-flex items-center gap-1.5 text-[12px] font-bold text-primary hover:underline"
+            >
+              Find your account and submit a claim <ExternalLink size={12} />
+            </Link>
           </div>
         )}
 
@@ -368,6 +378,24 @@ export default function DisputesPage() {
                 {accountId && reportOptions.length === 0 && (
                   <p className="text-[12px] text-muted-foreground mt-1.5">No filings on this account yet.</p>
                 )}
+              </div>
+
+              <div>
+                <label className="block text-[12px] font-bold uppercase tracking-wider text-muted-foreground mb-2">
+                  Dispute Type
+                </label>
+                <select
+                  value={disputeType}
+                  onChange={(e) => setDisputeType(e.target.value)}
+                  className="w-full rounded-xl border border-border bg-card px-4 py-3 text-[14px]"
+                >
+                  <option value="">Select a type (optional)</option>
+                  <option value="factual_inaccuracy">Factual Inaccuracy — Contains false information</option>
+                  <option value="outdated_information">Outdated Information — Situation has since changed</option>
+                  <option value="missing_context">Missing Context — Filing lacks important context</option>
+                  <option value="mistaken_identity">Mistaken Identity — Wrong person or entity</option>
+                  <option value="evidence_fabricated">Evidence Fabricated — Provided evidence is manipulated</option>
+                </select>
               </div>
 
               <div>

@@ -82,7 +82,7 @@ export default function EditProfilePage() {
     fetch('/api/me')
       .then((r) => r.json())
       .then((data) => {
-        const u = data.user;
+        const u = data.data?.user;
         if (u) {
           setForm((f) => ({
             ...f,
@@ -289,6 +289,16 @@ export default function EditProfilePage() {
               <option value="Entrepreneur / Tech">Entrepreneur / Tech</option>
               <option value="Artist / Musician">Artist / Musician</option>
               <option value="Public Figure">Public Figure</option>
+              <option value="Activist / Advocate">Activist / Advocate</option>
+              <option value="Educator / Academic">Educator / Academic</option>
+              <option value="Journalist / Media">Journalist / Media</option>
+              <option value="Politician / Government">Politician / Government</option>
+              <option value="Nonprofit / NGO">Nonprofit / NGO</option>
+              <option value="Athlete / Sports">Athlete / Sports</option>
+              <option value="Healthcare / Medicine">Healthcare / Medicine</option>
+              <option value="Finance / Investor">Finance / Investor</option>
+              <option value="Legal / Justice">Legal / Justice</option>
+              <option value="Scientist / Researcher">Scientist / Researcher</option>
               <option value="Other">Other</option>
             </select>
             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" size={16} />
@@ -306,6 +316,19 @@ export default function EditProfilePage() {
               <option value="AI / Innovation">AI / Innovation</option>
               <option value="Mental Health">Mental Health</option>
               <option value="Economic Growth">Economic Growth</option>
+              <option value="Climate / Environment">Climate / Environment</option>
+              <option value="Healthcare / Public Health">Healthcare / Public Health</option>
+              <option value="Human Rights / Justice">Human Rights / Justice</option>
+              <option value="Gender Equality">Gender Equality</option>
+              <option value="Youth Empowerment">Youth Empowerment</option>
+              <option value="Financial Inclusion">Financial Inclusion</option>
+              <option value="Media / Free Press">Media / Free Press</option>
+              <option value="Technology Access">Technology Access</option>
+              <option value="Community Development">Community Development</option>
+              <option value="Governance / Anti-Corruption">Governance / Anti-Corruption</option>
+              <option value="Arts / Cultural Preservation">Arts / Cultural Preservation</option>
+              <option value="Animal Welfare">Animal Welfare</option>
+              <option value="Other">Other</option>
             </select>
             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" size={16} />
           </div>

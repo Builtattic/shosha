@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { DossierActions } from '@/components/profile/DossierActions';
+import { FollowButton } from '@/components/profile/FollowButton';
 import { FilingsList } from '@/components/profile/FilingsList';
 import { PostsFeed } from '@/components/profile/PostsFeed';
 import { ScoreGauge } from '@/components/viz/ScoreGauge';
@@ -33,6 +34,7 @@ import { idSchema } from '@/lib/validators';
 import * as accountsRepo from '@/lib/repos/accounts';
 import * as reportsRepo from '@/lib/repos/reports';
 import * as usersRepo from '@/lib/repos/users';
+import { getCurrentUser } from '@/lib/auth';
 import { enrichPublicProfileDetails, needsProfileEnrichment } from '@/lib/profileEnrichment';
 
 export const dynamic = 'force-dynamic';
@@ -130,10 +132,15 @@ export default async function AccountPage({
     }
   }
 
-  const [filingsRaw, allTop] = await Promise.all([
+  const [filingsRaw, allTop, currentViewer] = await Promise.all([
     reportsRepo.listForAccount(id.data, ['approved', 'ai_reviewed', 'flagged'], 30),
     accountsRepo.listAll(120).catch(() => []),
+    getCurrentUser().catch(() => null),
   ]);
+
+  const isViewerFollowing = linkedUser
+    ? (linkedUser.followers ?? []).includes(currentViewer?._id ?? '')
+    : false;
 
   const reporterIds = Array.from(new Set(filingsRaw.map(f => f.reporterId).filter(Boolean) as string[]));
   const reporters = await Promise.all(reporterIds.map(rid => usersRepo.findById(rid)));
@@ -297,11 +304,26 @@ export default async function AccountPage({
                   <Globe size={12} /> {account.region}
                 </div>
               )}
+              {linkedUser && (
+                <div className="mt-2 flex items-center gap-3 text-[12px]">
+                  <span className="text-foreground font-bold">
+                    {(linkedUser.following ?? []).length}
+                    <span className="font-normal text-muted-foreground ml-1">Following</span>
+                  </span>
+                  <span className="text-foreground font-bold">
+                    {(linkedUser.followers ?? []).length}
+                    <span className="font-normal text-muted-foreground ml-1">Followers</span>
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Action buttons row (Report / Claim / Audit) — full width on mobile */}
-          <div className="sm:ml-auto sm:shrink-0">
+          {/* Action buttons row (Report / Claim / Audit / Follow) — full width on mobile */}
+          <div className="sm:ml-auto sm:shrink-0 flex flex-col items-end gap-2">
+            {linkedUser && currentViewer && currentViewer._id !== linkedUser._id && (
+              <FollowButton targetUserId={linkedUser._id} initialFollowing={isViewerFollowing} />
+            )}
             <DossierActions
               accountId={account._id}
               claimedBy={account.claimedBy}

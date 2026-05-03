@@ -78,6 +78,7 @@ export async function POST(request: Request) {
     userId: user._id,
     accountId: account._id,
     reportId: report._id,
+    disputeType: parsed.data.disputeType,
     reason: parsed.data.reason,
     evidenceUrl: parsed.data.evidenceUrl
   });

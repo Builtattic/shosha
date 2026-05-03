@@ -161,7 +161,9 @@ export async function search(query: string, limit = 30, sampleSize = 500): Promi
     if (val.visibility === 'hidden') return;
     if (val.status !== 'approved' && val.status !== 'ai_reviewed') return;
     const haystack = `${val.description ?? ''} ${val.feelings ?? ''} ${val.category ?? ''} ${val.deed ?? ''} ${val.aiVerdict?.categoryTags?.join(' ') ?? ''} ${val.aiVerdict?.reasoning ?? ''}`.toLowerCase();
-    if (haystack.includes(trimmed)) {
+    const words = trimmed.split(/\s+/).filter((w) => w.length > 0);
+    const matched = words.every((word) => haystack.includes(word));
+    if (matched) {
       matches.push(withId<ReportRecord>(child.key!, val));
     }
   });

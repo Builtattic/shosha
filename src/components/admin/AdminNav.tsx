@@ -2,20 +2,21 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { 
-  Activity, 
-  LayoutDashboard, 
-  ListTodo, 
-  Users, 
-  Database, 
-  ClipboardList, 
-  Search, 
-  ShieldAlert, 
-  PlusCircle, 
-  Newspaper, 
-  Settings, 
+import {
+  Activity,
+  LayoutDashboard,
+  ListTodo,
+  Users,
+  Database,
+  ClipboardList,
+  Search,
+  ShieldAlert,
+  PlusCircle,
+  Newspaper,
+  Settings,
   Gavel,
-  Zap
+  Zap,
+  ShieldCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
@@ -43,6 +44,7 @@ const groups = [
       { href: '/admin/users', label: 'Users', icon: Users },
       { href: '/admin/accounts', label: 'Accounts', icon: Database },
       { href: '/admin/claims', label: 'Claims', icon: ClipboardList },
+      { href: '/admin/audits', label: 'Audits', icon: ShieldCheck },
     ]
   },
   {

@@ -124,6 +124,7 @@ export const auditRequestSchema = z.object({
 
 export const disputeCreateSchema = z.object({
   reportId: idSchema,
+  disputeType: z.enum(['factual_inaccuracy', 'outdated_information', 'missing_context', 'mistaken_identity', 'evidence_fabricated']).optional(),
   reason: z.string().min(10).max(500),
   evidenceUrl: z.string().url().max(500).optional()
 });
