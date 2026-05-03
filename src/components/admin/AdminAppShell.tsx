@@ -122,16 +122,6 @@ export function AdminAppShell({ user, children }: { user: AdminShellUser; childr
               <PlusCircle size={15} />
               Publish Claim
             </Link>
-            <div className="flex -space-x-2">
-              {[1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-background bg-secondary text-[10px] font-bold"
-                >
-                  {String.fromCharCode(64 + i)}
-                </div>
-              ))}
-            </div>
             <div className="mx-2 h-8 w-px bg-border" />
             <div className="min-w-0 text-right">
               <p className="truncate text-xs font-black text-foreground">{user.displayName}</p>

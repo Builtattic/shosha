@@ -92,6 +92,34 @@ const INITIAL_CREATE_DOSSIER_DRAFT: CreateDossierDraft = {
   snapchatUrl: '',
 };
 
+const SOCIAL_LINK_KEYS = ['instagram', 'tiktok', 'x', 'linkedin', 'reddit', 'youtube', 'facebook', 'snapchat'] as const;
+type SocialPlatform = typeof SOCIAL_LINK_KEYS[number];
+
+function extractLinkUrls(socialLinks: AccountRecord['socialLinks']): Record<SocialPlatform, string> {
+  const out = {} as Record<SocialPlatform, string>;
+  for (const key of SOCIAL_LINK_KEYS) {
+    const entry = (socialLinks as Record<string, { url?: string }> | undefined)?.[key];
+    out[key] = entry?.url ?? '';
+  }
+  return out;
+}
+
+function buildSocialLinksFromUrls(
+  existing: AccountRecord['socialLinks'],
+  urls: Record<string, string>,
+): Record<string, { url: string; username: string }> {
+  const base = { ...(existing as Record<string, { url: string; username: string }> | undefined) };
+  for (const key of SOCIAL_LINK_KEYS) {
+    const url = urls[key]?.trim();
+    if (url) {
+      base[key] = { ...(base[key] ?? {}), url, username: base[key]?.username ?? '' };
+    } else {
+      delete base[key];
+    }
+  }
+  return base;
+}
+
 function buildCreateDossierPostBody(draft: CreateDossierDraft): Record<string, unknown> {
   const socialLinks: Record<string, { url: string; username: string }> = {
     ...(draft.igUrl?.trim() && { instagram: { url: draft.igUrl.trim(), username: '' } }),
@@ -194,6 +222,7 @@ export function AccountsTable({ initialAccounts }: { initialAccounts: AccountRec
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [editScore, setEditScore] = useState<{ id: string; value: number } | null>(null);
   const [editAccount, setEditAccount] = useState<AccountRecord | null>(null);
+  const [editLinks, setEditLinks] = useState<Record<string, string>>({});
   const [isCreating, setIsCreating] = useState(false);
   const [newAccount, setNewAccount] = useState<CreateDossierDraft>(INITIAL_CREATE_DOSSIER_DRAFT);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -266,6 +295,7 @@ export function AccountsTable({ initialAccounts }: { initialAccounts: AccountRec
   async function saveAccount() {
     if (!editAccount) return;
     try {
+      const socialLinks = buildSocialLinksFromUrls(editAccount.socialLinks, editLinks);
       const res = await fetch(`/api/admin/accounts/${editAccount._id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -281,10 +311,29 @@ export function AccountsTable({ initialAccounts }: { initialAccounts: AccountRec
           claimedBy: editAccount.claimedBy,
           score: Number(editAccount.score),
           credibility: Number(editAccount.credibility),
+          profileCompletion: Number(editAccount.profileCompletion ?? editAccount.credibility ?? 50),
           region: editAccount.region,
           role: editAccount.role,
           quote: editAccount.quote,
           enrichmentStatus: editAccount.enrichmentStatus,
+          email: editAccount.email || undefined,
+          phone: editAccount.phone || undefined,
+          dob: editAccount.dob || undefined,
+          age: editAccount.age ?? undefined,
+          cityCountry: editAccount.cityCountry || undefined,
+          profileUserType: editAccount.profileUserType || undefined,
+          reach: editAccount.reach || editAccount.followers || undefined,
+          educationWorkbook: editAccount.educationWorkbook || undefined,
+          specializedFieldWorkbook: editAccount.specializedFieldWorkbook || undefined,
+          managementWorkbook: editAccount.managementWorkbook || undefined,
+          disability: editAccount.disability || undefined,
+          lifestyle: editAccount.lifestyle || undefined,
+          socialPostCount: editAccount.socialPostCount ?? undefined,
+          opposedPosts: editAccount.opposedPosts ?? undefined,
+          aiFlaggedPosts: editAccount.aiFlaggedPosts ?? undefined,
+          disputedPosts: editAccount.disputedPosts ?? undefined,
+          disputesLost: editAccount.disputesLost ?? undefined,
+          ...(Object.keys(socialLinks).length > 0 ? { socialLinks } : {}),
         }),
       });
       const data = await res.json();
@@ -292,6 +341,7 @@ export function AccountsTable({ initialAccounts }: { initialAccounts: AccountRec
       setAccounts((prev) => prev.map((a) => (a._id === editAccount._id ? data.data : a)));
       toast.push('Account dossier updated.');
       setEditAccount(null);
+      setEditLinks({});
       startTransition(() => router.refresh());
     } catch (e) {
       toast.push(e instanceof Error ? e.message : 'Failed to update account');
@@ -299,8 +349,13 @@ export function AccountsTable({ initialAccounts }: { initialAccounts: AccountRec
   }
 
   async function handleCreateAccount() {
-    if (!newAccount.username || !newAccount.platform) {
-      toast.push('Username and Platform are required');
+    if (!newAccount.username?.trim()) {
+      toast.push('Username is required');
+      return;
+    }
+    const pid = newAccount.profileId?.trim();
+    if (pid && !/^[a-zA-Z0-9_.%-]+$/.test(pid)) {
+      toast.push('Profile ID must contain only letters, numbers, _, ., - or %');
       return;
     }
     try {
@@ -610,7 +665,7 @@ export function AccountsTable({ initialAccounts }: { initialAccounts: AccountRec
                           >
                             <div className="p-2 space-y-1">
                               <button
-                                onClick={() => { setEditAccount(account); setOpenMenu(null); }}
+                                onClick={() => { setEditAccount(account); setEditLinks(extractLinkUrls(account.socialLinks)); setOpenMenu(null); }}
                                 className="w-full flex items-center gap-3 px-4 py-3 text-xs font-black text-foreground hover:bg-primary hover:text-primary-foreground rounded-xl transition-all text-left"
                               >
                                 <Edit3 size={14} />
@@ -686,6 +741,7 @@ export function AccountsTable({ initialAccounts }: { initialAccounts: AccountRec
                   type="button"
                   onClick={() => {
                     setEditAccount(menuAccount);
+                    setEditLinks(extractLinkUrls(menuAccount.socialLinks));
                     setOpenMenu(null);
                   }}
                   className="flex w-full items-center gap-3 rounded-xl px-4 py-3.5 text-left text-sm font-black text-foreground transition-colors hover:bg-muted"
@@ -768,8 +824,8 @@ export function AccountsTable({ initialAccounts }: { initialAccounts: AccountRec
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/80 backdrop-blur-sm" 
-              onClick={() => setEditAccount(null)} 
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+              onClick={() => { setEditAccount(null); setEditLinks({}); }}
             />
             <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -788,7 +844,7 @@ export function AccountsTable({ initialAccounts }: { initialAccounts: AccountRec
                     <p className="text-xs font-black text-muted-foreground uppercase tracking-widest mt-1">Manual Override Protocol</p>
                   </div>
                 </div>
-                <button onClick={() => setEditAccount(null)} className="h-10 w-10 rounded-full hover:bg-white/5 flex items-center justify-center transition-colors">
+                <button onClick={() => { setEditAccount(null); setEditLinks({}); }} className="h-10 w-10 rounded-full hover:bg-white/5 flex items-center justify-center transition-colors">
                   <X size={20} />
                 </button>
               </div>
@@ -865,10 +921,34 @@ export function AccountsTable({ initialAccounts }: { initialAccounts: AccountRec
                   <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Primary Quote</label>
                   <input placeholder="A defining statement..." value={editAccount.quote || ''} onChange={(e) => setEditAccount({ ...editAccount, quote: e.target.value })} className="admin-input h-14" />
                 </div>
+
+                <div className="sm:col-span-2 pt-2">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Social Media URLs</p>
+                </div>
+                {([
+                  ['instagram', 'Instagram', 'https://instagram.com/username'],
+                  ['tiktok',    'TikTok',    'https://tiktok.com/@username'],
+                  ['x',        'X / Twitter','https://x.com/username'],
+                  ['linkedin', 'LinkedIn',   'https://linkedin.com/in/username'],
+                  ['reddit',   'Reddit',     'https://reddit.com/u/username'],
+                  ['youtube',  'YouTube',    'https://youtube.com/@username'],
+                  ['facebook', 'Facebook',   'https://facebook.com/username'],
+                  ['snapchat', 'Snapchat',   'https://snapchat.com/add/username'],
+                ] as [string, string, string][]).map(([key, label, ph]) => (
+                  <div key={key} className="space-y-2 sm:col-span-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{label}</label>
+                    <input
+                      placeholder={ph}
+                      value={editLinks[key] ?? ''}
+                      onChange={(e) => setEditLinks({ ...editLinks, [key]: e.target.value })}
+                      className="admin-input h-14"
+                    />
+                  </div>
+                ))}
               </div>
 
               <div className="mt-10 flex gap-4">
-                <button onClick={() => setEditAccount(null)} className="flex-1 h-14 rounded-2xl border border-white/10 text-sm font-black hover:bg-white/5 transition-colors">Cancel</button>
+                <button onClick={() => { setEditAccount(null); setEditLinks({}); }} className="flex-1 h-14 rounded-2xl border border-white/10 text-sm font-black hover:bg-white/5 transition-colors">Cancel</button>
                 <button onClick={saveAccount} className="flex-1 h-14 rounded-2xl bg-primary text-primary-foreground text-sm font-black hover:opacity-90 transition-opacity">Commit Changes</button>
               </div>
             </motion.div>
