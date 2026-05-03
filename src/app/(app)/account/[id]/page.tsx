@@ -22,7 +22,7 @@ import Link from 'next/link';
 import { DossierActions } from '@/components/profile/DossierActions';
 import { FilingsList } from '@/components/profile/FilingsList';
 import { PostsFeed } from '@/components/profile/PostsFeed';
-import { ScoreGauge } from '@/components/viz/ScoreGauge';
+import { D3ProfileGauge } from '@/components/viz/D3ProfileGauge';
 import { ScoreRadar } from '@/components/viz/ScoreRadar';
 import { D3AreaChart } from '@/components/viz/D3AreaChart';
 import { SimilarProfiles } from '@/components/profile/SimilarProfiles';
@@ -182,9 +182,9 @@ export default async function AccountPage({
   const areaChartData = sortedHistory.length > 0
     ? sortedHistory.map((entry: any) => ({ date: new Date(entry.t), value: entry.s }))
     : [
-        { date: creationTime, value: BASE_SCORE },
-        { date: new Date(), value: account.score },
-      ];
+      { date: creationTime, value: BASE_SCORE },
+      { date: new Date(), value: account.score },
+    ];
 
   const socialLinks = Object.entries(account.socialLinks ?? {}).filter(([, link]) => link?.url);
   const windowScores = account.windowScores;
@@ -199,8 +199,8 @@ export default async function AccountPage({
   return (
     <main className="min-h-screen overflow-x-hidden bg-background safe-bottom font-sans">
       {/* Sticky header with back + share */}
-      <header className="sticky top-0 z-30 border-b border-border/60 bg-background/85 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-2xl items-center justify-between gap-2 px-3 py-3 sm:px-4">
+      <header className="sticky top-0 z-30 border-b border-border/60 bg-background/85 backdrop-blur-xl pt-4">
+        <div className="mx-auto flex max-w-2xl items-center justify-between gap-2 px-3 pb-3 sm:px-4">
           <Link
             href="/feed"
             aria-label="Back to feed"
@@ -209,7 +209,7 @@ export default async function AccountPage({
             <ChevronLeft size={22} strokeWidth={2.5} />
           </Link>
           <div className="min-w-0 flex-1 text-center">
-            <p className="truncate text-[13px] font-bold text-foreground sm:text-[14px]">
+            <p className="text-[13px] font-bold text-foreground sm:text-[14px] whitespace-nowrap">
               {account.displayName.replace(/^@/, '')}
             </p>
           </div>
@@ -255,10 +255,10 @@ export default async function AccountPage({
         </div>
       </header>
 
-      <div className="mx-auto max-w-2xl px-4 mt-6">
+      <div className="mx-auto max-w-2xl px-4 mt-16">
         {/* Profile Info Row */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-          <div className="flex items-start gap-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end w-full min-w-0">
+          <div className="flex items-start gap-4 min-w-0 flex-1">
             <div className="relative h-20 w-20 shrink-0 sm:h-24 sm:w-24">
               {account.avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -280,7 +280,7 @@ export default async function AccountPage({
             </div>
             <div className="min-w-0 flex-1 pt-1">
               <div className="flex items-center gap-1.5">
-                <h1 className="text-[20px] font-bold text-foreground leading-tight truncate sm:text-[22px]">
+                <h1 className="text-[20px] font-bold text-foreground leading-tight sm:text-[22px] whitespace-nowrap">
                   {account.displayName.replace(/^@/, '')}
                 </h1>
                 {account.verified && (
@@ -312,17 +312,13 @@ export default async function AccountPage({
 
         {/* Score Gauge Hero — properly centered */}
         <div className="mt-10 mb-6 flex justify-center">
-          <ScoreGauge
-            score={account.score}
-            trending={delta >= 0 ? 'up' : 'down'}
-            change={delta > 0 ? `+${delta}` : String(delta)}
-            credibility={account.credibility ?? 80}
-          />
+          <D3ProfileGauge score={account.score} minScore={-99000} maxScore={101000} size={340} />
         </div>
 
         {/* 4 Stat Cards with REAL data - Enhanced Premium Look */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {/* This Week */}
+
           <div className="group relative overflow-hidden rounded-[24px] border border-border bg-background p-4 shadow-sm transition-all hover:shadow-md">
             <div className="flex flex-col items-center text-center">
               <div
@@ -553,6 +549,7 @@ export default async function AccountPage({
                             <h4 className="text-[13px] font-bold text-foreground line-clamp-2 leading-snug">
                               {filing.deed || filing.description || 'Filing recorded'}
                             </h4>
+
                             <p className="mt-0.5 text-[11px] text-muted-foreground flex items-center gap-1.5">
                               {filing.reporter && (
                                 <>
@@ -681,8 +678,10 @@ export default async function AccountPage({
               <h3 className="mb-4 text-[14px] font-bold uppercase tracking-wider text-muted-foreground">
                 Profile Overview
               </h3>
-              {account.bio && (
+              {account.bio ? (
                 <p className="text-[14px] leading-relaxed text-foreground mb-4">{account.bio}</p>
+              ) : (
+                <p className="text-[14px] leading-relaxed text-muted-foreground mb-4 italic">No bio provided.</p>
               )}
               {account.quote && (
                 <blockquote className="border-l-2 border-primary pl-3 text-[14px] italic text-muted-foreground mb-4">
@@ -690,36 +689,66 @@ export default async function AccountPage({
                 </blockquote>
               )}
 
-              <div className="grid gap-3 text-[13px] text-foreground mt-6">
+              <div className="grid gap-3 text-[13px] text-foreground mt-6 break-words">
                 {account.role && (
-                  <div className="flex items-start justify-between border-b border-border pb-3">
-                    <span className="text-muted-foreground">Primary Role</span>
-                    <span className="font-semibold text-right">{account.role}</span>
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-border pb-3 gap-1">
+                    <span className="text-muted-foreground shrink-0">Primary Role</span>
+                    <span className="font-semibold sm:text-right">{account.role}</span>
                   </div>
                 )}
                 {account.region && (
-                  <div className="flex items-start justify-between border-b border-border pb-3">
-                    <span className="text-muted-foreground">Location</span>
-                    <span className="font-semibold text-right">{account.region}</span>
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-border pb-3 gap-1">
+                    <span className="text-muted-foreground shrink-0">Location</span>
+                    <span className="font-semibold sm:text-right">{account.region}</span>
                   </div>
                 )}
-                <div className="flex items-start justify-between border-b border-border pb-3">
-                  <span className="text-muted-foreground">Platform</span>
-                  <span className="font-semibold text-right">{formatPlatform(account.platform)}</span>
+                {account.educationWorkbook && (
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-border pb-3 gap-1">
+                    <span className="text-muted-foreground shrink-0">Education</span>
+                    <span className="font-semibold sm:text-right capitalize">{account.educationWorkbook.replace(/_/g, ' ')}</span>
+                  </div>
+                )}
+                {account.specializedFieldWorkbook && (
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-border pb-3 gap-1">
+                    <span className="text-muted-foreground shrink-0">Specialized Field</span>
+                    <span className="font-semibold sm:text-right capitalize">{account.specializedFieldWorkbook.replace(/_/g, ' ')}</span>
+                  </div>
+                )}
+                {account.managementWorkbook && (
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-border pb-3 gap-1">
+                    <span className="text-muted-foreground shrink-0">Management Scope</span>
+                    <span className="font-semibold sm:text-right capitalize">{account.managementWorkbook.replace(/_/g, ' ')}</span>
+                  </div>
+                )}
+                {account.reach && (
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-border pb-3 gap-1">
+                    <span className="text-muted-foreground shrink-0">Reach</span>
+                    <span className="font-semibold sm:text-right capitalize">{account.reach.replace(/_/g, ' ')}</span>
+                  </div>
+                )}
+                {account.followers && (
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-border pb-3 gap-1">
+                    <span className="text-muted-foreground shrink-0">Followers</span>
+                    <span className="font-semibold sm:text-right">{account.followers}</span>
+                  </div>
+                )}
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-border pb-3 gap-1">
+                  <span className="text-muted-foreground shrink-0">Platform</span>
+                  <span className="font-semibold sm:text-right">{formatPlatform(account.platform)}</span>
                 </div>
                 {socialLinks.length > 0 && (
-                  <div className="flex items-start justify-between pb-3">
-                    <span className="text-muted-foreground">Linked Accounts</span>
-                    <div className="flex flex-col items-end gap-1.5 font-semibold">
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between pb-3 gap-1">
+                    <span className="text-muted-foreground shrink-0">Linked Accounts</span>
+                    <div className="flex flex-col sm:items-end gap-1.5 font-semibold">
                       {socialLinks.map(([platform, link]) => (
                         <a
                           key={platform}
                           href={link!.url}
-                          className="hover:text-primary transition-colors flex items-center gap-1"
+                          className="hover:text-primary transition-colors flex items-center gap-1 break-all"
                           target="_blank"
                           rel="noreferrer"
                         >
-                          {formatPlatform(platform)}
+                          {formatPlatform(platform as any)}
                         </a>
                       ))}
                     </div>

@@ -142,24 +142,24 @@ export function DossierActions({
 
   return (
     <>
-      <div className="grid grid-cols-1 gap-2 px-4 sm:grid-cols-3">
-        <Button onClick={() => reportModal.open({ accountId })}>
-          <FileWarning size={16} />
+      <div className="flex flex-wrap justify-center sm:justify-end gap-2 w-full sm:w-auto">
+        <Button size="sm" className="bg-red-500 hover:bg-red-600 text-white text-[12px] h-8 px-3" onClick={() => reportModal.open({ accountId })}>
+          <FileWarning size={14} className="mr-1.5" />
           Report
         </Button>
         {claimable ? (
-          <Button className="bg-foreground text-background hover:bg-foreground/90" disabled={!user} onClick={() => setClaimOpen(true)}>
-            <BadgeCheck size={16} />
+          <Button size="sm" className="bg-green-500 hover:bg-green-600 text-white text-[12px] h-8 px-3" disabled={!user} onClick={() => setClaimOpen(true)}>
+            <BadgeCheck size={14} className="mr-1.5" />
             Claim This Profile
           </Button>
         ) : (
-          <Button variant="secondary" disabled>
-            <BadgeCheck size={16} />
+          <Button size="sm" variant="secondary" className="text-[12px] h-8 px-3" disabled>
+            <BadgeCheck size={14} className="mr-1.5" />
             Public figure
           </Button>
         )}
-        <Button variant="secondary" disabled={!owned && !adminCapable} onClick={() => setAuditOpen(true)}>
-          <RefreshCcw size={16} />
+        <Button size="sm" variant="secondary" className="text-[12px] h-8 px-3" disabled={!owned && !adminCapable} onClick={() => setAuditOpen(true)}>
+          <RefreshCcw size={14} className="mr-1.5" />
           Audit
         </Button>
       </div>

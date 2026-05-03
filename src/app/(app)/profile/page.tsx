@@ -302,7 +302,7 @@ export default function ProfilePage() {
             {recalculating ? 'Recalculating…' : 'Recalculate from history'}
           </button>
           <div className="mt-4 -mb-8">
-            <D3ProfileGauge score={ledgerScore} minScore={0} maxScore={2000} size={340} />
+            <D3ProfileGauge score={ledgerScore} minScore={-99000} maxScore={101000} size={340} />
           </div>
         </div>
 
