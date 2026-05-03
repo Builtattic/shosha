@@ -6,70 +6,82 @@
     "users": {
       ".indexOn": ["username", "createdAt"],
       "$uid": {
-        ".read": "$uid === auth.uid || root.child('users').child(auth.uid).child('isAdmin').val() === true",
-        ".write": "$uid === auth.uid || root.child('users').child(auth.uid).child('isAdmin').val() === true"
+        ".read": "auth != null && ($uid === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'super_admin')",
+        ".write": "auth != null && ($uid === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'super_admin')"
       }
     },
 
     "accounts": {
-      ".read": "auth !== null",
-      ".write": "root.child('users').child(auth.uid).child('isAdmin').val() === true",
+      ".read": "auth != null",
+      ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'super_admin')",
       ".indexOn": ["score", "usernameLower", "displayNameLower", "claimedBy"]
     },
 
     "reports": {
-      ".read": "auth !== null",
-      ".write": "root.child('users').child(auth.uid).child('isAdmin').val() === true",
+      ".read": "auth != null",
+      ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'super_admin')",
       ".indexOn": ["createdAt", "accountId", "reporterId", "hashedUserId", "disputeStatus"]
     },
 
     "reportMetadata": {
-      ".read": "auth !== null",
-      ".write": "root.child('users').child(auth.uid).child('isAdmin').val() === true",
+      ".read": "auth != null",
+      ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'super_admin')",
       ".indexOn": ["reportId", "profileId"]
     },
 
     "ledgerEntries": {
-      ".read": "auth !== null",
-      ".write": "root.child('users').child(auth.uid).child('isAdmin').val() === true",
+      ".read": "auth != null",
+      ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'super_admin')",
       ".indexOn": ["profileId", "reportId", "timestamp"]
     },
 
     "events": {
-      ".read": "auth !== null",
-      ".write": "root.child('users').child(auth.uid).child('isAdmin').val() === true",
+      ".read": "auth != null",
+      ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'super_admin')",
       ".indexOn": ["subjectId", "reporterId", "timestamp", "status"]
     },
 
     "notifications": {
       "$uid": {
-        ".read": "$uid === auth.uid",
-        ".write": "root.child('users').child(auth.uid).child('isAdmin').val() === true",
+        ".read": "auth != null && $uid === auth.uid",
+        ".write": "auth != null && ($uid === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'super_admin')",
         ".indexOn": ["createdAt", "status"]
       }
     },
 
     "disputes": {
-      ".read": "auth !== null",
-      ".write": "root.child('users').child(auth.uid).child('isAdmin').val() === true"
+      ".read": "auth != null",
+      ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'super_admin')",
+      ".indexOn": ["userId", "accountId", "status"]
     },
 
-    "siteSettings": {
-      ".read": "auth !== null",
-      ".write": "root.child('users').child(auth.uid).child('isAdmin').val() === true"
+    "claimRequests": {
+      ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'super_admin')",
+      ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'super_admin')",
+      ".indexOn": ["status", "userId"]
+    },
+
+    "auditRequests": {
+      ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'super_admin')",
+      ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'super_admin')",
+      ".indexOn": ["createdAt", "status"]
     },
 
     "reportVotes": {
+      ".read": "auth != null",
+      ".write": "auth != null",
       ".indexOn": ["reportId", "userId"]
     },
-    "claimRequests": {
-      ".indexOn": ["status"]
-    },
-    "auditRequests": {
-      ".indexOn": ["createdAt"]
-    },
+
     "reportComments": {
+      ".read": "auth != null",
+      ".write": "auth != null",
       ".indexOn": ["reportId"]
+    },
+
+    "siteSettings": {
+      ".read": "auth != null",
+      ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'super_admin')"
     }
   }
 }
