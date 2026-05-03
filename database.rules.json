@@ -1,25 +1,64 @@
 {
   "rules": {
-    ".read": "auth != null",
-    ".write": "auth != null",
-    "reports": {
-      ".indexOn": ["createdAt", "accountId", "reporterId", "hashedUserId", "disputeStatus"]
+    ".read": false,
+    ".write": false,
+
+    "users": {
+      ".indexOn": ["username", "createdAt"],
+      "$uid": {
+        ".read": "$uid === auth.uid || root.child('users').child(auth.uid).child('isAdmin').val() === true",
+        ".write": "$uid === auth.uid || root.child('users').child(auth.uid).child('isAdmin').val() === true"
+      }
     },
+
     "accounts": {
+      ".read": "auth !== null",
+      ".write": "root.child('users').child(auth.uid).child('isAdmin').val() === true",
       ".indexOn": ["score", "usernameLower", "displayNameLower", "claimedBy"]
     },
-    "users": {
-      ".indexOn": ["username", "createdAt"]
+
+    "reports": {
+      ".read": "auth !== null",
+      ".write": "root.child('users').child(auth.uid).child('isAdmin').val() === true",
+      ".indexOn": ["createdAt", "accountId", "reporterId", "hashedUserId", "disputeStatus"]
     },
-    "events": {
-      ".indexOn": ["subjectId", "reporterId", "timestamp", "status"]
-    },
-    "ledgerEntries": {
-      ".indexOn": ["profileId", "reportId", "timestamp"]
-    },
+
     "reportMetadata": {
+      ".read": "auth !== null",
+      ".write": "root.child('users').child(auth.uid).child('isAdmin').val() === true",
       ".indexOn": ["reportId", "profileId"]
     },
+
+    "ledgerEntries": {
+      ".read": "auth !== null",
+      ".write": "root.child('users').child(auth.uid).child('isAdmin').val() === true",
+      ".indexOn": ["profileId", "reportId", "timestamp"]
+    },
+
+    "events": {
+      ".read": "auth !== null",
+      ".write": "root.child('users').child(auth.uid).child('isAdmin').val() === true",
+      ".indexOn": ["subjectId", "reporterId", "timestamp", "status"]
+    },
+
+    "notifications": {
+      "$uid": {
+        ".read": "$uid === auth.uid",
+        ".write": "root.child('users').child(auth.uid).child('isAdmin').val() === true",
+        ".indexOn": ["createdAt", "status"]
+      }
+    },
+
+    "disputes": {
+      ".read": "auth !== null",
+      ".write": "root.child('users').child(auth.uid).child('isAdmin').val() === true"
+    },
+
+    "siteSettings": {
+      ".read": "auth !== null",
+      ".write": "root.child('users').child(auth.uid).child('isAdmin').val() === true"
+    },
+
     "reportVotes": {
       ".indexOn": ["reportId", "userId"]
     },
@@ -31,11 +70,6 @@
     },
     "reportComments": {
       ".indexOn": ["reportId"]
-    },
-    "notifications": {
-      "$userId": {
-        ".indexOn": ["createdAt", "status"]
-      }
     }
   }
 }
