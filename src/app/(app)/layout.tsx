@@ -17,7 +17,7 @@ export default function AppLayout({
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 lg:pl-64">
+        <div className="min-w-0 flex-1 lg:pl-64">
           <EmailVerificationBanner />
           {children}
         </div>

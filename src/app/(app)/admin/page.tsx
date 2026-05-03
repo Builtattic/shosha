@@ -88,7 +88,7 @@ export default async function AdminPage() {
   ];
 
   return (
-    <div className="space-y-12 safe-bottom">
+    <div className="space-y-12">
       {/* System Status Header */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 p-10 rounded-[3rem] bg-white/[0.02] border border-white/5 relative overflow-hidden">
         <div className="absolute top-0 right-0 p-8 opacity-5">

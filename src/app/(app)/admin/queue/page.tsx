@@ -28,7 +28,7 @@ export default async function AdminQueuePage() {
     .filter((row) => row.account !== null);
 
   return (
-    <div className="space-y-8 safe-bottom">
+    <div className="space-y-8">
       {/* Header & Stats Bar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>

@@ -33,6 +33,8 @@ export function BottomNav() {
     setMenuOpen(false);
   }, [pathname]);
 
+  const hideOnAdmin = pathname === '/admin' || pathname.startsWith('/admin/');
+
   function isActive(item: BottomNavItem) {
     if (item.matchPaths) {
       return item.matchPaths.some((p) => pathname === p || pathname.startsWith(p + '/'));
@@ -40,6 +42,8 @@ export function BottomNav() {
     if (pathname === '/dashboard' && item.href === '/dashboard') return true;
     return pathname === item.href || pathname.startsWith(item.href + '/');
   }
+
+  if (hideOnAdmin) return null;
 
   return (
     <>

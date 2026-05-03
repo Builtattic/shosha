@@ -115,7 +115,7 @@ export function UsersTable({ initialUsers }: { initialUsers: UserRow[] }) {
   }
 
   return (
-    <div className="bg-card">
+    <div className="min-w-0 bg-card">
       {editUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-[2px]" onClick={() => setEditUser(null)}>
           <div className="w-full max-w-lg rounded-2xl border border-border bg-background p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
@@ -157,8 +157,8 @@ export function UsersTable({ initialUsers }: { initialUsers: UserRow[] }) {
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+      <div className="min-w-0 overflow-x-auto">
+        <table className="w-full text-sm min-w-[900px]">
           <thead>
             <tr className="bg-secondary/30">
               <th className="text-left px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground border-b border-border">

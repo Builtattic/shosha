@@ -9,15 +9,15 @@ export default async function AdminUsersPage() {
   const adminCount = users.filter((u) => u.role !== 'user').length;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="min-w-0 space-y-6">
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
         <h2 className="text-[14px] font-black text-foreground uppercase tracking-[0.1em]">Registered Users</h2>
-        <span className="text-[11px] font-bold text-muted-foreground bg-secondary px-2 py-1 rounded-md">
+        <span className="shrink-0 text-[11px] font-bold text-muted-foreground bg-secondary px-2 py-1 rounded-md">
           {users.length} total · {adminCount} admin{adminCount !== 1 ? 's' : ''}
         </span>
       </div>
 
-      <div className="rounded-3xl border border-border bg-card overflow-hidden">
+      <div className="min-w-0 rounded-3xl border border-border bg-card overflow-hidden">
         <UsersTable initialUsers={users} />
       </div>
     </div>
