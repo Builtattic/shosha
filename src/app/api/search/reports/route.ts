@@ -4,6 +4,7 @@ import * as reportsRepo from '@/lib/repos/reports';
 import * as accountsRepo from '@/lib/repos/accounts';
 import * as interactionsRepo from '@/lib/repos/reportInteractions';
 import { discoverReports } from '@/lib/shoshaDiscovery';
+import { redactPublicReporter } from '@/lib/reportPrivacy';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -38,7 +39,7 @@ export async function GET(request: Request) {
         const account = accountMap.get(report.accountId);
         if (!account) return null;
         return {
-          ...report,
+          ...redactPublicReporter(report),
           account,
           viewer: viewerStates[idx]
         };

@@ -34,6 +34,9 @@ export async function GET(request: Request) {
     u.email.toLowerCase().includes(parsed.data.q.toLowerCase()) ||
     u.name?.toLowerCase().includes(parsed.data.q.toLowerCase())
   ).slice(0, 10);
+  const userAccounts = await Promise.all(
+    matchedUsers.map((user) => accountsRepo.ensureWebsiteAccountForUser(user))
+  );
 
   const discoverParam = searchParams.get('discover');
   const fallbackDiscover = accounts.length === 0 && matchedUsers.length === 0 && discoverParam !== '0' && discoverParam !== 'false';
@@ -70,18 +73,6 @@ export async function GET(request: Request) {
   // Deduplicate user candidates against existing accounts
   const existingAccountUsernames = new Set(accounts.map(a => a.username.toLowerCase()));
   const newCandidates = userCandidates.filter(c => !existingAccountUsernames.has(c.username.toLowerCase()));
-
-  // Merge users into accounts for the global search page
-  const userAccounts = matchedUsers.map((u) => ({
-    _id: accountsRepo.deriveId('website', u.username),
-    platform: 'website',
-    username: u.username,
-    displayName: u.name || u.username,
-    score: u.reporterScore || 50,
-    avatarUrl: u.photoUrl,
-    verified: true,
-    bio: u.bio || 'Platform User',
-  }));
 
   const existingAccountsIds = new Set(accounts.map((a) => a._id));
   const newAccounts = userAccounts.filter((ua) => !existingAccountsIds.has(ua._id));

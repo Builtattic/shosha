@@ -107,6 +107,7 @@ export function ReportModal({
   const [feelings, setFeelings] = useState('');
   const [evidenceSourceUrl, setEvidenceSourceUrl] = useState('');
   const [aiConsent, setAiConsent] = useState(false);
+  const [publicAnonymous, setPublicAnonymous] = useState(true);
   const [taggedPerson, setTaggedPerson] = useState('');
   const [targetPlatform, setTargetPlatform] = useState<Platform>('instagram');
   const [targetHandle, setTargetHandle] = useState('');
@@ -164,6 +165,7 @@ export function ReportModal({
     setDescription('');
     setFeelings('');
     setAiConsent(false);
+    setPublicAnonymous(true);
     setTaggedPerson('');
     setTargetPlatform('instagram');
     setTargetHandle('');
@@ -305,7 +307,16 @@ export function ReportModal({
 
   async function ensureAccount() {
     if (accountId) return accountId;
-    if (resolvedAccountId) return resolvedAccountId;
+    if (resolvedAccountId) {
+      try {
+        const response = await fetch(`/api/accounts/${encodeURIComponent(resolvedAccountId)}`, { cache: 'no-store' });
+        const payload = await readApiPayload<{ _id: string }>(response, 'Could not verify target dossier.');
+        if (response.ok && payload.ok && payload.data?._id) return payload.data._id;
+      } catch {
+        // Stale search result: fall through and create/reuse the dossier from the selected profile fields.
+      }
+      setResolvedAccountId(null);
+    }
     if (!user) {
       toast.push('Sign in before opening a dossier.');
       router.push('/sign-in');
@@ -412,7 +423,8 @@ export function ReportModal({
           repetitionPattern,
           intent,
           circumstances,
-          aiUndertaking: aiConsent
+          aiUndertaking: aiConsent,
+          publicAnonymous
         })
       });
       const payload = await readApiPayload(response, 'Submission failed. Please try again.');
@@ -988,6 +1000,26 @@ export function ReportModal({
             )}
           </section>
 
+          {/* Public Identity */}
+          <section className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
+            <label className="flex items-start justify-between gap-4 cursor-pointer group">
+              <div className="min-w-0 space-y-1">
+                <span className="block text-[14px] font-bold text-foreground sm:text-[15px]">
+                  Post anonymously on public feed
+                </span>
+                <span className="block text-[11px] leading-5 text-muted-foreground sm:text-[12px]">
+                  Your real account stays visible to admins and stored with the report.
+                </span>
+              </div>
+              <input
+                type="checkbox"
+                checked={publicAnonymous}
+                onChange={(e) => setPublicAnonymous(e.target.checked)}
+                className="mt-1 h-5 w-5 shrink-0 rounded-md border-border bg-background text-primary focus:ring-primary/20 transition-all cursor-pointer"
+              />
+            </label>
+          </section>
+
           {/* AI Undertaking */}
           <section className="rounded-2xl border border-primary/10 bg-primary/5 p-4 shadow-sm sm:p-5">
             <div className="flex items-center gap-2 mb-3 sm:gap-3">
@@ -1119,7 +1151,7 @@ export function ReportModal({
             </button>
             <p className="text-center text-[10px] text-muted-foreground mt-2 flex items-center justify-center gap-1.5 font-medium sm:mt-3 sm:text-[11px]">
               <ShieldCheck size={11} className="text-primary shrink-0" />
-              <span className="truncate">{user ? 'Reporter identity is hidden on public surfaces' : 'Anonymous filing uses a private hash'}</span>
+              <span className="truncate">{publicAnonymous ? 'Reporter identity is hidden on public surfaces' : 'Reporter identity can appear publicly'}</span>
             </p>
           </div>
         </div>

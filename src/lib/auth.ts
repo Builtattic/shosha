@@ -2,10 +2,20 @@ import { headers, cookies } from 'next/headers';
 import { getAuth } from 'firebase-admin/auth';
 import { adminDb } from '@/lib/firebase/admin';
 import * as usersRepo from '@/lib/repos/users';
+import * as accountsRepo from '@/lib/repos/accounts';
 import type { AppUser } from '@/lib/repos/users';
 
 // Re-export init to ensure admin app is initialized
 import '@/lib/firebase/admin';
+
+async function ensureRegisteredUserDossier(user: AppUser): Promise<AppUser> {
+  const account = await accountsRepo.ensureWebsiteAccountForUser(user);
+  if (!(user.claimedAccounts ?? []).includes(account._id)) {
+    await usersRepo.addClaimedAccount(user._id, account._id);
+    return (await usersRepo.findById(user._id)) ?? user;
+  }
+  return user;
+}
 
 async function getAdminAuth() {
   // Import adminDb to ensure the app is initialized before calling getAuth
@@ -44,11 +54,13 @@ export async function getCurrentUser(): Promise<AppUser | null> {
       if (existing) {
         // Backfill ledger fields for users created before the new scoring system.
         // Idempotent — only writes when score / scoreHistory are missing.
+        let userWithLedger = existing;
         if (typeof existing.score !== 'number' || !Array.isArray(existing.scoreHistory)) {
           const seeded = await usersRepo.ensureLedger(uid).catch(() => null);
-          if (seeded) return { ...seeded, emailVerified };
+          if (seeded) userWithLedger = seeded;
         }
-        return { ...existing, emailVerified };
+        const withDossier = await ensureRegisteredUserDossier(userWithLedger);
+        return { ...withDossier, emailVerified };
       }
 
       // First login — create user from Firebase Auth claims
@@ -61,7 +73,8 @@ export async function getCurrentUser(): Promise<AppUser | null> {
         email: decoded.email ?? '',
         role: 'user'
       });
-      return { ...created, emailVerified };
+      const withDossier = await ensureRegisteredUserDossier(created);
+      return { ...withDossier, emailVerified };
     } catch (dbErr) {
       // RTDB unavailable — return lightweight user from token
       console.warn('[auth] RTDB unavailable, using token-only user:', (dbErr as Error).message);

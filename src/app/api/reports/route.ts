@@ -12,6 +12,7 @@ import {
   profileMultipliersFromWorkbookProfile,
   resolveSheetBaseImpact,
 } from '@/lib/scoring';
+import { redactPublicReporter } from '@/lib/reportPrivacy';
 import * as accountsRepo from '@/lib/repos/accounts';
 import * as reportsRepo from '@/lib/repos/reports';
 import * as reportMetadataRepo from '@/lib/repos/reportMetadata';
@@ -26,7 +27,7 @@ export async function GET(request: Request) {
     const id = idSchema.safeParse(accountId);
     if (!id.success) return fail('validation_error', 'Invalid account id.', 422);
     const reports = await reportsRepo.listForAccount(id.data, ['approved', 'ai_reviewed'], 50);
-    return ok(reports);
+    return ok(reports.map(redactPublicReporter));
   }
 
   if (!isAdmin(user)) return fail('forbidden', 'The tribunal archive is restricted.', 403);
@@ -107,8 +108,9 @@ export async function POST(request: Request) {
       accountId: parsed.data.accountId,
       reportNo: (await reportsRepo.count().catch(() => 0)) + 1,
       reporterId: user?._id ?? null,
-      anonymousTag: user?.username ?? anonymousTag(request),
+      anonymousTag: parsed.data.publicAnonymous ? anonymousTag(request) : (user?.username ?? anonymousTag(request)),
       hashedUserId: actorHash,
+      publicAnonymous: parsed.data.publicAnonymous,
       type: parsed.data.type,
       category: scoringRow.category,
       deed: scoringRow.deed,

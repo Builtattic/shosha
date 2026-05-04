@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/lib/auth';
 import * as accountsRepo from '@/lib/repos/accounts';
 import * as reportsRepo from '@/lib/repos/reports';
 import * as interactionsRepo from '@/lib/repos/reportInteractions';
+import { redactPublicReporter } from '@/lib/reportPrivacy';
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -26,7 +27,7 @@ export async function GET() {
         const account = accountMap.get(report.accountId);
         if (!account) return null;
         return {
-          ...report,
+          ...redactPublicReporter(report),
           account,
           viewer: { vote: null, bookmarked: true }
         };

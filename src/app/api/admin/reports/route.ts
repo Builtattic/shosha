@@ -106,6 +106,7 @@ export async function POST(request: Request) {
     reporterId: null,
     anonymousTag: anonymousTag(request),
     hashedUserId: user!._id,
+    publicAnonymous: true,
     type: parsed.data.type,
     category: scoringRow.category,
     deed: scoringRow.deed,

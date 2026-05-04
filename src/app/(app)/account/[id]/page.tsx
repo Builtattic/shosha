@@ -36,6 +36,7 @@ import * as reportsRepo from '@/lib/repos/reports';
 import * as usersRepo from '@/lib/repos/users';
 import { getCurrentUser } from '@/lib/auth';
 import { enrichPublicProfileDetails, needsProfileEnrichment } from '@/lib/profileEnrichment';
+import { hidesReporterOnPublicSurfaces } from '@/lib/reportPrivacy';
 
 export const dynamic = 'force-dynamic';
 
@@ -117,7 +118,7 @@ export default async function AccountPage({
       const { listByReporter } = await import('@/lib/repos/reports');
       const userReports = await listByReporter(user._id);
       
-      account.posts = userReports.map(report => ({
+      account.posts = userReports.filter((report) => !hidesReporterOnPublicSurfaces(report)).map(report => ({
         externalId: report._id,
         content: `Filed a ${report.type} report: ${report.deed || report.description || 'No description provided.'}`,
         likes: String(report.stats?.aligns ?? 0),
@@ -142,7 +143,7 @@ export default async function AccountPage({
   }
 
   const [filingsRaw, allTop, currentViewer] = await Promise.all([
-    reportsRepo.listForAccount(id.data, ['approved', 'ai_reviewed', 'flagged'], 30),
+    reportsRepo.listForAccount(account._id, ['approved', 'ai_reviewed', 'flagged'], 30),
     accountsRepo.listAll(120).catch(() => []),
     getCurrentUser().catch(() => null),
   ]);
@@ -151,13 +152,19 @@ export default async function AccountPage({
     ? (linkedUser.followers ?? []).includes(currentViewer?._id ?? '')
     : false;
 
-  const reporterIds = Array.from(new Set(filingsRaw.map(f => f.reporterId).filter(Boolean) as string[]));
+  const reporterIds = Array.from(new Set(
+    filingsRaw
+      .filter((f) => !hidesReporterOnPublicSurfaces(f))
+      .map(f => f.reporterId)
+      .filter(Boolean) as string[]
+  ));
   const reporters = await Promise.all(reporterIds.map(rid => usersRepo.findById(rid)));
   const reporterMap = new Map(reporters.filter(Boolean).map(u => [u!._id, u!]));
 
   const filings = filingsRaw.map(f => ({
     ...f,
-    reporter: f.reporterId ? reporterMap.get(f.reporterId) : undefined
+    anonymousTag: hidesReporterOnPublicSurfaces(f) ? 'Anonymous' : f.anonymousTag,
+    reporter: !hidesReporterOnPublicSurfaces(f) && f.reporterId ? reporterMap.get(f.reporterId) : undefined
   }));
 
   // Real ledger history → derive deltas, total impact, weekly delta, area chart points

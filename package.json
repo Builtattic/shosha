@@ -18,6 +18,7 @@
     "e2e": "playwright test",
     "seed": "tsx scripts/seed.ts",
     "seed:public-profiles": "tsx scripts/seed-public-profiles.ts",
+    "backfill:website-dossiers": "tsx scripts/backfill-website-dossiers.ts",
     "enrich:public-profiles": "tsx scripts/enrich-public-profiles.ts",
     "import:workbook": "tsx scripts/import-shosha-workbook.ts",
     "replay:scores": "tsx scripts/replay-sheet-scores.ts"

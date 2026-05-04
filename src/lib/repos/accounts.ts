@@ -162,6 +162,93 @@ export async function createWithId(
   return { _id: id, ...payload } as AccountRecord;
 }
 
+type WebsiteDossierUser = {
+  _id: string;
+  username?: string;
+  email?: string;
+  name?: string;
+  bio?: string;
+  photoUrl?: string;
+  score?: number;
+  scoreHistory?: Array<Partial<ScoreHistoryPoint> & { score?: number }>;
+};
+
+function defaultBreakdown(): Breakdown {
+  return { authenticity: 50, engagement: 50, community: 50, content: 50, impact: 50 };
+}
+
+function websiteUsernameForUser(user: WebsiteDossierUser) {
+  return (user.username || user.email?.split('@')[0] || user._id || 'user')
+    .toLowerCase()
+    .replace(/^@/, '')
+    .replace(/[.#$[\]]/g, '-')
+    .replace(/[^a-z0-9_.-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'user';
+}
+
+export async function ensureWebsiteAccountForUser(user: WebsiteDossierUser): Promise<AccountRecord> {
+  const username = websiteUsernameForUser(user);
+  const id = deriveId('website', username);
+  const displayName = user.name || username;
+  const now = new Date().toISOString();
+  const score = typeof user.score === 'number' ? user.score : BASE_SCORE;
+  const scoreHistory = Array.isArray(user.scoreHistory) && user.scoreHistory.length
+    ? user.scoreHistory.map((point) => ({
+        ...point,
+        t: point.t ?? now,
+        s: point.s ?? point.score ?? score,
+        cause: point.cause ?? 'seed' as const,
+      }))
+    : [{ t: now, s: score, cause: 'seed' as const }];
+  const avatarUrl = user.photoUrl || `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(displayName)}`;
+
+  const existing = await findById(id);
+  if (existing) {
+    const updated = await update(id, {
+      username,
+      displayName,
+      bio: user.bio || existing.bio || 'Platform User',
+      avatarUrl,
+      verified: true,
+      followers: existing.followers || 'registered',
+      score,
+      displayScore: score,
+      scoreHistory,
+      claimed: true,
+      claimedBy: user._id,
+      claimable: false,
+      profileKind: existing.profileKind ?? 'standard',
+      credibility: existing.credibility ?? 80,
+      enrichmentStatus: existing.enrichmentStatus ?? 'none',
+      role: existing.role ?? 'Platform User',
+    });
+    return updated!;
+  }
+
+  return createWithId(id, {
+    platform: 'website',
+    username,
+    displayName,
+    bio: user.bio || 'Platform User',
+    avatarUrl,
+    verified: true,
+    followers: 'registered',
+    profileKind: 'standard',
+    claimable: false,
+    credibility: 80,
+    enrichmentStatus: 'none',
+    role: 'Platform User',
+    score,
+    displayScore: score,
+    scoreHistory,
+    breakdown: defaultBreakdown(),
+    posts: [],
+    claimed: true,
+    claimedBy: user._id,
+  });
+}
+
 export async function update(id: string, partial: Partial<AccountRecord>): Promise<AccountRecord | null> {
   const existing = await findById(id);
   if (!existing) return null;

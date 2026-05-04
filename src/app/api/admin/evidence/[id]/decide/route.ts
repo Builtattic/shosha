@@ -90,6 +90,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     reporterId: user!._id,
     anonymousTag: user!.username,
     hashedUserId: user!._id,
+    publicAnonymous: true,
     type: proposal.type,
     category: scoringRow.category,
     deed: scoringRow.deed,

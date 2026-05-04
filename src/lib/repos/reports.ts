@@ -46,6 +46,7 @@ export type ReportRecord = {
   reporterId: string | null;
   anonymousTag: string;
   hashedUserId?: string;
+  publicAnonymous?: boolean;
   type: ReportType;
   category?: string;
   deed?: string;
