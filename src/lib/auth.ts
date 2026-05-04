@@ -52,9 +52,12 @@ export async function getCurrentUser(): Promise<AppUser | null> {
       }
 
       // First login — create user from Firebase Auth claims
+      const rawUsername = decoded.email?.split('@')[0]?.toLowerCase() ?? decoded.name?.toLowerCase() ?? 'user';
+      // Replace dots and other characters invalid in Firebase keys with hyphens
+      const safeUsername = rawUsername.replace(/[.#$[\]]/g, '-').replace(/-+/g, '-').replace(/^-+|-+$/g, '') || 'user';
       const created = await usersRepo.upsertFromClerk({
         id: uid,
-        username: decoded.email?.split('@')[0]?.toLowerCase() ?? decoded.name?.toLowerCase() ?? 'user',
+        username: safeUsername,
         email: decoded.email ?? '',
         role: 'user'
       });

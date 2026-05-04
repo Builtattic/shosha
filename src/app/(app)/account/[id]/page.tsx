@@ -64,25 +64,34 @@ export default async function AccountPage({
       const { findByUsername } = await import('@/lib/repos/users');
       const user = await findByUsername(username);
       if (user) {
-        account = await accountsRepo.createWithId(id.data, {
-          platform: 'website',
-          username: user.username,
-          displayName: user.name || user.username,
-          bio: user.bio || 'Platform User',
-          avatarUrl: user.photoUrl || `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(user.name || user.username)}`,
-          verified: true,
-          followers: 'unknown',
-          claimable: true,
-          credibility: 80,
-          enrichmentStatus: 'none',
-          role: 'Platform User',
-          score: user.score ?? BASE_SCORE,
-          scoreHistory: user.scoreHistory?.map((h: any) => ({ ...h, s: h.s ?? h.score ?? BASE_SCORE })) ?? [{ t: new Date().toISOString(), s: BASE_SCORE, cause: 'seed' }],
-          breakdown: { authenticity: 50, engagement: 50, community: 50, content: 50, impact: 50 },
-          posts: [],
-          claimed: false,
-          claimedBy: null
-        });
+        // Always use a Firebase-safe key (dots/special chars → hyphens) so the
+        // account ID is stable and can be looked up from the reports API.
+        const safeId = accountsRepo.deriveId('website', user.username);
+        // If the URL used a dotted username, the safe key differs — check it first.
+        if (safeId !== id.data) {
+          account = await accountsRepo.findById(safeId);
+        }
+        if (!account) {
+          account = await accountsRepo.createWithId(safeId, {
+            platform: 'website',
+            username: user.username,
+            displayName: user.name || user.username,
+            bio: user.bio || 'Platform User',
+            avatarUrl: user.photoUrl || `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(user.name || user.username)}`,
+            verified: true,
+            followers: 'unknown',
+            claimable: true,
+            credibility: 80,
+            enrichmentStatus: 'none',
+            role: 'Platform User',
+            score: user.score ?? BASE_SCORE,
+            scoreHistory: user.scoreHistory?.map((h: any) => ({ ...h, s: h.s ?? h.score ?? BASE_SCORE })) ?? [{ t: new Date().toISOString(), s: BASE_SCORE, cause: 'seed' }],
+            breakdown: { authenticity: 50, engagement: 50, community: 50, content: 50, impact: 50 },
+            posts: [],
+            claimed: false,
+            claimedBy: null
+          });
+        }
       } else {
         notFound();
       }
