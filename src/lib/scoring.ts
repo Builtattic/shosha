@@ -311,7 +311,9 @@ export function resolveSheetBaseImpact(keyOrDeed: string, type?: SheetImpactType
 
 export function resolveSheetBaseImpactFromAdminImpact(finalImpact: number, fallbackType: SheetImpactType): SheetScoringIndexRow {
   const type: SheetImpactType = finalImpact > 0 ? 'positive' : finalImpact < 0 ? 'negative' : fallbackType;
-  const target = Math.abs(finalImpact) * 100;
+  // `finalImpact` is the approved ledger delta. With neutral multipliers,
+  // delta = baseScore / 10, so reverse to the nearest workbook base row.
+  const target = Math.abs(finalImpact) * 10;
   const candidates = SHEET_SCORING_INDEX.filter((row) => row.type === type);
   if (!candidates.length) return resolveSheetBaseImpact('', type);
   if (target === 0) return resolveSheetBaseImpact('', type);

@@ -65,7 +65,11 @@ export async function replayUserLedger(userId: string): Promise<ReplayResult | n
       intent: Number(report.intent ?? report.adminDecision?.intent ?? multipliers.intent),
       circumstances: Number(report.circumstances ?? report.adminDecision?.circumstances ?? multipliers.circumstances),
     };
-    const delta = typeof report.reportScore === 'number' ? report.reportScore : calcDelta(baseImpact, reportMultipliers);
+    const delta = typeof report.adminDecision?.finalImpact === 'number'
+      ? report.adminDecision.finalImpact
+      : typeof report.reportScore === 'number'
+        ? report.reportScore
+        : calcDelta(baseImpact, reportMultipliers);
     if (delta === 0) continue;
     entries.push({
       t: report.adminDecision?.decidedAt ?? report.createdAt ?? new Date().toISOString(),

@@ -38,7 +38,11 @@ export async function replayAccountLedger(accountId: string): Promise<AccountRep
       intent: Number(report.intent ?? report.adminDecision?.intent ?? 1),
       circumstances: Number(report.circumstances ?? report.adminDecision?.circumstances ?? 1),
     });
-    const delta = calcDelta(scoringRow.baseScore, multipliers);
+    const delta = typeof report.adminDecision?.finalImpact === 'number'
+      ? report.adminDecision.finalImpact
+      : typeof report.reportScore === 'number'
+        ? report.reportScore
+        : calcDelta(scoringRow.baseScore, multipliers);
     if (delta === 0) continue;
     entries.push({
       t: report.adminDecision?.decidedAt ?? report.createdAt ?? new Date().toISOString(),
