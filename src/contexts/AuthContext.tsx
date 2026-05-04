@@ -57,6 +57,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const phoneVerifierRef = useRef<RecaptchaVerifier | null>(null);
 
   useEffect(() => {
+    let mounted = true;
+
+    async function syncSession(nextUser: User | null) {
+      if (nextUser) {
+        const token = await nextUser.getIdToken();
+        setSessionCookie(token);
+      } else {
+        clearSessionCookie();
+      }
+      if (!mounted) return;
+      setUser(nextUser);
+      setLoading(false);
+    }
+
     getRedirectResult(auth).then(async (cred) => {
       if (cred && cred.user) {
         const token = await cred.user.getIdToken();
@@ -69,14 +83,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     const unsubscribe = onIdTokenChanged(auth, async (u) => {
-      setUser(u);
-      setLoading(false);
-      
-      if (u) {
-        const token = await u.getIdToken();
-        setSessionCookie(token);
-      } else {
+      try {
+        await syncSession(u);
+      } catch (error) {
+        console.error('[auth] Failed to sync session cookie:', error);
+        if (!mounted) return;
+        setUser(null);
         clearSessionCookie();
+        setLoading(false);
       }
     });
 
@@ -96,6 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, 10 * 60 * 1000); // 10 minutes
 
     return () => {
+      mounted = false;
       unsubscribe();
       clearInterval(refreshInterval);
     };
