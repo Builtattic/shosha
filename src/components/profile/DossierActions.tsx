@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { BadgeCheck, FileWarning, RefreshCcw, UploadCloud, CheckCircle2, ChevronLeft, Loader2, Video, Image as ImageIcon } from 'lucide-react';
+import { BadgeCheck, FileWarning, RefreshCcw, UploadCloud, CheckCircle2, ChevronLeft, Loader2, Video, Image as ImageIcon, Camera } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -42,6 +42,7 @@ export function DossierActions({
   const [uploadTarget, setUploadTarget] = useState<'id' | 'liveness' | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const [claimNote, setClaimNote] = useState('');
   const [claimMethod, setClaimMethod] = useState<ClaimMethod>('bio_code');
   const [submitting, setSubmitting] = useState(false);
@@ -101,6 +102,7 @@ export function DossierActions({
       setUploading(false);
       setUploadTarget(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
+      if (cameraInputRef.current) cameraInputRef.current.value = '';
     }
   }
 
@@ -214,6 +216,10 @@ export function DossierActions({
               
               <div className="flex gap-3 pt-2">
                 <Button variant="secondary" className="flex-1" onClick={() => setClaimStep(1)}>Back</Button>
+                <Button variant="secondary" className="flex-1" onClick={() => { setUploadTarget('id'); cameraInputRef.current?.click(); }} disabled={uploading}>
+                  <Camera size={16} />
+                  Camera
+                </Button>
                 <Button className="flex-1 bg-foreground text-background" onClick={() => setClaimStep(3)} disabled={!claimIdMedia || uploading}>Continue</Button>
               </div>
             </div>
@@ -256,6 +262,10 @@ export function DossierActions({
               
               <div className="flex gap-3 pt-2">
                 <Button variant="secondary" className="flex-1" onClick={() => setClaimStep(2)}>Back</Button>
+                <Button variant="secondary" className="flex-1" onClick={() => { setUploadTarget('liveness'); cameraInputRef.current?.click(); }} disabled={uploading}>
+                  <Camera size={16} />
+                  Camera
+                </Button>
                 <Button className="flex-1 bg-foreground text-background" onClick={submitClaim} disabled={!claimLivenessMedia || submitting}>
                   {submitting ? 'Submitting...' : 'Submit Verification'}
                 </Button>
@@ -281,6 +291,14 @@ export function DossierActions({
             ref={fileInputRef}
             className="hidden"
             accept={uploadTarget === 'liveness' ? "video/*" : "image/*"}
+            onChange={handleFile}
+          />
+          <input
+            type="file"
+            ref={cameraInputRef}
+            className="hidden"
+            accept={uploadTarget === 'liveness' ? "video/*" : "image/*"}
+            capture={uploadTarget === 'liveness' ? "user" : "environment"}
             onChange={handleFile}
           />
         </div>

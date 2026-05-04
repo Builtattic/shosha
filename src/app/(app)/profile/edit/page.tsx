@@ -20,7 +20,8 @@ import {
   Sprout,
   Check,
   MapPin,
-  ChevronDown
+  ChevronDown,
+  ClipboardPaste
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -121,6 +122,19 @@ export default function EditProfilePage() {
   const updateField = (key: string, val: string) => {
     setForm((f) => ({ ...f, [key]: val }));
   };
+
+  const pasteIntoField = async (key: 'ytUrl' | 'igUrl' | 'xUrl' | 'websiteUrl') => {
+    setError('');
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text.trim()) return;
+      updateField(key, text.trim());
+    } catch {
+      setError('Clipboard access was blocked. Tap the field and use your keyboard paste option.');
+    }
+  };
+
+  const linkInputClass = "w-full min-w-0 bg-transparent text-[13px] font-medium outline-none text-foreground select-text";
 
   const handleSave = async () => {
     setError('');
@@ -415,38 +429,62 @@ export default function EditProfilePage() {
           <div className="flex items-center gap-3 p-3 border border-border rounded-xl bg-card">
             <Youtube className="text-red-500 flex-shrink-0" size={18} />
             <input 
+              type="url"
+              inputMode="url"
+              autoComplete="url"
               value={form.ytUrl} 
               onChange={(e) => updateField('ytUrl', e.target.value)} 
-              className="w-full bg-transparent text-[13px] font-medium outline-none text-foreground"
+              className={linkInputClass}
               placeholder="youtube.com/channel"
             />
+            <button type="button" onClick={() => pasteIntoField('ytUrl')} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground transition hover:text-foreground" aria-label="Paste YouTube link">
+              <ClipboardPaste size={15} />
+            </button>
           </div>
           <div className="flex items-center gap-3 p-3 border border-border rounded-xl bg-card">
             <Instagram className="text-pink-500 flex-shrink-0" size={18} />
             <input 
+              type="url"
+              inputMode="url"
+              autoComplete="url"
               value={form.igUrl} 
               onChange={(e) => updateField('igUrl', e.target.value)} 
-              className="w-full bg-transparent text-[13px] font-medium outline-none text-foreground"
+              className={linkInputClass}
               placeholder="instagram.com/username"
             />
+            <button type="button" onClick={() => pasteIntoField('igUrl')} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground transition hover:text-foreground" aria-label="Paste Instagram link">
+              <ClipboardPaste size={15} />
+            </button>
           </div>
           <div className="flex items-center gap-3 p-3 border border-border rounded-xl bg-card">
             <span className="text-foreground font-black text-[15px] flex-shrink-0 w-[18px] text-center">𝕏</span>
             <input 
+              type="url"
+              inputMode="url"
+              autoComplete="url"
               value={form.xUrl} 
               onChange={(e) => updateField('xUrl', e.target.value)} 
-              className="w-full bg-transparent text-[13px] font-medium outline-none text-foreground"
+              className={linkInputClass}
               placeholder="x.com/username"
             />
+            <button type="button" onClick={() => pasteIntoField('xUrl')} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground transition hover:text-foreground" aria-label="Paste X link">
+              <ClipboardPaste size={15} />
+            </button>
           </div>
           <div className="flex items-center gap-3 p-3 border border-border rounded-xl bg-card">
             <Globe className="text-muted-foreground flex-shrink-0" size={18} />
             <input 
+              type="url"
+              inputMode="url"
+              autoComplete="url"
               value={form.websiteUrl} 
               onChange={(e) => updateField('websiteUrl', e.target.value)} 
-              className="w-full bg-transparent text-[13px] font-medium outline-none text-foreground"
+              className={linkInputClass}
               placeholder="website.com"
             />
+            <button type="button" onClick={() => pasteIntoField('websiteUrl')} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground transition hover:text-foreground" aria-label="Paste website link">
+              <ClipboardPaste size={15} />
+            </button>
           </div>
         </div>
       </section>

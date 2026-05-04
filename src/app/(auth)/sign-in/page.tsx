@@ -205,7 +205,7 @@ export default function SignInPage() {
             {/* Step 1: Choose method */}
             {mode === 'choose' && (
               <motion.div key="choose" variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.2 }}>
-                <h2 className="text-xl font-bold text-center mb-6">Welcome back</h2>
+                <h2 className="text-xl font-bold text-center mb-6">Welcome to Shoशा</h2>
 
                 {error && <p className="text-red-500 text-sm text-center mb-4 bg-red-500/10 rounded-xl p-3">{error}</p>}
 

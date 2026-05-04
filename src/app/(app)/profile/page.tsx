@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -75,12 +75,13 @@ export default function ProfilePage() {
   const [recalculating, setRecalculating] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'activity' | 'impact' | 'about'>('overview');
   const [shareOpen, setShareOpen] = useState(false);
+  const initialReplayDone = useRef(false);
 
   async function recalculateScore() {
     setRecalculating(true);
     try {
       await fetch('/api/me/score/replay', { method: 'POST' });
-      const res = await fetch('/api/me');
+      const res = await fetch('/api/me', { cache: 'no-store' });
       const payload = res.ok ? await res.json() : null;
       if (payload?.ok) setData(payload.data);
     } finally {
@@ -88,14 +89,40 @@ export default function ProfilePage() {
     }
   }
 
-  useEffect(() => {
-    fetch('/api/me')
-      .then(res => res.ok ? res.json() : null)
-      .then(payload => {
-        if (payload?.ok) setData(payload.data);
-      })
-      .finally(() => setLoading(false));
+  const loadProfile = useCallback(async () => {
+    const res = await fetch('/api/me', { cache: 'no-store' });
+    const payload = res.ok ? await res.json() : null;
+    if (payload?.ok) setData(payload.data);
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    async function refresh() {
+      try {
+        if (!initialReplayDone.current) {
+          initialReplayDone.current = true;
+          await fetch('/api/me/score/replay', { method: 'POST' }).catch(() => null);
+        }
+        await loadProfile();
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+    refresh();
+    const interval = window.setInterval(refresh, 15_000);
+    const onFocus = () => refresh();
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') refresh();
+    };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [loadProfile]);
 
   if (authLoading || loading) {
     return (
@@ -164,6 +191,12 @@ export default function ProfilePage() {
     { id: 'impact', label: 'Impact', Icon: Target },
     { id: 'about', label: 'About', Icon: User },
   ] as const;
+
+  function changeTabWithoutJump(id: typeof tabs[number]['id']) {
+    const scrollY = window.scrollY;
+    setActiveTab(id);
+    requestAnimationFrame(() => window.scrollTo({ top: scrollY, left: 0 }));
+  }
 
   return (
     <main className="min-h-screen bg-background safe-bottom font-sans">
@@ -343,7 +376,7 @@ export default function ProfilePage() {
           {tabs.map(({ id, label, Icon }) => (
             <button
               key={id}
-              onClick={() => setActiveTab(id)}
+              onClick={() => changeTabWithoutJump(id)}
               className={cn(
                 'flex flex-col items-center gap-1.5 px-2 py-3 border-b-2 transition-colors',
                 activeTab === id

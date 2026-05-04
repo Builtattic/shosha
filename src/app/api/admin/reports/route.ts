@@ -19,6 +19,7 @@ import * as ledgerEntriesRepo from '@/lib/repos/ledgerEntries';
 import * as reportMetadataRepo from '@/lib/repos/reportMetadata';
 import * as reportsRepo from '@/lib/repos/reports';
 import * as siteSettingsRepo from '@/lib/repos/siteSettings';
+import { replayUsersForAccount } from '@/lib/services/ledgerReplay';
 import { z } from 'zod';
 
 const createSchema = z.object({
@@ -134,6 +135,7 @@ export async function POST(request: Request) {
 
   let updatedAccount = account;
   let updatedReport = report;
+  let ownerLedgers: Awaited<ReturnType<typeof replayUsersForAccount>> = [];
   if (parsed.data.status === 'approved' && scoringRow.baseScore !== 0) {
     const event = await eventsRepo.create({
       subjectId: account._id,
@@ -217,7 +219,8 @@ export async function POST(request: Request) {
       ],
     })) ?? account;
     updatedReport = (await reportsRepo.update(report._id, { eventId: event._id, ledgerEntryId: ledgerEntry._id })) ?? report;
+    ownerLedgers = await replayUsersForAccount(account._id, updatedAccount.claimedBy);
   }
-  await adminActionsRepo.create({ actor: user!, action: 'report.create', entityType: 'report', entityId: report._id, after: { report: updatedReport, account: updatedAccount } });
-  return ok({ report: updatedReport, account: updatedAccount }, 201);
+  await adminActionsRepo.create({ actor: user!, action: 'report.create', entityType: 'report', entityId: report._id, after: { report: updatedReport, account: updatedAccount, ownerLedgers } });
+  return ok({ report: updatedReport, account: updatedAccount, ownerLedgers }, 201);
 }

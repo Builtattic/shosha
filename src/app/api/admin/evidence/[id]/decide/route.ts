@@ -20,6 +20,7 @@ import * as ledgerEntriesRepo from '@/lib/repos/ledgerEntries';
 import * as reportMetadataRepo from '@/lib/repos/reportMetadata';
 import * as reportsRepo from '@/lib/repos/reports';
 import * as siteSettingsRepo from '@/lib/repos/siteSettings';
+import { replayUsersForAccount } from '@/lib/services/ledgerReplay';
 
 const schema = z.object({
   verdict: z.enum(['approved', 'rejected']),
@@ -231,6 +232,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     reportId: report._id,
     eventId: event._id
   });
+  const ownerLedgers = await replayUsersForAccount(account._id, updatedAccount?.claimedBy);
 
   await adminActionsRepo.create({
     actor: user!,
@@ -238,8 +240,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
     entityType: 'evidence',
     entityId: proposal._id,
     before: { proposal, account },
-    after: { proposal: approved, account: updatedAccount, report: updatedReport, event }
+    after: { proposal: approved, account: updatedAccount, report: updatedReport, event, ownerLedgers }
   });
 
-  return ok({ proposal: approved, account: updatedAccount, report: updatedReport, event });
+  return ok({ proposal: approved, account: updatedAccount, report: updatedReport, event, ownerLedgers });
 }

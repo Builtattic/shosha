@@ -1,5 +1,6 @@
 import * as usersRepo from '@/lib/repos/users';
 import * as reportsRepo from '@/lib/repos/reports';
+import * as accountsRepo from '@/lib/repos/accounts';
 import {
   calcDelta,
   calcMultiplierQuotient,
@@ -81,6 +82,28 @@ export async function replayUserLedger(userId: string): Promise<ReplayResult | n
   await usersRepo.rebuildLedger(userId, entries);
   const finalScore = entries.reduce((score, e) => applySheetScore(score, e.delta).score, 1000);
   return { userId, entriesApplied: entries.length, finalScore };
+}
+
+export async function replayUsersForAccount(accountId: string, knownOwnerId?: string | null): Promise<ReplayResult[]> {
+  const ownerIds = new Set<string>();
+  if (knownOwnerId) ownerIds.add(knownOwnerId);
+
+  const [account, users] = await Promise.all([
+    accountsRepo.findById(accountId).catch(() => null),
+    usersRepo.listAll(5000).catch(() => []),
+  ]);
+
+  if (account?.claimedBy) ownerIds.add(account.claimedBy);
+  for (const user of users) {
+    if ((user.claimedAccounts ?? []).includes(accountId)) {
+      ownerIds.add(user._id);
+    }
+  }
+
+  const results = await Promise.all(
+    Array.from(ownerIds).map((userId) => replayUserLedger(userId).catch(() => null))
+  );
+  return results.filter((result): result is ReplayResult => Boolean(result));
 }
 
 // Replay every user's ledger. Returns one result per user.

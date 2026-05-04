@@ -64,6 +64,28 @@ export async function PATCH(req: NextRequest) {
       if (key in body) patch[key] = body[key];
     }
 
+    if (patch.onboardingComplete === true) {
+      const completedProfile = { ...user, ...patch };
+      const requiredFields = [
+        ['name', 'name'],
+        ['username', 'username'],
+        ['dob', 'date of birth'],
+        ['phone', 'phone number'],
+        ['city', 'city'],
+        ['country', 'country'],
+        ['occupationRole', 'role'],
+        ['networkSize', 'network size'],
+        ['education', 'education level'],
+        ['specializedField', 'specialization level'],
+        ['managesMoneyPeopleSystem', 'management level'],
+        ['physicalIntellectualLimitations', 'limitations answer']
+      ] as const;
+      const missing = requiredFields.find(([key]) => !String(completedProfile[key] ?? '').trim());
+      if (missing) {
+        return NextResponse.json({ error: `Please enter your ${missing[1]}.` }, { status: 400 });
+      }
+    }
+
     const updated = await usersRepo.update(user._id, patch);
     return ok({ user: updated });
   } catch (err) {

@@ -339,6 +339,10 @@ export default function OnboardPage() {
     if (!form.name.trim()) return 'Please enter your name.';
     if (!form.username.trim()) return 'Please enter a username.';
     if (!/^[a-z0-9_]{2,30}$/.test(form.username.trim())) return 'Username: 2–30 chars, lowercase letters, numbers, underscores only.';
+    if (!form.dob) return 'Please enter your date of birth.';
+    if (!form.phone.trim()) return 'Please enter your phone number.';
+    if (!form.city.trim()) return 'Please enter your city.';
+    if (!form.country.trim()) return 'Please enter your country.';
     return null;
   }
 
@@ -368,6 +372,18 @@ export default function OnboardPage() {
 
   async function handleSubmit() {
     setError('');
+    const step1Error = validateStep1();
+    if (step1Error) {
+      setStep(1);
+      setError(step1Error);
+      return;
+    }
+    const step2Error = validateStep2();
+    if (step2Error) {
+      setStep(2);
+      setError(step2Error);
+      return;
+    }
     setSaving(true);
     try {
       const token = await user?.getIdToken();
@@ -478,24 +494,24 @@ export default function OnboardPage() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <motion.div variants={itemVariants}>
-                      <FieldLabel>Date of Birth</FieldLabel>
-                      <TextInput type="date" value={form.dob} onChange={(v) => set('dob', v)} />
+                      <FieldLabel>Date of Birth *</FieldLabel>
+                      <TextInput required type="date" value={form.dob} onChange={(v) => set('dob', v)} />
                       {age !== null && <p className="text-xs font-medium text-primary mt-2 pl-2">Age: {age} years old</p>}
                     </motion.div>
                     <motion.div variants={itemVariants}>
-                      <FieldLabel>Phone Number</FieldLabel>
-                      <TextInput type="tel" value={form.phone} onChange={(v) => set('phone', v)} placeholder="+1 (555) 000-0000" />
+                      <FieldLabel>Phone Number *</FieldLabel>
+                      <TextInput required type="tel" value={form.phone} onChange={(v) => set('phone', v)} placeholder="+1 (555) 000-0000" />
                     </motion.div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <motion.div variants={itemVariants}>
-                      <FieldLabel>City</FieldLabel>
-                      <TextInput value={form.city} onChange={(v) => set('city', v)} placeholder="e.g. New York" />
+                      <FieldLabel>City *</FieldLabel>
+                      <TextInput required value={form.city} onChange={(v) => set('city', v)} placeholder="e.g. New York" />
                     </motion.div>
                     <motion.div variants={itemVariants}>
-                      <FieldLabel>Country</FieldLabel>
-                      <TextInput value={form.country} onChange={(v) => set('country', v)} placeholder="e.g. United States" />
+                      <FieldLabel>Country *</FieldLabel>
+                      <TextInput required value={form.country} onChange={(v) => set('country', v)} placeholder="e.g. United States" />
                     </motion.div>
                   </div>
                 </div>
@@ -641,4 +657,3 @@ export default function OnboardPage() {
     </main>
   );
 }
-

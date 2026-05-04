@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -165,20 +165,35 @@ export default function DashboardPage() {
     };
   }, [activeTab]);
 
-  useEffect(() => {
-    fetch('/api/me')
-      .then((response) => {
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return response.json();
-      })
-      .then((payload) => {
-        if (!payload.ok) return;
-        setMeData({ user: payload.data.user, claimedAccounts: payload.data.claimedAccounts ?? [] });
-        const claimedAccountId = payload.data.claimedAccounts?.[0]?._id;
-        setMyReportHref(claimedAccountId ? `/account/${claimedAccountId}` : '/profile');
-      })
-      .catch(() => undefined);
+  const loadMe = useCallback(async () => {
+    try {
+      const response = await fetch('/api/me', { cache: 'no-store' });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const payload = await response.json();
+      if (!payload.ok) return;
+      setMeData({ user: payload.data.user, claimedAccounts: payload.data.claimedAccounts ?? [] });
+      const claimedAccountId = payload.data.claimedAccounts?.[0]?._id;
+      setMyReportHref(claimedAccountId ? `/account/${claimedAccountId}` : '/profile');
+    } catch {
+      // keep the current dashboard snapshot
+    }
   }, []);
+
+  useEffect(() => {
+    loadMe();
+    const interval = window.setInterval(loadMe, 15_000);
+    const onFocus = () => loadMe();
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') loadMe();
+    };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [loadMe]);
 
   // Always fetch unread count for the badge
   useEffect(() => {

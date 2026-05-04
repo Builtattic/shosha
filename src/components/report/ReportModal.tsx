@@ -16,7 +16,8 @@ import {
   ShieldCheck,
   ChevronLeft,
   EyeOff,
-  UserRound
+  UserRound,
+  Camera
 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import { cn } from '@/lib/utils';
@@ -98,6 +99,7 @@ export function ReportModal({
   const { user, loading: authLoading } = useAuth();
   const toast = useToast();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const [step, setStep] = useState(1);
   const [type, setType] = useState<'positive' | 'negative' | null>(null);
   const [repetitionPattern, setRepetitionPattern] = useState<string>('0.5');
@@ -310,6 +312,7 @@ export function ReportModal({
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
+      if (cameraInputRef.current) cameraInputRef.current.value = '';
     }
   }
 
@@ -1010,6 +1013,14 @@ export function ReportModal({
               className="hidden"
               onChange={handleFile}
             />
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*,video/*"
+              capture="environment"
+              className="hidden"
+              onChange={handleFile}
+            />
 
             {media ? (
               <div className="group relative overflow-hidden rounded-2xl border border-border bg-card p-4 animate-in fade-in zoom-in-95 duration-300">
@@ -1032,29 +1043,55 @@ export function ReportModal({
                 </div>
               </div>
             ) : (
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                className={cn(
-                  "w-full rounded-2xl border-2 border-dashed p-5 text-center transition-all duration-300 active:scale-[0.98] sm:p-8",
-                  uploading ? "bg-muted border-border" : "bg-card border-border hover:border-primary/40 hover:bg-primary/[0.02]"
-                )}
-              >
-                <div className="flex flex-col items-center justify-center gap-2 sm:gap-3">
-                  <div className={cn("flex h-12 w-12 items-center justify-center rounded-full transition-colors sm:h-14 sm:w-14", uploading ? "bg-muted-foreground/10" : "bg-primary/5 text-primary")}>
-                    {uploading ? (
-                      <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                    ) : (
-                      <Plus size={26} className="sm:h-8 sm:w-8" />
-                    )}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => cameraInputRef.current?.click()}
+                  disabled={uploading}
+                  className={cn(
+                    "rounded-2xl border-2 border-dashed p-5 text-center transition-all duration-300 active:scale-[0.98] sm:p-6",
+                    uploading ? "bg-muted border-border" : "bg-card border-border hover:border-primary/40 hover:bg-primary/[0.02]"
+                  )}
+                >
+                  <div className="flex flex-col items-center justify-center gap-2 sm:gap-3">
+                    <div className={cn("flex h-12 w-12 items-center justify-center rounded-full transition-colors sm:h-14 sm:w-14", uploading ? "bg-muted-foreground/10" : "bg-primary/5 text-primary")}>
+                      {uploading ? (
+                        <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                      ) : (
+                        <Camera size={26} className="sm:h-8 sm:w-8" />
+                      )}
+                    </div>
+                    <div className="space-y-0.5 sm:space-y-1">
+                      <span className="block text-[14px] font-bold text-foreground sm:text-[15px]">{uploading ? 'Uploading Evidence...' : 'Use Camera'}</span>
+                      <span className="block text-[11px] text-muted-foreground sm:text-[12px]">Take proof now</span>
+                    </div>
                   </div>
-                  <div className="space-y-0.5 sm:space-y-1">
-                    <span className="block text-[14px] font-bold text-foreground sm:text-[15px]">{uploading ? 'Uploading Evidence...' : 'Upload Evidence'}</span>
-                    <span className="block text-[11px] text-muted-foreground sm:text-[12px]">Photos or Videos up to 50MB</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className={cn(
+                    "rounded-2xl border-2 border-dashed p-5 text-center transition-all duration-300 active:scale-[0.98] sm:p-6",
+                    uploading ? "bg-muted border-border" : "bg-card border-border hover:border-primary/40 hover:bg-primary/[0.02]"
+                  )}
+                >
+                  <div className="flex flex-col items-center justify-center gap-2 sm:gap-3">
+                    <div className={cn("flex h-12 w-12 items-center justify-center rounded-full transition-colors sm:h-14 sm:w-14", uploading ? "bg-muted-foreground/10" : "bg-primary/5 text-primary")}>
+                      {uploading ? (
+                        <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                      ) : (
+                        <Plus size={26} className="sm:h-8 sm:w-8" />
+                      )}
+                    </div>
+                    <div className="space-y-0.5 sm:space-y-1">
+                      <span className="block text-[14px] font-bold text-foreground sm:text-[15px]">Upload Evidence</span>
+                      <span className="block text-[11px] text-muted-foreground sm:text-[12px]">Photos or Videos up to 50MB</span>
+                    </div>
                   </div>
-                </div>
-              </button>
+                </button>
+              </div>
             )}
           </section>
 

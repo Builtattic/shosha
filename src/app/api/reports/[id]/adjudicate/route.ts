@@ -23,6 +23,7 @@ import * as reportsRepo from '@/lib/repos/reports';
 import * as usersRepo from '@/lib/repos/users';
 import * as notificationsRepo from '@/lib/repos/notifications';
 import * as siteSettingsRepo from '@/lib/repos/siteSettings';
+import { replayUsersForAccount } from '@/lib/services/ledgerReplay';
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
@@ -177,6 +178,10 @@ export async function POST(request: Request, { params }: { params: { id: string 
       reportScore: isApproved ? adminDecision.finalImpact : 0,
     });
 
+    const ownerLedgers = (isApproved || wasApproved)
+      ? await replayUsersForAccount(account._id, updatedAccount.claimedBy)
+      : [];
+
     // Update Reporter Score (Only on state transitions)
     if (report.reporterId) {
       const reporter = await usersRepo.findById(report.reporterId);
@@ -208,7 +213,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       entityType: 'report',
       entityId: id.data,
       before: { report, account },
-      after: { report: persistedReport, account: updatedAccount }
+      after: { report: persistedReport, account: updatedAccount, ownerLedgers }
     });
 
     // Notify
@@ -226,7 +231,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       });
     }
 
-    return ok({ report: persistedReport, account: updatedAccount });
+    return ok({ report: persistedReport, account: updatedAccount, ownerLedgers });
   } catch (error) {
     console.error('[adjudicate api] failure:', error);
     return fail('internal_error', error instanceof Error ? error.message : 'Decision failed', 500);
