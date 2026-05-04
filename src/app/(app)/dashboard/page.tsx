@@ -201,23 +201,29 @@ export default function DashboardPage() {
       return;
     }
 
+    const controller = new AbortController();
     const timer = window.setTimeout(async () => {
       setSearchingAccounts(true);
       try {
-        const response = await fetch(`/api/accounts/search?q=${encodeURIComponent(query)}&discover=1`);
+        const response = await fetch(`/api/accounts/search?q=${encodeURIComponent(query)}&discover=1`, { signal: controller.signal });
         const payload = await response.json();
         if (payload.ok) {
           setAccountMatches(payload.data.accounts ?? []);
           setAccountCandidates(payload.data.candidates ?? []);
         }
-      } catch {
-        setAccountMatches([]);
-        setAccountCandidates([]);
+      } catch (err: any) {
+        if (err?.name !== 'AbortError') {
+          setAccountMatches([]);
+          setAccountCandidates([]);
+        }
       } finally {
-        setSearchingAccounts(false);
+        if (!controller.signal.aborted) setSearchingAccounts(false);
       }
     }, 450);
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
   }, [query, searchOpen]);
 
   async function openCandidate(candidate: AccountCandidate) {
@@ -399,12 +405,12 @@ export default function DashboardPage() {
 
               {/* ── Row 1: Avatar + Name ── */}
               <div className="flex items-center gap-4">
-                <div className="h-14 w-14 overflow-hidden rounded-2xl border border-border bg-muted shadow-sm shrink-0 flex items-center justify-center relative">
+                <Link href="/profile" aria-label="Go to profile" className="h-14 w-14 overflow-hidden rounded-2xl border border-border bg-muted shadow-sm shrink-0 flex items-center justify-center relative hover:opacity-80 transition-opacity">
                   {avatarUrl ? (
-                    <img 
-                      src={avatarUrl} 
-                      alt="" 
-                      className="h-full w-full object-cover" 
+                    <img
+                      src={avatarUrl}
+                      alt=""
+                      className="h-full w-full object-cover"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
                         target.style.display = 'none';
@@ -419,7 +425,7 @@ export default function DashboardPage() {
                   )}>
                     {displayName.slice(0, 1).toUpperCase()}
                   </div>
-                </div>
+                </Link>
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                     Welcome back
@@ -562,8 +568,17 @@ export default function DashboardPage() {
               animate={{ opacity: 1, scale: 1 }}
               className="rounded-[24px] border border-border bg-card p-6 text-center"
             >
-              <p className="text-[15px] font-bold text-foreground">No filings here yet.</p>
-              <p className="mt-2 text-[13px] text-muted-foreground">Create a report or seed the emulator to populate this view.</p>
+              {activeTab === 'following' ? (
+                <>
+                  <p className="text-[15px] font-bold text-foreground">No one followed yet.</p>
+                  <p className="mt-2 text-[13px] text-muted-foreground">Follow accounts from their dossier to see their activity here.</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-[15px] font-bold text-foreground">No filings here yet.</p>
+                  <p className="mt-2 text-[13px] text-muted-foreground">Create the first report to populate this view.</p>
+                </>
+              )}
             </motion.div>
           )}
         </section>

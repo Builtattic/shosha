@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Info, ExternalLink, ShieldCheck, Mail } from 'lucide-react';
 
 export default function AboutPage() {
@@ -61,13 +62,19 @@ export default function AboutPage() {
           <p className="text-[14px] text-muted-foreground mb-6 leading-relaxed">
             The platform aggregates data, applies multipliers, and executes weekly decay/growth snapshots. You cannot manually edit a score. You cannot buy a score. You can only earn it through verifiable action.
           </p>
-          <div className="flex gap-4">
-            <button className="flex items-center justify-center gap-2 rounded-full bg-foreground px-6 py-3 text-[13px] font-bold text-background transition-all hover:bg-foreground/90 active:scale-95">
+          <div className="flex gap-4 flex-wrap">
+            <Link
+              href="/how-it-works"
+              className="flex items-center justify-center gap-2 rounded-full bg-foreground px-6 py-3 text-[13px] font-bold text-background transition-all hover:bg-foreground/90 active:scale-95"
+            >
               Read the Whitepaper <ExternalLink size={14} />
-            </button>
-            <button className="flex items-center justify-center gap-2 rounded-full border border-border bg-background px-6 py-3 text-[13px] font-bold text-foreground transition-all hover:bg-muted active:scale-95">
+            </Link>
+            <a
+              href="mailto:hello@shosha.app"
+              className="flex items-center justify-center gap-2 rounded-full border border-border bg-background px-6 py-3 text-[13px] font-bold text-foreground transition-all hover:bg-muted active:scale-95"
+            >
               <Mail size={14} /> Contact Us
-            </button>
+            </a>
           </div>
         </section>
       </div>

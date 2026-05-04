@@ -215,8 +215,17 @@ export default function FeedPage() {
           {!loading && visibleFeed.map((item) => <FeedItem key={item._id} {...toFeedItem(item)} />)}
           {!loading && visibleFeed.length === 0 && (
             <div className="rounded-[24px] border border-border bg-card p-6 text-center">
-              <p className="text-[15px] font-bold text-foreground">No reports match this view.</p>
-              <p className="mt-2 text-[13px] text-muted-foreground">Try another tab or create the first filing.</p>
+              {activeTab === 'following' ? (
+                <>
+                  <p className="text-[15px] font-bold text-foreground">No one followed yet.</p>
+                  <p className="mt-2 text-[13px] text-muted-foreground">Follow accounts from their dossier to see their filings here.</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-[15px] font-bold text-foreground">No reports match this view.</p>
+                  <p className="mt-2 text-[13px] text-muted-foreground">Try another tab or create the first filing.</p>
+                </>
+              )}
             </div>
           )}
         </div>

@@ -27,7 +27,11 @@
       "Bash(gh pr *)",
       "Bash(git reset *)",
       "Bash(git commit -m 'fix: remove duplicate Link import in disputes page *)",
-      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(list\\(d['rules'].keys\\(\\)\\)\\)\")"
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(list\\(d['rules'].keys\\(\\)\\)\\)\")",
+      "Bash(gh repo *)",
+      "Bash(gh auth *)",
+      "Bash(Get-ChildItem -Path \"D:\\\\Shosha\" -Directory)",
+      "Bash(Select-Object Name)"
     ],
     "additionalDirectories": [
       "D:\\Shosha\\src\\app\\(app)\\account",

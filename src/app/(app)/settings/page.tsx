@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { Settings, User, Bell, Lock, Globe, Palette } from 'lucide-react';
+import { Settings, User, Bell, Lock, Globe, Palette, Pencil } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { Button } from '@/components/ui/Button';
 
@@ -73,6 +74,18 @@ export default function SettingsPage() {
                 <p className="text-[14px] font-bold">Password & Security</p>
                 <p className="text-[12px] text-muted-foreground">Managed by Firebase Authentication</p>
               </div>
+            </div>
+            <div className="flex items-center justify-between gap-4 pt-2 border-t border-border">
+              <div>
+                <p className="text-[14px] font-bold">Profile Details</p>
+                <p className="text-[12px] text-muted-foreground">Edit your name, bio, and other profile info</p>
+              </div>
+              <Link
+                href="/profile/edit"
+                className="flex items-center gap-1.5 rounded-full border border-border bg-background px-4 py-2 text-[13px] font-semibold text-foreground shadow-sm transition-all hover:bg-muted shrink-0"
+              >
+                <Pencil size={13} /> Edit
+              </Link>
             </div>
           </div>
         </section>

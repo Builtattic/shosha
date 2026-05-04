@@ -4,14 +4,15 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-  CheckCircle2, Upload, MoreHorizontal, TrendingUp, Shield,
+  CheckCircle2, Upload, TrendingUp, Shield,
   PieChart, Activity, Target, User, ThumbsUp, ThumbsDown, Minus, ArrowRight,
   Briefcase, GraduationCap, FileText, Link2, Pencil, MapPin, ExternalLink,
   AlertCircle, RefreshCw
 } from 'lucide-react';
+import { useReportModal } from '@/components/report/ReportModalProvider';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { calcProfileScores, calcShoshaScore, BASE_SCORE, BASE_IMPACTS } from '@/lib/scoring';
+import { calcProfileScores, calcShoshaScore, BASE_SCORE } from '@/lib/scoring';
 import { D3ProfileGauge } from '@/components/viz/D3ProfileGauge';
 import { D3AreaChart } from '@/components/viz/D3AreaChart';
 import { D3ActivityBar } from '@/components/viz/D3ActivityBar';
@@ -68,6 +69,7 @@ const SOCIAL_KEYS = [
 export default function ProfilePage() {
   const { user: firebaseUser, loading: authLoading } = useAuth();
   const router = useRouter();
+  const reportModal = useReportModal();
   const [data, setData] = useState<{ user: any; claimedAccounts: any[]; recentEvents: any[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [recalculating, setRecalculating] = useState(false);
@@ -178,9 +180,6 @@ export default function ProfilePage() {
               aria-label="Share profile card"
             >
               <Upload size={22} strokeWidth={2.5} />
-            </button>
-            <button className="text-foreground transition-opacity hover:opacity-70">
-              <MoreHorizontal size={24} strokeWidth={2.5} />
             </button>
           </div>
         </div>
@@ -435,12 +434,13 @@ export default function ProfilePage() {
                 <div className="py-12 flex flex-col items-center gap-3 text-center">
                   <FileText size={32} className="text-muted-foreground opacity-30" />
                   <p className="text-[13px] text-muted-foreground">No events filed yet.</p>
-                  <Link
-                    href="/dashboard"
+                  <button
+                    type="button"
+                    onClick={() => reportModal.open()}
                     className="rounded-full bg-foreground px-5 py-2 text-[13px] font-bold text-background"
                   >
                     File an Event
-                  </Link>
+                  </button>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -565,7 +565,19 @@ export default function ProfilePage() {
                   Continuous trajectory from filed events. Base 1,000.
                 </p>
                 {areaChartData.length >= 2 ? (
-                  <D3AreaChart data={areaChartData} height={200} />
+                  <>
+                    <D3AreaChart data={areaChartData} height={200} />
+                    <div className="mt-3 flex items-center gap-3 text-[11px] text-muted-foreground">
+                      <span className="flex items-center gap-1.5">
+                        <span className="inline-block h-0.5 w-6 rounded bg-foreground" />
+                        Shosha Score
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="inline-block h-2 w-4 rounded-sm bg-foreground/20" />
+                        Trajectory area
+                      </span>
+                    </div>
+                  </>
                 ) : (
                   <div className="py-10 flex flex-col items-center gap-3 text-center">
                     <TrendingUp size={28} className="text-muted-foreground opacity-30" />
@@ -605,41 +617,33 @@ export default function ProfilePage() {
                 </div>
               )}
 
-              {/* Scoring Formula Reference */}
-              <div className="rounded-[24px] bg-background p-5 shadow-sm border border-border">
-                <h3 className="mb-1 text-[16px] font-bold text-foreground">How scoring works</h3>
-                <p className="mb-4 text-[13px] text-muted-foreground">
-                  Δ = BaseImpact × (IY × P × M × E × AW × AB × C × RY × IN × RP) / 10
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  {(Object.keys(BASE_IMPACTS) as Array<keyof typeof BASE_IMPACTS>).map(k => {
-                    const item = BASE_IMPACTS[k];
-                    const isPositive = item.type === 'positive';
-                    return (
-                      <div key={k} className="flex items-center justify-between rounded-xl border border-border p-2.5">
-                        <span className="text-[12px] font-semibold text-foreground">{item.label}</span>
-                        <span
-                          className={cn(
-                            'shrink-0 rounded px-1.5 py-0.5 font-mono text-[11px] font-bold tabular-nums',
-                            isPositive ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'
-                          )}
-                        >
-                          {item.value > 0 ? '+' : ''}{item.value}
-                        </span>
-                      </div>
-                    );
-                  })}
+              {/* How it works link */}
+              <Link
+                href="/how-it-works"
+                className="flex items-center justify-between rounded-[24px] bg-background p-5 shadow-sm border border-border hover:bg-muted transition-colors group"
+              >
+                <div>
+                  <h3 className="text-[16px] font-bold text-foreground">How scoring works</h3>
+                  <p className="mt-1 text-[13px] text-muted-foreground">
+                    Learn about multipliers, impact categories, and the Shosha Score formula.
+                  </p>
                 </div>
-                <p className="mt-3 text-[11px] text-muted-foreground">
-                  Multipliers run 0.5–3.0. Score never resets. Weekly momentum applies a decay/growth factor on Sundays.
-                </p>
-              </div>
+                <ArrowRight size={18} className="shrink-0 text-muted-foreground group-hover:text-foreground transition-colors ml-3" />
+              </Link>
             </div>
           )}
 
           {/* ── ABOUT ── */}
           {activeTab === 'about' && (
             <div className="space-y-4">
+              {/* Bio */}
+              {appUser?.bio && (
+                <div className="rounded-[24px] bg-background p-5 shadow-sm border border-border">
+                  <h3 className="mb-3 text-[14px] font-bold uppercase tracking-wider text-muted-foreground">Bio</h3>
+                  <p className="text-[14px] leading-relaxed text-foreground">{appUser.bio}</p>
+                </div>
+              )}
+
               {/* Basic Info */}
               <div className="rounded-[24px] bg-background p-5 shadow-sm border border-border">
                 <h3 className="mb-4 text-[14px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -768,7 +772,7 @@ export default function ProfilePage() {
               )}
 
               {/* Empty state */}
-              {!appUser?.occupationRole && !appUser?.education && socialLinks.length === 0 && (
+              {!appUser?.bio && !appUser?.occupationRole && !appUser?.education && socialLinks.length === 0 && (
                 <div className="rounded-[24px] border border-dashed border-border bg-background p-8 text-center">
                   <p className="text-[13px] text-muted-foreground mb-3">No profile information yet.</p>
                   <Link
