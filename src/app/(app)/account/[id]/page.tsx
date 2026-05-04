@@ -1,12 +1,6 @@
 import { notFound } from 'next/navigation';
 import {
   CheckCircle2,
-  TrendingUp,
-  TrendingDown,
-  Shield,
-  Users,
-  Minus,
-  Flame,
   Globe,
   MoreHorizontal,
   PieChart,
@@ -15,6 +9,8 @@ import {
   User,
   ArrowRight,
   Plus,
+  Minus,
+  TrendingUp,
   ChevronLeft,
   AlertCircle,
 } from 'lucide-react';
@@ -23,12 +19,12 @@ import { DossierActions } from '@/components/profile/DossierActions';
 import { FollowButton } from '@/components/profile/FollowButton';
 import { FilingsList } from '@/components/profile/FilingsList';
 import { PostsFeed } from '@/components/profile/PostsFeed';
-import { D3ProfileGauge } from '@/components/viz/D3ProfileGauge';
 import { ScoreRadar } from '@/components/viz/ScoreRadar';
 import { D3AreaChart } from '@/components/viz/D3AreaChart';
 import { SimilarProfiles } from '@/components/profile/SimilarProfiles';
 import { AccountShareButton } from '@/components/profile/AccountShareButton';
-import { formatPlatform, cn } from '@/lib/utils';
+import { LiveAccountScorePanel } from '@/components/profile/LiveAccountScorePanel';
+import { formatPlatform, cn, formatDate } from '@/lib/utils';
 import { BASE_SCORE } from '@/lib/scoring';
 import { idSchema } from '@/lib/validators';
 import * as accountsRepo from '@/lib/repos/accounts';
@@ -111,8 +107,6 @@ export default async function AccountPage({
       account.avatarUrl = user.photoUrl || account.avatarUrl;
       account.displayName = user.name || account.displayName;
       account.bio = user.bio || account.bio;
-      account.score = user.score ?? account.score;
-      account.scoreHistory = user.scoreHistory?.map((h: any) => ({ ...h, s: h.s ?? h.score ?? BASE_SCORE })) ?? account.scoreHistory;
       
       // Inject the user's filed reports as "posts" to populate the feed
       const { listByReporter } = await import('@/lib/repos/reports');
@@ -349,123 +343,16 @@ export default async function AccountPage({
           </div>
         </div>
 
-        {/* Score Gauge Hero — properly centered */}
-        <div className="mt-10 mb-6 flex justify-center">
-          <D3ProfileGauge score={account.score} minScore={-99000} maxScore={101000} size={340} />
-        </div>
-
-        {/* 4 Stat Cards with REAL data - Enhanced Premium Look */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {/* This Week */}
-
-          <div className="group relative overflow-hidden rounded-[24px] border border-border bg-background p-4 shadow-sm transition-all hover:shadow-md">
-            <div className="flex flex-col items-center text-center">
-              <div
-                className={cn(
-                  'flex h-8 w-8 items-center justify-center rounded-full mb-3',
-                  weeklyDelta > 0
-                    ? 'bg-green-500/10 text-green-500 dark:bg-green-500/20 dark:text-green-400'
-                    : weeklyDelta < 0
-                    ? 'bg-red-500/10 text-red-500 dark:bg-red-500/20 dark:text-red-400'
-                    : 'bg-muted text-muted-foreground',
-                )}
-              >
-                {weeklyDelta > 0 ? (
-                  <TrendingUp size={16} strokeWidth={2.5} />
-                ) : weeklyDelta < 0 ? (
-                  <TrendingDown size={16} strokeWidth={2.5} />
-                ) : (
-                  <Minus size={16} strokeWidth={2.5} />
-                )}
-              </div>
-              <p
-                className={cn(
-                  'text-[22px] font-black tabular-nums tracking-tight leading-none',
-                  weeklyDelta > 0 ? 'text-green-600 dark:text-green-400' : weeklyDelta < 0 ? 'text-red-600 dark:text-red-400' : 'text-foreground',
-                )}
-              >
-                {weeklyDelta > 0 ? '+' : ''}
-                {weeklyDelta.toLocaleString()}
-              </p>
-              <p className="mt-1 text-[12px] font-bold text-muted-foreground">This Week</p>
-            </div>
-            {/* Decorative Sparkline */}
-            <div className="absolute bottom-0 left-0 right-0 h-8 opacity-40 transition-opacity group-hover:opacity-100">
-              <svg viewBox="0 0 100 20" preserveAspectRatio="none" className="h-full w-full">
-                <path
-                  d="M0,20 C20,15 30,5 50,10 C70,15 80,5 100,2 L100,20 Z"
-                  className={weeklyDelta >= 0 ? "fill-green-500/20" : "fill-red-500/20"}
-                />
-                <path
-                  d="M0,20 C20,15 30,5 50,10 C70,15 80,5 100,2"
-                  fill="none"
-                  className={weeklyDelta >= 0 ? "stroke-green-500" : "stroke-red-500"}
-                  strokeWidth="1.5"
-                />
-              </svg>
-            </div>
-          </div>
-
-          {/* Total Impact */}
-          <div className="group relative overflow-hidden rounded-[24px] border border-border bg-background p-4 shadow-sm transition-all hover:shadow-md">
-            <div className="flex flex-col items-center text-center">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full mb-3 bg-red-500/10 text-red-500 dark:bg-red-500/20 dark:text-red-400">
-                <Flame size={16} strokeWidth={2.5} />
-              </div>
-              <p className="text-[22px] font-black tabular-nums tracking-tight leading-none text-foreground">
-                {formatImpact(totalPositiveImpact)}
-              </p>
-              <p className="mt-1 text-[12px] font-bold text-muted-foreground">Total Impact</p>
-            </div>
-            {/* Decorative Sparkline */}
-            <div className="absolute bottom-0 left-0 right-0 h-8 opacity-40 transition-opacity group-hover:opacity-100">
-              <svg viewBox="0 0 100 20" preserveAspectRatio="none" className="h-full w-full">
-                <path
-                  d="M0,20 C20,10 40,18 60,8 C80,-2 90,12 100,5 L100,20 Z"
-                  className="fill-red-500/20"
-                />
-                <path
-                  d="M0,20 C20,10 40,18 60,8 C80,-2 90,12 100,5"
-                  fill="none"
-                  className="stroke-red-500"
-                  strokeWidth="1.5"
-                />
-              </svg>
-            </div>
-          </div>
-
-          {/* Followers */}
-          <div className="rounded-[24px] border border-border bg-background p-4 shadow-sm transition-all hover:shadow-md">
-            <div className="flex flex-col items-center text-center h-full justify-center">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full mb-3 bg-muted text-foreground">
-                <Users size={16} strokeWidth={2.5} />
-              </div>
-              <p className="text-[22px] font-black tabular-nums tracking-tight leading-none text-foreground">
-                {account.followers || '—'}
-              </p>
-              <p className="mt-1 text-[12px] font-bold text-muted-foreground">Followers</p>
-            </div>
-          </div>
-
-          {/* Credibility */}
-          <div className="rounded-[24px] border border-border bg-background p-4 shadow-sm transition-all hover:shadow-md flex flex-col justify-between">
-            <div className="flex flex-col items-center text-center">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full mb-3 bg-muted text-foreground">
-                <Shield size={16} strokeWidth={2.5} />
-              </div>
-              <p className="text-[22px] font-black tabular-nums tracking-tight leading-none text-foreground">
-                {account.credibility ?? 80}%
-              </p>
-              <p className="mt-1 text-[12px] font-bold text-muted-foreground">Credibility</p>
-            </div>
-            <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-foreground transition-all duration-1000 ease-out"
-                style={{ width: `${account.credibility ?? 80}%` }}
-              />
-            </div>
-          </div>
-        </div>
+        <LiveAccountScorePanel
+          accountId={account._id}
+          initial={{
+            score: account.score,
+            scoreHistory: account.scoreHistory,
+            followers: account.followers,
+            credibility: account.credibility,
+            createdAt: account.createdAt,
+          }}
+        />
 
         {windowScores && (
           <div className="mt-4 rounded-[24px] border border-border bg-background p-4 shadow-sm">
@@ -605,13 +492,7 @@ export default async function AccountPage({
                                 </>
                               )}
                               <span>
-                                {filing.createdAt
-                                  ? new Date(filing.createdAt).toLocaleDateString('en-US', {
-                                      month: 'short',
-                                      day: 'numeric',
-                                      year: 'numeric',
-                                    })
-                                  : 'Recent'}
+                                {filing.createdAt ? formatDate(filing.createdAt) : 'Recent'}
                               </span>
                             </p>
                           </div>

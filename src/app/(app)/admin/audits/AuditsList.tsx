@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { CheckCircle, XCircle, Clock, User } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
+import { formatDate } from '@/lib/utils';
 
 type AuditRow = {
   _id: string;
@@ -83,7 +84,7 @@ export function AuditsList({ initialAudits }: { initialAudits: AuditRow[] }) {
                   </span>
                   {audit.createdAt && (
                     <span className="text-[11px] font-bold text-muted-foreground/40 uppercase tracking-widest">
-                      {new Date(audit.createdAt).toLocaleDateString()}
+                      {formatDate(audit.createdAt)}
                     </span>
                   )}
                 </div>

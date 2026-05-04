@@ -17,6 +17,12 @@ function scoreReport(report: reportsRepo.ReportRecord) {
   return reportScore * (report.credibilityWeight ?? 1) * recency * Math.max(1, engagement);
 }
 
+function createdTime(report: { createdAt?: string; timestamp?: string }) {
+  const value = report.createdAt ?? report.timestamp;
+  const time = value ? new Date(value).getTime() : 0;
+  return Number.isFinite(time) ? time : 0;
+}
+
 import Parser from 'rss-parser';
 
 const parser = new Parser({
@@ -252,7 +258,7 @@ export async function GET(request: Request) {
     feed = [...feed, ...liveNews] as any[];
   }
 
-  if (filter === 'top' || settings.feedRankingMode === 'smart') {
+  if (filter === 'top') {
     feed = feed.sort((a, b) => scoreReport(b as any) - scoreReport(a as any));
   } else if (filter === 'positive') {
     feed = feed.filter((report) => report.type === 'positive');
@@ -264,7 +270,11 @@ export async function GET(request: Request) {
 
   feed = feed
     .filter((report) => !report.account?.platform || settings.enabledPlatforms.includes(report.account.platform))
-    .sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) || Number(Boolean(b.featured)) - Number(Boolean(a.featured)))
+    .sort((a, b) =>
+      Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) ||
+      Number(Boolean(b.featured)) - Number(Boolean(a.featured)) ||
+      createdTime(b) - createdTime(a)
+    )
     .slice(0, 30);
 
   const viewerStates = await Promise.all(

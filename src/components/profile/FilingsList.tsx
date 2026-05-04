@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { cn } from '@/lib/utils';
+import { cn, formatDate } from '@/lib/utils';
 
 type Filing = {
   _id: string;
@@ -26,11 +26,6 @@ function formatScore(value?: number) {
   return `${value > 0 ? '+' : ''}${Number.isInteger(value) ? value : value.toFixed(1)}`;
 }
 
-function formatDate(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  return new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric' }).format(date);
-}
 
 export function FilingsList({ filings }: { filings: Filing[] }) {
   if (!filings.length) {

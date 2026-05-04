@@ -26,7 +26,7 @@ import {
   Download,
   ShieldAlert
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatDate } from '@/lib/utils';
 import { handleAvatarError, resolveAvatarUrl } from '@/lib/media';
 import { useToast } from '@/components/ui/Toast';
 import { FeedShareCard } from './FeedShareCard';
@@ -49,7 +49,7 @@ function relativeTime(iso: string): string {
   if (hr < 24) return `${hr}h ago`;
   const day = Math.floor(hr / 24);
   if (day < 7) return `${day}d ago`;
-  return new Date(iso).toLocaleDateString();
+  return formatDate(iso);
 }
 
 export interface FeedItemProps {
@@ -137,7 +137,8 @@ export function FeedItem({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  async function handleShareClick() {
+  async function handleShareClick(e?: React.MouseEvent) {
+    e?.stopPropagation();
     setGeneratingImage(true);
     try {
       // interact('share') just to bump the count and optionally log
@@ -220,7 +221,8 @@ export function FeedItem({
     }
   }
 
-  async function toggleComments() {
+  async function toggleComments(e?: React.MouseEvent) {
+    e?.stopPropagation();
     const next = !commentsOpen;
     setCommentsOpen(next);
     if (next && comments === null) await loadComments();
@@ -255,7 +257,8 @@ export function FeedItem({
     }
   }
 
-  async function interact(action: 'align' | 'oppose' | 'share' | 'bookmark') {
+  async function interact(action: 'align' | 'oppose' | 'share' | 'bookmark', e?: React.MouseEvent) {
+    e?.stopPropagation();
     setBusy(action);
     try {
       const response = await fetch(`/api/reports/${id}/interactions`, {
@@ -326,7 +329,7 @@ export function FeedItem({
     return value > 1000 ? `${(value / 1000).toFixed(1)}K` : value;
   }
 
-    const isLiveNews = id.startsWith('twitter-') || id.startsWith('ig-') || id.startsWith('fb-') || id.startsWith('news-') || id.startsWith('reddit-');
+  const isLiveNews = id.startsWith('twitter-') || id.startsWith('ig-') || id.startsWith('fb-') || id.startsWith('news-') || id.startsWith('reddit-');
   const displayAuthor = reporter || (isLiveNews ? user : { name: 'Anonymous', handle: 'anonymous', avatar: '', isVerified: false });
   const displaySubject = isLiveNews ? null : user;
 
@@ -559,7 +562,10 @@ export function FeedItem({
           {canRequestModeration && (
             <button
               type="button"
-              onClick={() => setModerationOpen(true)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setModerationOpen(true);
+              }}
               className="flex items-center gap-2 transition-colors hover:text-foreground active:scale-95"
               aria-label="Request moderation"
             >

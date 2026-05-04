@@ -1,44 +1,15 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Search, Bell, Plus, X } from 'lucide-react';
-import { FeedItem, type FeedItemProps } from '@/components/feed/FeedItem';
+import { FeedItem } from '@/components/feed/FeedItem';
 import { useReportModal } from '@/components/report/ReportModalProvider';
+import { PostDetailModal } from '@/components/feed/PostDetailModal';
 import { cn } from '@/lib/utils';
+import { type FeedReport, toFeedItem } from '@/lib/feed';
 
 type FeedFilter = 'for_you' | 'top' | 'positive' | 'negative' | 'following';
-type FeedReport = {
-  _id: string;
-  type: 'positive' | 'negative';
-  description: string;
-  media?: { type: 'image' | 'video'; url: string };
-  createdAt?: string;
-  stats?: FeedItemProps['stats'];
-  aiVerdict?: { proposedImpact?: number } | null;
-  adminDecision?: { finalImpact?: number } | null;
-  category?: string;
-  deed?: string;
-  disputeStatus?: string;
-  reportScore?: number;
-  baseScore?: number;
-  evidenceSourceUrl?: string;
-  canRequestModeration?: boolean;
-  viewer?: FeedItemProps['viewer'];
-  account: {
-    _id: string;
-    username: string;
-    displayName: string;
-    avatarUrl?: string;
-    verified?: boolean;
-    platform?: string;
-  };
-  reporter?: {
-    username: string;
-    name?: string;
-    photoUrl?: string;
-    role?: string;
-  } | null;
-};
 
 const tabs: Array<{ label: string; value: FeedFilter }> = [
   { label: 'All', value: 'for_you' },
@@ -48,56 +19,26 @@ const tabs: Array<{ label: string; value: FeedFilter }> = [
   { label: 'Following', value: 'following' }
 ];
 
-function timestamp(value?: string) {
-  if (!value) return 'just now';
-  const diff = Date.now() - new Date(value).getTime();
-  const minutes = Math.max(0, Math.floor(diff / 60_000));
-  if (minutes < 60) return minutes < 1 ? 'just now' : `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  return hours < 24 ? `${hours}h ago` : `${Math.floor(hours / 24)}d ago`;
-}
-
-function toFeedItem(report: FeedReport): FeedItemProps {
-  return {
-    id: report._id,
-    user: {
-      name: report.account.displayName.replace(/^@/, ''),
-      handle: report.account.username.replace(/^@/, ''),
-      avatar: report.account.avatarUrl ?? '',
-      isVerified: Boolean(report.account.verified),
-      platform: report.account.platform,
-      accountId: report.account._id
-    },
-    reporter: report.reporter ? {
-      name: report.reporter.name || report.reporter.username.replace(/^@/, ''),
-      handle: report.reporter.username.replace(/^@/, ''),
-      avatar: report.reporter.photoUrl ?? '',
-      isVerified: report.reporter.role === 'admin' || report.reporter.role === 'moderator'
-    } : undefined,
-    timestamp: timestamp(report.createdAt),
-    type: report.type,
-    title: report.description,
-    location: 'Global',
-    media: report.media,
-    category: report.category,
-    deed: report.deed,
-    disputeStatus: report.disputeStatus,
-    reportScore: report.reportScore ?? report.baseScore,
-    evidenceSourceUrl: report.evidenceSourceUrl,
-    stats: report.stats ?? { aligns: 0, opposes: 0, comments: 0, shares: 0 },
-    delta: report.adminDecision?.finalImpact ?? report.aiVerdict?.proposedImpact ?? 0,
-    viewer: report.viewer,
-    canRequestModeration: report.canRequestModeration
-  };
-}
-
-export default function FeedPage() {
+function FeedContent() {
   const reportModal = useReportModal();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  
+  const initialReportId = searchParams.get('report');
   const [activeTab, setActiveTab] = useState<FeedFilter>('for_you');
   const [feed, setFeed] = useState<FeedReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [selectedReportId, setSelectedReportId] = useState<string | null>(initialReportId);
+  const [detailOpen, setDetailOpen] = useState(!!initialReportId);
+
+  useEffect(() => {
+    if (initialReportId) {
+      setSelectedReportId(initialReportId);
+      setDetailOpen(true);
+    }
+  }, [initialReportId]);
 
   useEffect(() => {
     const backendFilter = activeTab === 'positive' || activeTab === 'negative' ? 'for_you' : activeTab;
@@ -214,7 +155,14 @@ export default function FeedPage() {
               ))}
             </>
           )}
-          {!loading && visibleFeed.map((item) => <FeedItem key={item._id} {...toFeedItem(item)} />)}
+          {!loading && visibleFeed.map((item) => (
+            <div key={item._id} onClick={() => {
+              setSelectedReportId(item._id);
+              setDetailOpen(true);
+            }} className="cursor-pointer">
+              <FeedItem {...toFeedItem(item)} />
+            </div>
+          ))}
           {!loading && visibleFeed.length === 0 && (
             <div className="rounded-[24px] border border-border bg-card p-6 text-center">
               {activeTab === 'following' ? (
@@ -233,6 +181,24 @@ export default function FeedPage() {
         </div>
       </div>
 
+      <PostDetailModal
+        open={detailOpen}
+        reportId={selectedReportId}
+        onClose={() => {
+          setDetailOpen(false);
+          if (initialReportId) {
+            router.replace('/feed');
+          }
+        }}
+      />
     </main>
+  );
+}
+
+export default function FeedPage() {
+  return (
+    <Suspense fallback={null}>
+      <FeedContent />
+    </Suspense>
   );
 }

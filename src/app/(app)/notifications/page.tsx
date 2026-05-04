@@ -14,7 +14,7 @@ import {
   ShieldCheck,
   ShieldAlert
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatDate } from '@/lib/utils';
 
 type Kind =
   | 'report_approved'
@@ -51,7 +51,7 @@ function relativeTime(iso: string): string {
   if (hr < 24) return `${hr}h ago`;
   const day = Math.floor(hr / 24);
   if (day < 7) return `${day}d ago`;
-  return new Date(iso).toLocaleDateString();
+  return formatDate(iso);
 }
 
 function iconFor(kind: Kind) {

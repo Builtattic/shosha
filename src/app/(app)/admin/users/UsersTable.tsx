@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, Shield, User, MoreHorizontal, ChevronUp, ChevronDown, Trash2, Camera, Loader2 } from 'lucide-react';
-import { useToast } from '@/components/ui/Toast';
+import { cn, formatDate } from '@/lib/utils';
 import type { AppUser } from '@/lib/repos/users';
 
 type UserRow = AppUser;
@@ -344,7 +344,7 @@ export function UsersTable({ initialUsers }: { initialUsers: UserRow[] }) {
                 </td>
                 <td className="px-6 py-4 text-right hidden lg:table-cell">
                   <span className="text-[12px] text-muted-foreground font-mono font-medium">
-                    {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '—'}
+                    {user.createdAt ? formatDate(user.createdAt) : '—'}
                   </span>
                 </td>
                 <td className="px-6 py-4 text-right relative">

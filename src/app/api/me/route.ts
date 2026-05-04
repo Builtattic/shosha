@@ -10,10 +10,23 @@ export async function GET() {
     const user = await getCurrentUser();
     if (!user) return ok({ user: null, claimedAccounts: [], recentEvents: [] });
 
-    const [claimedAccounts, myReports] = await Promise.all([
+    const [claimedAccountsRaw, myReports] = await Promise.all([
       Promise.all((user.claimedAccounts ?? []).slice(0, 10).map((id) => accountsRepo.findById(id))).catch(() => []),
       reportsRepo.listByReporter(user._id, 10).catch(() => [])
     ]);
+    const claimedAccounts = claimedAccountsRaw.filter(Boolean);
+    const liveScoreAccount =
+      claimedAccounts.find((account) => account!.platform === 'website' && account!.claimedBy === user._id) ??
+      claimedAccounts.find((account) => account!.claimedBy === user._id) ??
+      claimedAccounts[0] ??
+      null;
+    const liveUser = liveScoreAccount && typeof liveScoreAccount.score === 'number'
+      ? {
+          ...user,
+          score: liveScoreAccount.score,
+          scoreHistory: Array.isArray(liveScoreAccount.scoreHistory) ? liveScoreAccount.scoreHistory : user.scoreHistory,
+        }
+      : user;
 
     // Map reports into the shape the profile UI expects (eventType, description, timestamp, status).
     const recentEvents = myReports.map((report) => ({
@@ -29,8 +42,8 @@ export async function GET() {
     }));
 
     return ok({
-      user,
-      claimedAccounts: claimedAccounts.filter(Boolean),
+      user: liveUser,
+      claimedAccounts,
       recentEvents
     });
   } catch (err) {

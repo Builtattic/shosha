@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { CheckCircle, XCircle, User, FileText } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
+import { formatDate } from '@/lib/utils';
 
 type ClaimRow = {
   _id: string;
@@ -68,7 +69,7 @@ export function ClaimsList({ initialClaims }: { initialClaims: ClaimRow[] }) {
                   </span>
                   {claim.createdAt && (
                     <span className="text-[11px] font-bold text-muted-foreground/40 uppercase tracking-widest">
-                      {new Date(claim.createdAt).toLocaleDateString()}
+                      {formatDate(claim.createdAt)}
                     </span>
                   )}
                 </div>

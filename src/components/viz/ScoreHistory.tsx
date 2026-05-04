@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
+import { formatDate } from '@/lib/utils';
 
 // Dummy data representing stock-style score growth
 const generateData = () => {
@@ -62,6 +63,18 @@ export function ScoreHistory({ className }: { className?: string }) {
               {filter}
             </button>
           ))}
+        </div>
+      </div>
+      
+      {/* Legend */}
+      <div className="flex items-center gap-6 px-1">
+        <div className="flex items-center gap-2">
+          <div className="h-1 w-4 rounded-full bg-[#4ade80]" />
+          <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">Social Credit Score</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="h-1 w-4 rounded-full bg-[#4ade80] opacity-30" />
+          <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">Projected Trend</span>
         </div>
       </div>
 
@@ -136,20 +149,17 @@ export function ScoreHistory({ className }: { className?: string }) {
             transition={{ delay: 1.6 }}
             className="absolute right-[2%] top-[10%] bg-card border border-border shadow-lg rounded-[12px] p-2 flex flex-col items-center"
           >
-            <span className="text-[10px] text-muted-foreground font-medium">May 24, 2024</span>
-            <span className="text-[14px] font-bold text-primary">18,420</span>
+            <span className="text-[10px] text-muted-foreground font-medium">{formatDate("2024-05-24")}</span>
+            <span className="text-[14px] font-bold text-[#4ade80]">18,420</span>
           </motion.div>
         </div>
 
         {/* X-Axis Labels */}
-        <div className="absolute left-8 right-0 bottom-0 flex justify-between text-[10px] text-muted-foreground font-medium pt-2">
-          <span>May &apos;23</span>
-          <span>Jul &apos;23</span>
-          <span>Sep &apos;23</span>
-          <span>Nov &apos;23</span>
-          <span>Jan &apos;24</span>
-          <span>Mar &apos;24</span>
-          <span>May &apos;24</span>
+        <div className="absolute left-8 right-0 bottom-0 flex justify-between text-[9px] text-muted-foreground font-medium pt-2">
+          <span>{formatDate("2023-05-01")}</span>
+          <span>{formatDate("2023-09-01")}</span>
+          <span>{formatDate("2024-01-01")}</span>
+          <span>{formatDate("2024-05-24")}</span>
         </div>
       </div>
     </div>

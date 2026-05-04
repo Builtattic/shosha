@@ -27,3 +27,12 @@ export function clamp(value: number, min = 0, max = 100) {
 export function serializeDoc<T>(doc: T): T {
   return JSON.parse(JSON.stringify(doc)) as T;
 }
+
+export function formatDate(date: string | Date) {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  return d.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  });
+}

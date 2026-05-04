@@ -11,13 +11,15 @@ import {
 } from 'lucide-react';
 import { useReportModal } from '@/components/report/ReportModalProvider';
 import Link from 'next/link';
-import { cn } from '@/lib/utils';
+import { cn, formatDate } from '@/lib/utils';
 import { calcProfileScores, calcShoshaScore, BASE_SCORE } from '@/lib/scoring';
 import { D3ProfileGauge } from '@/components/viz/D3ProfileGauge';
 import { D3AreaChart } from '@/components/viz/D3AreaChart';
 import { D3ActivityBar } from '@/components/viz/D3ActivityBar';
 import { ProfileScoreRadar } from '@/components/viz/ProfileScoreRadar';
 import { ShareCardModal } from '@/components/profile/ShareCardModal';
+import { PostDetailModal } from '@/components/feed/PostDetailModal';
+
 
 const EDU_LABELS: Record<string, string> = {
   no_formal: 'No Formal Education',
@@ -75,6 +77,8 @@ export default function ProfilePage() {
   const [recalculating, setRecalculating] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'activity' | 'impact' | 'about'>('overview');
   const [shareOpen, setShareOpen] = useState(false);
+  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+  const [reportDetailOpen, setReportDetailOpen] = useState(false);
   const initialReplayDone = useRef(false);
 
   async function recalculateScore() {
@@ -482,10 +486,16 @@ export default function ProfilePage() {
                     const isPositive = type === 'positive';
                     const isNegative = type === 'negative';
                     return (
-                      <Link
+                      <button
                         key={event._id || i}
-                        href={event.subjectId ? `/account/${event.subjectId}` : event.reportId ? `/feed?report=${event.reportId}` : '/feed'}
-                        className="flex items-start gap-3 rounded-xl border border-border p-3 transition-colors hover:bg-muted/40"
+                        onClick={(e) => {
+                          if (event.reportId) {
+                            e.preventDefault();
+                            setSelectedReportId(event.reportId);
+                            setReportDetailOpen(true);
+                          }
+                        }}
+                        className="w-full text-left flex items-start gap-3 rounded-xl border border-border p-3 transition-colors hover:bg-muted/40"
                       >
                         <div
                           className={cn(
@@ -515,13 +525,7 @@ export default function ProfilePage() {
                             </p>
                           )}
                           <p className="mt-1 text-[11px] text-muted-foreground">
-                            {event.timestamp
-                              ? new Date(event.timestamp).toLocaleDateString('en-US', {
-                                  year: 'numeric',
-                                  month: 'short',
-                                  day: 'numeric',
-                                })
-                              : 'Unknown date'}
+                            {event.timestamp ? formatDate(event.timestamp) : 'Unknown date'}
                           </p>
                         </div>
                         {event.impact != null && (
@@ -538,7 +542,7 @@ export default function ProfilePage() {
                             {event.impact > 0 ? '+' : ''}{event.impact}
                           </div>
                         )}
-                      </Link>
+                      </button>
                     );
                   })}
                 </div>
@@ -634,7 +638,7 @@ export default function ProfilePage() {
                             {entry.cause}{entry.category ? ` · ${entry.category.replace(/_/g, ' ')}` : ''}
                           </p>
                           <p className="text-[11px] text-muted-foreground">
-                            {entry.t ? new Date(entry.t).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : ''}
+                            {entry.t ? formatDate(entry.t) : ''}
                           </p>
                         </div>
                         <span
@@ -695,11 +699,7 @@ export default function ProfilePage() {
                     <div className="flex items-center justify-between">
                       <dt className="text-[13px] text-muted-foreground">Date of Birth</dt>
                       <dd className="text-[13px] font-semibold text-foreground">
-                        {new Date(appUser.dob).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                        })}
+                        {formatDate(appUser.dob)}
                       </dd>
                     </div>
                   )}
@@ -850,6 +850,11 @@ export default function ProfilePage() {
           resource: appUser?.resourceMultiplier,
           legacy: appUser?.legacyMultiplier,
         }}
+      />
+      <PostDetailModal
+        open={reportDetailOpen}
+        reportId={selectedReportId}
+        onClose={() => setReportDetailOpen(false)}
       />
     </main>
   );
