@@ -1,8 +1,9 @@
 import { fail, ok } from '@/lib/api';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser, isAdmin } from '@/lib/auth';
 import { idSchema } from '@/lib/validators';
 import * as reportsRepo from '@/lib/repos/reports';
 import * as accountsRepo from '@/lib/repos/accounts';
+import { redactPublicReporter } from '@/lib/reportPrivacy';
 
 export async function GET(_: Request, { params }: { params: { id: string } }) {
   const id = idSchema.safeParse(params.id);
@@ -15,5 +16,5 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
     return fail('forbidden', 'That filing is still under seal.', 403);
   }
   const account = await accountsRepo.findById(report.accountId);
-  return ok({ ...report, account });
+  return ok({ ...(isAdmin(user) ? report : redactPublicReporter(report)), account });
 }

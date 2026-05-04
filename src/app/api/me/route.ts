@@ -21,6 +21,7 @@ export async function GET() {
       eventType: report.type,
       description: report.description,
       subjectId: report.accountId,
+      reportId: report._id,
       timestamp: report.createdAt ?? new Date().toISOString(),
       status: report.status,
       aiVerdict: report.aiVerdict,

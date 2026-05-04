@@ -85,12 +85,16 @@ export async function POST(request: Request, { params }: { params: { id: string 
   const decidedAt = new Date().toISOString();
   const finalImpact = parsed.data.finalImpact ?? Math.round(delta);
 
+  const originalReporterId = proposal.reporterId ?? null;
+  const publicAnonymous = proposal.publicAnonymous !== false || !originalReporterId;
+  const originalAnonymousTag = publicAnonymous ? 'Anonymous' : (proposal.anonymousTag ?? 'Reporter');
+
   const report = await reportsRepo.create({
     accountId: account._id,
-    reporterId: user!._id,
-    anonymousTag: user!.username,
-    hashedUserId: user!._id,
-    publicAnonymous: true,
+    reporterId: originalReporterId,
+    anonymousTag: originalAnonymousTag,
+    hashedUserId: originalReporterId ?? user!._id,
+    publicAnonymous,
     type: proposal.type,
     category: scoringRow.category,
     deed: scoringRow.deed,
@@ -171,8 +175,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
   const event = await eventsRepo.create({
     subjectId: account._id,
-    reporterId: user!._id,
-    anonymousTag: user!.username,
+    reporterId: originalReporterId,
+    anonymousTag: originalAnonymousTag,
     eventType: proposal.type,
     description: proposal.summary,
     baseImpactKey: scoringRow.deed,

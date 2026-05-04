@@ -227,20 +227,26 @@ export async function GET(request: Request) {
   const reporterMap = new Map(reporters.filter(Boolean).map((reporter) => [reporter!._id, reporter!]));
 
   let feed: any[] = reports
-    .map((report) => redactPublicReporter({
+    .map((report) => ({
       ...report,
       account: accountMap.get(report.accountId) ?? null,
       reporter: !hidesReporterOnPublicSurfaces(report) && report.reporterId
         ? (reporterMap.get(report.reporterId) ?? null)
-        : null
+        : null,
+      canRequestModeration: Boolean(user && report.reporterId === user._id)
     }))
     .filter((report) => report.account !== null);
 
   const liveNews = settings.liveFeedEnabled ? await getLiveNews() : [];
 
   if (filter === 'following') {
-    const followed = new Set(user?.claimedAccounts ?? []);
-    feed = feed.filter((report) => followed.has(report.accountId));
+    const followedAccounts = new Set(user?.claimedAccounts ?? []);
+    const followedUsers = new Set(user?.following ?? []);
+    feed = feed.filter((report) =>
+      followedAccounts.has(report.accountId) ||
+      (report.account?.claimedBy && followedUsers.has(report.account.claimedBy)) ||
+      (report.reporterId && followedUsers.has(report.reporterId) && !hidesReporterOnPublicSurfaces(report))
+    );
   } else {
     // Append news for non-following tabs
     feed = [...feed, ...liveNews] as any[];
@@ -271,7 +277,9 @@ export async function GET(request: Request) {
 
   return ok(
     feed.map((report, index) => ({
-      ...report,
+      ...(report._id.startsWith('news-') || report._id.startsWith('reddit-') || report._id.startsWith('twitter-') || report._id.startsWith('ig-') || report._id.startsWith('fb-')
+        ? report
+        : redactPublicReporter(report)),
       viewer: viewerStates[index]
     }))
   );

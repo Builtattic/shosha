@@ -23,7 +23,8 @@ import {
   Send,
   Loader2,
   X,
-  Download
+  Download,
+  ShieldAlert
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { handleAvatarError, resolveAvatarUrl } from '@/lib/media';
@@ -94,6 +95,7 @@ export interface FeedItemProps {
     avatar: string;
     isVerified: boolean;
   };
+  canRequestModeration?: boolean;
 }
 
 export function FeedItem({
@@ -112,7 +114,8 @@ export function FeedItem({
   stats,
   delta,
   viewer,
-  reporter
+  reporter,
+  canRequestModeration
 }: FeedItemProps) {
   const router = useRouter();
   const toast = useToast();
@@ -124,6 +127,10 @@ export function FeedItem({
   const [comments, setComments] = useState<CommentItem[] | null>(null);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentDraft, setCommentDraft] = useState('');
+  const [moderationOpen, setModerationOpen] = useState(false);
+  const [moderationReason, setModerationReason] = useState('');
+  const [moderationEvidenceUrl, setModerationEvidenceUrl] = useState('');
+  const [moderationSubmitting, setModerationSubmitting] = useState(false);
 
   // Share Card State
   const [generatingImage, setGeneratingImage] = useState(false);
@@ -277,6 +284,41 @@ export function FeedItem({
       toast.push(error instanceof Error ? error.message : 'Action failed.');
     } finally {
       setBusy(null);
+    }
+  }
+
+  async function submitModerationRequest() {
+    const reason = moderationReason.trim();
+    if (reason.length < 10) {
+      toast.push('Please add at least 10 characters explaining the request.');
+      return;
+    }
+    setModerationSubmitting(true);
+    try {
+      const response = await fetch(`/api/reports/${id}/moderation`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reason,
+          evidenceUrl: moderationEvidenceUrl.trim() || undefined
+        })
+      });
+      const payload = await response.json();
+      if (!payload.ok) {
+        if (response.status === 401) {
+          router.push('/sign-in');
+          return;
+        }
+        throw new Error(payload.error?.message ?? 'Could not submit moderation request.');
+      }
+      toast.push('Moderation request sent.');
+      setModerationOpen(false);
+      setModerationReason('');
+      setModerationEvidenceUrl('');
+    } catch (error) {
+      toast.push(error instanceof Error ? error.message : 'Could not submit moderation request.');
+    } finally {
+      setModerationSubmitting(false);
     }
   }
 
@@ -514,6 +556,16 @@ export function FeedItem({
           >
             {generatingImage ? <Loader2 size={18} className="animate-spin" /> : <Share2 size={18} />}
           </button>
+          {canRequestModeration && (
+            <button
+              type="button"
+              onClick={() => setModerationOpen(true)}
+              className="flex items-center gap-2 transition-colors hover:text-foreground active:scale-95"
+              aria-label="Request moderation"
+            >
+              <ShieldAlert size={18} />
+            </button>
+          )}
         </div>
         <button
           type="button"
@@ -681,6 +733,51 @@ export function FeedItem({
                   Share to Socials
                 </button>
               </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {moderationOpen && typeof document !== 'undefined' &&
+        createPortal(
+          <div className="fixed inset-0 z-[110] flex items-end justify-center bg-background/90 p-4 backdrop-blur-sm sm:items-center">
+            <div className="w-full max-w-md rounded-2xl border border-border bg-card p-5 shadow-2xl">
+              <div className="mb-4 flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-[16px] font-black text-foreground">Request Moderation</h3>
+                  <p className="mt-1 text-[12px] leading-5 text-muted-foreground">
+                    Ask moderators to review or hide your filing.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setModerationOpen(false)}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground hover:text-foreground"
+                  aria-label="Close moderation request"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <textarea
+                value={moderationReason}
+                onChange={(event) => setModerationReason(event.target.value.slice(0, 1000))}
+                placeholder="Explain why this filing should be reviewed or hidden..."
+                className="min-h-32 w-full resize-none rounded-2xl border border-border bg-background p-3 text-[13px] outline-none focus:ring-2 focus:ring-primary/20"
+              />
+              <input
+                value={moderationEvidenceUrl}
+                onChange={(event) => setModerationEvidenceUrl(event.target.value)}
+                placeholder="Optional evidence or citation URL"
+                className="mt-3 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-[13px] outline-none focus:ring-2 focus:ring-primary/20"
+              />
+              <button
+                type="button"
+                onClick={submitModerationRequest}
+                disabled={moderationSubmitting || moderationReason.trim().length < 10}
+                className="mt-4 flex w-full items-center justify-center rounded-full bg-foreground px-5 py-3 text-[13px] font-black text-background transition-opacity hover:opacity-90 disabled:opacity-50"
+              >
+                {moderationSubmitting ? 'Sending...' : 'Send Request'}
+              </button>
             </div>
           </div>,
           document.body

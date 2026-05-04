@@ -24,6 +24,9 @@ export type EvidenceProposalRecord = {
   reviewedBy: string | null;
   reportId?: string;
   eventId?: string;
+  reporterId?: string | null;
+  anonymousTag?: string;
+  publicAnonymous?: boolean;
   createdByAdminId?: string;
   createdAt?: string;
   updatedAt?: string;

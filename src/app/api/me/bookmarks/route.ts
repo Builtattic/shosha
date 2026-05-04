@@ -29,7 +29,8 @@ export async function GET() {
         return {
           ...redactPublicReporter(report),
           account,
-          viewer: { vote: null, bookmarked: true }
+          viewer: { vote: null, bookmarked: true },
+          canRequestModeration: Boolean(report.reporterId === user._id)
         };
       })
       .filter(Boolean)

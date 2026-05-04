@@ -449,9 +449,10 @@ export default function ProfilePage() {
                     const isPositive = type === 'positive';
                     const isNegative = type === 'negative';
                     return (
-                      <div
+                      <Link
                         key={event._id || i}
-                        className="flex items-start gap-3 rounded-xl border border-border p-3"
+                        href={event.subjectId ? `/account/${event.subjectId}` : event.reportId ? `/feed?report=${event.reportId}` : '/feed'}
+                        className="flex items-start gap-3 rounded-xl border border-border p-3 transition-colors hover:bg-muted/40"
                       >
                         <div
                           className={cn(
@@ -504,7 +505,7 @@ export default function ProfilePage() {
                             {event.impact > 0 ? '+' : ''}{event.impact}
                           </div>
                         )}
-                      </div>
+                      </Link>
                     );
                   })}
                 </div>

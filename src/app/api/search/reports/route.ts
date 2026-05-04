@@ -41,7 +41,8 @@ export async function GET(request: Request) {
         return {
           ...redactPublicReporter(report),
           account,
-          viewer: viewerStates[idx]
+          viewer: viewerStates[idx],
+          canRequestModeration: Boolean(user && report.reporterId === user._id)
         };
       })
       .filter(Boolean)

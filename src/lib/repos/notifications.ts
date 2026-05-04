@@ -11,6 +11,8 @@ export type NotificationKind =
   | 'claim_approved'
   | 'claim_rejected'
   | 'abuse_dismissed'
+  | 'moderation_requested'
+  | 'moderation_resolved'
   | 'dispute_resolved'
   | 'system';
 

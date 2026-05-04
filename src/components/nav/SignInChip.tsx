@@ -27,7 +27,11 @@ export function SignInChip() {
   return (
     <div className="flex items-center gap-3">
       <div className="flex items-center gap-2">
-        <div className="h-8 w-8 overflow-hidden rounded-full border border-border bg-muted flex items-center justify-center">
+        <Link
+          href="/profile"
+          aria-label="Open profile"
+          className="h-8 w-8 overflow-hidden rounded-full border border-border bg-muted flex items-center justify-center transition-opacity hover:opacity-80"
+        >
           {photo ? (
             <img 
               src={photo} 
@@ -47,7 +51,7 @@ export function SignInChip() {
           )}>
             {(user.displayName?.[0] ?? user.email?.[0] ?? '?').toUpperCase()}
           </div>
-        </div>
+        </Link>
       </div>
       <button
         onClick={() => signOut()}

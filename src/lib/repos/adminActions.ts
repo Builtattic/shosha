@@ -2,7 +2,7 @@ import { adminDb } from '@/lib/firebase/admin';
 import { withId, stripUndefined } from '@/lib/repos/_serialize';
 import type { AppUser } from '@/lib/repos/users';
 
-export type AdminEntityType = 'report' | 'account' | 'user' | 'claim' | 'audit' | 'ownership' | 'settings' | 'score' | 'dispute' | 'evidence';
+export type AdminEntityType = 'report' | 'account' | 'user' | 'claim' | 'audit' | 'ownership' | 'settings' | 'score' | 'dispute' | 'evidence' | 'moderationRequest';
 
 export type AdminActionRecord = {
   _id: string;

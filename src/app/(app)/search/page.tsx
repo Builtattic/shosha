@@ -20,6 +20,7 @@ type FeedReport = {
   disputeStatus?: string;
   reportScore?: number;
   baseScore?: number;
+  canRequestModeration?: boolean;
   viewer?: FeedItemProps['viewer'];
   account: {
     _id: string;
@@ -86,7 +87,8 @@ function toFeedItem(report: FeedReport): FeedItemProps {
     reportScore: report.reportScore ?? report.baseScore,
     stats: report.stats ?? { aligns: 0, opposes: 0, comments: 0, shares: 0 },
     delta: report.adminDecision?.finalImpact ?? report.aiVerdict?.proposedImpact ?? 0,
-    viewer: report.viewer
+    viewer: report.viewer,
+    canRequestModeration: report.canRequestModeration
   };
 }
 
