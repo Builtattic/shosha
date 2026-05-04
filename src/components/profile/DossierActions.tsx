@@ -85,6 +85,7 @@ export function DossierActions({
       
       const mediaInfo = {
         url: payload.data.url,
+        thumbUrl: payload.data.thumbUrl,
         type: file.type.startsWith('video/') ? 'video' as const : 'image' as const,
         bytes: file.size
       };

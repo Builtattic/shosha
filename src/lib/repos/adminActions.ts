@@ -1,5 +1,5 @@
 import { adminDb } from '@/lib/firebase/admin';
-import { withId } from '@/lib/repos/_serialize';
+import { withId, stripUndefined } from '@/lib/repos/_serialize';
 import type { AppUser } from '@/lib/repos/users';
 
 export type AdminEntityType = 'report' | 'account' | 'user' | 'claim' | 'audit' | 'ownership' | 'settings' | 'score' | 'dispute' | 'evidence';
@@ -29,7 +29,7 @@ export async function create(input: {
   after?: unknown;
 }): Promise<AdminActionRecord> {
   const newRef = ref().push();
-  const payload = {
+  const payload = stripUndefined({
     actorId: input.actor._id,
     actorUsername: input.actor.username,
     action: input.action,
@@ -38,7 +38,7 @@ export async function create(input: {
     before: input.before ?? null,
     after: input.after ?? null,
     createdAt: new Date().toISOString(),
-  };
+  });
   await newRef.set(payload);
   return { _id: newRef.key!, ...payload };
 }

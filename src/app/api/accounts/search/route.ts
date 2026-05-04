@@ -36,7 +36,8 @@ export async function GET(request: Request) {
   ).slice(0, 10);
 
   const discoverParam = searchParams.get('discover');
-  const shouldDiscover = discoverParam === 'force' || (discoverParam !== '0' && discoverParam !== 'false' && discoverParam !== null);
+  const fallbackDiscover = accounts.length === 0 && matchedUsers.length === 0 && discoverParam !== '0' && discoverParam !== 'false';
+  const shouldDiscover = discoverParam === 'force' || discoverParam === '1' || discoverParam === 'true' || fallbackDiscover;
   
   let candidates: any[] = [];
   let sources: any[] = [];

@@ -26,6 +26,7 @@ import {
   Download
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { handleAvatarError, resolveAvatarUrl } from '@/lib/media';
 import { useToast } from '@/components/ui/Toast';
 import { FeedShareCard } from './FeedShareCard';
 
@@ -69,6 +70,7 @@ export interface FeedItemProps {
   media?: {
     type: 'image' | 'video';
     url: string;
+    thumbUrl?: string;
     count?: number;
   };
   category?: string;
@@ -303,19 +305,12 @@ export function FeedItem({
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
             <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full border border-border bg-muted shadow-sm flex items-center justify-center">
-               {displayAuthor.avatar && displayAuthor.avatar !== 'null' && displayAuthor.avatar !== 'undefined' ? (
                   <img
-                    src={displayAuthor.avatar}
+                    src={resolveAvatarUrl(displayAuthor.avatar, displayAuthor.name)}
                     alt={displayAuthor.name}
                     className="h-full w-full object-cover"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.style.display = 'none';
-                      const fallback = target.parentElement?.querySelector('.avatar-fallback');
-                      if (fallback) fallback.classList.remove('hidden');
-                    }}
+                    onError={(e) => handleAvatarError(e, displayAuthor.name)}
                   />
-               ) : null}
                <div className={cn(
                  "avatar-fallback font-bold text-muted-foreground",
                  (displayAuthor.avatar && displayAuthor.avatar !== 'null' && displayAuthor.avatar !== 'undefined') && "hidden"
@@ -374,7 +369,8 @@ export function FeedItem({
         <div className="relative mx-5 mt-2 overflow-hidden rounded-[16px] bg-muted aspect-video shadow-sm group cursor-pointer">
           {media.type === 'video' ? (
             <video 
-              src={media.url} 
+              src={media.url}
+              poster={media.thumbUrl || undefined}
               autoPlay 
               muted 
               loop 
@@ -383,12 +379,17 @@ export function FeedItem({
             />
           ) : (
             <img 
-              src={media.url} 
+              src={media.thumbUrl || media.url} 
               alt={title} 
               className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" 
               onError={(e) => {
-                // Hide the media container if image fails to load
-                (e.target as HTMLImageElement).parentElement?.classList.add('hidden');
+                const img = e.target as HTMLImageElement;
+                // If thumb failed, try the full URL
+                if (media.thumbUrl && img.src !== media.url) {
+                  img.src = media.url;
+                } else {
+                  img.parentElement?.classList.add('hidden');
+                }
               }}
             />
           )}

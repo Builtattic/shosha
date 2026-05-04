@@ -1,9 +1,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { loadEnvConfig } from '@next/env';
 import zlib from 'node:zlib';
 import { averageBreakdown, BASE_SCORE } from '../src/lib/scoring';
+import type { AccountRecord } from '../src/lib/repos/accounts';
+
+loadEnvConfig(process.cwd());
 
 type ZipEntry = { name: string; method: number; compressedSize: number; localOffset: number };
+type ImportOptions = { dryRun: boolean; updateExisting: boolean };
 
 function readZipEntries(buffer: Buffer): ZipEntry[] {
   let eocd = -1;
@@ -92,28 +97,165 @@ function excelDate(serial: string): string | undefined {
   return new Date(epoch.getTime() + value * 24 * 60 * 60 * 1000).toISOString();
 }
 
+function parseDate(value: string): string | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  if (/^\d+(\.\d+)?$/.test(trimmed)) return excelDate(trimmed);
+  const iso = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (iso) {
+    const [, year, month, day] = iso;
+    return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day))).toISOString();
+  }
+  const mdy = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!mdy) return undefined;
+  const [, month, day, year] = mdy;
+  return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day))).toISOString();
+}
+
 function cleanUndefined<T extends Record<string, unknown>>(input: T): T {
   return Object.fromEntries(Object.entries(input).filter(([, value]) => value !== undefined)) as T;
 }
 
-async function main() {
-  const workbookPath = process.argv[2] ?? path.join(process.env.USERPROFILE ?? '.', 'Downloads', 'SHOSHA ALGO.xlsx');
-  const buffer = fs.readFileSync(workbookPath);
+function csvRows(csv: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = '';
+  let quoted = false;
+  for (let i = 0; i < csv.length; i += 1) {
+    const ch = csv[i];
+    const next = csv[i + 1];
+    if (quoted) {
+      if (ch === '"' && next === '"') {
+        cell += '"';
+        i += 1;
+      } else if (ch === '"') {
+        quoted = false;
+      } else {
+        cell += ch;
+      }
+      continue;
+    }
+    if (ch === '"') {
+      quoted = true;
+    } else if (ch === ',') {
+      row.push(cell);
+      cell = '';
+    } else if (ch === '\n') {
+      row.push(cell);
+      rows.push(row);
+      row = [];
+      cell = '';
+    } else if (ch !== '\r') {
+      cell += ch;
+    }
+  }
+  if (cell.length || row.length) {
+    row.push(cell);
+    rows.push(row);
+  }
+  return rows;
+}
+
+function profileRows(filePath: string): string[][] {
+  if (filePath.toLowerCase().endsWith('.csv')) return csvRows(fs.readFileSync(filePath, 'utf8'));
+  const buffer = fs.readFileSync(filePath);
   const entries = readZipEntries(buffer);
   const strings = sharedStrings(readZipFile(buffer, entries, 'xl/sharedStrings.xml'));
-  const rows = sheetRows(readZipFile(buffer, entries, 'xl/worksheets/sheet3.xml'), strings);
+  return sheetRows(readZipFile(buffer, entries, 'xl/worksheets/sheet3.xml'), strings);
+}
+
+function slugify(value: string) {
+  return value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/^@/, '')
+    .replace(/[^a-z0-9_.-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 100);
+}
+
+function indexAccounts(accounts: AccountRecord[]) {
+  const byId = new Map<string, AccountRecord>();
+  const byDisplayName = new Map<string, AccountRecord>();
+  const byWebsiteUsername = new Map<string, AccountRecord>();
+  const bySocialUrl = new Map<string, AccountRecord>();
+  for (const account of accounts) {
+    byId.set(account._id, account);
+    if (account.displayNameLower) byDisplayName.set(account.displayNameLower, account);
+    if (account.displayName) byDisplayName.set(account.displayName.trim().toLowerCase(), account);
+    if (account.platform === 'website' && account.usernameLower) byWebsiteUsername.set(account.usernameLower, account);
+    if (account.platform === 'website' && account.username) byWebsiteUsername.set(account.username.trim().toLowerCase(), account);
+    for (const link of Object.values(account.socialLinks ?? {})) {
+      if (link?.url) bySocialUrl.set(normalizeSocialUrl(link.url), account);
+    }
+  }
+  return { byId, byDisplayName, byWebsiteUsername, bySocialUrl };
+}
+
+function normalizeSocialUrl(url: string): string {
+  return url
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, '')
+    .replace(/^www\./, '')
+    .replace(/\/+$/, '');
+}
+
+function optionsFromArgs(args: string[]): { inputPath: string; options: ImportOptions } {
+  const options = {
+    dryRun: args.includes('--dry-run'),
+    updateExisting: args.includes('--update-existing'),
+  };
+  const inputPath = args.find((arg) => !arg.startsWith('--')) ?? path.join(process.env.USERPROFILE ?? '.', 'Downloads', 'SHOSHA ALGO.xlsx');
+  return { inputPath, options };
+}
+
+async function main() {
+  const { inputPath, options } = optionsFromArgs(process.argv.slice(2));
+  const rows = profileRows(inputPath);
   const [header, ...profiles] = rows;
-  if (!header?.[0]?.includes('PROFILE ID')) throw new Error('PROFILES sheet was not found at sheet3.xml.');
+  if (!header?.[0]?.includes('PROFILE ID')) throw new Error('PROFILES sheet was not found.');
 
   const accountsRepo = await import('../src/lib/repos/accounts');
+  const accountIndex = indexAccounts(await accountsRepo.listAll(5000));
   let created = 0;
   let updated = 0;
+  let skippedExisting = 0;
+  let skippedInvalid = 0;
+  let skippedCsvDuplicate = 0;
+  const seenProfileIds = new Set<string>();
   for (const row of profiles) {
     const profileId = row[0]?.trim();
     const name = row[1]?.trim();
-    const username = row[2]?.trim();
-    if (!profileId || !name || !username) continue;
-    const existing = await accountsRepo.findById(profileId);
+    const username = slugify(row[2]?.trim() || name || profileId || '');
+    if (!profileId || !name || !username) {
+      skippedInvalid += 1;
+      continue;
+    }
+    if (seenProfileIds.has(profileId)) {
+      skippedCsvDuplicate += 1;
+      continue;
+    }
+    seenProfileIds.add(profileId);
+    const existing = accountIndex.byId.get(profileId) ?? null;
+    const duplicateByName = existing ? null : accountIndex.byDisplayName.get(name.toLowerCase()) ?? null;
+    const duplicateByUsername = existing || duplicateByName
+      ? null
+      : accountIndex.byWebsiteUsername.get(username.toLowerCase()) ?? null;
+    const duplicateBySocialUrl = existing || duplicateByName || duplicateByUsername
+      ? null
+      : [row[17], row[18], row[19], row[20], row[21], row[22], row[23], row[24]]
+          .filter(Boolean)
+          .map((url) => accountIndex.bySocialUrl.get(normalizeSocialUrl(url)))
+          .find(Boolean) ?? null;
+
+    if (!options.updateExisting && (existing || duplicateByName || duplicateByUsername || duplicateBySocialUrl)) {
+      skippedExisting += 1;
+      continue;
+    }
+
     const socialLinks = cleanUndefined({
       ...(existing?.socialLinks ?? {}),
       instagram: row[17] ? { url: row[17], username } : existing?.socialLinks?.instagram,
@@ -125,13 +267,16 @@ async function main() {
       facebook: row[23] ? { url: row[23], username } : existing?.socialLinks?.facebook,
       snapchat: row[24] ? { url: row[24], username } : existing?.socialLinks?.snapchat,
     });
-    const dob = excelDate(row[6] ?? '');
+    const dob = parseDate(row[6] ?? '');
+    const avatarUrl = row[25]?.trim().startsWith('http')
+      ? row[25].trim()
+      : `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(name)}`;
     const payload = {
       platform: 'website' as const,
       username,
       displayName: name,
       bio: row[26] ?? '',
-      avatarUrl: '',
+      avatarUrl,
       verified: false,
       followers: row[11] ?? '',
       score: existing?.score ?? BASE_SCORE,
@@ -143,6 +288,10 @@ async function main() {
       profileId,
       profileKind: 'public_figure' as const,
       profileUserType: row[3] ?? '',
+      email: row[4] ?? '',
+      phone: row[5] ?? '',
+      age: Number(row[7] || 0),
+      cityCountry: row[8] ?? '',
       region: row[9] ?? '',
       role: row[10] ?? '',
       reach: row[11] ?? '',
@@ -154,6 +303,7 @@ async function main() {
       socialLinks,
       quote: row[27] ?? '',
       profileCompletion: Number(row[28] || 0),
+      socialPostCount: Number(row[29] || 0),
       opposedPosts: Number(row[30] || 0),
       aiFlaggedPosts: Number(row[31] || 0),
       disputedPosts: Number(row[32] || 0),
@@ -161,17 +311,33 @@ async function main() {
       ...(dob ? { dob } : {}),
     };
     if (existing) {
-      await accountsRepo.update(profileId, payload);
+      if (!options.dryRun) await accountsRepo.update(profileId, payload);
+      accountIndex.byId.set(profileId, { ...existing, ...payload, _id: profileId });
       updated += 1;
     } else {
-      await accountsRepo.createWithId(profileId, payload);
+      if (!options.dryRun) await accountsRepo.createWithId(profileId, payload);
+      const createdAccount = {
+        ...payload,
+        _id: profileId,
+        usernameLower: payload.username.toLowerCase(),
+        displayNameLower: payload.displayName.toLowerCase(),
+      } as AccountRecord;
+      accountIndex.byId.set(profileId, createdAccount);
+      accountIndex.byDisplayName.set(createdAccount.displayNameLower!, createdAccount);
+      accountIndex.byWebsiteUsername.set(createdAccount.usernameLower!, createdAccount);
+      for (const link of Object.values(createdAccount.socialLinks ?? {})) {
+        if (link?.url) accountIndex.bySocialUrl.set(normalizeSocialUrl(link.url), createdAccount);
+      }
       created += 1;
     }
   }
-  console.log(`Workbook import complete. Created: ${created}. Updated: ${updated}.`);
+  const mode = options.dryRun ? 'dry run' : 'import';
+  console.log(`Profile ${mode} complete. Created: ${created}. Updated: ${updated}. Skipped existing: ${skippedExisting}. Skipped duplicate CSV rows: ${skippedCsvDuplicate}. Skipped invalid: ${skippedInvalid}.`);
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });

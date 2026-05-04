@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/lib/auth';
 import * as reportsRepo from '@/lib/repos/reports';
 import * as accountsRepo from '@/lib/repos/accounts';
 import * as interactionsRepo from '@/lib/repos/reportInteractions';
+import { discoverReports } from '@/lib/shoshaDiscovery';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -13,7 +14,11 @@ export async function GET(request: Request) {
 
   const user = await getCurrentUser();
   const matches = await reportsRepo.search(q, limit);
-  if (matches.length === 0) return ok([]);
+  if (matches.length === 0) {
+    const discovered = await discoverReports(q);
+    if (discovered.length === 0) return ok([]);
+    return ok(discovered);
+  }
 
   const accountIds = Array.from(new Set(matches.map((r) => r.accountId)));
   const accounts = await Promise.all(accountIds.map((id) => accountsRepo.findById(id)));

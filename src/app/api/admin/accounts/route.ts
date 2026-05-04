@@ -95,6 +95,6 @@ export async function POST(request: Request) {
     claimed: false,
     claimedBy: null,
   });
-  await adminActionsRepo.create({ actor: user!, action: 'account.create', entityType: 'account', entityId: account._id, after: account });
+  await adminActionsRepo.create({ actor: user!, action: 'account.create', entityType: 'account', entityId: account._id, after: account }).catch(() => {});
   return ok(account, 201);
 }

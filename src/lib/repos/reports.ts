@@ -4,6 +4,7 @@ import type { ReportType, ReportStatus, Platform, ReportSource, ReportVisibility
 
 export type ReportMedia = {
   url: string;
+  thumbUrl?: string;
   type: 'image' | 'video';
   bytes: number;
   width?: number;

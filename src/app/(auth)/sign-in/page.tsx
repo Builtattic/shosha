@@ -200,6 +200,7 @@ export default function SignInPage() {
         </div>
 
         <div className="rounded-3xl border border-border bg-card p-8 shadow-lg">
+          <div id="recaptcha-container" className="my-2" />
           <AnimatePresence mode="wait">
             {/* Step 1: Choose method */}
             {mode === 'choose' && (
@@ -359,7 +360,7 @@ export default function SignInPage() {
                     {loading ? 'Sending...' : 'Send OTP'}
                   </button>
                 </div>
-                <div id="recaptcha-container" />
+                
               </motion.div>
             )}
 

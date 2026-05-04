@@ -131,7 +131,7 @@ export const FeedShareCard = forwardRef<HTMLDivElement, FeedShareCardProps>(
             <div style={{ margin: '0 20px', borderRadius: 16, overflow: 'hidden', background: C.surface, aspectRatio: '16/9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {media.type === 'image' ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={`/api/proxy-image?url=${encodeURIComponent(media.url)}`} alt={title} crossOrigin="anonymous" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img src={`/api/proxy-image?url=${encodeURIComponent(media.thumbUrl || media.url)}`} alt={title} crossOrigin="anonymous" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               ) : (
                 <div style={{ width: '100%', height: '100%', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <span style={{ color: '#fff', fontSize: 40 }}>▶</span>

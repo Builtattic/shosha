@@ -157,12 +157,13 @@ export default async function AccountPage({
     : [{ t: account.createdAt ?? new Date().toISOString(), s: account.score, cause: 'seed' as const }];
 
   const previous = history.length > 1 ? history[history.length - 2].s : BASE_SCORE;
-  const delta = account.score - previous;
+  const delta = Number((account.score - previous).toFixed(2));
 
   const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-  const weeklyDelta = history
+  const weeklyDeltaRaw = history
     .filter((h: any) => h.t && new Date(h.t).getTime() >= weekAgo)
     .reduce((sum: number, h: any) => sum + (h.delta ?? 0), 0);
+  const weeklyDelta = Number(weeklyDeltaRaw.toFixed(2));
 
   const totalPositiveImpact = history.reduce(
     (sum: number, h: any) => sum + (h.delta && h.delta > 0 ? h.delta : 0),

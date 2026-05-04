@@ -112,9 +112,10 @@ export default function ProfilePage() {
 
   // Weekly Δ: sum of deltas in the last 7 days
   const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-  const weeklyDelta = ledgerHistory
+  const weeklyDeltaRaw = ledgerHistory
     .filter(h => h.t && new Date(h.t).getTime() >= weekAgo)
     .reduce((sum, h) => sum + (h.delta ?? 0), 0);
+  const weeklyDelta = Number(weeklyDeltaRaw.toFixed(2));
   const positiveDeltaWeek = ledgerHistory
     .filter(h => h.t && new Date(h.t).getTime() >= weekAgo && h.delta > 0)
     .reduce((sum, h) => sum + h.delta, 0);

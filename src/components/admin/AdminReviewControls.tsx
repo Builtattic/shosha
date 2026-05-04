@@ -173,7 +173,7 @@ export function AdminReviewControls({
       </div>
 
       {/* Protocol Selectors */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-3">
           <div className="flex items-center gap-2 ml-1">
             <Info size={12} className="text-muted-foreground/60" />
@@ -209,21 +209,6 @@ export function AdminReviewControls({
             <option value="2">Intentional (2.0)</option>
             <option value="2.5">Coordinated (2.5)</option>
             <option value="3">Malicious (3.0)</option>
-          </select>
-        </div>
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 ml-1">
-            <Info size={12} className="text-muted-foreground/60" />
-            <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Circumstances (C)</label>
-          </div>
-          <select
-            value={circumstances}
-            onChange={(e) => setCircumstances(e.target.value)}
-            className={selectClass}
-          >
-            {Object.entries(CIRCUMSTANCES_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>{label} ({value})</option>
-            ))}
           </select>
         </div>
       </div>

@@ -24,10 +24,14 @@
       "Bash(git commit -m ' *)",
       "Bash(rm 'src/app/\\(public\\)/account/[id]/page.tsx')",
       "Bash(rmdir 'src/app/\\(public\\)/account/[id]')",
-      "Bash(gh pr *)"
+      "Bash(gh pr *)",
+      "Bash(git reset *)",
+      "Bash(git commit -m 'fix: remove duplicate Link import in disputes page *)",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(list\\(d['rules'].keys\\(\\)\\)\\)\")"
     ],
     "additionalDirectories": [
-      "D:\\Shosha\\src\\app\\(app)\\account"
+      "D:\\Shosha\\src\\app\\(app)\\account",
+      "d:\\Shosha\\src\\app\\api\\users\\[id]"
     ]
   }
 }

@@ -298,7 +298,7 @@ export function AdminCreatePanel({ initialAccounts, users }: { initialAccounts: 
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Repetition Pattern (RP)</label>
                       <select
@@ -327,18 +327,6 @@ export function AdminCreatePanel({ initialAccounts, users }: { initialAccounts: 
                         <option value="2">Meant to (2)</option>
                         <option value="2.5">Thought Through (2.5)</option>
                         <option value="3">Fully Planned (3)</option>
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Circumstances (C)</label>
-                      <select
-                        value={reportForm.circumstances}
-                        onChange={(e) => setReportForm({ ...reportForm, circumstances: e.target.value })}
-                        className="admin-input h-14 bg-secondary/30 border-white/5"
-                      >
-                        {Object.entries(CIRCUMSTANCES_LABELS).map(([value, label]) => (
-                          <option key={value} value={value}>{label} ({value})</option>
-                        ))}
                       </select>
                     </div>
                   </div>

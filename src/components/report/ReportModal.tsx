@@ -25,6 +25,7 @@ import type { AccountRecord } from '@/lib/repos/accounts';
 
 type UploadedMedia = {
   url: string;
+  thumbUrl?: string;
   type: 'image' | 'video';
   bytes: number;
 };
@@ -292,7 +293,7 @@ export function ReportModal({
       const payload = await readApiPayload<UploadedMedia>(response, 'Upload failed.');
       if (!payload.ok) throw new Error(payload.error?.message ?? 'Upload failed.');
       if (!payload.data) throw new Error('Upload failed.');
-      setMedia({ url: payload.data.url, type: payload.data.type, bytes: payload.data.bytes });
+      setMedia({ url: payload.data.url, thumbUrl: (payload.data as any).thumbUrl, type: payload.data.type, bytes: payload.data.bytes });
       toast.push('Evidence uploaded.');
     } catch (error) {
       toast.push(error instanceof Error ? error.message : 'Upload failed.');
@@ -405,7 +406,7 @@ export function ReportModal({
           baseScore: selectedScoringRow.baseScore,
           description,
           feelings: feelings || description,
-          media: { url: media.url, type: media.type, bytes: media.bytes },
+          media: { url: media.url, thumbUrl: media.thumbUrl, type: media.type, bytes: media.bytes },
           location: location || undefined,
           tags: taggedPerson ? [taggedPerson] : [],
           repetitionPattern,
@@ -890,9 +891,9 @@ export function ReportModal({
                 </div>
               </div>
               {selectedScoringRow && (
-                <div className="rounded-[18px] border border-border bg-card p-4 text-[13px] font-bold">
-                  Base score: <span className={selectedScoringRow.baseScore >= 0 ? 'text-primary' : 'text-destructive'}>
-                    {selectedScoringRow.baseScore > 0 ? '+' : ''}{selectedScoringRow.baseScore}
+                <div className="rounded-[18px] border border-border bg-card p-4 text-[13px] font-bold text-center uppercase tracking-widest">
+                  BASE SCORE: <span className={selectedScoringRow.baseScore >= 0 ? 'text-primary' : 'text-destructive'}>
+                    {selectedScoringRow.baseScore > 0 ? '+ ' : selectedScoringRow.baseScore < 0 ? '- ' : ''}{Math.abs(selectedScoringRow.baseScore)}
                   </span>
                 </div>
               )}
@@ -1019,7 +1020,7 @@ export function ReportModal({
               <h3 className="text-[15px] font-bold mb-1 sm:text-[17px]">Repetition & Intent</h3>
               <p className="text-[12px] text-muted-foreground sm:text-[13px]">Classify the pattern and intent of this incident.</p>
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
               <div>
                 <label className="text-[13px] font-bold block mb-2">Repetition Pattern (RP)</label>
                 <select 
@@ -1048,18 +1049,6 @@ export function ReportModal({
                   <option value="2">Meant to</option>
                   <option value="2.5">Thought Through</option>
                   <option value="3">Fully Planned</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-[13px] font-bold block mb-2">Circumstances (C)</label>
-                <select
-                  value={circumstances}
-                  onChange={(e) => setCircumstances(e.target.value)}
-                  className="w-full rounded-[12px] border border-border bg-card p-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-primary/20"
-                >
-                  {Object.entries(CIRCUMSTANCES_LABELS).map(([value, label]) => (
-                    <option key={value} value={value}>{label}</option>
-                  ))}
                 </select>
               </div>
             </div>

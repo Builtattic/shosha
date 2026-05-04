@@ -86,6 +86,7 @@ export const searchSchema = z.object({
 
 export const mediaSchema = z.object({
   url: z.string().url(),
+  thumbUrl: z.string().url().optional(),
   type: z.enum(['image', 'video']),
   width: z.number().int().nonnegative().default(0),
   height: z.number().int().nonnegative().default(0),

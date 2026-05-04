@@ -152,3 +152,86 @@ Return only JSON:
     return { candidates: [], sources: [], searchQueries: [], grounded: false, reason: 'discovery_unavailable' };
   }
 }
+
+export type DiscoveredReport = {
+  _id: string;
+  type: 'positive' | 'negative';
+  description: string;
+  evidenceSourceUrl?: string;
+  account: {
+    _id: string;
+    platform: Platform;
+    username: string;
+    displayName: string;
+    verified: boolean;
+  };
+  reporter?: { username: string; name: string };
+  category: string;
+  deed: string;
+  reportScore: number;
+  aiVerdict?: { proposedImpact: number };
+  createdAt: string;
+};
+
+export async function discoverReports(query: string): Promise<DiscoveredReport[]> {
+  const cleaned = cleanQuery(query);
+  if (cleaned.length < 2) return [];
+
+  const prompt = `You are Shosha discovery. Find recent news, controversies, or notable actions involving the person or entity: "${cleaned}".
+
+Rules:
+- Search the web for actual events.
+- Generate a summary as a "report".
+- Categorize as positive (good deeds, philanthropy) or negative (controversy, legal issues, bad behavior).
+- "account.platform" must be one of: instagram, facebook, x, youtube, tiktok, linkedin, reddit, snapchat, website.
+- Include evidenceSourceUrl if available.
+
+Return only JSON:
+{
+  "reports": [
+    {
+      "type": "positive|negative",
+      "description": "Short headline/summary of the event",
+      "evidenceSourceUrl": "https://news.example.com/...",
+      "account": {
+        "platform": "website",
+        "username": "handle-or-slug",
+        "displayName": "Person Name",
+        "verified": true
+      },
+      "category": "controversy|philanthropy|business|community|etc",
+      "deed": "short 2-3 word deed",
+      "reportScore": 5
+    }
+  ]
+}`;
+
+  try {
+    const result = await generateGroundedJson(prompt);
+    const parsed = result.json as { reports?: any[] };
+    if (!parsed.reports || !Array.isArray(parsed.reports)) return [];
+
+    return parsed.reports.map((r, i) => ({
+      _id: `discovery-${Date.now()}-${i}`,
+      type: r.type === 'positive' ? 'positive' : 'negative',
+      description: String(r.description || 'Discovered event').slice(0, 200),
+      evidenceSourceUrl: r.evidenceSourceUrl ? String(r.evidenceSourceUrl) : undefined,
+      account: {
+        _id: `discovered-acc-${Date.now()}-${i}`,
+        platform: platformValues.includes(r.account?.platform) ? r.account.platform : 'website',
+        username: String(r.account?.username || cleaned).replace(/^@/, ''),
+        displayName: String(r.account?.displayName || cleaned),
+        verified: Boolean(r.account?.verified),
+      },
+      reporter: { username: 'shosha_ai', name: 'Shosha Discovery' },
+      category: String(r.category || 'News').slice(0, 30),
+      deed: String(r.deed || 'Event').slice(0, 30),
+      reportScore: Number(r.reportScore) || 0,
+      aiVerdict: { proposedImpact: Number(r.reportScore) || 0 },
+      createdAt: new Date().toISOString(),
+    }));
+  } catch (error) {
+    console.error('[shosha-discovery] report lookup failed', error);
+    return [];
+  }
+}
