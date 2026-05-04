@@ -73,9 +73,11 @@ export function BottomNav() {
             {/* More menu trigger */}
             <button
               type="button"
+              onPointerDown={() => setMenuOpen(true)}
               onClick={() => setMenuOpen(true)}
               aria-label="Open menu"
-              className="group relative flex flex-1 flex-col items-center justify-center gap-0.5 rounded-full px-2 py-2 text-muted-foreground transition-colors hover:text-foreground active:scale-95"
+              aria-expanded={menuOpen}
+              className="group relative z-20 flex min-h-12 min-w-14 flex-1 touch-manipulation flex-col items-center justify-center gap-0.5 rounded-full px-2 py-2 text-muted-foreground transition-colors hover:text-foreground active:scale-95"
             >
               <Menu size={20} className="transition-transform duration-300 group-active:scale-90" />
               <span className="text-[10px] font-bold tracking-wide opacity-70">More</span>
