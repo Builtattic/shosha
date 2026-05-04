@@ -89,6 +89,7 @@ export async function POST(request: Request) {
     const multiplierQuotient = calcMultiplierQuotient(multipliers);
     const reportScore = calcDelta(scoringRow.baseScore, multipliers);
     const weight = credibilityWeight(user?.reporterScore, user ? 80 : 50);
+    const publicAnonymous = !user || parsed.data.publicAnonymous;
 
     const verdict = await adjudicateReport({
       description: parsed.data.description,
@@ -108,9 +109,9 @@ export async function POST(request: Request) {
       accountId: parsed.data.accountId,
       reportNo: (await reportsRepo.count().catch(() => 0)) + 1,
       reporterId: user?._id ?? null,
-      anonymousTag: parsed.data.publicAnonymous ? anonymousTag(request) : (user?.username ?? anonymousTag(request)),
+      anonymousTag: publicAnonymous ? anonymousTag(request) : user.username,
       hashedUserId: actorHash,
-      publicAnonymous: parsed.data.publicAnonymous,
+      publicAnonymous,
       type: parsed.data.type,
       category: scoringRow.category,
       deed: scoringRow.deed,

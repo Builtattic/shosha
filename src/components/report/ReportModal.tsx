@@ -14,7 +14,9 @@ import {
   Search,
   MapPin,
   ShieldCheck,
-  ChevronLeft
+  ChevronLeft,
+  EyeOff,
+  UserRound
 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import { cn } from '@/lib/utils';
@@ -93,7 +95,7 @@ export function ReportModal({
   onSubmitted?: (accountId: string) => void;
 }) {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const toast = useToast();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [step, setStep] = useState(1);
@@ -107,7 +109,7 @@ export function ReportModal({
   const [feelings, setFeelings] = useState('');
   const [evidenceSourceUrl, setEvidenceSourceUrl] = useState('');
   const [aiConsent, setAiConsent] = useState(false);
-  const [publicAnonymous, setPublicAnonymous] = useState(true);
+  const [publicAnonymous, setPublicAnonymous] = useState(!user);
   const [taggedPerson, setTaggedPerson] = useState('');
   const [targetPlatform, setTargetPlatform] = useState<Platform>('instagram');
   const [targetHandle, setTargetHandle] = useState('');
@@ -165,7 +167,7 @@ export function ReportModal({
     setDescription('');
     setFeelings('');
     setAiConsent(false);
-    setPublicAnonymous(true);
+    setPublicAnonymous(!user);
     setTaggedPerson('');
     setTargetPlatform('instagram');
     setTargetHandle('');
@@ -267,6 +269,12 @@ export function ReportModal({
     reset();
     onClose();
   }
+
+  useEffect(() => {
+    if (open && !authLoading) {
+      setPublicAnonymous(!user);
+    }
+  }, [authLoading, open, user]);
 
   // Body scroll lock + Escape close while open
   useEffect(() => {
@@ -424,7 +432,7 @@ export function ReportModal({
           intent,
           circumstances,
           aiUndertaking: aiConsent,
-          publicAnonymous
+          publicAnonymous: !user || publicAnonymous
         })
       });
       const payload = await readApiPayload(response, 'Submission failed. Please try again.');
@@ -810,6 +818,56 @@ export function ReportModal({
             </section>
           )}
 
+          {/* Public Identity */}
+          <section className="space-y-3 sm:space-y-4">
+            <div>
+              <h3 className="text-[15px] font-bold mb-1 sm:text-[17px]">How should this appear?</h3>
+              <p className="text-[12px] text-muted-foreground sm:text-[13px]">
+                Admins still receive the real reporter details.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                disabled={!user}
+                onClick={() => setPublicAnonymous(false)}
+                className={cn(
+                  'flex items-start gap-3 rounded-2xl border p-4 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+                  !publicAnonymous && user
+                    ? 'border-foreground bg-foreground text-background shadow-md'
+                    : 'border-border bg-card hover:border-foreground/30'
+                )}
+              >
+                <UserRound size={18} className="mt-0.5 shrink-0" />
+                <span className="min-w-0">
+                  <span className="block text-[13px] font-bold sm:text-[14px]">Show my name</span>
+                  <span className={cn('block text-[11px] leading-5 sm:text-[12px]', !publicAnonymous && user ? 'text-background/75' : 'text-muted-foreground')}>
+                    {user ? (user.displayName || user.email?.split('@')[0] || 'Your profile') : 'Sign in required'}
+                  </span>
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPublicAnonymous(true)}
+                className={cn(
+                  'flex items-start gap-3 rounded-2xl border p-4 text-left transition-colors',
+                  publicAnonymous
+                    ? 'border-foreground bg-foreground text-background shadow-md'
+                    : 'border-border bg-card hover:border-foreground/30'
+                )}
+              >
+                <EyeOff size={18} className="mt-0.5 shrink-0" />
+                <span className="min-w-0">
+                  <span className="block text-[13px] font-bold sm:text-[14px]">Post anonymously</span>
+                  <span className={cn('block text-[11px] leading-5 sm:text-[12px]', publicAnonymous ? 'text-background/75' : 'text-muted-foreground')}>
+                    Public feed shows Anonymous
+                  </span>
+                </span>
+              </button>
+            </div>
+          </section>
+
           {/* Impact Type */}
           <section className="space-y-3 sm:space-y-4">
             <div>
@@ -998,26 +1056,6 @@ export function ReportModal({
                 </div>
               </button>
             )}
-          </section>
-
-          {/* Public Identity */}
-          <section className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
-            <label className="flex items-start justify-between gap-4 cursor-pointer group">
-              <div className="min-w-0 space-y-1">
-                <span className="block text-[14px] font-bold text-foreground sm:text-[15px]">
-                  Post anonymously on public feed
-                </span>
-                <span className="block text-[11px] leading-5 text-muted-foreground sm:text-[12px]">
-                  Your real account stays visible to admins and stored with the report.
-                </span>
-              </div>
-              <input
-                type="checkbox"
-                checked={publicAnonymous}
-                onChange={(e) => setPublicAnonymous(e.target.checked)}
-                className="mt-1 h-5 w-5 shrink-0 rounded-md border-border bg-background text-primary focus:ring-primary/20 transition-all cursor-pointer"
-              />
-            </label>
           </section>
 
           {/* AI Undertaking */}
