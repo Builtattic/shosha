@@ -1,4 +1,4 @@
-const key = 'AIzaSyDLECwxfF8lTbIfRYytrjmkAMtbWGFx_zQ';
+const key = process.env.GEMINI_API_KEY;
 const model = 'gemini-3-pro-preview';
 
 async function test() {
