@@ -493,9 +493,13 @@ export default function ProfilePage() {
                             e.preventDefault();
                             setSelectedReportId(event.reportId);
                             setReportDetailOpen(true);
+                          } else if (event._id) {
+                            e.preventDefault();
+                            setSelectedReportId(event._id);
+                            setReportDetailOpen(true);
                           }
                         }}
-                        className="w-full text-left flex items-start gap-3 rounded-xl border border-border p-3 transition-colors hover:bg-muted/40"
+                        className="w-full cursor-pointer text-left flex items-start gap-3 rounded-xl border border-border p-3 transition-colors hover:bg-muted/40"
                       >
                         <div
                           className={cn(
@@ -605,13 +609,13 @@ export default function ProfilePage() {
                 {areaChartData.length >= 2 ? (
                   <>
                     <D3AreaChart data={areaChartData} height={200} />
-                    <div className="mt-3 flex items-center gap-3 text-[11px] text-muted-foreground">
-                      <span className="flex items-center gap-1.5">
+                    <div className="mt-3 flex items-center gap-3 text-[11px]">
+                      <span className="flex items-center gap-1.5 text-foreground">
                         <span className="inline-block h-0.5 w-6 rounded bg-foreground" />
                         Shosha Score
                       </span>
-                      <span className="flex items-center gap-1.5">
-                        <span className="inline-block h-2 w-4 rounded-sm bg-foreground/20" />
+                      <span className="flex items-center gap-1.5 text-muted-foreground">
+                        <span className="inline-block h-2 w-4 rounded-sm bg-muted" />
                         Trajectory area
                       </span>
                     </div>

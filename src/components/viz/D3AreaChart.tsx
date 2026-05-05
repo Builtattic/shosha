@@ -45,7 +45,7 @@ export function D3AreaChart({ data, color = 'var(--foreground)', height = 240 }:
       .range([h, 0]).nice();
 
     // Axes
-    const xAxis = d3.axisBottom(x).ticks(6).tickFormat(d3.timeFormat('%b \'%y') as any).tickSize(0).tickPadding(10);
+    const xAxis = d3.axisBottom(x).ticks(6).tickFormat(d3.timeFormat('%d %b \'%y') as any).tickSize(0).tickPadding(10);
     const yAxis = d3.axisLeft(y).ticks(5).tickSize(-w).tickPadding(10);
 
     // Render Y Axis (with grid lines)
@@ -122,13 +122,24 @@ export function D3AreaChart({ data, color = 'var(--foreground)', height = 240 }:
         .attr('stroke', color)
         .attr('stroke-width', 2);
 
-      // Tooltip box
+      // Tooltip box (clamped to chart bounds so it never gets cut off near edges)
+      const tooltipWidth = 80;
+      const tooltipHeight = 35;
+      const pointX = x(lastPoint.date);
+      const pointY = y(lastPoint.value);
+      const tooltipX = Math.max(0, Math.min(w - tooltipWidth, pointX - tooltipWidth / 2));
+      const preferredTooltipY = pointY - tooltipHeight - 10;
+      const fallbackTooltipY = pointY + 10;
+      const tooltipY = preferredTooltipY >= 0
+        ? preferredTooltipY
+        : Math.min(h - tooltipHeight, fallbackTooltipY);
+
       const tooltip = g.append('g')
-        .attr('transform', `translate(${x(lastPoint.date) - 80}, ${y(lastPoint.value) - 45})`);
+        .attr('transform', `translate(${tooltipX}, ${tooltipY})`);
       
       tooltip.append('rect')
-        .attr('width', 80)
-        .attr('height', 35)
+        .attr('width', tooltipWidth)
+        .attr('height', tooltipHeight)
         .attr('rx', 6)
         .attr('fill', 'var(--card)')
         .attr('stroke', 'var(--border)')
@@ -136,16 +147,16 @@ export function D3AreaChart({ data, color = 'var(--foreground)', height = 240 }:
         .attr('filter', 'drop-shadow(0 4px 6px rgba(0,0,0,0.05))');
       
       tooltip.append('text')
-        .attr('x', 40)
+        .attr('x', tooltipWidth / 2)
         .attr('y', 14)
         .attr('text-anchor', 'middle')
         .attr('fill', 'var(--muted-foreground)')
         .attr('font-size', '9px')
         .attr('font-weight', '500')
-        .text(d3.timeFormat('%b %d, %Y')(lastPoint.date));
+        .text(d3.timeFormat('%d %b %Y')(lastPoint.date));
 
       tooltip.append('text')
-        .attr('x', 40)
+        .attr('x', tooltipWidth / 2)
         .attr('y', 27)
         .attr('text-anchor', 'middle')
         .attr('fill', color)
