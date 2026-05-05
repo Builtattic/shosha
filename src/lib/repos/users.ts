@@ -33,6 +33,13 @@ export type ManagementLevel =
   | 'organizational_institutional';
 
 export type LimitationsStatus = 'yes' | 'no' | 'prefer_not_to_say';
+export type ProfileFieldVisibility = 'public' | 'followers' | 'private';
+
+export type ProfileVisibilitySettings = {
+  socialLinks: ProfileFieldVisibility;
+  location: ProfileFieldVisibility;
+  website: ProfileFieldVisibility;
+};
 
 export type LedgerEntryRecord = {
   t: string;
@@ -99,6 +106,7 @@ export type AppUser = {
   category?: string;
   primaryFocus?: string;
   profileVisibility?: string;
+  profileFieldVisibility?: ProfileVisibilitySettings;
   massiveAction?: string;
   peopleMultiplier?: string;
   reachMultiplier?: string;
@@ -154,6 +162,11 @@ export async function upsertFromClerk(input: {
     claimedAccounts: [],
     score: 1000,
     scoreHistory: [],
+    profileFieldVisibility: {
+      socialLinks: 'followers',
+      location: 'followers',
+      website: 'followers',
+    },
     createdAt: now,
     updatedAt: now
   };

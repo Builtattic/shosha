@@ -92,6 +92,12 @@ function toFeedItem(report: FeedReport): FeedItemProps {
   };
 }
 
+function dedupeAccounts(list: AccountResult[]) {
+  const byId = new Map<string, AccountResult>();
+  for (const account of list) byId.set(account._id, account);
+  return Array.from(byId.values());
+}
+
 type Tab = 'reports' | 'accounts';
 
 export default function SearchPage() {
@@ -123,7 +129,7 @@ export default function SearchPage() {
           const list = Array.isArray(aRes.data)
             ? aRes.data
             : aRes.data?.accounts ?? aRes.data?.results ?? [];
-          setAccounts(list);
+          setAccounts(dedupeAccounts(list));
         }
       } finally {
         if (alive) setLoading(false);

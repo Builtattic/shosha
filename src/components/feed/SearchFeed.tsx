@@ -56,6 +56,24 @@ function eventScore(score: number) {
   return delta > 0 ? `+${delta.toLocaleString()}` : delta.toLocaleString();
 }
 
+function dedupeAccounts(list: AccountRow[]) {
+  const byId = new Map<string, AccountRow>();
+  for (const account of list) byId.set(account._id, account);
+  return Array.from(byId.values());
+}
+
+function dedupeCandidates(list: AccountCandidate[]) {
+  const seen = new Set<string>();
+  const result: AccountCandidate[] = [];
+  for (const candidate of list) {
+    const key = `${candidate.platform}:${candidate.username.replace(/^@/, '').toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(candidate);
+  }
+  return result;
+}
+
 export function SearchFeed({ initialAccounts }: { initialAccounts: AccountRow[] }) {
   const router = useRouter();
   const { user } = useAuth();
@@ -81,11 +99,11 @@ export function SearchFeed({ initialAccounts }: { initialAccounts: AccountRow[] 
       const payload = await response.json();
       if (payload.ok) {
         if (Array.isArray(payload.data)) {
-          setAccounts(payload.data);
+          setAccounts(dedupeAccounts(payload.data));
           setCandidates([]);
         } else {
-          setAccounts(payload.data.accounts ?? []);
-          setCandidates(payload.data.candidates ?? []);
+          setAccounts(dedupeAccounts(payload.data.accounts ?? []));
+          setCandidates(dedupeCandidates(payload.data.candidates ?? []));
         }
       }
       setLoading(false);
@@ -282,7 +300,7 @@ export function SearchFeed({ initialAccounts }: { initialAccounts: AccountRow[] 
                         const res = await fetch(`/api/accounts/search?q=${encodeURIComponent(q)}&discover=force`);
                         const payload = await res.json();
                         if (payload.ok) {
-                          setCandidates(payload.data.candidates ?? []);
+                          setCandidates(dedupeCandidates(payload.data.candidates ?? []));
                           toast.push('AI discovery complete. See matches below.');
                         }
                       } finally {

@@ -33,6 +33,7 @@ import * as usersRepo from '@/lib/repos/users';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
 import { enrichPublicProfileDetails, needsProfileEnrichment } from '@/lib/profileEnrichment';
 import { hidesReporterOnPublicSurfaces } from '@/lib/reportPrivacy';
+import { canViewProfileField, restrictedLabel, visibilityFor } from '@/lib/profilePrivacy';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,6 +43,60 @@ const TABS = [
   { id: 'impact', label: 'Impact', Icon: Target },
   { id: 'about', label: 'About', Icon: User },
 ] as const;
+
+const USER_SOCIAL_LINKS = [
+  { platform: 'instagram', key: 'igUrl' },
+  { platform: 'x', key: 'xUrl' },
+  { platform: 'youtube', key: 'ytUrl' },
+  { platform: 'linkedin', key: 'linkedinUrl' },
+  { platform: 'facebook', key: 'fbUrl' },
+  { platform: 'tiktok', key: 'tiktokUrl' },
+  { platform: 'reddit', key: 'redditUrl' },
+  { platform: 'snapchat', key: 'snapchatUrl' },
+] as const;
+
+function cleanDisplayValue(value?: string | null) {
+  const text = String(value ?? '').trim();
+  if (!text || ['unknown', 'platform user', 'registered'].includes(text.toLowerCase())) return '';
+  return text;
+}
+
+function humanize(value?: string | null) {
+  const text = cleanDisplayValue(value);
+  return text ? text.replace(/_/g, ' ') : '';
+}
+
+function userRoleLabel(user: Awaited<ReturnType<typeof usersRepo.findById>>) {
+  if (!user) return '';
+  return cleanDisplayValue(user.headline)
+    || cleanDisplayValue(user.category)
+    || humanize(user.occupationRole)
+    || '';
+}
+
+function userLocationLabel(user: Awaited<ReturnType<typeof usersRepo.findById>>) {
+  if (!user) return '';
+  const city = cleanDisplayValue(user.city);
+  const country = cleanDisplayValue(user.country);
+  if (city && country && !city.toLowerCase().includes(country.toLowerCase())) return `${city}, ${country}`;
+  return city || country;
+}
+
+function normalizeExternalUrl(value?: string | null) {
+  const text = cleanDisplayValue(value);
+  if (!text) return '';
+  return /^https?:\/\//i.test(text) ? text : `https://${text}`;
+}
+
+function userSocialLinks(user: Awaited<ReturnType<typeof usersRepo.findById>>) {
+  if (!user) return [];
+  return USER_SOCIAL_LINKS
+    .map(({ platform, key }) => {
+      const url = normalizeExternalUrl(user[key]);
+      return url ? [platform, { url }] as const : null;
+    })
+    .filter(Boolean) as Array<readonly [string, { url: string }]>;
+}
 
 export default async function AccountPage({
   params,
@@ -76,11 +131,11 @@ export default async function AccountPage({
             bio: user.bio || 'Platform User',
             avatarUrl: user.photoUrl || `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(user.name || user.username)}`,
             verified: true,
-            followers: 'unknown',
+            followers: String((user.followers ?? []).length),
             claimable: true,
             credibility: 80,
             enrichmentStatus: 'none',
-            role: 'Platform User',
+            role: userRoleLabel(user) || undefined,
             score: user.score ?? BASE_SCORE,
             scoreHistory: user.scoreHistory?.map((h: any) => ({ ...h, s: h.s ?? h.score ?? BASE_SCORE })) ?? [{ t: new Date().toISOString(), s: BASE_SCORE, cause: 'seed' }],
             breakdown: { authenticity: 50, engagement: 50, community: 50, content: 50, impact: 50 },
@@ -107,6 +162,8 @@ export default async function AccountPage({
       account.avatarUrl = user.photoUrl || account.avatarUrl;
       account.displayName = user.name || account.displayName;
       account.bio = user.bio || account.bio;
+      account.role = userRoleLabel(user) || account.role;
+      account.followers = String((user.followers ?? []).length);
       
       // Inject the user's filed reports as "posts" to populate the feed
       const { listByReporter } = await import('@/lib/repos/reports');
@@ -146,6 +203,31 @@ export default async function AccountPage({
   const isViewerFollowing = linkedUser
     ? (linkedUser.followers ?? []).includes(currentViewer?._id ?? '')
     : false;
+
+  const canSeeLinkedLocation = canViewProfileField(linkedUser, currentViewer, 'location');
+  const canSeeLinkedWebsite = canViewProfileField(linkedUser, currentViewer, 'website');
+  const canSeeLinkedSocialLinks = canViewProfileField(linkedUser, currentViewer, 'socialLinks');
+  const linkedUserRole = userRoleLabel(linkedUser);
+  const linkedUserLocation = userLocationLabel(linkedUser);
+  const linkedUserWebsiteUrl = normalizeExternalUrl(linkedUser?.websiteUrl);
+  const overviewRole = linkedUserRole || humanize(account.role);
+  const displayedRole = overviewRole || `${formatPlatform(account.platform)} dossier`;
+  const displayedFollowers = linkedUser
+    ? String((linkedUser.followers ?? []).length)
+    : cleanDisplayValue(account.followers);
+  const displayedLocation = linkedUser && canSeeLinkedLocation
+    ? linkedUserLocation
+    : cleanDisplayValue(account.region);
+  const locationOverviewValue = linkedUser
+    ? linkedUserLocation
+      ? canSeeLinkedLocation ? linkedUserLocation : restrictedLabel(visibilityFor(linkedUser, 'location'))
+      : 'Not provided'
+    : cleanDisplayValue(account.region) || 'Not provided';
+  const websiteOverviewValue = linkedUser
+    ? linkedUserWebsiteUrl
+      ? canSeeLinkedWebsite ? linkedUserWebsiteUrl : restrictedLabel(visibilityFor(linkedUser, 'website'))
+      : 'Not provided'
+    : normalizeExternalUrl(account.sourceUrl) || 'Not provided';
 
   const reporterIds = Array.from(new Set(
     filingsRaw
@@ -205,7 +287,10 @@ export default async function AccountPage({
       { date: new Date(), value: account.score },
     ];
 
-  const socialLinks = Object.entries(account.socialLinks ?? {}).filter(([, link]) => link?.url);
+  const socialLinks = linkedUser
+    ? canSeeLinkedSocialLinks ? userSocialLinks(linkedUser) : []
+    : Object.entries(account.socialLinks ?? {}).filter(([, link]) => link?.url);
+  const socialLinksRestricted = Boolean(linkedUser && !canSeeLinkedSocialLinks && userSocialLinks(linkedUser).length > 0);
   const windowScores = account.windowScores;
 
   // Similar profiles: same platform, exclude self, sort by score descending
@@ -244,9 +329,9 @@ export default async function AccountPage({
                 credibility: account.credibility ?? 80,
                 weeklyDelta,
                 totalImpact: formatImpact(totalPositiveImpact),
-                followers: account.followers || '—',
-                role: account.role || `${formatPlatform(account.platform)} Profile`,
-                location: account.region,
+                followers: displayedFollowers || '0',
+                role: displayedRole,
+                location: displayedLocation,
                 isVerified: account.verified,
                 platform: account.platform,
                 multipliers: {
@@ -309,11 +394,11 @@ export default async function AccountPage({
               <p className="text-[12px] text-muted-foreground capitalize sm:text-[13px]">
                 {account.profileKind === 'public_figure'
                   ? 'Public Figure'
-                  : account.role || `${formatPlatform(account.platform)} dossier`}
+                  : displayedRole}
               </p>
-              {account.region && (
+              {displayedLocation && (
                 <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
-                  <Globe size={12} /> {account.region}
+                  <Globe size={12} /> {displayedLocation}
                 </div>
               )}
               {linkedUser && (
@@ -349,7 +434,7 @@ export default async function AccountPage({
           initial={{
             score: account.score,
             scoreHistory: account.scoreHistory,
-            followers: account.followers,
+            followers: displayedFollowers || account.followers,
             credibility: account.credibility,
             createdAt: account.createdAt,
           }}
@@ -648,18 +733,14 @@ export default async function AccountPage({
               )}
 
               <div className="grid gap-3 text-[13px] text-foreground mt-6 break-words">
-                {account.role && (
-                  <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-border pb-3 gap-1">
-                    <span className="text-muted-foreground shrink-0">Primary Role</span>
-                    <span className="font-semibold sm:text-right">{account.role}</span>
-                  </div>
-                )}
-                {account.region && (
-                  <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-border pb-3 gap-1">
-                    <span className="text-muted-foreground shrink-0">Location</span>
-                    <span className="font-semibold sm:text-right">{account.region}</span>
-                  </div>
-                )}
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-border pb-3 gap-1">
+                  <span className="text-muted-foreground shrink-0">Primary Role</span>
+                  <span className="font-semibold sm:text-right capitalize">{overviewRole || 'Not provided'}</span>
+                </div>
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-border pb-3 gap-1">
+                  <span className="text-muted-foreground shrink-0">Location</span>
+                  <span className="font-semibold sm:text-right">{locationOverviewValue}</span>
+                </div>
                 {account.educationWorkbook && (
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-border pb-3 gap-1">
                     <span className="text-muted-foreground shrink-0">Education</span>
@@ -684,15 +765,28 @@ export default async function AccountPage({
                     <span className="font-semibold sm:text-right capitalize">{account.reach.replace(/_/g, ' ')}</span>
                   </div>
                 )}
-                {account.followers && (
-                  <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-border pb-3 gap-1">
-                    <span className="text-muted-foreground shrink-0">Followers</span>
-                    <span className="font-semibold sm:text-right">{account.followers}</span>
-                  </div>
-                )}
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-border pb-3 gap-1">
+                  <span className="text-muted-foreground shrink-0">Followers</span>
+                  <span className="font-semibold sm:text-right">{displayedFollowers || 'Not provided'}</span>
+                </div>
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-border pb-3 gap-1">
                   <span className="text-muted-foreground shrink-0">Platform</span>
                   <span className="font-semibold sm:text-right">{formatPlatform(account.platform)}</span>
+                </div>
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-border pb-3 gap-1">
+                  <span className="text-muted-foreground shrink-0">Platform Website</span>
+                  {websiteOverviewValue.startsWith('http') ? (
+                    <a
+                      href={websiteOverviewValue}
+                      className="font-semibold sm:text-right hover:text-primary transition-colors break-all"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {websiteOverviewValue.replace(/^https?:\/\//, '')}
+                    </a>
+                  ) : (
+                    <span className="font-semibold sm:text-right">{websiteOverviewValue}</span>
+                  )}
                 </div>
                 {socialLinks.length > 0 && (
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between pb-3 gap-1">
@@ -710,6 +804,12 @@ export default async function AccountPage({
                         </a>
                       ))}
                     </div>
+                  </div>
+                )}
+                {socialLinksRestricted && (
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between pb-3 gap-1">
+                    <span className="text-muted-foreground shrink-0">Linked Accounts</span>
+                    <span className="font-semibold sm:text-right">{restrictedLabel(visibilityFor(linkedUser, 'socialLinks'))}</span>
                   </div>
                 )}
               </div>

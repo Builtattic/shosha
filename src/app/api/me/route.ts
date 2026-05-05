@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/lib/auth';
 import * as accountsRepo from '@/lib/repos/accounts';
 import * as reportsRepo from '@/lib/repos/reports';
 import * as usersRepo from '@/lib/repos/users';
+import { normalizeProfileVisibility } from '@/lib/profilePrivacy';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET() {
@@ -69,12 +70,15 @@ export async function PATCH(req: NextRequest) {
       'headline', 'bio', 'category', 'primaryFocus', 'profileVisibility',
       'massiveAction', 'peopleMultiplier', 'reachMultiplier', 'impactMultiplier', 'credibilityMultiplier',
       'momentumMultiplier', 'innovationMultiplier', 'communityMultiplier', 'resourceMultiplier', 'legacyMultiplier',
-      'websiteUrl', 'photoUrl'
+      'websiteUrl', 'photoUrl', 'profileFieldVisibility'
     ] as const;
 
     const patch: Record<string, unknown> = {};
     for (const key of allowed) {
       if (key in body) patch[key] = body[key];
+    }
+    if ('profileFieldVisibility' in body) {
+      patch.profileFieldVisibility = normalizeProfileVisibility(body.profileFieldVisibility);
     }
 
     if (patch.onboardingComplete === true) {

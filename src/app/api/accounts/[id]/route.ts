@@ -1,14 +1,33 @@
 import { fail, fromZod, ok } from '@/lib/api';
-import { requireUser } from '@/lib/auth';
+import { getCurrentUser, requireUser } from '@/lib/auth';
 import { accountPatchSchema, idSchema } from '@/lib/validators';
 import * as accountsRepo from '@/lib/repos/accounts';
+import * as usersRepo from '@/lib/repos/users';
+import { canViewProfileField } from '@/lib/profilePrivacy';
 
 export async function GET(_: Request, { params }: { params: { id: string } }) {
   const id = idSchema.safeParse(params.id);
   if (!id.success) return fail('not_found', 'No dossier exists for that id.', 404);
   const account = await accountsRepo.findById(id.data);
   if (!account) return fail('not_found', 'No dossier exists for that id.', 404);
-  return ok(account);
+
+  if (account.platform !== 'website') return ok(account);
+
+  const [viewer, linkedUser] = await Promise.all([
+    getCurrentUser().catch(() => null),
+    account.claimedBy
+      ? usersRepo.findById(account.claimedBy).catch(() => null)
+      : usersRepo.findByUsername(account.username).catch(() => null),
+  ]);
+  if (!linkedUser) return ok(account);
+
+  return ok({
+    ...account,
+    followers: String((linkedUser.followers ?? []).length),
+    region: canViewProfileField(linkedUser, viewer, 'location') ? account.region : undefined,
+    sourceUrl: canViewProfileField(linkedUser, viewer, 'website') ? account.sourceUrl : undefined,
+    socialLinks: canViewProfileField(linkedUser, viewer, 'socialLinks') ? account.socialLinks : undefined,
+  });
 }
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {

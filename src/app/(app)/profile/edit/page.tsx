@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { defaultProfileVisibility, normalizeProfileVisibility } from '@/lib/profilePrivacy';
 
 const multipliers = [
   { id: 'massiveAction', label: '1. Massive Action', desc: 'What actions have you taken at scale?', icon: Star, options: ['Getting Started', 'Making Moves', 'High Impact', 'Massive'] },
@@ -71,6 +72,7 @@ export default function EditProfilePage() {
     xUrl: '',
     websiteUrl: '',
     photoUrl: '',
+    profileFieldVisibility: defaultProfileVisibility,
   });
 
   useEffect(() => {
@@ -109,6 +111,7 @@ export default function EditProfilePage() {
             igUrl: u.igUrl || '',
             xUrl: u.xUrl || '',
             websiteUrl: u.websiteUrl || '',
+            profileFieldVisibility: normalizeProfileVisibility(u.profileFieldVisibility),
             photoUrl: (u.photoUrl && u.photoUrl !== 'null' && u.photoUrl !== 'undefined') 
               ? u.photoUrl 
               : 'https://api.dicebear.com/9.x/initials/svg?seed=' + (u.name || 'User') + '&backgroundColor=1a1a1a&textColor=ffffff',
@@ -123,6 +126,16 @@ export default function EditProfilePage() {
     setForm((f) => ({ ...f, [key]: val }));
   };
 
+  const updatePrivacy = (key: keyof typeof defaultProfileVisibility, val: string) => {
+    setForm((f) => ({
+      ...f,
+      profileFieldVisibility: {
+        ...f.profileFieldVisibility,
+        [key]: val as typeof defaultProfileVisibility[keyof typeof defaultProfileVisibility],
+      },
+    }));
+  };
+
   const pasteIntoField = async (key: 'ytUrl' | 'igUrl' | 'xUrl' | 'websiteUrl') => {
     setError('');
     try {
@@ -135,6 +148,11 @@ export default function EditProfilePage() {
   };
 
   const linkInputClass = "w-full min-w-0 bg-transparent text-[13px] font-medium outline-none text-foreground select-text";
+  const privacyOptions = [
+    { value: 'public', label: 'Public' },
+    { value: 'followers', label: 'Followers' },
+    { value: 'private', label: 'Private' },
+  ] as const;
 
   const handleSave = async () => {
     setError('');
@@ -374,6 +392,33 @@ export default function EditProfilePage() {
             </select>
             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" size={16} />
           </div>
+        </div>
+      </section>
+
+      <section className="mt-8 px-4 space-y-4">
+        <h2 className="text-[13px] font-bold text-foreground">Privacy Controls</h2>
+        <div className="space-y-3">
+          {[
+            { key: 'location', label: 'Location' },
+            { key: 'website', label: 'Website' },
+            { key: 'socialLinks', label: 'Social Links' },
+          ].map((item) => (
+            <div key={item.key} className="flex items-center justify-between gap-3 p-3 border border-border rounded-xl bg-card">
+              <span className="text-[13px] font-semibold text-foreground">{item.label}</span>
+              <div className="relative w-36 shrink-0">
+                <select
+                  value={form.profileFieldVisibility[item.key as keyof typeof defaultProfileVisibility]}
+                  onChange={(e) => updatePrivacy(item.key as keyof typeof defaultProfileVisibility, e.target.value)}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 pr-8 text-[12px] font-bold text-foreground outline-none appearance-none"
+                >
+                  {privacyOptions.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" size={14} />
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
