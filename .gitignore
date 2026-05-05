@@ -16,3 +16,4 @@ public/uploads/
 .env.example
 .agents
 .claude
+docs/

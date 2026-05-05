@@ -493,9 +493,13 @@ export default function ProfilePage() {
                             e.preventDefault();
                             setSelectedReportId(event.reportId);
                             setReportDetailOpen(true);
+                          } else if (event._id) {
+                            e.preventDefault();
+                            setSelectedReportId(event._id);
+                            setReportDetailOpen(true);
                           }
                         }}
-                        className="w-full text-left flex items-start gap-3 rounded-xl border border-border p-3 transition-colors hover:bg-muted/40"
+                        className="w-full cursor-pointer text-left flex items-start gap-3 rounded-xl border border-border p-3 transition-colors hover:bg-muted/40"
                       >
                         <div
                           className={cn(
