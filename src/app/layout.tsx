@@ -8,8 +8,14 @@ export const metadata: Metadata = {
   title: 'Shoशा — The Ledger',
   description: 'Every action. Every consequence. Counted.',
   icons: {
-    icon: '/icon.png',
-    apple: '/icon.png',
+    icon: [
+      { url: '/icon-light.png', media: '(prefers-color-scheme: light)' },
+      { url: '/icon-dark.png', media: '(prefers-color-scheme: dark)' },
+    ],
+    apple: [
+      { url: '/icon-light.png', media: '(prefers-color-scheme: light)' },
+      { url: '/icon-dark.png', media: '(prefers-color-scheme: dark)' },
+    ],
   }
 };
 
