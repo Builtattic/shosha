@@ -15,6 +15,7 @@ export type FeedReport = {
   reportScore?: number;
   baseScore?: number;
   evidenceSourceUrl?: string;
+  links?: Array<{ url: string; title?: string }>;
   canRequestModeration?: boolean;
   viewer?: FeedItemProps['viewer'];
   account: {
@@ -69,6 +70,7 @@ export function toFeedItem(report: FeedReport): FeedItemProps {
     disputeStatus: report.disputeStatus,
     reportScore: report.reportScore ?? report.baseScore,
     evidenceSourceUrl: report.evidenceSourceUrl,
+    links: report.links,
     stats: report.stats ?? { aligns: 0, opposes: 0, comments: 0, shares: 0 },
     delta: report.adminDecision?.finalImpact ?? report.aiVerdict?.proposedImpact ?? 0,
     viewer: report.viewer,

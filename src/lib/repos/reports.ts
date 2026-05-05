@@ -63,6 +63,7 @@ export type ReportRecord = {
   tags?: string[];
   aiUndertaking?: boolean;
   evidenceSourceUrl?: string;
+  links?: Array<{ url: string; title?: string }>;
   disputeStatus?: 'none' | 'open' | 'resolved';
   status: ReportStatus;
   aiVerdict: AiVerdictRecord | null;
