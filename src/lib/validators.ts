@@ -10,6 +10,18 @@ export const reportTypeSchema = z.enum(['positive', 'negative']);
 export const userRoleSchema = z.enum(['user', 'moderator', 'editor', 'admin', 'super_admin']);
 export const reportStatusSchema = z.enum(['pending_ai', 'ai_reviewed', 'approved', 'rejected', 'flagged']);
 export const reportVisibilitySchema = z.enum(['public', 'hidden']);
+const httpUrlSchema = z
+  .string()
+  .max(500)
+  .url('Must be a valid URL')
+  .refine((value) => {
+    try {
+      const protocol = new URL(value).protocol;
+      return protocol === 'http:' || protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }, 'URL must start with http:// or https://');
 
 export const accountCreateSchema = z.object({
   platform: platformSchema,
@@ -112,10 +124,10 @@ export const reportCreateSchema = z.object({
   publicAnonymous: z.boolean().default(true),
   location: z.string().max(160).optional(),
   tags: z.array(z.string().min(1).max(80)).max(10).optional(),
-  evidenceSourceUrl: z.string().url().max(500).optional().or(z.literal('')),
+  evidenceSourceUrl: httpUrlSchema.optional().or(z.literal('')),
   links: z.array(
     z.object({
-      url: z.string().url('Must be a valid URL'),
+      url: httpUrlSchema,
       title: z.string().max(120).optional(),
     })
   ).max(10).optional(),

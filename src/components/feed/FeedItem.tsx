@@ -24,7 +24,8 @@ import {
   Loader2,
   X,
   Download,
-  ShieldAlert
+  ShieldAlert,
+  Link2
 } from 'lucide-react';
 import { cn, formatDate } from '@/lib/utils';
 import { handleAvatarError, resolveAvatarUrl } from '@/lib/media';
@@ -503,7 +504,7 @@ export function FeedItem({
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-3 py-1 text-[11px] font-medium text-foreground hover:bg-muted transition-colors max-w-full truncate"
               >
-                <span className="shrink-0">🔗</span>
+                <Link2 size={12} className="shrink-0" />
                 <span className="truncate">
                   {link.title || link.url}
                 </span>
