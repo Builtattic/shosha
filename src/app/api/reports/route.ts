@@ -127,6 +127,7 @@ export async function POST(request: Request) {
       location: parsed.data.location,
       tags: parsed.data.tags ?? [],
       evidenceSourceUrl: parsed.data.evidenceSourceUrl || undefined,
+      links: parsed.data.links ?? [],
       aiUndertaking: true,
       disputeStatus: 'none',
       status: verdict.abuseFlags.length > 0 ? 'flagged' : 'ai_reviewed',

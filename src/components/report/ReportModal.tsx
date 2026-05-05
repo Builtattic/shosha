@@ -113,6 +113,7 @@ export function ReportModal({
   const [aiConsent, setAiConsent] = useState(false);
   const [publicAnonymous, setPublicAnonymous] = useState(!user);
   const [taggedPerson, setTaggedPerson] = useState('');
+  const [links, setLinks] = useState<Array<{ url: string; title: string }>>([]);
   const [targetPlatform, setTargetPlatform] = useState<Platform>('instagram');
   const [targetHandle, setTargetHandle] = useState('');
   const [targetDisplayName, setTargetDisplayName] = useState('');
@@ -171,6 +172,7 @@ export function ReportModal({
     setAiConsent(false);
     setPublicAnonymous(!user);
     setTaggedPerson('');
+    setLinks([]);
     setTargetPlatform('instagram');
     setTargetHandle('');
     setTargetDisplayName('');
@@ -252,6 +254,19 @@ export function ReportModal({
     setTargetManual(false);
     if (candidate.existingAccountId) setResolvedAccountId(candidate.existingAccountId);
     else setResolvedAccountId(null);
+  }
+
+  function addLink() {
+    if (links.length >= 10) return;
+    setLinks((prev) => [...prev, { url: '', title: '' }]);
+  }
+
+  function removeLink(index: number) {
+    setLinks((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function updateLink(index: number, field: 'url' | 'title', value: string) {
+    setLinks((prev) => prev.map((l, i) => (i === index ? { ...l, [field]: value } : l)));
   }
 
   useEffect(() => {
@@ -431,6 +446,12 @@ export function ReportModal({
           media: { url: media.url, thumbUrl: media.thumbUrl, type: media.type, bytes: media.bytes },
           location: location || undefined,
           tags: taggedPerson ? [taggedPerson] : [],
+          links: links
+            .filter((l) => l.url.trim() !== '')
+            .map((l) => ({
+              url: l.url.trim(),
+              ...(l.title.trim() && { title: l.title.trim() }),
+            })),
           repetitionPattern,
           intent,
           circumstances,
@@ -1170,6 +1191,58 @@ export function ReportModal({
               </h3>
 
               <div className="space-y-3 sm:space-y-4">
+                {/* External Links */}
+                <div className="space-y-2">
+                  <label className="text-[13px] font-bold block">
+                    External References
+                  </label>
+                  <p className="text-[11px] text-muted-foreground -mt-1">
+                    Add articles, news sources, or evidence URLs.
+                  </p>
+
+                  {links.map((link, i) => (
+                    <div key={i} className="rounded-[12px] border border-border bg-muted/30 p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                          Link {i + 1}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeLink(i)}
+                          className="text-[11px] text-destructive hover:underline"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      <input
+                        type="url"
+                        placeholder="https://example.com/article"
+                        value={link.url}
+                        onChange={(e) => updateLink(i, 'url', e.target.value)}
+                        className="w-full rounded-[10px] border border-border bg-card p-2.5 text-[13px] focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Title or description (optional)"
+                        value={link.title}
+                        onChange={(e) => updateLink(i, 'title', e.target.value)}
+                        maxLength={120}
+                        className="w-full rounded-[10px] border border-border bg-card p-2.5 text-[13px] focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      />
+                    </div>
+                  ))}
+
+                  {links.length < 10 && (
+                    <button
+                      type="button"
+                      onClick={addLink}
+                      className="flex items-center gap-1.5 rounded-[10px] border border-dashed border-border px-3 py-2 text-[12px] font-bold text-muted-foreground hover:border-foreground/30 hover:text-foreground transition-colors w-full justify-center"
+                    >
+                      + Add a link
+                    </button>
+                  )}
+                </div>
+
                 <div className="relative group">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={16} />
                   <input
