@@ -112,7 +112,13 @@ export const reportCreateSchema = z.object({
   publicAnonymous: z.boolean().default(true),
   location: z.string().max(160).optional(),
   tags: z.array(z.string().min(1).max(80)).max(10).optional(),
-  evidenceSourceUrl: z.string().url().max(500).optional().or(z.literal(''))
+  evidenceSourceUrl: z.string().url().max(500).optional().or(z.literal('')),
+  links: z.array(
+    z.object({
+      url: z.string().url('Must be a valid URL'),
+      title: z.string().max(120).optional(),
+    })
+  ).max(10).optional(),
 });
 
 export const adjudicateSchema = z.object({

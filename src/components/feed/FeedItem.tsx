@@ -68,6 +68,7 @@ export interface FeedItemProps {
   description?: string;
   reportScore?: number;
   evidenceSourceUrl?: string;
+  links?: Array<{ url: string; title?: string }>;
   media?: {
     type: 'image' | 'video';
     url: string;
@@ -111,6 +112,7 @@ export function FeedItem({
   disputeStatus,
   reportScore,
   evidenceSourceUrl,
+  links,
   stats,
   delta,
   viewer,
@@ -489,6 +491,24 @@ export function FeedItem({
                 {disputeStatus}
               </span>
             )}
+          </div>
+        )}
+        {Array.isArray(links) && links.length > 0 && (
+          <div className="mt-2 flex flex-col gap-1.5">
+            {links.map((link, i) => (
+              <a
+                key={i}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-3 py-1 text-[11px] font-medium text-foreground hover:bg-muted transition-colors max-w-full truncate"
+              >
+                <span className="shrink-0">🔗</span>
+                <span className="truncate">
+                  {link.title || link.url}
+                </span>
+              </a>
+            ))}
           </div>
         )}
         <h3 className="text-[18px] font-bold leading-snug text-foreground">{title}</h3>
