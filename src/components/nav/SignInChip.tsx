@@ -17,18 +17,33 @@ export function SignInChip() {
       return;
     }
 
-    fetch('/api/me', { cache: 'no-store' })
-      .then((r) => r.json())
-      .then((data) => {
-        const url = data?.data?.user?.photoUrl;
-        if (url && url !== 'null' && url !== 'undefined') {
-          setMePhotoUrl(url);
-          return;
-        }
-        setMePhotoUrl(null);
-      })
-      .catch(() => {});
-  }, [user?.uid]);
+    function refreshPhoto() {
+      fetch('/api/me', { cache: 'no-store' })
+        .then((r) => r.json())
+        .then((data) => {
+          const url = data?.data?.user?.photoUrl;
+          if (url && url !== 'null' && url !== 'undefined') {
+            setMePhotoUrl(url);
+            return;
+          }
+          setMePhotoUrl(null);
+        })
+        .catch(() => {});
+    }
+
+    refreshPhoto();
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') refreshPhoto();
+    };
+    window.addEventListener('focus', refreshPhoto);
+    window.addEventListener('shosha:profile-updated', refreshPhoto);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      window.removeEventListener('focus', refreshPhoto);
+      window.removeEventListener('shosha:profile-updated', refreshPhoto);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [user]);
 
   if (loading) return <div className="h-8 w-8 rounded-full bg-muted animate-pulse" />;
 

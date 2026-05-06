@@ -5,7 +5,7 @@ export const profileVisibilityOptions = ['public', 'followers', 'private'] as co
 export const defaultProfileVisibility: ProfileVisibilitySettings = {
   socialLinks: 'followers',
   location: 'followers',
-  website: 'followers',
+  website: 'public',
 };
 
 export const profileFieldKeys = ['socialLinks', 'location', 'website'] as const;
@@ -16,7 +16,7 @@ export function normalizeProfileVisibility(input: unknown): ProfileVisibilitySet
   return {
     socialLinks: normalizeVisibilityValue(value.socialLinks),
     location: normalizeVisibilityValue(value.location),
-    website: normalizeVisibilityValue(value.website),
+    website: normalizeVisibilityValue(value.website, 'public'),
   };
 }
 
@@ -46,8 +46,8 @@ export function restrictedLabel(visibility: ProfileFieldVisibility) {
   return visibility === 'followers' ? 'Visible to followers only' : 'Private';
 }
 
-function normalizeVisibilityValue(value: unknown): ProfileFieldVisibility {
+function normalizeVisibilityValue(value: unknown, fallback: ProfileFieldVisibility = 'followers'): ProfileFieldVisibility {
   return profileVisibilityOptions.includes(value as ProfileFieldVisibility)
     ? value as ProfileFieldVisibility
-    : 'followers';
+    : fallback;
 }

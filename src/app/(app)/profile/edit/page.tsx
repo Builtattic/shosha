@@ -164,6 +164,7 @@ export default function EditProfilePage() {
         body: JSON.stringify(form),
       });
       if (!res.ok) throw new Error('Failed to save profile');
+      window.dispatchEvent(new Event('shosha:profile-updated'));
       router.push('/profile');
     } catch (err: any) {
       setError(err.message || 'Something went wrong');

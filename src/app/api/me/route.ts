@@ -80,6 +80,12 @@ export async function PATCH(req: NextRequest) {
     if ('profileFieldVisibility' in body) {
       patch.profileFieldVisibility = normalizeProfileVisibility(body.profileFieldVisibility);
     }
+    if (typeof patch.websiteUrl === 'string') {
+      const websiteUrl = patch.websiteUrl.trim();
+      patch.websiteUrl = websiteUrl && !/^https?:\/\//i.test(websiteUrl)
+        ? `https://${websiteUrl}`
+        : websiteUrl;
+    }
 
     if (patch.onboardingComplete === true) {
       const completedProfile = { ...user, ...patch };

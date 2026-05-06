@@ -251,9 +251,9 @@ export async function GET(request: Request) {
     feed = feed.filter((report) => {
       const isAnonymousReport = hidesReporterOnPublicSurfaces(report);
 
-      // Always include reports about accounts the user follows
-      // (the subject/reported person is followed, not the reporter)
-      if (followedAccounts.has(report.accountId)) return true;
+      // Include reports about accounts the user follows, but never surface
+      // anonymous reports in Following where they can be linked to a social graph.
+      if (followedAccounts.has(report.accountId) && !isAnonymousReport) return true;
 
       // Include reports where a followed user owns the reported account
       // BUT exclude if this is an anonymous report — would leak identity

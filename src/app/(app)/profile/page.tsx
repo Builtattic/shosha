@@ -19,6 +19,7 @@ import { D3ActivityBar } from '@/components/viz/D3ActivityBar';
 import { ProfileScoreRadar } from '@/components/viz/ProfileScoreRadar';
 import { ShareCardModal } from '@/components/profile/ShareCardModal';
 import { PostDetailModal } from '@/components/feed/PostDetailModal';
+import { ConnectionListModal } from '@/components/profile/ConnectionListModal';
 
 
 const EDU_LABELS: Record<string, string> = {
@@ -67,6 +68,12 @@ const SOCIAL_KEYS = [
   { key: 'fbUrl', label: 'Facebook' },
   { key: 'snapchatUrl', label: 'Snapchat' },
 ] as const;
+
+function normalizeExternalUrl(value?: string | null) {
+  const text = String(value ?? '').trim();
+  if (!text) return '';
+  return /^https?:\/\//i.test(text) ? text : `https://${text}`;
+}
 
 export default function ProfilePage() {
   const { user: firebaseUser, loading: authLoading } = useAuth();
@@ -217,6 +224,7 @@ export default function ProfilePage() {
   const socialLinks = SOCIAL_KEYS
     .map(s => ({ label: s.label, url: appUser?.[s.key] as string | undefined }))
     .filter(s => s.url);
+  const profileWebsiteUrl = normalizeExternalUrl(appUser?.websiteUrl ?? appUser?.website);
 
   const tabs = [
     { id: 'overview', label: 'Overview', Icon: PieChart },
@@ -324,6 +332,14 @@ export default function ProfilePage() {
                   </span>
                 )}
               </div>
+              {appUser?._id && (
+                <ConnectionListModal
+                  targetUserId={appUser._id}
+                  followingCount={(appUser.following ?? []).length}
+                  followersCount={(appUser.followers ?? []).length}
+                  className="mt-2"
+                />
+              )}
             </div>
           </div>
           <button
@@ -778,17 +794,17 @@ export default function ProfilePage() {
                       <dd className="text-[13px] font-semibold text-foreground">{appUser.phone}</dd>
                     </div>
                   )}
-                  {appUser?.websiteUrl && (
+                  {profileWebsiteUrl && (
                     <div className="flex items-center justify-between">
                       <dt className="text-[13px] text-muted-foreground">Website</dt>
                       <dd className="text-[13px] font-semibold text-foreground">
                         <a
-                          href={appUser.websiteUrl}
+                          href={profileWebsiteUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="hover:text-primary transition-colors flex items-center gap-1"
                         >
-                          {appUser.websiteUrl.replace(/^https?:\/\//, '')}
+                          {profileWebsiteUrl.replace(/^https?:\/\//, '')}
                           <ExternalLink size={11} className="shrink-0" />
                         </a>
                       </dd>

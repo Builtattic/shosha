@@ -165,7 +165,7 @@ export async function upsertFromClerk(input: {
     profileFieldVisibility: {
       socialLinks: 'followers',
       location: 'followers',
-      website: 'followers',
+      website: 'public',
     },
     createdAt: now,
     updatedAt: now

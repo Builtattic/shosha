@@ -24,6 +24,8 @@ import { D3AreaChart } from '@/components/viz/D3AreaChart';
 import { SimilarProfiles } from '@/components/profile/SimilarProfiles';
 import { AccountShareButton } from '@/components/profile/AccountShareButton';
 import { LiveAccountScorePanel } from '@/components/profile/LiveAccountScorePanel';
+import { ConnectionListModal } from '@/components/profile/ConnectionListModal';
+import { ScoreLedgerPanel } from '@/components/profile/ScoreLedgerPanel';
 import { formatPlatform, cn, formatDate } from '@/lib/utils';
 import { BASE_SCORE } from '@/lib/scoring';
 import { idSchema } from '@/lib/validators';
@@ -402,16 +404,12 @@ export default async function AccountPage({
                 </div>
               )}
               {linkedUser && (
-                <div className="mt-2 flex items-center gap-3 text-[12px]">
-                  <span className="text-foreground font-bold">
-                    {(linkedUser.following ?? []).length}
-                    <span className="font-normal text-muted-foreground ml-1">Following</span>
-                  </span>
-                  <span className="text-foreground font-bold">
-                    {(linkedUser.followers ?? []).length}
-                    <span className="font-normal text-muted-foreground ml-1">Followers</span>
-                  </span>
-                </div>
+                <ConnectionListModal
+                  targetUserId={linkedUser._id}
+                  followingCount={(linkedUser.following ?? []).length}
+                  followersCount={(linkedUser.followers ?? []).length}
+                  className="mt-2"
+                />
               )}
             </div>
           </div>
@@ -440,71 +438,12 @@ export default async function AccountPage({
           }}
         />
 
-        {windowScores && viewerIsAdmin && (
-          <div className="mt-4 rounded-[24px] border border-border bg-background p-4 shadow-sm">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-[14px] font-bold text-foreground">Workbook Score Tracker</h2>
-              <span className="rounded-full bg-muted px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                Ledger
-              </span>
-            </div>
-            <div className="grid grid-cols-3 gap-2 text-center">
-              {[
-                ['W1', windowScores.w1Delta, windowScores.w1Decay, windowScores.w1Score],
-                ['W2', windowScores.w2Delta, windowScores.w2Decay, windowScores.w2Score],
-                ['W3', windowScores.w3Delta, windowScores.w3Decay, windowScores.w3Score],
-              ].map(([label, windowDelta, decayValue, scoreValue]) => (
-                <div key={String(label)} className="rounded-2xl border border-border bg-muted/30 p-3">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{label}</p>
-                  <p className="mt-1 text-[15px] font-black text-foreground">{Number(scoreValue).toLocaleString()}</p>
-                  <p className="mt-1 text-[10px] text-muted-foreground">
-                    Δ {Number(windowDelta).toLocaleString()} · d {Number(decayValue).toFixed(2)}
-                  </p>
-                </div>
-              ))}
-            </div>
-            <div className="mt-3 flex items-center justify-between rounded-2xl bg-muted/40 px-3 py-2 text-[12px] font-bold">
-              <span className="text-muted-foreground">Lifetime ledger total</span>
-              <span className="text-foreground">{Math.round(account.globalScore ?? 0).toLocaleString()}</span>
-            </div>
-          </div>
-        )}
-        {windowScores && !viewerIsAdmin && (
-          <div className="mt-4 rounded-[24px] border border-border bg-background p-4 shadow-sm">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-[14px] font-bold text-foreground">Score Summary</h2>
-              <span className="rounded-full bg-muted px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                Ledger
-              </span>
-            </div>
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div className="rounded-2xl border border-border bg-muted/30 p-3">
-                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">This Week</p>
-                <p className="mt-1 text-[15px] font-black text-foreground">
-                  {windowScores.w1Delta > 0 ? '+' : ''}{Math.round(windowScores.w1Delta).toLocaleString()}
-                </p>
-                <p className="mt-1 text-[10px] text-muted-foreground">Recent activity</p>
-              </div>
-              <div className="rounded-2xl border border-border bg-muted/30 p-3">
-                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">This Month</p>
-                <p className="mt-1 text-[15px] font-black text-foreground">
-                  {windowScores.w2Delta > 0 ? '+' : ''}{Math.round(windowScores.w2Delta).toLocaleString()}
-                </p>
-                <p className="mt-1 text-[10px] text-muted-foreground">30-day trend</p>
-              </div>
-              <div className="rounded-2xl border border-border bg-muted/30 p-3">
-                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">All Time</p>
-                <p className="mt-1 text-[15px] font-black text-foreground">
-                  {Math.round(windowScores.w3Score).toLocaleString()}
-                </p>
-                <p className="mt-1 text-[10px] text-muted-foreground">Lifetime score</p>
-              </div>
-            </div>
-            <div className="mt-3 flex items-center justify-between rounded-2xl bg-muted/40 px-3 py-2 text-[12px] font-bold">
-              <span className="text-muted-foreground">Total reputation points</span>
-              <span className="text-foreground">{Math.round(account.globalScore ?? 0).toLocaleString()}</span>
-            </div>
-          </div>
+        {windowScores && (
+          <ScoreLedgerPanel
+            windowScores={windowScores}
+            globalScore={account.globalScore}
+            viewerIsAdmin={viewerIsAdmin}
+          />
         )}
 
         {/* Tabs */}
