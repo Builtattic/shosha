@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { LogIn, LogOut } from 'lucide-react';
 import Link from 'next/link';
@@ -7,6 +8,26 @@ import { cn } from '@/lib/utils';
 
 export function SignInChip() {
   const { user, loading, signOut } = useAuth();
+  const [mePhotoUrl, setMePhotoUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user) {
+      setMePhotoUrl(null);
+      return;
+    }
+
+    fetch('/api/me', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((data) => {
+        const url = data?.data?.user?.photoUrl;
+        if (url && url !== 'null' && url !== 'undefined') {
+          setMePhotoUrl(url);
+          return;
+        }
+        setMePhotoUrl(null);
+      })
+      .catch(() => {});
+  }, [user]);
 
   if (loading) return <div className="h-8 w-8 rounded-full bg-muted animate-pulse" />;
 
@@ -22,7 +43,8 @@ export function SignInChip() {
     );
   }
 
-  const photo = user.photoURL && user.photoURL !== 'null' && user.photoURL !== 'undefined' ? user.photoURL : null;
+  const rawPhoto = mePhotoUrl || user.photoURL;
+  const photo = rawPhoto && rawPhoto !== 'null' && rawPhoto !== 'undefined' ? rawPhoto : null;
 
   return (
     <div className="flex items-center gap-3">
