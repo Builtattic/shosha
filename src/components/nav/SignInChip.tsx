@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 export function SignInChip() {
   const { user, loading, signOut } = useAuth();
   const [mePhotoUrl, setMePhotoUrl] = useState<string | null>(null);
+  const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -27,7 +28,7 @@ export function SignInChip() {
         setMePhotoUrl(null);
       })
       .catch(() => {});
-  }, [user]);
+  }, [user?.uid]);
 
   if (loading) return <div className="h-8 w-8 rounded-full bg-muted animate-pulse" />;
 
@@ -55,21 +56,18 @@ export function SignInChip() {
           className="h-8 w-8 overflow-hidden rounded-full border border-border bg-muted flex items-center justify-center transition-opacity hover:opacity-80"
         >
           {photo ? (
-            <img 
-              src={photo} 
-              alt="" 
-              className="h-full w-full object-cover" 
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.style.display = 'none';
-                const fallback = target.parentElement?.querySelector('.avatar-fallback');
-                if (fallback) fallback.classList.remove('hidden');
-              }}
+            <img
+              key={photo}
+              src={photo}
+              alt=""
+              className="h-full w-full object-cover"
+              onError={() => setImgError(true)}
+              onLoad={() => setImgError(false)}
             />
           ) : null}
           <div className={cn(
             "avatar-fallback text-primary font-bold text-sm",
-            photo && "hidden"
+            photo && !imgError && "hidden"
           )}>
             {(user.displayName?.[0] ?? user.email?.[0] ?? '?').toUpperCase()}
           </div>
