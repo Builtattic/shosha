@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { LogIn, LogOut } from 'lucide-react';
 import Link from 'next/link';
@@ -7,6 +8,27 @@ import { cn } from '@/lib/utils';
 
 export function SignInChip() {
   const { user, loading, signOut } = useAuth();
+  const [mePhotoUrl, setMePhotoUrl] = useState<string | null>(null);
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    if (!user) {
+      setMePhotoUrl(null);
+      return;
+    }
+
+    fetch('/api/me', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((data) => {
+        const url = data?.data?.user?.photoUrl;
+        if (url && url !== 'null' && url !== 'undefined') {
+          setMePhotoUrl(url);
+          return;
+        }
+        setMePhotoUrl(null);
+      })
+      .catch(() => {});
+  }, [user?.uid]);
 
   if (loading) return <div className="h-8 w-8 rounded-full bg-muted animate-pulse" />;
 
@@ -22,7 +44,8 @@ export function SignInChip() {
     );
   }
 
-  const photo = user.photoURL && user.photoURL !== 'null' && user.photoURL !== 'undefined' ? user.photoURL : null;
+  const rawPhoto = mePhotoUrl || user.photoURL;
+  const photo = rawPhoto && rawPhoto !== 'null' && rawPhoto !== 'undefined' ? rawPhoto : null;
 
   return (
     <div className="flex items-center gap-3">
@@ -33,21 +56,18 @@ export function SignInChip() {
           className="h-8 w-8 overflow-hidden rounded-full border border-border bg-muted flex items-center justify-center transition-opacity hover:opacity-80"
         >
           {photo ? (
-            <img 
-              src={photo} 
-              alt="" 
-              className="h-full w-full object-cover" 
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.style.display = 'none';
-                const fallback = target.parentElement?.querySelector('.avatar-fallback');
-                if (fallback) fallback.classList.remove('hidden');
-              }}
+            <img
+              key={photo}
+              src={photo}
+              alt=""
+              className="h-full w-full object-cover"
+              onError={() => setImgError(true)}
+              onLoad={() => setImgError(false)}
             />
           ) : null}
           <div className={cn(
             "avatar-fallback text-primary font-bold text-sm",
-            photo && "hidden"
+            photo && !imgError && "hidden"
           )}>
             {(user.displayName?.[0] ?? user.email?.[0] ?? '?').toUpperCase()}
           </div>

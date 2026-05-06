@@ -721,6 +721,22 @@ export default function ProfilePage() {
                       <dd className="text-[13px] font-semibold text-foreground">{appUser.phone}</dd>
                     </div>
                   )}
+                  {appUser?.websiteUrl && (
+                    <div className="flex items-center justify-between">
+                      <dt className="text-[13px] text-muted-foreground">Website</dt>
+                      <dd className="text-[13px] font-semibold text-foreground">
+                        <a
+                          href={appUser.websiteUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="hover:text-primary transition-colors flex items-center gap-1"
+                        >
+                          {appUser.websiteUrl.replace(/^https?:\/\//, '')}
+                          <ExternalLink size={11} className="shrink-0" />
+                        </a>
+                      </dd>
+                    </div>
+                  )}
                 </dl>
               </div>
 

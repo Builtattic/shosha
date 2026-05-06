@@ -89,7 +89,7 @@ export async function POST(request: Request) {
     const multiplierQuotient = calcMultiplierQuotient(multipliers);
     const reportScore = calcDelta(scoringRow.baseScore, multipliers);
     const weight = credibilityWeight(user?.reporterScore, user ? 80 : 50);
-    const publicAnonymous = !user || parsed.data.publicAnonymous;
+    const publicAnonymous = !user || (parsed.data.publicAnonymous ?? false);
 
     const verdict = await adjudicateReport({
       description: parsed.data.description,

@@ -248,11 +248,31 @@ export async function GET(request: Request) {
   if (filter === 'following') {
     const followedAccounts = new Set(user?.claimedAccounts ?? []);
     const followedUsers = new Set(user?.following ?? []);
-    feed = feed.filter((report) =>
-      followedAccounts.has(report.accountId) ||
-      (report.account?.claimedBy && followedUsers.has(report.account.claimedBy)) ||
-      (report.reporterId && followedUsers.has(report.reporterId) && !hidesReporterOnPublicSurfaces(report))
-    );
+    feed = feed.filter((report) => {
+      const isAnonymousReport = hidesReporterOnPublicSurfaces(report);
+
+      // Always include reports about accounts the user follows
+      // (the subject/reported person is followed, not the reporter)
+      if (followedAccounts.has(report.accountId)) return true;
+
+      // Include reports where a followed user owns the reported account
+      // BUT exclude if this is an anonymous report — would leak identity
+      if (
+        report.account?.claimedBy &&
+        followedUsers.has(report.account.claimedBy) &&
+        !isAnonymousReport
+      ) return true;
+
+      // Include reports filed BY a followed user
+      // only if reporter is not hidden (already had this gate)
+      if (
+        report.reporterId &&
+        followedUsers.has(report.reporterId) &&
+        !isAnonymousReport
+      ) return true;
+
+      return false;
+    });
   } else {
     // Append news for non-following tabs
     feed = [...feed, ...liveNews] as any[];
