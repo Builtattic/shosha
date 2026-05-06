@@ -7,9 +7,10 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'Shoशा — The Ledger',
   description: 'Every action. Every consequence. Counted.',
+  manifest: '/manifest.json',
   icons: {
     icon: '/icon.png',
-    apple: '/icon.png',
+    apple: '/icons/apple-touch-icon.png',
   }
 };
 
