@@ -79,6 +79,7 @@ export default function ProfilePage() {
   const [shareOpen, setShareOpen] = useState(false);
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
   const [reportDetailOpen, setReportDetailOpen] = useState(false);
+  const [ledgerRange, setLedgerRange] = useState<'weekly' | 'monthly' | 'max'>('max');
   const initialReplayDone = useRef(false);
 
   async function recalculateScore() {
@@ -174,16 +175,44 @@ export default function ProfilePage() {
     .sort((a, b) => new Date(a.t).getTime() - new Date(b.t).getTime());
 
   const creationTime = appUser?.createdAt ? new Date(appUser.createdAt) : new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const areaChartData = sortedLedger.length > 0
-    ? sortedLedger.reduce<{ date: Date; value: number }[]>((acc, entry) => {
-        const last = acc.length > 0 ? acc[acc.length - 1].value : BASE_SCORE;
-        acc.push({ date: new Date(entry.t), value: last + (entry.delta ?? 0) });
-        return acc;
-      }, [{ date: creationTime, value: BASE_SCORE }])
-    : [
-        { date: creationTime, value: BASE_SCORE },
-        { date: new Date(), value: ledgerScore }
-      ];
+
+  // Build the full cumulative score timeline
+  const fullTimeline = sortedLedger.reduce<{ date: Date; value: number }[]>((acc, entry) => {
+    const last = acc.length > 0 ? acc[acc.length - 1].value : BASE_SCORE;
+    acc.push({ date: new Date(entry.t), value: last + (entry.delta ?? 0) });
+    return acc;
+  }, [{ date: creationTime, value: BASE_SCORE }]);
+
+  // Calendar-aligned range thresholds
+  const now = new Date();
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1));
+  startOfWeek.setHours(0, 0, 0, 0);
+  const startOfYear = new Date(now.getFullYear(), 0, 1);
+
+  const rangeThresholds: Record<typeof ledgerRange, number> = {
+    weekly: startOfWeek.getTime(),
+    monthly: startOfYear.getTime(),
+    max: 0,
+  };
+  const threshold = rangeThresholds[ledgerRange];
+
+  // Filter & stitch: keep points in range, prepend the interpolated value at the boundary
+  let areaChartData = fullTimeline.filter(d => d.date.getTime() >= threshold);
+  if (ledgerRange !== 'max' && areaChartData.length !== fullTimeline.length) {
+    const pointBefore = [...fullTimeline].reverse().find(d => d.date.getTime() < threshold);
+    if (pointBefore) {
+      areaChartData = [{ date: new Date(threshold), value: pointBefore.value }, ...areaChartData];
+    } else if (areaChartData.length <= 1) {
+      areaChartData = [{ date: new Date(threshold), value: BASE_SCORE }, ...areaChartData];
+    }
+  }
+  if (areaChartData.length < 2) {
+    areaChartData = [
+      { date: creationTime, value: BASE_SCORE },
+      { date: now, value: ledgerScore },
+    ];
+  }
 
   const socialLinks = SOCIAL_KEYS
     .map(s => ({ label: s.label, url: appUser?.[s.key] as string | undefined }))
@@ -602,22 +631,50 @@ export default function ProfilePage() {
 
               {/* Ledger Timeline */}
               <div className="rounded-[24px] bg-background p-5 shadow-sm border border-border">
-                <h3 className="mb-1 text-[16px] font-bold text-foreground">Score Ledger</h3>
-                <p className="mb-4 text-[13px] text-muted-foreground">
-                  Continuous trajectory from filed events. Base 1,000.
-                </p>
+                <div className="mb-4 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-[16px] font-bold text-foreground">Score Ledger</h3>
+                    <p className="mt-0.5 text-[13px] text-muted-foreground">
+                      Trajectory from filed events. Base 1,000.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1 rounded-xl border border-border bg-muted/40 p-1">
+                    {([
+                      { key: 'weekly' as const, label: 'Week' },
+                      { key: 'monthly' as const, label: 'Month' },
+                      { key: 'max' as const, label: 'Max' },
+                    ]).map(({ key, label }) => (
+                      <button
+                        key={key}
+                        onClick={() => setLedgerRange(key)}
+                        className={cn(
+                          'rounded-lg px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider transition-all',
+                          ledgerRange === key
+                            ? 'bg-background text-foreground shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground'
+                        )}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 {areaChartData.length >= 2 ? (
                   <>
-                    <D3AreaChart data={areaChartData} height={200} />
-                    <div className="mt-3 flex items-center gap-3 text-[11px]">
-                      <span className="flex items-center gap-1.5 text-foreground">
-                        <span className="inline-block h-0.5 w-6 rounded bg-foreground" />
-                        Shosha Score
-                      </span>
-                      <span className="flex items-center gap-1.5 text-muted-foreground">
-                        <span className="inline-block h-2 w-4 rounded-sm bg-muted" />
-                        Trajectory area
-                      </span>
+                    <D3AreaChart data={areaChartData} height={280} rangeMode={ledgerRange} />
+                    <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-border bg-muted/25 px-4 py-3">
+                      <div className="flex items-center gap-2.5">
+                        <span className="inline-block h-[3px] w-7 rounded-full bg-foreground" />
+                        <span className="text-[12px] font-semibold text-foreground">Score</span>
+                      </div>
+                      <div className="flex items-center gap-2.5">
+                        <span className="inline-block h-4 w-6 rounded-sm bg-foreground/10 border border-foreground/5" />
+                        <span className="text-[12px] font-semibold text-muted-foreground">Trajectory</span>
+                      </div>
+                      <div className="flex items-center gap-2.5">
+                        <span className="inline-block h-3 w-3 rounded-full border-[2.5px] border-foreground bg-background" />
+                        <span className="text-[12px] font-semibold text-muted-foreground">Data Point</span>
+                      </div>
                     </div>
                   </>
                 ) : (
@@ -648,7 +705,7 @@ export default function ProfilePage() {
                         <span
                           className={cn(
                             'shrink-0 rounded-lg px-2.5 py-1 text-[12px] font-bold tabular-nums',
-                            entry.delta > 0 ? 'bg-green-50 text-green-600' : entry.delta < 0 ? 'bg-red-50 text-red-600' : 'bg-muted text-muted-foreground'
+                            entry.delta > 0 ? 'bg-primary/10 text-primary' : entry.delta < 0 ? 'bg-destructive/10 text-destructive' : 'bg-muted text-muted-foreground'
                           )}
                         >
                           {entry.delta > 0 ? '+' : ''}{entry.delta}

@@ -28,11 +28,12 @@ export function serializeDoc<T>(doc: T): T {
   return JSON.parse(JSON.stringify(doc)) as T;
 }
 
-export function formatDate(date: string | Date) {
-  const d = typeof date === 'string' ? new Date(date) : date;
-  return d.toLocaleDateString('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric'
-  });
+export function formatDate(date: string | Date | number): string {
+  if (!date) return '';
+  const d = date instanceof Date ? date : new Date(date);
+  if (isNaN(d.getTime())) return String(date);
+  const day = d.getDate().toString().padStart(2, '0');
+  const month = d.toLocaleString('en-GB', { month: 'short' });
+  const year = d.getFullYear();
+  return `${day} ${month} ${year}`;
 }
