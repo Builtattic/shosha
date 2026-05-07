@@ -27,6 +27,7 @@ function adminPageTitle(pathname: string): string {
     disputes: 'Disputes',
     users: 'Users',
     accounts: 'Accounts',
+    data: 'Data Center',
     claims: 'Claims',
     audits: 'Audits',
     create: 'Publish Claim',

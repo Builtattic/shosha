@@ -52,6 +52,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
     items: [
       { href: '/admin/users', label: 'Users', icon: Users },
       { href: '/admin/accounts', label: 'Accounts', icon: Database },
+      { href: '/admin/data', label: 'Data Center', icon: Database },
       { href: '/admin/claims', label: 'Claims', icon: ClipboardList },
       { href: '/admin/audits', label: 'Audits', icon: ShieldCheck },
     ],
