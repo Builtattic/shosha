@@ -593,3 +593,5 @@ https://nextjs.org/docs/messages/module-not-found
 <w>  at file D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
 <w>  at resolve commonjs D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
 <w> [webpack.cache.PackFileCacheStrategy] Restoring pack from D:\Shosha\.next\cache\webpack\client-development.pack.gz failed: TypeError: Cannot read properties of undefined (reading 'hasStartTime')
+<w> [webpack.cache.PackFileCacheStrategy] Restoring pack from D:\Shosha\.next\cache\webpack\client-development.pack.gz failed: TypeError: Cannot read properties of undefined (reading 'hasStartTime')
+<w> [webpack.cache.PackFileCacheStrategy] Restoring pack from D:\Shosha\.next\cache\webpack\client-development.pack.gz failed: TypeError: Cannot read properties of undefined (reading 'hasStartTime')
