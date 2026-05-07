@@ -6,19 +6,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { Mail, Phone, Eye, EyeOff, ArrowRight, ArrowLeft, CheckCircle2, Shield } from 'lucide-react';
 import type { ConfirmationResult } from 'firebase/auth';
+import { sanitizeRedirectPath } from '@/lib/sanitizeRedirectPath';
 
 type AuthMode = 'choose' | 'email' | 'phone' | 'otp' | 'loading';
-
-/** Allows only safe same-origin relative redirect targets. */
-function sanitizeRedirectPath(input: string | null): string {
-  if (!input) return '/dashboard';
-  if (!input.startsWith('/') || input.startsWith('//')) return '/dashboard';
-  const lowered = input.toLowerCase();
-  if (lowered.startsWith('/http:') || lowered.startsWith('/https:') || lowered.startsWith('/data:') || lowered.startsWith('/javascript:')) {
-    return '/dashboard';
-  }
-  return input;
-}
 
 async function resolveRedirect(redirectParam: string): Promise<string> {
   const safeRedirect = sanitizeRedirectPath(redirectParam);

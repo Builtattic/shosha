@@ -29,7 +29,7 @@ const mockAdmin = { _id: 'admin-1', role: 'admin' };
 const mockAccount = { _id: 'account-abc', claimedBy: 'user-123', platform: 'x', username: 'testuser' };
 
 function makePatchRequest(body: object, id = 'account-abc'): [Request, { params: { id: string } }] {
-  const req = new Request('http://localhost/api/accounts/account-abc', {
+  const req = new Request(`http://localhost/api/accounts/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -155,8 +155,7 @@ describe('PATCH /api/accounts/[id]', () => {
         body: 'not valid json{{{',
       });
       const res = await PATCH(req, { params: { id: 'account-abc' } });
-      // fromZod returns a validation error (typically 422)
-      expect(res.status).toBeGreaterThanOrEqual(400);
+      expect(res.status).toBe(422);
     });
   });
 

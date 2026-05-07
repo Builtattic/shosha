@@ -1,21 +1,5 @@
 import { describe, expect, it } from 'vitest';
-
-/**
- * classifyType is defined in src/app/api/feed/route.ts but is not exported.
- * This file tests the function's logic by reimplementing it inline.
- * Any change to the function should be reflected here.
- *
- * Logic under test (from the PR):
- *   function classifyType(aligns: number, opposes: number): 'positive' | 'negative' {
- *     return aligns >= opposes ? 'positive' : 'negative';
- *   }
- *
- * Key change from old code: the old implementation used Math.random() to decide
- * positive/negative. The new implementation uses deterministic engagement counts.
- */
-function classifyType(aligns: number, opposes: number): 'positive' | 'negative' {
-  return aligns >= opposes ? 'positive' : 'negative';
-}
+import { classifyType } from '@/app/api/feed/route';
 
 describe('classifyType', () => {
   describe('basic classification', () => {

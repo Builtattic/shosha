@@ -134,12 +134,10 @@ describe('anonymousTag', () => {
   it('differs across different IPs', () => {
     const req1 = makeRequest({ ip: '1.1.1.1', ua: 'ua' });
     const req2 = makeRequest({ ip: '2.2.2.2', ua: 'ua' });
-    // It's possible but extremely unlikely for two different inputs to produce the same 4-char prefix
-    // This is a probabilistic test that should pass under normal conditions
     const tag1 = anonymousTag(req1);
     const tag2 = anonymousTag(req2);
-    // At minimum both should be valid format
     expect(tag1).toMatch(/^anon_[0-9a-f]{4}$/);
     expect(tag2).toMatch(/^anon_[0-9a-f]{4}$/);
+    expect(tag1).not.toBe(tag2);
   });
 });

@@ -1,36 +1,5 @@
 import { describe, expect, it } from 'vitest';
-
-/**
- * The sanitizeRedirectPath function is defined in src/app/(auth)/sign-in/page.tsx
- * but is not exported (it's a client component). This file tests the same logic
- * by reimplementing it inline — any change to the function should be reflected here.
- *
- * Logic under test (from the PR):
- *   function sanitizeRedirectPath(input: string | null): string {
- *     if (!input) return '/dashboard';
- *     if (!input.startsWith('/') || input.startsWith('//')) return '/dashboard';
- *     const lowered = input.toLowerCase();
- *     if (lowered.startsWith('/http:') || lowered.startsWith('/https:') ||
- *         lowered.startsWith('/data:') || lowered.startsWith('/javascript:')) {
- *       return '/dashboard';
- *     }
- *     return input;
- *   }
- */
-function sanitizeRedirectPath(input: string | null): string {
-  if (!input) return '/dashboard';
-  if (!input.startsWith('/') || input.startsWith('//')) return '/dashboard';
-  const lowered = input.toLowerCase();
-  if (
-    lowered.startsWith('/http:') ||
-    lowered.startsWith('/https:') ||
-    lowered.startsWith('/data:') ||
-    lowered.startsWith('/javascript:')
-  ) {
-    return '/dashboard';
-  }
-  return input;
-}
+import { sanitizeRedirectPath } from '@/lib/sanitizeRedirectPath';
 
 describe('sanitizeRedirectPath', () => {
   describe('null and empty inputs', () => {
