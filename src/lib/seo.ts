@@ -1,11 +1,12 @@
 import type { AccountRecord } from '@/lib/repos/accounts';
 
 export function siteUrl() {
+  // NEVER use VERCEL_URL — it's a per-deployment preview URL, not the canonical domain.
+  // Set NEXT_PUBLIC_SITE_URL in Vercel project settings → Production environment.
   const raw =
     process.env.NEXT_PUBLIC_SITE_URL ||
     process.env.SITE_URL ||
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '') ||
-    'http://localhost:3000';
+    'https://noshosha.com';
   return raw.replace(/\/+$/, '');
 }
 
