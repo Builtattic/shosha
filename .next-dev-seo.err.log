@@ -482,3 +482,113 @@ https://nextjs.org/docs/messages/module-not-found
 <w> [webpack.cache.PackFileCacheStrategy] Restoring pack from D:\Shosha\.next\cache\webpack\client-development.pack.gz failed: TypeError: Cannot read properties of undefined (reading 'hasStartTime')
 <w> [webpack.cache.PackFileCacheStrategy] Restoring pack from D:\Shosha\.next\cache\webpack\client-development.pack.gz failed: TypeError: Cannot read properties of undefined (reading 'hasStartTime')
 <w> [webpack.cache.PackFileCacheStrategy] Restoring pack from D:\Shosha\.next\cache\webpack\client-development.pack.gz failed: TypeError: Cannot read properties of undefined (reading 'hasStartTime')
+<w> [webpack.cache.PackFileCacheStrategy] Restoring pack from D:\Shosha\.next\cache\webpack\client-development.pack.gz failed: TypeError: Cannot read properties of undefined (reading 'hasStartTime')
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, lstat 'D:\Shosha\.next\server\app\icon.png'
+<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving '../../../../.next/server/app/icon.png/route' in D:\Shosha\node_modules\next\dist\server for build dependencies doesn't lead to expected result 'D:\Shosha\.next\server\app\icon.png\route.js', but to 'Error: Can't resolve '../../../../.next/server/app/icon.png/route' in 'D:\Shosha\node_modules\next\dist\server'' instead. Resolving dependencies are ignored for this path.
+<w>  at resolve commonjs file ../../../../.next/server/app/icon.png/route (expected D:\Shosha\.next\server\app\icon.png\route.js)
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\server\require.js
+<w>  at file D:\Shosha\node_modules\next\dist\server\require.js
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\server\load-components.js
+<w>  at file D:\Shosha\node_modules\next\dist\server\load-components.js
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\build\utils.js
+<w>  at file D:\Shosha\node_modules\next\dist\build\utils.js
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w>  at file D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w>  at resolve commonjs D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving '../../../../.next/server/app/favicon.ico/route' in D:\Shosha\node_modules\next\dist\server for build dependencies doesn't lead to expected result 'D:\Shosha\.next\server\app\favicon.ico\route.js', but to 'Error: Can't resolve '../../../../.next/server/app/favicon.ico/route' in 'D:\Shosha\node_modules\next\dist\server'' instead. Resolving dependencies are ignored for this path.
+<w>  at resolve commonjs file ../../../../.next/server/app/favicon.ico/route (expected D:\Shosha\.next\server\app\favicon.ico\route.js)
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\server\require.js
+<w>  at file D:\Shosha\node_modules\next\dist\server\require.js
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\server\load-components.js
+<w>  at file D:\Shosha\node_modules\next\dist\server\load-components.js
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\build\utils.js
+<w>  at file D:\Shosha\node_modules\next\dist\build\utils.js
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w>  at file D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w>  at resolve commonjs D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w> [webpack.cache.PackFileCacheStrategy] Restoring pack from D:\Shosha\.next\cache\webpack\client-development.pack.gz failed: TypeError: Cannot read properties of undefined (reading 'hasStartTime')
+<w> [webpack.cache.PackFileCacheStrategy] Restoring pack from D:\Shosha\.next\cache\webpack\client-development.pack.gz failed: TypeError: Cannot read properties of undefined (reading 'hasStartTime')
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, lstat 'D:\Shosha\.next\server\app\icon.png'
+<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving '../../../../.next/server/app/icon.png/route' in D:\Shosha\node_modules\next\dist\server for build dependencies doesn't lead to expected result 'D:\Shosha\.next\server\app\icon.png\route.js', but to 'Error: Can't resolve '../../../../.next/server/app/icon.png/route' in 'D:\Shosha\node_modules\next\dist\server'' instead. Resolving dependencies are ignored for this path.
+<w>  at resolve commonjs file ../../../../.next/server/app/icon.png/route (expected D:\Shosha\.next\server\app\icon.png\route.js)
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\server\require.js
+<w>  at file D:\Shosha\node_modules\next\dist\server\require.js
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\server\load-components.js
+<w>  at file D:\Shosha\node_modules\next\dist\server\load-components.js
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\build\utils.js
+<w>  at file D:\Shosha\node_modules\next\dist\build\utils.js
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w>  at file D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w>  at resolve commonjs D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w> [webpack.cache.PackFileCacheStrategy] Restoring pack from D:\Shosha\.next\cache\webpack\client-development.pack.gz failed: TypeError: Cannot read properties of undefined (reading 'hasStartTime')
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, lstat 'D:\Shosha\.next\server\app\icon.png'
+<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving '../../../../.next/server/app/icon.png/route' in D:\Shosha\node_modules\next\dist\server for build dependencies doesn't lead to expected result 'D:\Shosha\.next\server\app\icon.png\route.js', but to 'Error: Can't resolve '../../../../.next/server/app/icon.png/route' in 'D:\Shosha\node_modules\next\dist\server'' instead. Resolving dependencies are ignored for this path.
+<w>  at resolve commonjs file ../../../../.next/server/app/icon.png/route (expected D:\Shosha\.next\server\app\icon.png\route.js)
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\server\require.js
+<w>  at file D:\Shosha\node_modules\next\dist\server\require.js
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\server\load-components.js
+<w>  at file D:\Shosha\node_modules\next\dist\server\load-components.js
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\build\utils.js
+<w>  at file D:\Shosha\node_modules\next\dist\build\utils.js
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w>  at file D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w>  at resolve commonjs D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, lstat 'D:\Shosha\.next\server\app\icon.png'
+<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving '../../../../.next/server/app/icon.png/route' in D:\Shosha\node_modules\next\dist\server for build dependencies doesn't lead to expected result 'D:\Shosha\.next\server\app\icon.png\route.js', but to 'Error: Can't resolve '../../../../.next/server/app/icon.png/route' in 'D:\Shosha\node_modules\next\dist\server'' instead. Resolving dependencies are ignored for this path.
+<w>  at resolve commonjs file ../../../../.next/server/app/icon.png/route (expected D:\Shosha\.next\server\app\icon.png\route.js)
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\server\require.js
+<w>  at file D:\Shosha\node_modules\next\dist\server\require.js
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\server\load-components.js
+<w>  at file D:\Shosha\node_modules\next\dist\server\load-components.js
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\build\utils.js
+<w>  at file D:\Shosha\node_modules\next\dist\build\utils.js
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w>  at file D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w>  at resolve commonjs D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, lstat 'D:\Shosha\.next\server\app\icon.png'
+<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving '../../../../.next/server/app/icon.png/route' in D:\Shosha\node_modules\next\dist\server for build dependencies doesn't lead to expected result 'D:\Shosha\.next\server\app\icon.png\route.js', but to 'Error: Can't resolve '../../../../.next/server/app/icon.png/route' in 'D:\Shosha\node_modules\next\dist\server'' instead. Resolving dependencies are ignored for this path.
+<w>  at resolve commonjs file ../../../../.next/server/app/icon.png/route (expected D:\Shosha\.next\server\app\icon.png\route.js)
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\server\require.js
+<w>  at file D:\Shosha\node_modules\next\dist\server\require.js
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\server\load-components.js
+<w>  at file D:\Shosha\node_modules\next\dist\server\load-components.js
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\build\utils.js
+<w>  at file D:\Shosha\node_modules\next\dist\build\utils.js
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w>  at file D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w>  at resolve commonjs D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving '../../../../.next/server/app/favicon.ico/route' in D:\Shosha\node_modules\next\dist\server for build dependencies doesn't lead to expected result 'D:\Shosha\.next\server\app\favicon.ico\route.js', but to 'Error: Can't resolve '../../../../.next/server/app/favicon.ico/route' in 'D:\Shosha\node_modules\next\dist\server'' instead. Resolving dependencies are ignored for this path.
+<w>  at resolve commonjs file ../../../../.next/server/app/favicon.ico/route (expected D:\Shosha\.next\server\app\favicon.ico\route.js)
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\server\require.js
+<w>  at file D:\Shosha\node_modules\next\dist\server\require.js
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\server\load-components.js
+<w>  at file D:\Shosha\node_modules\next\dist\server\load-components.js
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\build\utils.js
+<w>  at file D:\Shosha\node_modules\next\dist\build\utils.js
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w>  at file D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w>  at resolve commonjs D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w> [webpack.cache.PackFileCacheStrategy] Restoring pack from D:\Shosha\.next\cache\webpack\client-development.pack.gz failed: TypeError: Cannot read properties of undefined (reading 'hasStartTime')
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, lstat 'D:\Shosha\.next\server\app\icon.png'
+<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving '../../../../.next/server/app/icon.png/route' in D:\Shosha\node_modules\next\dist\server for build dependencies doesn't lead to expected result 'D:\Shosha\.next\server\app\icon.png\route.js', but to 'Error: Can't resolve '../../../../.next/server/app/icon.png/route' in 'D:\Shosha\node_modules\next\dist\server'' instead. Resolving dependencies are ignored for this path.
+<w>  at resolve commonjs file ../../../../.next/server/app/icon.png/route (expected D:\Shosha\.next\server\app\icon.png\route.js)
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\server\require.js
+<w>  at file D:\Shosha\node_modules\next\dist\server\require.js
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\server\load-components.js
+<w>  at file D:\Shosha\node_modules\next\dist\server\load-components.js
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\build\utils.js
+<w>  at file D:\Shosha\node_modules\next\dist\build\utils.js
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w>  at file D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w>  at resolve commonjs D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving '../../../../.next/server/app/favicon.ico/route' in D:\Shosha\node_modules\next\dist\server for build dependencies doesn't lead to expected result 'D:\Shosha\.next\server\app\favicon.ico\route.js', but to 'Error: Can't resolve '../../../../.next/server/app/favicon.ico/route' in 'D:\Shosha\node_modules\next\dist\server'' instead. Resolving dependencies are ignored for this path.
+<w>  at resolve commonjs file ../../../../.next/server/app/favicon.ico/route (expected D:\Shosha\.next\server\app\favicon.ico\route.js)
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\server\require.js
+<w>  at file D:\Shosha\node_modules\next\dist\server\require.js
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\server\load-components.js
+<w>  at file D:\Shosha\node_modules\next\dist\server\load-components.js
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\build\utils.js
+<w>  at file D:\Shosha\node_modules\next\dist\build\utils.js
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w>  at file D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w>  at resolve commonjs D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js

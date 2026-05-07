@@ -9,6 +9,7 @@ import {
   ShieldCheck, 
   MoreHorizontal, 
   ArrowLeft,
+  ArrowRight,
   Bell,
   CheckCircle2,
   XCircle,

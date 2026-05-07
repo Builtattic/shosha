@@ -506,7 +506,7 @@ export function CreateBubbleFlow() {
                     </div>
                   </div>
                   <div className="border-t border-border p-6 bg-muted/5">
-                    <p className="text-[13px] md:text-[14px] text-muted-foreground leading-relaxed italic">"{form.description}"</p>
+                    <p className="text-[13px] md:text-[14px] text-muted-foreground leading-relaxed italic">&quot;{form.description}&quot;</p>
                   </div>
                 </div>
 
