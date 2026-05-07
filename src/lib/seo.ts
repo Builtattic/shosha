@@ -2,9 +2,9 @@ import type { AccountRecord } from '@/lib/repos/accounts';
 
 export function siteUrl() {
   // Always use the canonical production URL for sitemaps and SEO tags.
-  // Using VERCEL_URL causes GSC "URL not allowed" errors because the
-  // sitemap outputs preview URLs instead of the verified domain.
-  return process.env.NEXT_PUBLIC_SITE_URL || 'https://www.noshosha.com';
+  // We completely ignore env vars here because Vercel often injects
+  // the preview URL (.vercel.app), causing GSC "URL not allowed" errors.
+  return 'https://www.noshosha.com';
 }
 
 export function profileSlug(value: string) {
