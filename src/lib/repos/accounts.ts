@@ -107,6 +107,7 @@ export type AccountRecord = {
   displayNameLower?: string;
   email?: string;
   sourceUrl?: string;
+  slug?: string;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -424,6 +425,4 @@ export async function rebuildLedger(id: string, entries: ScoreHistoryPoint[]): P
     updatedAt: new Date().toISOString(),
   }));
   return findById(id);
-
-  
 }

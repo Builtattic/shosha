@@ -1,52 +1,38 @@
 import type { MetadataRoute } from 'next';
 import * as accountsRepo from '@/lib/repos/accounts';
-
-const BASE_URL = 'https://www.noshosha.com';
+import { profilePath, siteUrl } from '@/lib/seo';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  // ── Static pages ──────────────────────────────────────────
-  const staticPages: MetadataRoute.Sitemap = [
-    {
-      url: BASE_URL,
-      priority: 1.0,
-      changeFrequency: 'weekly',
-    },
-    {
-      url: `${BASE_URL}/leaderboard`,
-      priority: 0.9,
-      changeFrequency: 'daily', // scores change every Sunday + events
-    },
-    {
-      url: `${BASE_URL}/about`,
-      priority: 0.7,
-      changeFrequency: 'monthly',
-    },
-    {
-      url: `${BASE_URL}/how-it-works`,
-      priority: 0.8,
-      changeFrequency: 'monthly',
-    },
-  ];
+  const baseUrl = siteUrl();
+  const now = new Date();
+  const staticPaths = ['/', '/leaderboard', '/ranks', '/about', '/how-it-works', '/impact'];
 
-  // ── Profile pages ─────────────────────────────────────────
-  // listAll(500) fetches up to 500 accounts ordered by score.
-  // If you grow beyond 500, we'll add sitemap pagination later.
-  let profilePages: MetadataRoute.Sitemap = [];
-
+  let profileUrls: MetadataRoute.Sitemap = [];
   try {
-    const accounts = await accountsRepo.listAll(500);
-
-    profilePages = accounts.map((account) => ({
-      url: `${BASE_URL}/profile/${account._id}`,
-      lastModified: account.updatedAt ? new Date(account.updatedAt) : new Date(),
-      priority: 0.8,
-      changeFrequency: 'daily' as const, // scores update frequently
-    }));
+    const accounts = await accountsRepo.listEvery();
+    profileUrls = accounts
+      .map((account) => {
+        const path = profilePath(account);
+        if (!path) return null;
+        return {
+          url: `${baseUrl}${path}`,
+          lastModified: account.updatedAt ? new Date(account.updatedAt) : now,
+          changeFrequency: 'daily' as const,
+          priority: account.profileKind === 'public_figure' ? 0.9 : 0.7,
+        };
+      })
+      .filter(Boolean) as MetadataRoute.Sitemap;
   } catch (error) {
-    // If the DB call fails, sitemap still works — just without profile pages.
-    // Better than a broken sitemap.xml
-    console.error('[sitemap] failed to fetch accounts:', error);
+    console.error('[sitemap] failed to load profile URLs', error);
   }
 
-  return [...staticPages, ...profilePages];
+  return [
+    ...staticPaths.map((path) => ({
+      url: `${baseUrl}${path}`,
+      lastModified: now,
+      changeFrequency: 'daily' as const,
+      priority: path === '/' ? 1 : 0.8,
+    })),
+    ...profileUrls,
+  ];
 }

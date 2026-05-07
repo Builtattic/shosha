@@ -1,28 +1,17 @@
-// src/app/(public)/profile/[id]/page.tsx
-// SEO-facing public profile page.
-// Accepts both /profile/virat-kohli (slug) and /profile/SS00102 (ID).
-// If visited via ID and a slug exists → 301 redirect to slug URL.
-
+import { cache } from 'react';
 import { notFound, redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import * as accountsRepo from '@/lib/repos/accounts';
 import { idSchema } from '@/lib/validators';
+import { profileDescription, profileSlug, profileTitle, siteUrl } from '@/lib/seo';
 
 export const revalidate = 3600;
 export const dynamicParams = true;
 
-const BASE_URL = 'https://www.noshosha.com';
-
-// ─── Resolve param to account ─────────────────────────────────
-// The [id] segment can be either:
-//   a) a slug like "virat-kohli"    → search by slug field
-//   b) a raw ID like "SS00102"      → search by _id
-async function resolveAccount(param: string) {
-  // Try slug first — most traffic will come via slug once indexed
+const resolveAccount = cache(async (param: string) => {
   const bySlug = await accountsRepo.findBySlug(param);
   if (bySlug) return { account: bySlug, resolvedVia: 'slug' as const };
 
-  // Fall back to raw ID
   const parsed = idSchema.safeParse(param);
   if (!parsed.success) return null;
 
@@ -30,9 +19,8 @@ async function resolveAccount(param: string) {
   if (!byId) return null;
 
   return { account: byId, resolvedVia: 'id' as const };
-}
+});
 
-// ─── generateMetadata ─────────────────────────────────────────
 export async function generateMetadata({
   params,
 }: {
@@ -42,36 +30,32 @@ export async function generateMetadata({
   if (!resolved) return { title: 'Profile Not Found | Shosha' };
 
   const { account } = resolved;
-  const slug = (account as any).slug ?? account._id;
-
-  const title = `${account.displayName} — Shosha Score: ${account.score ?? '—'}`;
-  const description = `${account.displayName}'s public reputation ledger on Shosha. Score: ${account.score ?? 'unscored'}. Every verified action, context-weighted and permanently recorded.${account.role ? ' ' + account.role + '.' : ''}${account.region ? ' ' + account.region + '.' : ''}`.trim();
+  const slug = account.slug ?? profileSlug(account.username || account.displayName);
+  const baseUrl = siteUrl();
+  const canonicalUrl = `${baseUrl}/${slug}`;
+  const title = profileTitle(account);
+  const description = profileDescription(account);
 
   return {
     title,
     description,
-    // Canonical always points to the slug URL — critical for SEO
-    // Prevents Google from indexing both /SS00102 and /virat-kohli as separate pages
-    alternates: {
-      canonical: `${BASE_URL}/profile/${slug}`,
-    },
+    alternates: { canonical: canonicalUrl },
     openGraph: {
       title,
       description,
-      url: `${BASE_URL}/profile/${slug}`,
+      url: canonicalUrl,
       type: 'profile',
-      images: [`${BASE_URL}/api/og?id=${account._id}`],
+      images: account.avatarUrl ? [{ url: account.avatarUrl, alt: account.displayName }] : undefined,
     },
     twitter: {
-      card: 'summary_large_image',
+      card: account.avatarUrl ? 'summary_large_image' : 'summary',
       title,
       description,
-      images: [`${BASE_URL}/api/og?id=${account._id}`],
+      images: account.avatarUrl ? [account.avatarUrl] : undefined,
     },
   };
 }
 
-// ─── PAGE ─────────────────────────────────────────────────────
 export default async function PublicProfilePage({
   params,
 }: {
@@ -81,24 +65,21 @@ export default async function PublicProfilePage({
   if (!resolved) notFound();
 
   const { account, resolvedVia } = resolved;
-  const slug = (account as any).slug;
+  const slug = account.slug ?? profileSlug(account.username || account.displayName);
+  const baseUrl = siteUrl();
 
-  // ── 301 redirect: if visited via raw ID and slug exists ──
-  // e.g. /profile/SS00102 → /profile/virat-kohli
   if (resolvedVia === 'id' && slug && slug !== params.id) {
-    redirect(`/profile/${slug}`);
+    redirect(`/${slug}`);
   }
 
   const score = account.score ?? null;
   const role = account.role ?? account.platform ?? '';
   const region = account.region ?? '';
   const bio = account.bio ?? '';
-  const canonicalSlug = slug ?? account._id;
 
   return (
     <main style={{ maxWidth: 720, margin: '0 auto', padding: '48px 24px' }}>
 
-      {/* ── JSON-LD: Person schema ── */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -107,7 +88,7 @@ export default async function PublicProfilePage({
             '@type': 'Person',
             name: account.displayName,
             description: bio,
-            url: `${BASE_URL}/profile/${canonicalSlug}`,
+            url: `${baseUrl}/${slug}`,
             image: account.avatarUrl ?? undefined,
             jobTitle: role || undefined,
             ...(region ? { address: { '@type': 'PostalAddress', addressLocality: region } } : {}),
@@ -115,7 +96,6 @@ export default async function PublicProfilePage({
         }}
       />
 
-      {/* ── H1 ── */}
       <h1 style={{ fontSize: 32, fontWeight: 600, marginBottom: 4 }}>
         {account.displayName}
       </h1>
@@ -126,7 +106,6 @@ export default async function PublicProfilePage({
         </p>
       )}
 
-      {/* ── Score ── */}
       {score !== null && (
         <section aria-labelledby="score-heading" style={{ marginBottom: 32 }}>
           <h2 id="score-heading" style={{ fontSize: 18, fontWeight: 500, marginBottom: 8 }}>
@@ -140,7 +119,6 @@ export default async function PublicProfilePage({
         </section>
       )}
 
-      {/* ── Bio ── */}
       {bio && (
         <section aria-labelledby="bio-heading" style={{ marginBottom: 32 }}>
           <h2 id="bio-heading" style={{ fontSize: 18, fontWeight: 500, marginBottom: 8 }}>
@@ -150,7 +128,6 @@ export default async function PublicProfilePage({
         </section>
       )}
 
-      {/* ── FAQ block — featured snippet targets ── */}
       <section aria-labelledby="faq-heading" style={{ marginBottom: 40 }}>
         <h2 id="faq-heading" style={{ fontSize: 18, fontWeight: 500, marginBottom: 16 }}>
           Common questions
@@ -191,7 +168,6 @@ export default async function PublicProfilePage({
         </div>
       </section>
 
-      {/* ── CTA ── */}
       <div
         style={{
           background: '#f5f5f5',
@@ -207,7 +183,7 @@ export default async function PublicProfilePage({
           Sign in to view verified events, score history, impact breakdown, and more.
         </p>
         <a
-          href={`/account/${account._id}`}
+          href={`/${slug}`}
           style={{
             background: '#000',
             color: '#fff',
