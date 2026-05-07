@@ -147,8 +147,36 @@ function extractJsonObject(text: string): unknown {
   return {};
 }
 
-async function callShoshaModel(body: unknown, timeoutMs = 30_000) {
-  const key = aiKey();
+export type ClassificationOutput = {
+  intent: string;
+  pattern: string;
+};
+
+const classificationSystemPrompt = `You are a social media analyst. Given a description of an incident, classify the Intent and Repetition Pattern.
+Return strict JSON only:
+{
+  "intent": "0.5" | "1" | "1.5" | "2" | "2.5" | "3",
+  "pattern": "0.5" | "1" | "1.5" | "2" | "2.5" | "3"
+}
+
+Intent (IN) Guidance:
+- "0.5": Didn't mean to (Accidental, unintentional)
+- "1": Not Aware (Didn't realize the impact)
+- "1.5": Not Careful (Negligent)
+- "2": Meant to (Intentional)
+- "2.5": Thought Through (Deliberate)
+- "3": Fully Planned (Premeditated)
+
+Pattern (RP) Guidance:
+- "0.5": No Clear Pattern (First time)
+- "1": Balanced
+- "1.5": Mixed Signals
+- "2": Leaning Off
+- "2.5": Pattern Forming (Repeated behavior)
+- "3": Consistent Pattern (Chronic issue)`;
+
+async function callShoshaModel(body: unknown, timeoutMs = 30_000, overrideKey?: string) {
+  const key = overrideKey || aiKey();
   const model = aiModel();
   if (!key || !model) {
     throw new Error('Shosha analysis is not configured.');
@@ -268,6 +296,33 @@ ${input.mediaType === 'video' && input.mediaUrl ? `A video proof was uploaded bu
     };
   } catch {
     return heuristicAdjudication(input);
+  }
+}
+
+export async function classifyReport(description: string, overrideKey?: string): Promise<ClassificationOutput> {
+  if (!(overrideKey || aiKey()) || !aiModel()) {
+    // Fallback to simple heuristic if no key
+    const text = description.toLowerCase();
+    const repeated = /(again|repeated|pattern|multiple|often|regularly|history|every time)/.test(text);
+    const planned = /(planned|deliberate|intentional|knowingly|threatened|premeditated|organized)/.test(text);
+    const accidental = /(accident|mistake|unintended|without knowing|unaware)/.test(text);
+    return {
+      pattern: repeated ? '2.5' : '1',
+      intent: planned ? '2.5' : accidental ? '0.5' : '1.5'
+    };
+  }
+
+  try {
+    const text = await callShoshaModel({
+      contents: [{ parts: [{ text: `${classificationSystemPrompt}\n\nDescription: ${description}` }] }]
+    }, 15_000, overrideKey);
+    const json = extractJsonObject(text) as Partial<ClassificationOutput>;
+    return {
+      intent: String(json.intent ?? '1'),
+      pattern: String(json.pattern ?? '1')
+    };
+  } catch {
+    return { intent: '1', pattern: '1' };
   }
 }
 

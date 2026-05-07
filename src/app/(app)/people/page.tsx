@@ -1,7 +1,7 @@
 import * as accountsRepo from '@/lib/repos/accounts';
 import * as reportsRepo from '@/lib/repos/reports';
 import { BASE_SCORE } from '@/lib/scoring';
-import { PeopleSwipeDeck, type PeopleDeckItem } from '@/components/people/PeopleSwipeDeck';
+import { PeoplePanel, type PeopleDeckItem } from '@/components/people/PeoplePanel';
 
 export const dynamic = 'force-dynamic';
 
@@ -70,5 +70,5 @@ export default async function PeoplePage() {
       .slice(0, 4),
   }));
 
-  return <PeopleSwipeDeck initialItems={items} />;
+  return <PeoplePanel initialItems={items} />;
 }

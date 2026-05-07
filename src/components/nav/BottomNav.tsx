@@ -4,34 +4,26 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Home, Newspaper, Plus, User, Menu, Users } from 'lucide-react';
+import { Home, BarChart3, Users, Share2, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useReportModal } from '@/components/report/ReportModalProvider';
-import { MobileMenu } from '@/components/nav/MobileMenu';
 
 type BottomNavItem = {
   href: string;
   label: string;
-  icon: typeof Home;
+  icon: any;
   matchPaths?: string[];
 };
 
 const items: BottomNavItem[] = [
-  { href: '/dashboard', label: 'Home', icon: Home },
-  { href: '/feed', label: 'Reports', icon: Newspaper },
+  { href: '/feed', label: 'Feed', icon: Home },
+  { href: '/impact', label: 'Impact', icon: BarChart3 },
   { href: '/people', label: 'People', icon: Users },
+  { href: '/bubbles', label: 'Bubbles', icon: Share2 },
   { href: '/profile', label: 'Profile', icon: User, matchPaths: ['/profile', '/account'] },
 ];
 
 export function BottomNav() {
   const pathname = usePathname();
-  const reportModal = useReportModal();
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  // Close menu on route change
-  useEffect(() => {
-    setMenuOpen(false);
-  }, [pathname]);
 
   const hideOnAdmin = pathname === '/admin' || pathname.startsWith('/admin/');
 
@@ -46,48 +38,15 @@ export function BottomNav() {
   if (hideOnAdmin) return null;
 
   return (
-    <>
-      <div className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none lg:hidden">
-        <div className="mx-auto flex max-w-md justify-center px-3 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2">
-          <nav className="pointer-events-auto relative flex w-full items-center justify-around gap-1 rounded-full border border-border bg-background/90 px-2 py-1.5 shadow-[0_8px_30px_rgba(0,0,0,0.10)] backdrop-blur-xl">
-            {/* Left two items */}
-            {items.slice(0, 2).map((item) => (
-              <NavLink key={item.href} item={item} active={isActive(item)} />
-            ))}
-
-            {/* Center Create FAB */}
-            <button
-              type="button"
-              onClick={() => reportModal.open()}
-              aria-label="Create report"
-              className="group relative -mt-7 flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-foreground text-background shadow-[0_10px_24px_rgba(0,0,0,0.25)] ring-4 ring-background transition-transform active:scale-90"
-            >
-              <Plus size={24} strokeWidth={3} className="transition-transform duration-300 group-active:rotate-90" />
-            </button>
-
-            {/* Right two items */}
-            {items.slice(2, 4).map((item) => (
-              <NavLink key={item.href} item={item} active={isActive(item)} />
-            ))}
-
-            {/* More menu trigger */}
-            <button
-              type="button"
-              onPointerDown={() => setMenuOpen(true)}
-              onClick={() => setMenuOpen(true)}
-              aria-label="Open menu"
-              aria-expanded={menuOpen}
-              className="group relative z-20 flex min-h-12 min-w-14 flex-1 touch-manipulation flex-col items-center justify-center gap-0.5 rounded-full px-2 py-2 text-muted-foreground transition-colors hover:text-foreground active:scale-95"
-            >
-              <Menu size={20} className="transition-transform duration-300 group-active:scale-90" />
-              <span className="text-[10px] font-bold tracking-wide opacity-70">More</span>
-            </button>
-          </nav>
-        </div>
+    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/40 bg-background/80 backdrop-blur-md lg:hidden">
+      <div className="mx-auto flex h-[calc(4.5rem+env(safe-area-inset-bottom))] max-w-md items-stretch px-2 pb-[env(safe-area-inset-bottom)]">
+        <nav className="flex w-full items-center justify-between">
+          {items.map((item) => (
+            <NavLink key={item.href} item={item} active={isActive(item)} />
+          ))}
+        </nav>
       </div>
-
-      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
-    </>
+    </div>
   );
 }
 
@@ -97,31 +56,32 @@ function NavLink({ item, active }: { item: BottomNavItem; active: boolean }) {
     <Link
       href={item.href}
       className={cn(
-        'group relative flex flex-1 flex-col items-center justify-center gap-0.5 rounded-full px-2 py-2 transition-colors',
-        active ? 'text-background' : 'text-muted-foreground hover:text-foreground'
+        'group relative flex flex-1 flex-col items-center justify-center gap-1 transition-colors',
+        active ? 'text-foreground' : 'text-muted-foreground/50 hover:text-foreground'
       )}
     >
       {active && (
         <motion.div
           layoutId="bottomNavActivePill"
-          className="absolute inset-1 rounded-full bg-foreground"
+          className="absolute top-0 h-[3px] w-12 rounded-b-[2px] bg-gradient-to-r from-orange-500 to-red-600"
           transition={{ type: 'spring', stiffness: 380, damping: 32 }}
         />
       )}
-      <span className="relative flex flex-col items-center gap-0.5">
-        <Icon
-          size={20}
-          strokeWidth={active ? 2.4 : 2}
-          className="transition-transform duration-300 group-active:scale-90"
-        />
-        <span
-          className={cn(
-            'text-[10px] font-bold tracking-wide transition-opacity',
-            active ? 'opacity-100' : 'opacity-70'
-          )}
-        >
-          {item.label}
-        </span>
+      <Icon
+        size={24}
+        strokeWidth={active ? 2.5 : 1.5}
+        className={cn(
+          'mb-0.5 transition-all duration-300 group-active:scale-90',
+          active ? 'fill-foreground/10' : 'fill-none'
+        )}
+      />
+      <span
+        className={cn(
+          'text-[11px] font-bold tracking-tight transition-all',
+          active ? 'opacity-100' : 'opacity-60'
+        )}
+      >
+        {item.label}
       </span>
     </Link>
   );
