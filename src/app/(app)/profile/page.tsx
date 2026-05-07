@@ -5,15 +5,16 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   CheckCircle2, Upload, TrendingUp, Shield,
-  PieChart, Activity, Target, User, ThumbsUp, ThumbsDown, Minus, ArrowRight,
+  PieChart, Activity, Target, User, Users, ThumbsUp, ThumbsDown, Minus, ArrowRight,
   Briefcase, GraduationCap, FileText, Link2, Pencil, MapPin, ExternalLink,
-  AlertCircle, RefreshCw
+  AlertCircle, RefreshCw, Bell, Play, History, TrendingDown, Calendar, Eye, Link as LinkIcon
 } from 'lucide-react';
 import { useReportModal } from '@/components/report/ReportModalProvider';
 import Link from 'next/link';
-import { cn, formatDate } from '@/lib/utils';
+import { cn, formatDate, formatRelativeTime } from '@/lib/utils';
 import { calcProfileScores, calcShoshaScore, BASE_SCORE } from '@/lib/scoring';
 import { D3ProfileGauge } from '@/components/viz/D3ProfileGauge';
+import { D3DonutChart } from '@/components/viz/D3DonutChart';
 import { D3AreaChart } from '@/components/viz/D3AreaChart';
 import { D3ActivityBar } from '@/components/viz/D3ActivityBar';
 import { ProfileScoreRadar } from '@/components/viz/ProfileScoreRadar';
@@ -164,6 +165,18 @@ export default function ProfilePage() {
     .filter(h => h.t && new Date(h.t).getTime() >= weekAgo && h.delta < 0)
     .reduce((sum, h) => sum + Math.abs(h.delta), 0);
 
+  const totalPositiveImpact = ledgerHistory
+    .filter(h => h.delta > 0)
+    .reduce((sum, h) => sum + h.delta, 0);
+
+  function formatNumberShort(num: number) {
+    if (num >= 1_000_000) return (num / 1_000_000).toFixed(1) + 'M';
+    if (num >= 1_000) return (num / 1_000).toFixed(1) + 'K';
+    return num.toString();
+  }
+
+  const followersCountStr = formatNumberShort((appUser?.followers ?? []).length);
+
   const displayName = (appUser?.name || firebaseUser?.displayName || firebaseUser?.email?.split('@')[0] || 'Unknown User').replace(/^@/, '');
   const username = appUser?.username || 'user';
   const rawAvatarUrl = appUser?.photoUrl ?? firebaseUser?.photoURL;
@@ -233,6 +246,27 @@ export default function ProfilePage() {
     { id: 'about', label: 'About', Icon: User },
   ] as const;
 
+  // Derived data for Impact tab
+  const impactMap = new Map<string, number>();
+  ledgerHistory.forEach(entry => {
+    if (entry.category && entry.delta !== undefined) {
+      const cat = entry.category.split('|')[0].trim();
+      impactMap.set(cat, (impactMap.get(cat) || 0) + entry.delta);
+    }
+  });
+  
+  const categoryImpacts = Array.from(impactMap.entries())
+    .map(([label, value]) => ({ label, value }))
+    .sort((a, b) => Math.abs(b.value) - Math.abs(a.value));
+
+  const impactColors = ['#10B981', '#3B82F6', '#8B5CF6', '#F59E0B', '#EF4444', '#EC4899', '#14B8A6'];
+  
+  const chartData = categoryImpacts.map((cat, i) => ({
+    label: cat.label,
+    value: Math.abs(cat.value),
+    color: impactColors[i % impactColors.length]
+  }));
+
   function changeTabWithoutJump(id: typeof tabs[number]['id']) {
     const scrollY = window.scrollY;
     setActiveTab(id);
@@ -279,8 +313,8 @@ export default function ProfilePage() {
         )}
 
         {/* Profile Info */}
-        <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center gap-4 min-w-0">
+        <div className="mt-4 flex items-start justify-between gap-4">
+          <div className="flex items-start gap-4 min-w-0">
             <div className="relative h-20 w-20 shrink-0 group">
               <img
                 src={avatarUrl}
@@ -299,124 +333,113 @@ export default function ProfilePage() {
               >
                 {displayName.charAt(0).toUpperCase()}
               </div>
-              <div className="absolute -bottom-1 -right-1 rounded-full border-2 border-background bg-foreground p-0.5 z-10">
-                <CheckCircle2 size={16} fill="currentColor" className="text-background" />
+              <div className="absolute bottom-0 right-0 rounded-full border-2 border-background bg-foreground p-0.5 z-10">
+                <CheckCircle2 size={14} fill="currentColor" className="text-background" />
               </div>
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 flex flex-col justify-center">
               <div className="flex items-center gap-1.5">
-                <h1 className="text-[22px] font-bold text-foreground leading-none truncate">{displayName}</h1>
+                <h1 className="text-[20px] font-bold text-foreground leading-none truncate">{displayName}</h1>
                 <CheckCircle2 size={16} fill="currentColor" className="text-foreground shrink-0" />
               </div>
-              {/* Username removed for standardization */}
-              <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 text-[12px] font-medium text-muted-foreground items-center">
-                {appUser?.occupationRole && (
-                  <span className="flex items-center gap-1">
-                    <Briefcase size={12} />
-                    {ROLE_LABELS[appUser.occupationRole] ?? appUser.occupationRole}
-                  </span>
-                )}
-                {(appUser?.city || appUser?.country) && (
-                  <span className="flex items-center gap-1">
-                    <MapPin size={12} />
-                    {[appUser.city, appUser.country].filter(Boolean).join(', ')}
-                  </span>
-                )}
-                {appUser?.networkSize && (
-                  <span>{NETWORK_LABELS[appUser.networkSize] ?? appUser.networkSize}</span>
-                )}
-                {appUser?.education && (
-                  <span className="flex items-center gap-1">
-                    <GraduationCap size={12} />
-                    {EDU_LABELS[appUser.education] ?? appUser.education}
-                  </span>
-                )}
-              </div>
-              {appUser?._id && (
-                <ConnectionListModal
-                  targetUserId={appUser._id}
-                  followingCount={(appUser.following ?? []).length}
-                  followersCount={(appUser.followers ?? []).length}
-                  className="mt-2"
-                />
+              <p className="text-[13px] text-muted-foreground mt-1.5">@{username}</p>
+              {appUser?.occupationRole && (
+                <p className="text-[13px] text-muted-foreground mt-0.5">{ROLE_LABELS[appUser.occupationRole] ?? appUser.occupationRole}</p>
+              )}
+              {(appUser?.city || appUser?.country) && (
+                <p className="text-[13px] text-muted-foreground mt-0.5 flex items-center gap-1">
+                  <MapPin size={12} /> {[appUser.city, appUser.country].filter(Boolean).join(', ')}
+                </p>
               )}
             </div>
           </div>
-          <button
-            onClick={() => router.push('/profile/edit')}
-            className="flex sm:shrink-0 items-center justify-center gap-1.5 rounded-full border border-border bg-background px-4 py-2 text-[13px] font-semibold text-foreground shadow-sm transition-all hover:bg-muted w-full sm:w-auto"
-          >
-            <Pencil size={14} /> Edit Profile
-          </button>
+          <div className="flex shrink-0 items-center gap-2 mt-2">
+            <button className="flex items-center justify-center gap-1.5 rounded-full border border-border bg-background px-4 py-1.5 text-[12px] font-semibold text-foreground shadow-sm hover:bg-muted transition-all">
+              Following <Bell size={12} />
+            </button>
+          </div>
         </div>
 
         {/* Ledger Score Hero */}
-        <div className="mt-8 text-center">
-          <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Shosha Score</p>
-          <h2 className="mt-1 text-[56px] font-black leading-none text-foreground tabular-nums">
-            {ledgerScore.toLocaleString()}
-          </h2>
-          <div className="mt-2 flex items-center justify-center gap-2">
-            <span
-              className={cn(
-                'inline-flex items-center gap-1 rounded-lg px-3 py-1 text-[12px] font-bold',
-                weeklyDelta > 0
-                  ? 'bg-green-50 text-green-600'
-                  : weeklyDelta < 0
-                  ? 'bg-red-50 text-red-600'
-                  : 'bg-muted text-muted-foreground'
-              )}
-            >
-              {weeklyDelta > 0 ? <TrendingUp size={12} strokeWidth={3} /> : weeklyDelta < 0 ? <ThumbsDown size={12} strokeWidth={3} /> : <Minus size={12} strokeWidth={3} />}
-              {weeklyDelta > 0 ? '+' : ''}{weeklyDelta} this week
-            </span>
-            <span className="inline-flex items-center gap-1 rounded-lg bg-muted px-3 py-1 text-[12px] font-bold text-foreground">
-              Context {contextPercent || '–'}/100
-            </span>
+        <div className="mt-8 relative flex flex-col items-center w-full">
+          <div className="w-full max-w-[340px] relative">
+            <D3ProfileGauge score={ledgerScore} minScore={-1000} maxScore={1000} size={340} />
+            <div className="absolute inset-0 flex flex-col items-center justify-end pb-4 sm:pb-6 pointer-events-none">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Shosha Score</p>
+              <h2 className="mt-1 text-[40px] sm:text-[46px] font-black leading-none text-foreground tabular-nums">
+                {ledgerScore.toLocaleString()}
+              </h2>
+              <div className="mt-2 flex items-center justify-center gap-2">
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[12px] font-bold shadow-sm',
+                    weeklyDelta > 0
+                      ? 'bg-green-50 text-green-600'
+                      : weeklyDelta < 0
+                      ? 'bg-red-50 text-red-600'
+                      : 'bg-muted text-muted-foreground'
+                  )}
+                >
+                  {weeklyDelta > 0 ? <TrendingUp size={14} strokeWidth={3} /> : weeklyDelta < 0 ? <ThumbsDown size={14} strokeWidth={3} /> : <Minus size={14} strokeWidth={3} />}
+                  {weeklyDelta > 0 ? 'Trending up' : weeklyDelta < 0 ? 'Trending down' : 'Neutral'}
+                </span>
+              </div>
+            </div>
           </div>
-          <p className="mt-1 text-[11px] text-muted-foreground">Base 1,000 · ledger never resets</p>
+        </div>
+
+        <div className="mt-1 flex justify-center pb-4 border-b border-border">
           <button
             onClick={recalculateScore}
             disabled={recalculating}
-            className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1 text-[11px] font-semibold text-foreground shadow-sm transition-all hover:bg-muted disabled:opacity-60"
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1 text-[11px] font-semibold text-foreground shadow-sm transition-all hover:bg-muted disabled:opacity-60"
           >
             <RefreshCw size={11} strokeWidth={2.5} className={recalculating ? 'animate-spin' : ''} />
             {recalculating ? 'Recalculating…' : 'Recalculate from history'}
           </button>
-          <div className="mt-4 -mb-8">
-            <D3ProfileGauge score={ledgerScore} minScore={-99000} maxScore={101000} size={340} />
-          </div>
         </div>
 
         {/* Stat Cards */}
-        <div className="mt-12 grid grid-cols-2 sm:grid-cols-4 gap-2">
-          <div className="rounded-2xl border border-border bg-background p-3 text-center shadow-sm">
-            <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-green-50 text-green-600">
-              <TrendingUp size={16} strokeWidth={2.5} />
+        <div className="mt-6 grid grid-cols-4 gap-2">
+          {/* Card 1 */}
+          <div className="rounded-2xl border border-border bg-background py-3 px-1 text-center shadow-sm flex flex-col items-center justify-center">
+            <div className={cn("mx-auto flex items-center justify-center", weeklyDelta >= 0 ? "text-green-500" : "text-red-500")}>
+              {weeklyDelta >= 0 ? <TrendingUp size={18} strokeWidth={2.5} /> : <ThumbsDown size={18} strokeWidth={2.5} />}
             </div>
-            <p className="mt-2 text-[16px] font-bold text-foreground tabular-nums">+{positiveDeltaWeek}</p>
-            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">P (week)</p>
+            <p className={cn("mt-1.5 text-[15px] sm:text-[17px] font-bold tabular-nums", weeklyDelta >= 0 ? "text-green-500" : "text-red-500")}>
+              {weeklyDelta > 0 ? '+' : ''}{weeklyDelta}
+            </p>
+            <p className="mt-0.5 text-[9px] sm:text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">This Week</p>
           </div>
-          <div className="rounded-2xl border border-border bg-background p-3 text-center shadow-sm">
-            <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-red-50 text-red-600">
-              <ThumbsDown size={16} strokeWidth={2.5} />
+          {/* Card 2 */}
+          <div className="rounded-2xl border border-border bg-background py-3 px-1 text-center shadow-sm flex flex-col items-center justify-center">
+            <div className="mx-auto flex items-center justify-center text-red-500">
+              <Target size={18} strokeWidth={2.5} />
             </div>
-            <p className="mt-2 text-[16px] font-bold text-foreground tabular-nums">−{negativeDeltaWeek}</p>
-            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">N (week)</p>
+            <p className="mt-1.5 text-[15px] sm:text-[17px] font-bold text-foreground tabular-nums">
+              {formatNumberShort(totalPositiveImpact)}
+            </p>
+            <p className="mt-0.5 text-[9px] sm:text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Total Impact</p>
           </div>
-          <div className="rounded-2xl border border-border bg-background p-3 text-center shadow-sm">
-            <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-muted text-foreground">
-              <Shield size={16} strokeWidth={2.5} />
+          {/* Card 3 */}
+          <div className="rounded-2xl border border-border bg-background py-3 px-1 text-center shadow-sm flex flex-col items-center justify-center">
+            <div className="mx-auto flex items-center justify-center text-foreground">
+              <Users size={18} strokeWidth={2.5} />
             </div>
-            <p className="mt-2 text-[16px] font-bold text-foreground">{credibility || '0'}%</p>
-            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Context</p>
+            <p className="mt-1.5 text-[15px] sm:text-[17px] font-bold text-foreground tabular-nums">
+              {followersCountStr}
+            </p>
+            <p className="mt-0.5 text-[9px] sm:text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Followers</p>
           </div>
-          <div className="rounded-2xl border border-border bg-background p-3 text-center shadow-sm">
-            <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-muted text-foreground">
-              <FileText size={16} strokeWidth={2.5} />
+          {/* Card 4 */}
+          <div className="rounded-2xl border border-border bg-background py-3 px-1 text-center shadow-sm flex flex-col items-center justify-center">
+            <div className="mx-auto flex items-center justify-center text-foreground">
+              <Shield size={18} strokeWidth={2.5} />
             </div>
-            <p className="mt-2 text-[16px] font-bold text-foreground">{recentEvents.length}</p>
-            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Reports Filed</p>
+            <p className="mt-1.5 text-[15px] sm:text-[17px] font-bold text-foreground tabular-nums">
+              {credibility || '0'}%
+            </p>
+            <p className="mt-0.5 text-[9px] sm:text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Credibility</p>
           </div>
         </div>
 
@@ -444,227 +467,69 @@ export default function ProfilePage() {
 
           {/* ── OVERVIEW ── */}
           {activeTab === 'overview' && (
-            <div className="rounded-[24px] bg-background p-5 shadow-sm border border-border">
-              <div className="flex items-center justify-between mb-2">
-                <div>
-                  <h3 className="flex items-center gap-1.5 text-[16px] font-bold text-foreground">
-                    <PieChart size={16} /> Profile Score Radar
-                  </h3>
-                  <p className="mt-1 text-[13px] text-muted-foreground">
-                    8 dimensions calculated from your profile. Hover each vertex for detail.
-                  </p>
+            <div className="space-y-4">
+              <div className="rounded-[24px] bg-background p-5 shadow-sm border border-border">
+                <div className="flex items-center justify-between mb-5">
+                  <h3 className="text-[16px] font-bold text-foreground">Recent Activity</h3>
+                  <span className="text-[12px] text-muted-foreground cursor-pointer hover:text-foreground">View all &rarr;</span>
                 </div>
-                <div className="text-right">
-                  <div className="text-[20px] font-black leading-none text-foreground">
-                    {contextPercent > 0 ? contextPercent : '–'}
-                  </div>
-                  <div className="text-[11px] font-bold text-muted-foreground">/ 100</div>
-                </div>
-              </div>
-
-              {scores.length > 0 ? (
-                <>
-                  <div className="mt-6 rounded-2xl bg-muted py-8 flex justify-center border border-border">
-                    <ProfileScoreRadar dimensions={scores} size={380} />
-                  </div>
-                  <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2">
-                    {scores.map(dim => (
-                      <div key={dim.key} className="rounded-xl border border-border bg-background p-3">
-                        <div className="flex items-center gap-1.5 text-[12px] font-bold text-foreground">
-                          <span className="flex items-center justify-center rounded bg-foreground px-1.5 py-0.5 font-mono text-[10px] text-background">
-                            {dim.key}
-                          </span>
-                          {dim.fullName}
+                {recentEvents.length > 0 ? (
+                  <div className="space-y-3">
+                    {recentEvents.map(event => (
+                      <div key={event.id} className="flex items-center justify-between rounded-[16px] bg-muted/30 p-4 border border-border/50 hover:bg-muted/50 transition-colors">
+                        <div className="flex items-center gap-4">
+                          <div className="relative h-[60px] w-[60px] shrink-0 overflow-hidden rounded-[12px] bg-muted border border-border/50 shadow-sm">
+                            <img src={`https://picsum.photos/seed/${event.id}/120/120`} alt="" className="h-full w-full object-cover" />
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-[1px]">
+                              <Play size={20} className="text-white fill-white" />
+                            </div>
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-[14px] font-bold text-foreground line-clamp-2">{event.cause || `${event.category} event`}</span>
+                            <span className="text-[12px] text-muted-foreground">
+                              {event.timestamp ? formatRelativeTime(new Date(event.timestamp)) : ''}
+                            </span>
+                          </div>
                         </div>
-                        <div className="mt-1 text-[11px] text-muted-foreground">
-                          {dim.levelLabel}{' '}
-                          <span className="opacity-50">({dim.value})</span>
+                        <div className={cn(
+                          "shrink-0 rounded-full px-3 py-1.5 text-[13px] font-bold shadow-sm",
+                          event.impact > 0 ? "bg-green-50 text-green-600" : event.impact < 0 ? "bg-red-50 text-red-600" : "bg-muted text-muted-foreground"
+                        )}>
+                          {event.impact > 0 ? '+' : ''}{event.impact}
                         </div>
                       </div>
                     ))}
                   </div>
-                </>
-              ) : (
-                <div className="mt-6 rounded-2xl bg-muted py-12 flex flex-col items-center justify-center border border-border gap-3">
-                  <PieChart size={32} className="text-muted-foreground opacity-30" />
-                  <p className="text-[13px] text-muted-foreground">
-                    Complete your profile to see dimension scores.
-                  </p>
-                  <Link
-                    href="/onboard"
-                    className="rounded-full bg-foreground px-5 py-2 text-[13px] font-bold text-background"
-                  >
-                    Complete Profile
-                  </Link>
-                </div>
-              )}
-
-              <p className="mt-4 text-center text-[11px] text-muted-foreground">
-                Scores reflect profile context only — not intent or circumstances, which are assessed per event.
-              </p>
+                ) : (
+                  <div className="py-8 flex flex-col items-center gap-3 text-center">
+                    <History size={28} className="text-muted-foreground opacity-30" />
+                    <p className="text-[13px] text-muted-foreground">No recent events recorded.</p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
           {/* ── ACTIVITY ── */}
           {activeTab === 'activity' && (
-            <div className="rounded-[24px] bg-background p-5 shadow-sm border border-border">
-              <div className="flex items-center justify-between mb-5">
-                <h3 className="text-[16px] font-bold text-foreground">Reports Filed by You</h3>
-                <span className="text-[12px] text-muted-foreground">{recentEvents.length} total</span>
-              </div>
-              {recentEvents.length === 0 ? (
-                <div className="py-12 flex flex-col items-center gap-3 text-center">
-                  <FileText size={32} className="text-muted-foreground opacity-30" />
-                  <p className="text-[13px] text-muted-foreground">No reports filed yet.</p>
-                  <button
-                    type="button"
-                    onClick={() => reportModal.open()}
-                    className="rounded-full bg-foreground px-5 py-2 text-[13px] font-bold text-background"
-                  >
-                    File an Event
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {recentEvents.map((event: any, i) => {
-                    const type = event.eventType ?? event.type;
-                    const isPositive = type === 'positive';
-                    const isNegative = type === 'negative';
-                    return (
-                      <button
-                        key={event._id || i}
-                        onClick={(e) => {
-                          if (event.reportId) {
-                            e.preventDefault();
-                            setSelectedReportId(event.reportId);
-                            setReportDetailOpen(true);
-                          } else if (event._id) {
-                            e.preventDefault();
-                            setSelectedReportId(event._id);
-                            setReportDetailOpen(true);
-                          }
-                        }}
-                        className="w-full cursor-pointer text-left flex items-start gap-3 rounded-xl border border-border p-3 transition-colors hover:bg-muted/40"
-                      >
-                        <div
-                          className={cn(
-                            'flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
-                            isPositive
-                              ? 'bg-green-50 text-green-600'
-                              : isNegative
-                              ? 'bg-red-50 text-red-600'
-                              : 'bg-muted text-muted-foreground'
-                          )}
-                        >
-                          {isPositive ? (
-                            <ThumbsUp size={14} strokeWidth={2.5} />
-                          ) : isNegative ? (
-                            <ThumbsDown size={14} strokeWidth={2.5} />
-                          ) : (
-                            <Minus size={14} strokeWidth={2.5} />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="text-[13px] font-bold leading-tight text-foreground line-clamp-2">
-                            {event.title || event.description || 'Event'}
-                          </h4>
-                          {event.description && event.title && (
-                            <p className="mt-0.5 text-[11px] text-muted-foreground line-clamp-2">
-                              {event.description}
-                            </p>
-                          )}
-                          <p className="mt-1 text-[11px] text-muted-foreground">
-                            {event.timestamp ? formatDate(event.timestamp) : 'Unknown date'}
-                          </p>
-                        </div>
-                        {event.impact != null && (
-                          <div
-                            className={cn(
-                              'shrink-0 rounded-lg px-2.5 py-1 text-[12px] font-bold',
-                              isPositive
-                                ? 'bg-green-50 text-green-600'
-                                : isNegative
-                                ? 'bg-red-50 text-red-600'
-                                : 'bg-muted text-muted-foreground'
-                            )}
-                          >
-                            {event.impact > 0 ? '+' : ''}{event.impact}
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ── IMPACT ── */}
-          {activeTab === 'impact' && (
             <div className="space-y-4">
-              {/* Breakdown */}
-              <div className="rounded-[24px] bg-background p-5 shadow-sm border border-border">
-                <h3 className="mb-4 text-[16px] font-bold text-foreground">Activity Breakdown</h3>
-                {recentEvents.length > 0 ? (
-                  <>
-                    <D3ActivityBar
-                      positive={positiveEvents.length}
-                      negative={negativeEvents.length}
-                      neutral={neutralEvents.length}
-                      height={10}
-                    />
-                    <div className="mt-5 grid grid-cols-3 gap-2 divide-x divide-border text-center">
-                      <div className="flex flex-col items-center gap-1">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-50 text-green-500">
-                          <ThumbsUp size={14} strokeWidth={2.5} />
-                        </div>
-                        <div className="mt-1 text-[15px] font-bold text-foreground">{positiveEvents.length}</div>
-                        <div className="text-[11px] text-muted-foreground">Positive</div>
-                      </div>
-                      <div className="flex flex-col items-center gap-1">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-50 text-red-500">
-                          <ThumbsDown size={14} strokeWidth={2.5} />
-                        </div>
-                        <div className="mt-1 text-[15px] font-bold text-foreground">{negativeEvents.length}</div>
-                        <div className="text-[11px] text-muted-foreground">Negative</div>
-                      </div>
-                      <div className="flex flex-col items-center gap-1">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                          <Minus size={14} strokeWidth={2.5} />
-                        </div>
-                        <div className="mt-1 text-[15px] font-bold text-foreground">{neutralEvents.length}</div>
-                        <div className="text-[11px] text-muted-foreground">Neutral</div>
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <div className="py-8 flex flex-col items-center gap-3 text-center">
-                    <Target size={28} className="text-muted-foreground opacity-30" />
-                    <p className="text-[13px] text-muted-foreground">No events to break down yet.</p>
-                  </div>
-                )}
-              </div>
-
               {/* Ledger Timeline */}
               <div className="rounded-[24px] bg-background p-5 shadow-sm border border-border">
                 <div className="mb-4 flex items-center justify-between">
                   <div>
-                    <h3 className="text-[16px] font-bold text-foreground">Score Ledger</h3>
-                    <p className="mt-0.5 text-[13px] text-muted-foreground">
-                      Trajectory from filed events. Base 1,000.
-                    </p>
+                    <h3 className="text-[16px] font-bold text-foreground">Score History</h3>
                   </div>
-                  <div className="flex items-center gap-1 rounded-xl border border-border bg-muted/40 p-1">
+                  <div className="flex items-center gap-1 rounded-full border border-border bg-muted/40 p-1">
                     {([
-                      { key: 'weekly' as const, label: 'Week' },
-                      { key: 'monthly' as const, label: 'Month' },
-                      { key: 'max' as const, label: 'Max' },
+                      { key: 'weekly' as const, label: '1W' },
+                      { key: 'monthly' as const, label: '1M' },
+                      { key: 'max' as const, label: 'All' },
                     ]).map(({ key, label }) => (
                       <button
                         key={key}
                         onClick={() => setLedgerRange(key)}
                         className={cn(
-                          'rounded-lg px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider transition-all',
+                          'rounded-full px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider transition-all',
                           ledgerRange === key
                             ? 'bg-background text-foreground shadow-sm'
                             : 'text-muted-foreground hover:text-foreground'
@@ -676,23 +541,7 @@ export default function ProfilePage() {
                   </div>
                 </div>
                 {areaChartData.length >= 2 ? (
-                  <>
-                    <D3AreaChart data={areaChartData} height={280} rangeMode={ledgerRange} />
-                    <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-border bg-muted/25 px-4 py-3">
-                      <div className="flex items-center gap-2.5">
-                        <span className="inline-block h-[3px] w-7 rounded-full bg-foreground" />
-                        <span className="text-[12px] font-semibold text-foreground">Score</span>
-                      </div>
-                      <div className="flex items-center gap-2.5">
-                        <span className="inline-block h-4 w-6 rounded-sm bg-foreground/10 border border-foreground/5" />
-                        <span className="text-[12px] font-semibold text-muted-foreground">Trajectory</span>
-                      </div>
-                      <div className="flex items-center gap-2.5">
-                        <span className="inline-block h-3 w-3 rounded-full border-[2.5px] border-foreground bg-background" />
-                        <span className="text-[12px] font-semibold text-muted-foreground">Data Point</span>
-                      </div>
-                    </div>
-                  </>
+                  <D3AreaChart data={areaChartData} height={200} rangeMode={ledgerRange} />
                 ) : (
                   <div className="py-10 flex flex-col items-center gap-3 text-center">
                     <TrendingUp size={28} className="text-muted-foreground opacity-30" />
@@ -703,48 +552,180 @@ export default function ProfilePage() {
                 )}
               </div>
 
-              {/* Recent Δ entries */}
-              {ledgerHistory.length > 0 && (
-                <div className="rounded-[24px] bg-background p-5 shadow-sm border border-border">
-                  <h3 className="mb-4 text-[16px] font-bold text-foreground">Recent Δ Entries</h3>
-                  <div className="space-y-2">
-                    {[...ledgerHistory].reverse().slice(0, 8).map((entry: any, i) => (
-                      <div key={i} className="flex items-center justify-between rounded-xl border border-border p-3">
-                        <div className="min-w-0">
-                          <p className="text-[13px] font-semibold text-foreground capitalize">
-                            {entry.cause}{entry.category ? ` · ${entry.category.replace(/_/g, ' ')}` : ''}
-                          </p>
-                          <p className="text-[11px] text-muted-foreground">
-                            {entry.t ? formatDate(entry.t) : ''}
-                          </p>
+              {/* Breakdown */}
+              <div className="rounded-[24px] bg-background p-5 shadow-sm border border-border">
+                <h3 className="mb-4 text-[16px] font-bold text-foreground flex items-center gap-1.5">
+                  Activity Breakdown <AlertCircle size={14} className="text-muted-foreground" />
+                </h3>
+                {recentEvents.length > 0 ? (
+                  <>
+                    <D3ActivityBar
+                      positive={positiveEvents.length}
+                      negative={negativeEvents.length}
+                      neutral={neutralEvents.length}
+                      height={8}
+                    />
+                    <div className="mt-5 grid grid-cols-3 gap-2 divide-x divide-border text-center">
+                      <div className="flex flex-col items-center gap-1">
+                        <div className="flex items-center gap-1 text-green-500">
+                          <ThumbsUp size={14} strokeWidth={2.5} />
+                          <div className="text-[14px] font-bold text-foreground">{positiveEvents.length}</div>
                         </div>
-                        <span
-                          className={cn(
-                            'shrink-0 rounded-lg px-2.5 py-1 text-[12px] font-bold tabular-nums',
-                            entry.delta > 0 ? 'bg-primary/10 text-primary' : entry.delta < 0 ? 'bg-destructive/10 text-destructive' : 'bg-muted text-muted-foreground'
-                          )}
-                        >
-                          {entry.delta > 0 ? '+' : ''}{entry.delta}
-                        </span>
+                        <div className="text-[11px] text-muted-foreground">Positive</div>
+                      </div>
+                      <div className="flex flex-col items-center gap-1">
+                        <div className="flex items-center gap-1 text-red-500">
+                          <ThumbsDown size={14} strokeWidth={2.5} />
+                          <div className="text-[14px] font-bold text-foreground">{negativeEvents.length}</div>
+                        </div>
+                        <div className="text-[11px] text-muted-foreground">Negative</div>
+                      </div>
+                      <div className="flex flex-col items-center gap-1">
+                        <div className="flex items-center gap-1 text-muted-foreground">
+                          <Minus size={14} strokeWidth={2.5} />
+                          <div className="text-[14px] font-bold text-foreground">{neutralEvents.length}</div>
+                        </div>
+                        <div className="text-[11px] text-muted-foreground">Neutral</div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="py-8 flex flex-col items-center gap-3 text-center">
+                    <Target size={28} className="text-muted-foreground opacity-30" />
+                    <p className="text-[13px] text-muted-foreground">No events to break down yet.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── IMPACT ── */}
+          {activeTab === 'impact' && (
+            <div className="space-y-4">
+              {/* Impact Overview List */}
+              <div className="rounded-[24px] bg-background p-5 shadow-sm border border-border">
+                <h3 className="mb-5 text-[16px] font-bold text-foreground">Impact Overview</h3>
+                {categoryImpacts.length > 0 ? (
+                  <div className="space-y-3">
+                    {categoryImpacts.map((cat, i) => (
+                      <div key={i} className="flex items-center justify-between border-b border-border/40 pb-3 last:border-0 last:pb-0">
+                        <div className="flex items-center gap-2 text-[14px] font-semibold text-foreground">
+                          <div className="h-2 w-2 rounded-full" style={{ backgroundColor: impactColors[i % impactColors.length] }} />
+                          {cat.label}
+                        </div>
+                        <div className={cn(
+                          "text-[14px] font-bold",
+                          cat.value > 0 ? "text-green-500" : cat.value < 0 ? "text-red-500" : "text-muted-foreground"
+                        )}>
+                          {cat.value > 0 ? '+' : ''}{cat.value}
+                        </div>
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
+                ) : (
+                  <div className="py-8 flex flex-col items-center gap-3 text-center">
+                    <PieChart size={28} className="text-muted-foreground opacity-30" />
+                    <p className="text-[13px] text-muted-foreground">No impact categories to show yet.</p>
+                  </div>
+                )}
+              </div>
 
-              {/* How it works link */}
-              <Link
-                href="/how-it-works"
-                className="flex items-center justify-between rounded-[24px] bg-background p-5 shadow-sm border border-border hover:bg-muted transition-colors group"
-              >
-                <div>
-                  <h3 className="text-[16px] font-bold text-foreground">How scoring works</h3>
-                  <p className="mt-1 text-[13px] text-muted-foreground">
-                    Learn about multipliers, impact categories, and the Shosha Score formula.
-                  </p>
+              {/* Impact Categories Chart */}
+              <div className="rounded-[24px] bg-background p-5 shadow-sm border border-border">
+                <h3 className="mb-6 text-[16px] font-bold text-foreground">Impact Categories</h3>
+                {chartData.length > 0 ? (
+                  <div className="flex flex-col items-center justify-center">
+                    <div className="relative">
+                      <D3DonutChart data={chartData} width={240} height={240} innerRadius={80} />
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="text-center">
+                          <div className="text-[28px] font-black text-foreground leading-none">{chartData.length}</div>
+                          <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mt-1">Categories</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-8 flex flex-wrap justify-center gap-4">
+                      {chartData.map((d, i) => (
+                        <div key={i} className="flex items-center gap-1.5 text-[12px] font-bold text-foreground">
+                          <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: d.color }} />
+                          {d.label}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="py-12 flex flex-col items-center gap-3 text-center">
+                    <Activity size={28} className="text-muted-foreground opacity-30" />
+                    <p className="text-[13px] text-muted-foreground">Chart will generate once you have impact entries.</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Top Impactful Actions */}
+              <div className="rounded-[24px] bg-background p-5 shadow-sm border border-border">
+                <div className="flex items-center justify-between mb-5">
+                  <h3 className="text-[16px] font-bold text-foreground">Top Impactful Actions</h3>
                 </div>
-                <ArrowRight size={18} className="shrink-0 text-muted-foreground group-hover:text-foreground transition-colors ml-3" />
-              </Link>
+                {ledgerHistory.length > 0 ? (
+                  <div className="space-y-3">
+                    {[...ledgerHistory]
+                      .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+                      .slice(0, 5)
+                      .map((entry, i) => (
+                        <div key={i} className="flex items-start gap-3 rounded-xl border border-border p-3 transition-colors hover:bg-muted/40">
+                          <div
+                            className={cn(
+                              'flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
+                              entry.delta > 0
+                                ? 'bg-green-50 text-green-600'
+                                : entry.delta < 0
+                                ? 'bg-red-50 text-red-600'
+                                : 'bg-muted text-muted-foreground'
+                            )}
+                          >
+                            {entry.delta > 0 ? (
+                              <ThumbsUp size={14} strokeWidth={2.5} />
+                            ) : entry.delta < 0 ? (
+                              <ThumbsDown size={14} strokeWidth={2.5} />
+                            ) : (
+                              <Minus size={14} strokeWidth={2.5} />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-[13px] font-bold leading-tight text-foreground line-clamp-2">
+                              {entry.cause || 'Adjudicated Event'}
+                            </h4>
+                            {entry.category && (
+                              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                                {entry.category.split('|')[0].trim()}
+                              </p>
+                            )}
+                            <p className="mt-1 text-[11px] text-muted-foreground">
+                              {entry.t ? formatDate(entry.t) : ''}
+                            </p>
+                          </div>
+                          <div
+                            className={cn(
+                              'shrink-0 rounded-lg px-2.5 py-1 text-[12px] font-bold',
+                              entry.delta > 0
+                                ? 'bg-green-50 text-green-600'
+                                : entry.delta < 0
+                                ? 'bg-red-50 text-red-600'
+                                : 'bg-muted text-muted-foreground'
+                            )}
+                          >
+                            {entry.delta > 0 ? '+' : ''}{entry.delta}
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                ) : (
+                  <div className="py-8 flex flex-col items-center gap-3 text-center">
+                    <Target size={28} className="text-muted-foreground opacity-30" />
+                    <p className="text-[13px] text-muted-foreground">No impactful actions yet.</p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
