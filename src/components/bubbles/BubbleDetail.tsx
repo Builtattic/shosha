@@ -57,13 +57,66 @@ type BubbleDetailProps = {
     createdAt: string;
     memberCount: number;
   };
+  currentUser: {
+    _id: string;
+    username: string;
+  } | null;
   members: Member[];
   requests: JoinRequest[];
 };
 
-export function BubbleDetail({ bubble, members, requests }: BubbleDetailProps) {
+export function BubbleDetail({ bubble, currentUser, members, requests: initialRequests }: BubbleDetailProps) {
   const [activeTab, setActiveTab] = useState<'reports' | 'requests'>('reports');
   const [showFullDesc, setShowFullDesc] = useState(false);
+  const [requests, setRequests] = useState(initialRequests);
+  const [loading, setLoading] = useState<string | null>(null);
+  const toast = useToast();
+
+  const isMember = members.some(m => m.userId === currentUser?._id);
+  const hasRequested = requests.some(r => r.userId === currentUser?._id);
+
+  const handleVote = async (targetUserId: string, vote: 'approve' | 'reject') => {
+    setLoading(`${targetUserId}-${vote}`);
+    try {
+      const res = await fetch(`/api/bubbles/${bubble._id}/join`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetUserId, vote }),
+      });
+      const payload = await res.json();
+      if (!payload.ok) throw new Error(payload.error?.message ?? 'Vote failed');
+      
+      // Update local state
+      setRequests(prev => prev.map(r => 
+        r.userId === targetUserId 
+          ? { ...r, approvals: payload.data.approvals.length, rejections: payload.data.rejections.length }
+          : r
+      ));
+      toast.push(`Vote recorded: ${vote}`);
+    } catch (err) {
+      toast.push(err instanceof Error ? err.message : 'Action failed');
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleJoin = async () => {
+    setLoading('join');
+    try {
+      const res = await fetch(`/api/bubbles/${bubble._id}/join`, {
+        method: 'POST',
+      });
+      const payload = await res.json();
+      if (!payload.ok) throw new Error(payload.error?.message ?? 'Join request failed');
+      
+      toast.push('Join request sent!');
+      // Ideally refresh or update state
+    } catch (err) {
+      toast.push(err instanceof Error ? err.message : 'Action failed');
+    } finally {
+      setLoading(null);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -108,6 +161,21 @@ export function BubbleDetail({ bubble, members, requests }: BubbleDetailProps) {
                 <Camera size={14} />
               </button>
             </div>
+
+            {!isMember && (
+              <button 
+                onClick={handleJoin}
+                disabled={hasRequested || loading === 'join'}
+                className={cn(
+                  "h-10 rounded-full px-6 text-[13px] font-black transition-all active:scale-95",
+                  hasRequested ? "bg-muted text-muted-foreground cursor-default" : "bg-primary text-white hover:opacity-90"
+                )}
+              >
+                {loading === 'join' ? (
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                ) : hasRequested ? 'Requested' : 'Join Bubble'}
+              </button>
+            )}
           </div>
 
           <div className="mt-4">
@@ -309,11 +377,29 @@ export function BubbleDetail({ bubble, members, requests }: BubbleDetailProps) {
                             </div>
                           </div>
                           <div className="flex gap-2">
-                            <button className="flex items-center gap-1 rounded-full bg-green-50 px-3 py-1.5 text-[11px] font-black text-green-600 transition-colors hover:bg-green-100">
-                              <span className="text-[13px]">{req.approvals}</span> Approve
+                            <button 
+                              onClick={() => handleVote(req.userId, 'approve')}
+                              disabled={!!loading}
+                              className="flex items-center gap-1 rounded-full bg-green-50 px-3 py-1.5 text-[11px] font-black text-green-600 transition-colors hover:bg-green-100 disabled:opacity-50"
+                            >
+                              {loading === `${req.userId}-approve` ? (
+                                <div className="h-3 w-3 animate-spin rounded-full border-2 border-green-600 border-t-transparent" />
+                              ) : (
+                                <span className="text-[13px]">{req.approvals}</span>
+                              )} 
+                              Approve
                             </button>
-                            <button className="flex items-center gap-1 rounded-full bg-red-50 px-3 py-1.5 text-[11px] font-black text-red-600 transition-colors hover:bg-red-100">
-                              <span className="text-[13px]">{req.rejections}</span> Reject
+                            <button 
+                              onClick={() => handleVote(req.userId, 'reject')}
+                              disabled={!!loading}
+                              className="flex items-center gap-1 rounded-full bg-red-50 px-3 py-1.5 text-[11px] font-black text-red-600 transition-colors hover:bg-red-100 disabled:opacity-50"
+                            >
+                              {loading === `${req.userId}-reject` ? (
+                                <div className="h-3 w-3 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
+                              ) : (
+                                <span className="text-[13px]">{req.rejections}</span>
+                              )} 
+                              Reject
                             </button>
                           </div>
                         </div>

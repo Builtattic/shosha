@@ -3,6 +3,7 @@ import * as bubblesRepo from '@/lib/repos/bubbles';
 import * as accountsRepo from '@/lib/repos/accounts';
 import { BubbleDetail } from '@/components/bubbles/BubbleDetail';
 import { approvalThreshold } from '@/lib/bubbleRules';
+import { getCurrentUser } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,6 +50,8 @@ export default async function BubblePage({ params }: { params: { id: string } })
     })
   );
 
+  const user = await getCurrentUser().catch(() => null);
+
   return (
     <BubbleDetail 
       bubble={{
@@ -57,6 +60,7 @@ export default async function BubblePage({ params }: { params: { id: string } })
         creatorName: creator?.displayName || 'Unknown',
         creatorAvatar: creator?.avatarUrl || '',
       }} 
+      currentUser={user ? { _id: user._id, username: user.username } : null}
       members={enrichedMembers}
       requests={enrichedRequests}
     />
