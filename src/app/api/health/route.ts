@@ -6,6 +6,6 @@ export async function GET() {
     await adminDb().ref('health/ping').set({ ts: Date.now() });
     return ok({ status: 'steady' });
   } catch {
-    return ok({ status: 'database_offline' }, 200);
+    return ok({ status: 'database_offline' }, 503);
   }
 }

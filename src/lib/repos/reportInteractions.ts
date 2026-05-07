@@ -15,11 +15,15 @@ function db() {
 
 function safeStats(input: unknown): ReportStats {
   const stats = (input ?? {}) as Partial<ReportStats>;
+  const aligns = Number(stats.aligns ?? 0);
+  const opposes = Number(stats.opposes ?? 0);
+  const comments = Number(stats.comments ?? 0);
+  const shares = Number(stats.shares ?? 0);
   return {
-    aligns: Number(stats.aligns ?? 0),
-    opposes: Number(stats.opposes ?? 0),
-    comments: Number(stats.comments ?? 0),
-    shares: Number(stats.shares ?? 0)
+    aligns: Number.isFinite(aligns) ? aligns : 0,
+    opposes: Number.isFinite(opposes) ? opposes : 0,
+    comments: Number.isFinite(comments) ? comments : 0,
+    shares: Number.isFinite(shares) ? shares : 0
   };
 }
 
@@ -39,6 +43,7 @@ export async function getViewerState(reportId: string, userId?: string | null) {
 export async function setVote(reportId: string, userId: string, value: VoteValue) {
   const safeKey = `${reportId}__${userId}`.replace(/[.#$/[\]]/g, '_');
   const reportRef = db().ref(`reports/${reportId}`);
+  const statsRef = reportRef.child('stats');
   const voteRef = db().ref(`reportVotes/${safeKey}`);
 
   const [reportSnap, voteSnap] = await Promise.all([
@@ -48,20 +53,33 @@ export async function setVote(reportId: string, userId: string, value: VoteValue
   if (!reportSnap.exists()) return null;
 
   const current = voteSnap.exists() ? (voteSnap.val()?.value as VoteValue | undefined) : undefined;
-  const stats = safeStats(reportSnap.val()?.stats);
+  const nextVote: VoteValue | null = current === value ? null : value;
 
-  if (current === value) {
-    stats[value === 'align' ? 'aligns' : 'opposes'] -= 1;
-    await voteRef.remove();
-  } else {
+  const txResult = await statsRef.transaction((currentStats) => {
+    const stats = safeStats(currentStats);
     if (current === 'align') stats.aligns -= 1;
     if (current === 'oppose') stats.opposes -= 1;
-    stats[value === 'align' ? 'aligns' : 'opposes'] += 1;
-    await voteRef.set({ reportId, userId, value, updatedAt: new Date().toISOString() });
+    if (nextVote === 'align') stats.aligns += 1;
+    if (nextVote === 'oppose') stats.opposes += 1;
+    return {
+      aligns: Math.max(0, stats.aligns),
+      opposes: Math.max(0, stats.opposes),
+      comments: Math.max(0, stats.comments),
+      shares: Math.max(0, stats.shares)
+    };
+  });
+
+  if (!txResult.committed) return null;
+  const stats = safeStats(txResult.snapshot.val());
+
+  if (!nextVote) {
+    await voteRef.remove();
+  } else {
+    await voteRef.set({ reportId, userId, value: nextVote, updatedAt: new Date().toISOString() });
   }
 
-  await reportRef.update({ stats, updatedAt: new Date().toISOString() });
-  return { stats, vote: current === value ? null : value };
+  await reportRef.update({ updatedAt: new Date().toISOString() });
+  return { stats, vote: nextVote };
 }
 
 export type CommentRecord = {
@@ -74,6 +92,7 @@ export type CommentRecord = {
 
 export async function addComment(reportId: string, userId: string, text: string) {
   const reportRef = db().ref(`reports/${reportId}`);
+  const statsRef = reportRef.child('stats');
   const reportSnap = await reportRef.once('value');
   if (!reportSnap.exists()) return null;
 
@@ -84,9 +103,19 @@ export async function addComment(reportId: string, userId: string, text: string)
     createdAt: new Date().toISOString()
   });
 
-  const stats = safeStats(reportSnap.val()?.stats);
-  stats.comments += 1;
-  await reportRef.update({ stats, updatedAt: new Date().toISOString() });
+  const txResult = await statsRef.transaction((currentStats) => {
+    const stats = safeStats(currentStats);
+    stats.comments += 1;
+    return {
+      aligns: Math.max(0, stats.aligns),
+      opposes: Math.max(0, stats.opposes),
+      comments: Math.max(0, stats.comments),
+      shares: Math.max(0, stats.shares)
+    };
+  });
+  if (!txResult.committed) return null;
+  const stats = safeStats(txResult.snapshot.val());
+  await reportRef.update({ updatedAt: new Date().toISOString() });
   return { stats, commentId: commentRef.key ?? undefined };
 }
 
@@ -114,12 +143,23 @@ export async function listComments(reportId: string, limit = 100): Promise<Comme
 
 export async function addShare(reportId: string) {
   const reportRef = db().ref(`reports/${reportId}`);
+  const statsRef = reportRef.child('stats');
   const reportSnap = await reportRef.once('value');
   if (!reportSnap.exists()) return null;
 
-  const stats = safeStats(reportSnap.val()?.stats);
-  stats.shares += 1;
-  await reportRef.update({ stats, updatedAt: new Date().toISOString() });
+  const txResult = await statsRef.transaction((currentStats) => {
+    const stats = safeStats(currentStats);
+    stats.shares += 1;
+    return {
+      aligns: Math.max(0, stats.aligns),
+      opposes: Math.max(0, stats.opposes),
+      comments: Math.max(0, stats.comments),
+      shares: Math.max(0, stats.shares)
+    };
+  });
+  if (!txResult.committed) return null;
+  const stats = safeStats(txResult.snapshot.val());
+  await reportRef.update({ updatedAt: new Date().toISOString() });
   return { stats };
 }
 
