@@ -107,6 +107,7 @@ export type AccountRecord = {
   displayNameLower?: string;
   email?: string;
   sourceUrl?: string;
+  slug?: string;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -369,6 +370,27 @@ export async function listAll(limit = 200): Promise<AccountRecord[]> {
   return results.reverse();
 }
 
+export async function listEvery(): Promise<AccountRecord[]> {
+  const snap = await ref().once('value');
+  const results: AccountRecord[] = [];
+  snap.forEach((child) => {
+    results.push(withId<AccountRecord>(child.key!, child.val()));
+  });
+  return results;
+}
+
+export async function findByUsername(username: string): Promise<AccountRecord | null> {
+  const key = username.trim().toLowerCase();
+  if (!key) return null;
+  const snap = await ref().orderByChild('usernameLower').equalTo(key).limitToFirst(1).once('value');
+  if (!snap.exists()) return null;
+  let found: AccountRecord | null = null;
+  snap.forEach((child) => {
+    found = withId<AccountRecord>(child.key!, child.val());
+  });
+  return found;
+}
+
 export async function deleteById(id: string): Promise<void> {
   await ref().child(id).remove();
 }
@@ -389,6 +411,16 @@ export async function ensureLedger(id: string): Promise<AccountRecord | null> {
   patch.updatedAt = new Date().toISOString();
   await ref().child(id).update(stripUndefined(patch));
   return findById(id);
+}
+
+export async function findBySlug(slug: string): Promise<AccountRecord | null> {
+  const snap = await ref().orderByChild('slug').equalTo(slug).limitToFirst(1).once('value');
+  if (!snap.exists()) return null;
+  let found: AccountRecord | null = null;
+  snap.forEach((child) => {
+    found = withId<AccountRecord>(child.key!, child.val());
+  });
+  return found;
 }
 
 export async function rebuildLedger(id: string, entries: ScoreHistoryPoint[]): Promise<AccountRecord | null> {
