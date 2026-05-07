@@ -9,6 +9,7 @@ import type { ConfirmationResult } from 'firebase/auth';
 
 type AuthMode = 'choose' | 'email' | 'phone' | 'otp' | 'loading';
 
+/** Allows only safe same-origin relative redirect targets. */
 function sanitizeRedirectPath(input: string | null): string {
   if (!input) return '/dashboard';
   if (!input.startsWith('/') || input.startsWith('//')) return '/dashboard';

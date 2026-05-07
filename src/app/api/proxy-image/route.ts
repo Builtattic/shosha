@@ -13,6 +13,7 @@ const ALLOWED_IMAGE_HOSTS = (process.env.PROXY_IMAGE_ALLOWED_HOSTS ?? '')
   .map((host) => host.trim().toLowerCase())
   .filter(Boolean);
 
+/** Reject loopback/private host targets for proxy fetches. */
 function isPrivateHost(hostname: string): boolean {
   const host = hostname.toLowerCase();
   if (PRIVATE_HOSTS.has(host)) return true;
@@ -20,6 +21,7 @@ function isPrivateHost(hostname: string): boolean {
   return host.endsWith('.local') || host.endsWith('.internal');
 }
 
+/** Enforces explicit allowlist when configured; otherwise blocks private hosts. */
 function isAllowedHost(hostname: string): boolean {
   const host = hostname.toLowerCase();
   if (ALLOWED_IMAGE_HOSTS.length === 0) return !isPrivateHost(host);

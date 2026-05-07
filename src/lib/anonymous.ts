@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 
+/** Returns configured salt, failing hard in production when absent. */
 function getAnonymousSalt() {
   const salt = process.env.ANONYMOUS_TAG_SALT;
   if (salt) return salt;

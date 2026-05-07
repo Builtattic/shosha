@@ -23,6 +23,7 @@ function createdTime(report: { createdAt?: string; timestamp?: string }) {
   return Number.isFinite(time) ? time : 0;
 }
 
+/** Derives a deterministic sentiment from engagement totals. */
 function classifyType(aligns: number, opposes: number): 'positive' | 'negative' {
   return aligns >= opposes ? 'positive' : 'negative';
 }
