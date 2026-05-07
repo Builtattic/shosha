@@ -124,7 +124,7 @@ export const reportCreateSchema = z.object({
   publicAnonymous: z.boolean().default(false),
   location: z.string().max(160).optional(),
   tags: z.array(z.string().min(1).max(80)).max(10).optional(),
-  evidenceSourceUrl: httpUrlSchema.optional().or(z.literal('')),
+  evidenceSourceUrl: httpUrlSchema,
   links: z.array(
     z.object({
       url: httpUrlSchema,

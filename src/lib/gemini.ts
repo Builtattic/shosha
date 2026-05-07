@@ -20,6 +20,12 @@ export type AiVerdict = {
   categoryTags: string[];
   abuseFlags: string[];
   isAiFabricated: boolean;
+  contentSafety: {
+    needsCensor: boolean;
+    censorReason?: string;
+    languageFlags: string[];
+    mediaFlags: string[];
+  };
   analyzedAt: Date;
 };
 
@@ -39,7 +45,13 @@ Return strict JSON only:
   "reasoning": "brief reason",
   "categoryTags": ["community"],
   "abuseFlags": [],
-  "isAiFabricated": false
+  "isAiFabricated": false,
+  "contentSafety": {
+    "needsCensor": false,
+    "censorReason": "",
+    "languageFlags": [],
+    "mediaFlags": []
+  }
 }
 
 Scoring guidance:
@@ -48,6 +60,7 @@ Scoring guidance:
 - Positive filings produce positive proposedImpact, negative filings produce negative.
 - Flag coordinated brigading, off-topic vendettas, doxxing, or pure opinion as abuse. Set valid=false and list flags.
 - Also evaluate if the report text appears to be AI-generated/fabricated and set isAiFabricated to true if it does.
+- Flag explicit language, graphic media, identity-sensitive details, or potentially unsafe media in contentSafety so public surfaces can blur/censor before display.
 
 Categorize each filing with up to 3 tags from: authenticity, engagement, community, content, impact, harassment, misinformation, philanthropy, professionalism, controversy.`;
 
@@ -180,6 +193,12 @@ function heuristicAdjudication(input: AdjudicationInput): AiVerdict {
     categoryTags: text.includes('harass') ? ['community', 'harassment'] : ['community'],
     abuseFlags,
     isAiFabricated: false,
+    contentSafety: {
+      needsCensor: abuseFlags.length > 0 || /(slur|graphic|blood|nude|address|phone number)/.test(text),
+      censorReason: abuseFlags.length > 0 ? 'Potential abuse or identity-sensitive content.' : undefined,
+      languageFlags: /(slur|threat|kill)/.test(text) ? ['unsafe_language'] : [],
+      mediaFlags: /(graphic|blood|nude)/.test(text) ? ['sensitive_media'] : [],
+    },
     analyzedAt: new Date()
   };
 }
@@ -235,6 +254,16 @@ ${input.mediaType === 'video' && input.mediaUrl ? `A video proof was uploaded bu
       categoryTags: Array.isArray(json.categoryTags) ? json.categoryTags.slice(0, 3).map(String) : [],
       abuseFlags: Array.isArray(json.abuseFlags) ? json.abuseFlags.map(String) : [],
       isAiFabricated: Boolean(json.isAiFabricated),
+      contentSafety: {
+        needsCensor: Boolean((json as any).contentSafety?.needsCensor),
+        censorReason: String((json as any).contentSafety?.censorReason ?? '').slice(0, 200) || undefined,
+        languageFlags: Array.isArray((json as any).contentSafety?.languageFlags)
+          ? (json as any).contentSafety.languageFlags.slice(0, 6).map(String)
+          : [],
+        mediaFlags: Array.isArray((json as any).contentSafety?.mediaFlags)
+          ? (json as any).contentSafety.mediaFlags.slice(0, 6).map(String)
+          : [],
+      },
       analyzedAt: new Date()
     };
   } catch {

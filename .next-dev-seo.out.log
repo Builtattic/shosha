@@ -1,0 +1,65 @@
+
+> shosha@0.1.0 dev
+> next dev -p 3000
+
+  ▲ Next.js 14.2.23
+  - Local:        http://localhost:3000
+  - Environments: .env.local, .env
+
+ ✓ Starting...
+ ✓ Ready in 4.1s
+ ○ Compiling /src/middleware ...
+ ✓ Compiled /src/middleware in 510ms (233 modules)
+ GET /robots.txt 200 in 716ms
+ GET /sitemap.xml 200 in 2804ms
+ ✓ Compiled in 64ms (115 modules)
+ ○ Compiling /[slug] ...
+ ✓ Compiled /[slug] in 10.5s (2835 modules)
+ GET /giorgia-meloni 200 in 11804ms
+ GET /the-weeknd 200 in 339ms
+ GET /jd-vance 200 in 346ms
+[shosha-ai] discovery starting with model=gemini-1.5-flash (timeout=75000ms)
+[shosha-ai] discovery finished in 616ms
+ GET /zohran-mamdani 200 in 3825ms
+[shosha-ai] discovery starting with model=gemini-1.5-flash (timeout=75000ms)
+[shosha-ai] discovery finished in 210ms
+ GET /megan-fox 200 in 3283ms
+[shosha-ai] discovery starting with model=gemini-1.5-flash (timeout=75000ms)
+[shosha-ai] discovery finished in 188ms
+ GET /timothee-chalamet 200 in 3193ms
+[shosha-ai] discovery starting with model=gemini-1.5-flash (timeout=75000ms)
+[shosha-ai] discovery finished in 183ms
+ GET /d4vd 200 in 3184ms
+[shosha-ai] discovery starting with model=gemini-1.5-flash (timeout=75000ms)
+[shosha-ai] discovery finished in 193ms
+ GET /lewis-hamilton 200 in 3212ms
+[shosha-ai] discovery starting with model=gemini-1.5-flash (timeout=75000ms)
+[shosha-ai] discovery finished in 182ms
+ GET /max-verstappen 200 in 3202ms
+[shosha-ai] discovery starting with model=gemini-1.5-flash (timeout=75000ms)
+[shosha-ai] discovery finished in 179ms
+ GET /kendrick-lamar 200 in 3178ms
+[shosha-ai] discovery starting with model=gemini-1.5-flash (timeout=75000ms)
+[shosha-ai] discovery finished in 180ms
+ GET /pope-leo-xiv 200 in 3189ms
+[shosha-ai] discovery starting with model=gemini-1.5-flash (timeout=75000ms)
+[shosha-ai] discovery finished in 176ms
+ GET /ranbir-kapoor 200 in 3313ms
+[shosha-ai] discovery starting with model=gemini-1.5-flash (timeout=75000ms)
+[shosha-ai] discovery finished in 179ms
+ GET /sydney-sweeney 200 in 3193ms
+[shosha-ai] discovery starting with model=gemini-1.5-flash (timeout=75000ms)
+[shosha-ai] discovery finished in 168ms
+ GET /zendaya 200 in 3410ms
+[shosha-ai] discovery starting with model=gemini-1.5-flash (timeout=75000ms)
+[shosha-ai] discovery finished in 181ms
+ GET /kim-jong-un 200 in 3195ms
+[shosha-ai] discovery starting with model=gemini-1.5-flash (timeout=75000ms)
+[shosha-ai] discovery finished in 189ms
+ GET /samay-raina 200 in 3212ms
+ ✓ Compiled /sitemap.xml in 197ms (1516 modules)
+ GET /sitemap.xml 200 in 581ms
+ ✓ Compiled in 474ms (2850 modules)
+ ✓ Compiled in 308ms (2850 modules)
+ GET /sitemap.xml 200 in 360ms
+ GET /sitemap.xml 200 in 338ms

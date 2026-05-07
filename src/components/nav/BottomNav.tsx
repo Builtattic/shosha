@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Home, Newspaper, Plus, TrendingUp, User, Menu } from 'lucide-react';
+import { Home, Newspaper, Plus, User, Menu, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useReportModal } from '@/components/report/ReportModalProvider';
 import { MobileMenu } from '@/components/nav/MobileMenu';
@@ -19,7 +19,7 @@ type BottomNavItem = {
 const items: BottomNavItem[] = [
   { href: '/dashboard', label: 'Home', icon: Home },
   { href: '/feed', label: 'Reports', icon: Newspaper },
-  { href: '/ranks', label: 'Ranks', icon: TrendingUp },
+  { href: '/people', label: 'People', icon: Users },
   { href: '/profile', label: 'Profile', icon: User, matchPaths: ['/profile', '/account'] },
 ];
 

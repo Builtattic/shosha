@@ -30,11 +30,26 @@ function toRow(account: Awaited<ReturnType<typeof accountsRepo.listTop>>[number]
   };
 }
 
-export default async function RanksPage() {
-  const [top, bottom] = await Promise.all([
-    accountsRepo.listTop(50).catch(() => []),
-    accountsRepo.listBottom(50).catch(() => [])
-  ]);
+function matchesScope(account: accountsRepo.AccountRecord, scope: string) {
+  if (scope === 'global') return true;
+  if (account.regionScope === scope) return true;
+  const region = `${account.region ?? ''} ${account.cityCountry ?? ''}`.toLowerCase();
+  if (scope === 'national') return Boolean(region);
+  if (scope === 'regional') return /(asia|europe|africa|america|middle east|gcc)/i.test(region);
+  if (scope === 'local') return Boolean(account.cityCountry);
+  return true;
+}
+
+export default async function RanksPage({ searchParams }: { searchParams?: { scope?: string } }) {
+  const scope = ['global', 'regional', 'national', 'local'].includes(searchParams?.scope ?? '')
+    ? searchParams!.scope!
+    : 'global';
+  const all = await accountsRepo.listEvery().catch(() => []);
+  const scoped = all.filter((account) => matchesScope(account, scope));
+  const active = scoped.filter((account) => !account.archived);
+  const archived = scoped.filter((account) => account.archived);
+  const top = [...active].sort((a, b) => b.score - a.score).slice(0, 50);
+  const bottom = [...active].sort((a, b) => a.score - b.score).slice(0, 50);
 
   const topGainers = top
     .map(toRow)
@@ -56,7 +71,7 @@ export default async function RanksPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-[28px] font-bold text-foreground">Ranks</h1>
       </div>
-      <RanksTabs topGainers={gainers} underFire={underFire} />
+      <RanksTabs topGainers={gainers} underFire={underFire} archived={archived.map(toRow).slice(0, 20)} initialScope={scope} />
     </main>
   );
 }

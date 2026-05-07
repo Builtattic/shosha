@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { classifyType } from '@/app/api/feed/route';
+import { classifyType } from '@/lib/feedClassify';
 
 describe('classifyType', () => {
   describe('basic classification', () => {

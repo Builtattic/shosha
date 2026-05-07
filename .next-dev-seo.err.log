@@ -1,0 +1,66 @@
+npm warn Unknown project config "node-linker". This will stop working in the next major version of npm.
+[profile-enrichment] failed Error: Shosha discovery failed with status 404.
+    at generateGroundedJson (webpack-internal:///(rsc)/./src/lib/gemini.ts:300:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async enrichPublicProfileDetails (webpack-internal:///(rsc)/./src/lib/profileEnrichment.ts:110:20)
+    at async AccountPage (webpack-internal:///(rsc)/./src/app/(app)/account/[id]/page.tsx:312:27)
+[profile-enrichment] failed Error: Shosha discovery failed with status 404.
+    at generateGroundedJson (webpack-internal:///(rsc)/./src/lib/gemini.ts:300:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async enrichPublicProfileDetails (webpack-internal:///(rsc)/./src/lib/profileEnrichment.ts:110:20)
+    at async AccountPage (webpack-internal:///(rsc)/./src/app/(app)/account/[id]/page.tsx:312:27)
+[profile-enrichment] failed Error: Shosha discovery failed with status 404.
+    at generateGroundedJson (webpack-internal:///(rsc)/./src/lib/gemini.ts:300:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async enrichPublicProfileDetails (webpack-internal:///(rsc)/./src/lib/profileEnrichment.ts:110:20)
+    at async AccountPage (webpack-internal:///(rsc)/./src/app/(app)/account/[id]/page.tsx:312:27)
+[profile-enrichment] failed Error: Shosha discovery failed with status 404.
+    at generateGroundedJson (webpack-internal:///(rsc)/./src/lib/gemini.ts:300:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async enrichPublicProfileDetails (webpack-internal:///(rsc)/./src/lib/profileEnrichment.ts:110:20)
+    at async AccountPage (webpack-internal:///(rsc)/./src/app/(app)/account/[id]/page.tsx:312:27)
+[profile-enrichment] failed Error: Shosha discovery failed with status 404.
+    at generateGroundedJson (webpack-internal:///(rsc)/./src/lib/gemini.ts:300:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async enrichPublicProfileDetails (webpack-internal:///(rsc)/./src/lib/profileEnrichment.ts:110:20)
+    at async AccountPage (webpack-internal:///(rsc)/./src/app/(app)/account/[id]/page.tsx:312:27)
+[profile-enrichment] failed Error: Shosha discovery failed with status 404.
+    at generateGroundedJson (webpack-internal:///(rsc)/./src/lib/gemini.ts:300:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async enrichPublicProfileDetails (webpack-internal:///(rsc)/./src/lib/profileEnrichment.ts:110:20)
+    at async AccountPage (webpack-internal:///(rsc)/./src/app/(app)/account/[id]/page.tsx:312:27)
+[profile-enrichment] failed Error: Shosha discovery failed with status 404.
+    at generateGroundedJson (webpack-internal:///(rsc)/./src/lib/gemini.ts:300:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async enrichPublicProfileDetails (webpack-internal:///(rsc)/./src/lib/profileEnrichment.ts:110:20)
+    at async AccountPage (webpack-internal:///(rsc)/./src/app/(app)/account/[id]/page.tsx:312:27)
+[profile-enrichment] failed Error: Shosha discovery failed with status 404.
+    at generateGroundedJson (webpack-internal:///(rsc)/./src/lib/gemini.ts:300:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async enrichPublicProfileDetails (webpack-internal:///(rsc)/./src/lib/profileEnrichment.ts:110:20)
+    at async AccountPage (webpack-internal:///(rsc)/./src/app/(app)/account/[id]/page.tsx:312:27)
+[profile-enrichment] failed Error: Shosha discovery failed with status 404.
+    at generateGroundedJson (webpack-internal:///(rsc)/./src/lib/gemini.ts:300:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async enrichPublicProfileDetails (webpack-internal:///(rsc)/./src/lib/profileEnrichment.ts:110:20)
+    at async AccountPage (webpack-internal:///(rsc)/./src/app/(app)/account/[id]/page.tsx:312:27)
+[profile-enrichment] failed Error: Shosha discovery failed with status 404.
+    at generateGroundedJson (webpack-internal:///(rsc)/./src/lib/gemini.ts:300:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async enrichPublicProfileDetails (webpack-internal:///(rsc)/./src/lib/profileEnrichment.ts:110:20)
+    at async AccountPage (webpack-internal:///(rsc)/./src/app/(app)/account/[id]/page.tsx:312:27)
+[profile-enrichment] failed Error: Shosha discovery failed with status 404.
+    at generateGroundedJson (webpack-internal:///(rsc)/./src/lib/gemini.ts:300:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async enrichPublicProfileDetails (webpack-internal:///(rsc)/./src/lib/profileEnrichment.ts:110:20)
+    at async AccountPage (webpack-internal:///(rsc)/./src/app/(app)/account/[id]/page.tsx:312:27)
+[profile-enrichment] failed Error: Shosha discovery failed with status 404.
+    at generateGroundedJson (webpack-internal:///(rsc)/./src/lib/gemini.ts:300:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async enrichPublicProfileDetails (webpack-internal:///(rsc)/./src/lib/profileEnrichment.ts:110:20)
+    at async AccountPage (webpack-internal:///(rsc)/./src/app/(app)/account/[id]/page.tsx:312:27)
+[profile-enrichment] failed Error: Shosha discovery failed with status 404.
+    at generateGroundedJson (webpack-internal:///(rsc)/./src/lib/gemini.ts:300:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async enrichPublicProfileDetails (webpack-internal:///(rsc)/./src/lib/profileEnrichment.ts:110:20)
+    at async AccountPage (webpack-internal:///(rsc)/./src/app/(app)/account/[id]/page.tsx:312:27)

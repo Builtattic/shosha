@@ -169,6 +169,7 @@ export function ReportModal({
     setDeed('');
     setDescription('');
     setFeelings('');
+    setEvidenceSourceUrl('');
     setAiConsent(false);
     setPublicAnonymous(!user);
     setTaggedPerson('');
@@ -281,6 +282,16 @@ export function ReportModal({
       setDeed(first.deed);
     }
   }, [selectedScoringRow, type]);
+
+  useEffect(() => {
+    const text = description.toLowerCase();
+    if (text.trim().length < 24) return;
+    const repeated = /(again|repeated|pattern|multiple|often|regularly|history|every time)/.test(text);
+    const planned = /(planned|deliberate|intentional|knowingly|threatened|premeditated|organized)/.test(text);
+    const accidental = /(accident|mistake|unintended|without knowing|unaware)/.test(text);
+    setRepetitionPattern(repeated ? '2.5' : '1');
+    setIntent(planned ? '2.5' : accidental ? '0.5' : '1.5');
+  }, [description]);
 
   function close() {
     reset();
@@ -400,6 +411,20 @@ export function ReportModal({
       return;
     }
 
+    if (!evidenceSourceUrl.trim()) {
+      showSubmitError('Add a source URL for the proof before submitting.');
+      return;
+    }
+
+    try {
+      normalizeUrl(evidenceSourceUrl);
+      // eslint-disable-next-line no-new
+      new URL(normalizeUrl(evidenceSourceUrl));
+    } catch {
+      showSubmitError('Enter a valid source URL for the proof.');
+      return;
+    }
+
     if (!aiConsent) {
       showSubmitError('Please confirm the AI Undertaking.');
       return;
@@ -446,6 +471,7 @@ export function ReportModal({
           media: { url: media.url, thumbUrl: media.thumbUrl, type: media.type, bytes: media.bytes },
           location: location || undefined,
           tags: taggedPerson ? [taggedPerson] : [],
+          evidenceSourceUrl: normalizeUrl(evidenceSourceUrl),
           links: links
             .filter((l) => l.url.trim() !== '')
             .map((l) => ({
@@ -1182,22 +1208,38 @@ export function ReportModal({
             </div>
           </section>
 
-          {/* Optional Details */}
+          {/* Source + Optional Details */}
           <section className="space-y-4 sm:space-y-6">
             <div>
               <h3 className="text-[14px] font-bold mb-3 flex items-center justify-between gap-2 sm:text-[16px] sm:mb-4">
-                <span className="truncate">Additional Details</span>
-                <span className="shrink-0 text-[10px] font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded-full uppercase tracking-wider sm:text-[11px]">Optional</span>
+                <span className="truncate">Source & Details</span>
+                <span className="shrink-0 text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full uppercase tracking-wider sm:text-[11px]">Source Required</span>
               </h3>
 
               <div className="space-y-3 sm:space-y-4">
+                <div className="space-y-2">
+                  <label className="text-[13px] font-bold block">
+                    Proof Source URL
+                  </label>
+                  <p className="text-[11px] text-muted-foreground -mt-1">
+                    Link to the original article, post, image, video, or source behind this proof.
+                  </p>
+                  <input
+                    type="url"
+                    value={evidenceSourceUrl}
+                    onChange={(e) => setEvidenceSourceUrl(e.target.value)}
+                    placeholder="https://example.com/source"
+                    className="w-full rounded-[12px] border border-border bg-card p-3 text-[13px] focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+
                 {/* External Links */}
                 <div className="space-y-2">
                   <label className="text-[13px] font-bold block">
-                    External References
+                    Extra References
                   </label>
                   <p className="text-[11px] text-muted-foreground -mt-1">
-                    Add articles, news sources, or evidence URLs.
+                    Add supporting sources beyond the required proof URL.
                   </p>
 
                   {links.map((link, i) => (
@@ -1278,10 +1320,10 @@ export function ReportModal({
             <button
               type="button"
               onClick={submit}
-              disabled={submitting || uploading || !type || !selectedScoringRow || description.length < 10 || !media || (!accountId && !targetHandle.trim())}
+              disabled={submitting || uploading || !type || !selectedScoringRow || description.length < 10 || !media || !evidenceSourceUrl.trim() || (!accountId && !targetHandle.trim())}
               className={cn(
                 "w-full rounded-full py-4 text-[15px] font-bold transition-all active:scale-[0.98] shadow-lg sm:text-[16px]",
-                (submitting || uploading || !type || !selectedScoringRow || description.length < 10 || !media || (!accountId && !targetHandle.trim()))
+                (submitting || uploading || !type || !selectedScoringRow || description.length < 10 || !media || !evidenceSourceUrl.trim() || (!accountId && !targetHandle.trim()))
                   ? "bg-muted text-muted-foreground cursor-not-allowed opacity-70 shadow-none"
                   : "bg-foreground text-background hover:bg-foreground/90 hover:shadow-xl"
               )}
@@ -1293,6 +1335,8 @@ export function ReportModal({
                 </div>
               ) : !media ? (
                 'Upload Evidence to Submit'
+              ) : !evidenceSourceUrl.trim() ? (
+                'Add Source URL to Submit'
               ) : (
                 'Submit Report'
               )}

@@ -23,6 +23,14 @@ export type AiVerdictRecord = {
   analyzedAt: string;
 };
 
+export type ReportContentSafety = {
+  needsCensor: boolean;
+  censorReason?: string;
+  languageFlags: string[];
+  mediaFlags: string[];
+  checkedAt: string;
+};
+
 export type AdminDecisionRecord = {
   adminId: string;
   verdict: 'approved' | 'rejected';
@@ -62,6 +70,7 @@ export type ReportRecord = {
   location?: string;
   tags?: string[];
   aiUndertaking?: boolean;
+  contentSafety?: ReportContentSafety;
   evidenceSourceUrl?: string;
   links?: Array<{ url: string; title?: string }>;
   disputeStatus?: 'none' | 'open' | 'resolved';

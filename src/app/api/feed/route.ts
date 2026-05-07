@@ -1,30 +1,18 @@
 import { ok } from '@/lib/api';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUserReadOnly } from '@/lib/auth';
 import * as accountsRepo from '@/lib/repos/accounts';
 import * as reportsRepo from '@/lib/repos/reports';
 import * as interactionsRepo from '@/lib/repos/reportInteractions';
 import * as siteSettingsRepo from '@/lib/repos/siteSettings';
 import * as usersRepo from '@/lib/repos/users';
 import { hidesReporterOnPublicSurfaces, redactPublicReporter } from '@/lib/reportPrivacy';
-
-function scoreReport(report: reportsRepo.ReportRecord) {
-  const reportScore = Math.abs(report.reportScore ?? report.baseScore ?? report.adminDecision?.finalImpact ?? report.aiVerdict?.proposedImpact ?? 0);
-  const stats = report.stats ?? { aligns: 0, opposes: 0, comments: 0, shares: 0 };
-  const createdAt = report.createdAt ? new Date(report.createdAt).getTime() : Date.now();
-  const ageDays = Math.max(0, (Date.now() - createdAt) / (24 * 60 * 60 * 1000));
-  const recency = Math.exp(-0.05 * ageDays);
-  const engagement = Math.log(1 + stats.aligns + stats.opposes + stats.comments + stats.shares);
-  return reportScore * (report.credibilityWeight ?? 1) * recency * Math.max(1, engagement);
-}
+import { socialFeedScore } from '@/lib/feedRanking';
+import { classifyType } from '@/lib/feedClassify';
 
 function createdTime(report: { createdAt?: string; timestamp?: string }) {
   const value = report.createdAt ?? report.timestamp;
   const time = value ? new Date(value).getTime() : 0;
   return Number.isFinite(time) ? time : 0;
-}
-
-function classifyType(aligns: number, opposes: number): 'positive' | 'negative' {
-  return aligns >= opposes ? 'positive' : 'negative';
 }
 
 import Parser from 'rss-parser';
@@ -214,7 +202,7 @@ async function getLiveNews() {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const filter = searchParams.get('filter') ?? 'for_you';
-  const user = await getCurrentUser();
+  const user = await getCurrentUserReadOnly();
   const settings = await siteSettingsRepo.get();
 
   const reports = await reportsRepo.listPublicFeed(75, siteSettingsRepo.publicFeedStatuses(settings));
@@ -282,9 +270,7 @@ export async function GET(request: Request) {
     feed = [...feed, ...liveNews] as any[];
   }
 
-  if (filter === 'top') {
-    feed = feed.sort((a, b) => scoreReport(b as any) - scoreReport(a as any));
-  } else if (filter === 'positive') {
+  if (filter === 'positive') {
     feed = feed.filter((report) => report.type === 'positive');
   } else if (filter === 'negative') {
     feed = feed.filter((report) => report.type === 'negative');
@@ -297,6 +283,7 @@ export async function GET(request: Request) {
     .sort((a, b) =>
       Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) ||
       Number(Boolean(b.featured)) - Number(Boolean(a.featured)) ||
+      socialFeedScore(b as any) - socialFeedScore(a as any) ||
       createdTime(b) - createdTime(a)
     )
     .slice(0, 30);

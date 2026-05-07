@@ -1,5 +1,5 @@
 import { fail, ok } from '@/lib/api';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUserReadOnly } from '@/lib/auth';
 import { idSchema } from '@/lib/validators';
 import * as usersRepo from '@/lib/repos/users';
 
@@ -30,7 +30,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
 
   const [target, viewer] = await Promise.all([
     usersRepo.findById(parsedId.data),
-    getCurrentUser().catch(() => null),
+    getCurrentUserReadOnly().catch(() => null),
   ]);
   if (!target) return fail('not_found', 'User not found.', 404);
 

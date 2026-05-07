@@ -49,7 +49,7 @@ function makeDbMock(opts: {
   const mockRemove = vi.fn().mockResolvedValue(undefined);
   const mockUpdate = vi.fn().mockResolvedValue(undefined);
   const mockTransaction = vi.fn().mockImplementation(async (cb: (data: unknown) => unknown) => {
-    const result = cb(txResultStats);
+    const result = cb((reportData as { stats?: object } | null)?.stats ?? txResultStats);
     return {
       committed: txCommit,
       snapshot: makeSnapshot(txCommit ? result : null),

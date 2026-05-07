@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { fail, ok } from '@/lib/api';
-import { getCurrentUser, requireUser } from '@/lib/auth';
+import { getCurrentUserReadOnly, requireUser } from '@/lib/auth';
 import { idSchema } from '@/lib/validators';
 import * as interactionsRepo from '@/lib/repos/reportInteractions';
 import * as notificationsRepo from '@/lib/repos/notifications';
@@ -48,7 +48,7 @@ const interactionSchema = z.discriminatedUnion('action', [
 export async function GET(_: Request, { params }: { params: { id: string } }) {
   const id = idSchema.safeParse(params.id);
   if (!id.success) return fail('not_found', 'No filing exists for that id.', 404);
-  const user = await getCurrentUser();
+  const user = await getCurrentUserReadOnly();
   const state = await interactionsRepo.getViewerState(id.data, user?._id);
   return ok(state);
 }

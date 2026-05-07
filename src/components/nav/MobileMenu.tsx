@@ -23,6 +23,8 @@ import {
   ChevronRight,
   Plus,
   Globe,
+  Users,
+  CircleDot,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -46,6 +48,8 @@ const groups: NavGroup[] = [
       { href: '/feed', label: 'Reports', icon: Newspaper },
       { href: '/search', label: 'Search', icon: Search },
       { href: '/impact', label: 'Impact', icon: Target },
+      { href: '/people', label: 'People', icon: Users },
+      { href: '/bubbles', label: 'Bubbles', icon: CircleDot },
       { href: '/ranks', label: 'Ranks', icon: TrendingUp },
     ],
   },

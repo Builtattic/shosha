@@ -52,7 +52,7 @@ describe('sheet-first scoring', () => {
 
   it('looks up base scores from the full sheet scoring index', () => {
     expect(resolveSheetBaseImpact('Murder / rape', 'negative')).toMatchObject({
-      category: 'EXTREME IMPACT',
+      category: 'Extreme Impact',
       deed: 'Murder / rape',
       baseScore: -1000,
     });

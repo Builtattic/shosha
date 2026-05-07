@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Target, TrendingUp, Info, User, ShieldAlert, Settings, Globe, ChevronDown, ShieldCheck, Newspaper, HelpCircle, Bookmark, Bell, Search, PlusCircle, Activity } from 'lucide-react';
+import { Home, Target, TrendingUp, Info, User, ShieldAlert, Settings, Globe, ChevronDown, ShieldCheck, Newspaper, HelpCircle, Bookmark, Bell, Search, PlusCircle, Activity, Users, CircleDot } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useReportModal } from '@/components/report/ReportModalProvider';
@@ -65,6 +65,8 @@ export function Sidebar() {
     { href: '/feed', label: 'Feed', icon: Newspaper },
     { href: '/search', label: 'Search', icon: Search },
     { href: '/impact', label: 'Impact', icon: Target },
+    { href: '/people', label: 'People', icon: Users },
+    { href: '/bubbles', label: 'Bubbles', icon: CircleDot },
     { href: '/ranks', label: 'Ranks', icon: TrendingUp },
     { href: '/about', label: 'About', icon: Info },
     { href: '/profile', label: 'Profile', icon: User },

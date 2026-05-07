@@ -3,7 +3,7 @@ import { assertLimit, getRequestKey, rateLimits } from '@/lib/ratelimit';
 import { searchSchema } from '@/lib/validators';
 import * as accountsRepo from '@/lib/repos/accounts';
 import * as usersRepo from '@/lib/repos/users';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUserReadOnly } from '@/lib/auth';
 import { canViewProfileField } from '@/lib/profilePrivacy';
 import { discoverSocialAccounts, type SocialDiscoveryResult } from '@/lib/shoshaDiscovery';
 
@@ -70,7 +70,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const parsed = searchSchema.safeParse({ q: searchParams.get('q') ?? '' });
   if (!parsed.success) return fail('validation_error', 'Search query is too long.', 422);
-  const viewer = await getCurrentUser().catch(() => null);
+  const viewer = await getCurrentUserReadOnly().catch(() => null);
 
   // Fetch and filter local accounts in-memory (more reliable than RTDB's limited search)
   const allAccounts = await accountsRepo.listAll(1000).catch(() => []);
@@ -86,9 +86,13 @@ export async function GET(request: Request) {
     (viewer?._id === u._id && u.email.toLowerCase().includes(parsed.data.q.toLowerCase())) ||
     u.name?.toLowerCase().includes(parsed.data.q.toLowerCase())
   ).slice(0, 10);
-  const userAccounts = await Promise.all(
-    matchedUsers.map((user) => accountsRepo.ensureWebsiteAccountForUser(user))
+  const userAccountPairs = await Promise.all(
+    matchedUsers.map(async (user) => ({
+      user,
+      account: await accountsRepo.findById(accountsRepo.deriveId('website', user.username)).catch(() => null),
+    }))
   );
+  const userAccounts = userAccountPairs.map((pair) => pair.account).filter(Boolean) as accountsRepo.AccountRecord[];
 
   const discoverParam = searchParams.get('discover');
   const fallbackDiscover = accounts.length === 0 && matchedUsers.length === 0 && discoverParam !== '0' && discoverParam !== 'false';
@@ -133,9 +137,22 @@ export async function GET(request: Request) {
     reason: 'Existing Account Match'
     };
   });
+  const userCandidates = userAccountPairs
+    .filter((pair) => !pair.account)
+    .map(({ user }) => ({
+      platform: 'website',
+      username: user.username,
+      displayName: user.name || user.username,
+      sourceUrl: canViewProfileField(user, viewer, 'website') ? user.websiteUrl || '' : '',
+      bio: user.bio || 'Platform User',
+      followers: String((user.followers ?? []).length),
+      verified: true,
+      confidence: 1,
+      reason: 'ShoSha user match',
+    }));
 
   // Merge all candidates: Local Accounts + Match Platform Users + Discovered Results
-  const allCandidates = dedupeCandidates([...accountCandidates, ...candidates]);
+  const allCandidates = dedupeCandidates([...accountCandidates, ...userCandidates, ...candidates]);
 
   return ok({
     accounts: resultAccounts,

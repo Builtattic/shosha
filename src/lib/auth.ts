@@ -37,7 +37,7 @@ async function getTokenFromRequest(): Promise<string | null> {
   return cookieStore.get('__session')?.value ?? null;
 }
 
-export async function getCurrentUser(): Promise<AppUser | null> {
+async function getCurrentUserInternal(options: { allowBackfill: boolean }): Promise<AppUser | null> {
   const token = await getTokenFromRequest();
   if (!token) return null;
 
@@ -52,6 +52,7 @@ export async function getCurrentUser(): Promise<AppUser | null> {
     try {
       const existing = await usersRepo.findById(uid);
       if (existing) {
+        if (!options.allowBackfill) return { ...existing, emailVerified };
         // Backfill ledger fields for users created before the new scoring system.
         // Idempotent — only writes when score / scoreHistory are missing.
         let userWithLedger = existing;
@@ -62,6 +63,8 @@ export async function getCurrentUser(): Promise<AppUser | null> {
         const withDossier = await ensureRegisteredUserDossier(userWithLedger);
         return { ...withDossier, emailVerified };
       }
+
+      if (!options.allowBackfill) return null;
 
       // First login — create user from Firebase Auth claims
       const rawUsername = decoded.email?.split('@')[0]?.toLowerCase() ?? decoded.name?.toLowerCase() ?? 'user';
@@ -93,6 +96,14 @@ export async function getCurrentUser(): Promise<AppUser | null> {
     console.warn('[auth] Token verification failed:', (err as Error).message);
     return null;
   }
+}
+
+export async function getCurrentUser(): Promise<AppUser | null> {
+  return getCurrentUserInternal({ allowBackfill: true });
+}
+
+export async function getCurrentUserReadOnly(): Promise<AppUser | null> {
+  return getCurrentUserInternal({ allowBackfill: false });
 }
 
 export async function requireUser(): Promise<AppUser> {

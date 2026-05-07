@@ -1,5 +1,5 @@
 import { ok } from '@/lib/api';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser, getCurrentUserReadOnly } from '@/lib/auth';
 import * as accountsRepo from '@/lib/repos/accounts';
 import * as reportsRepo from '@/lib/repos/reports';
 import * as usersRepo from '@/lib/repos/users';
@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    const user = await getCurrentUser();
+    const user = await getCurrentUserReadOnly();
     if (!user) return ok({ user: null, claimedAccounts: [], recentEvents: [] });
 
     const [claimedAccountsRaw, myReports] = await Promise.all([

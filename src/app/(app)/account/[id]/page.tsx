@@ -10,7 +10,6 @@ import {
   ArrowRight,
   Plus,
   Minus,
-  TrendingUp,
   ChevronLeft,
   AlertCircle,
 } from 'lucide-react';
@@ -20,20 +19,19 @@ import { FollowButton } from '@/components/profile/FollowButton';
 import { FilingsList } from '@/components/profile/FilingsList';
 import { PostsFeed } from '@/components/profile/PostsFeed';
 import { ScoreRadar } from '@/components/viz/ScoreRadar';
-import { D3AreaChart } from '@/components/viz/D3AreaChart';
 import { SimilarProfiles } from '@/components/profile/SimilarProfiles';
 import { AccountShareButton } from '@/components/profile/AccountShareButton';
 import { LiveAccountScorePanel } from '@/components/profile/LiveAccountScorePanel';
 import { ConnectionListModal } from '@/components/profile/ConnectionListModal';
 import { ScoreLedgerPanel } from '@/components/profile/ScoreLedgerPanel';
+import { ProfileImpactAnalytics } from '@/components/profile/ProfileImpactAnalytics';
 import { formatPlatform, cn, formatDate } from '@/lib/utils';
-import { BASE_SCORE } from '@/lib/scoring';
+import { BASE_SCORE, calcProfileCredibility } from '@/lib/scoring';
 import { idSchema } from '@/lib/validators';
 import * as accountsRepo from '@/lib/repos/accounts';
 import * as reportsRepo from '@/lib/repos/reports';
 import * as usersRepo from '@/lib/repos/users';
-import { getCurrentUser, isAdmin } from '@/lib/auth';
-import { enrichPublicProfileDetails, needsProfileEnrichment } from '@/lib/profileEnrichment';
+import { getCurrentUserReadOnly, isAdmin } from '@/lib/auth';
 import { hidesReporterOnPublicSurfaces } from '@/lib/reportPrivacy';
 import { canViewProfileField, restrictedLabel, visibilityFor } from '@/lib/profilePrivacy';
 
@@ -118,33 +116,12 @@ export default async function AccountPage({
       const { findByUsername } = await import('@/lib/repos/users');
       const user = await findByUsername(username);
       if (user) {
-        // Always use a Firebase-safe key (dots/special chars → hyphens) so the
-        // account ID is stable and can be looked up from the reports API.
+        // Profile views are read-only. If a website account exists under the
+        // normalized safe ID, render it; otherwise require an explicit create
+        // flow instead of writing data during navigation.
         const safeId = accountsRepo.deriveId('website', user.username);
-        // If the URL used a dotted username, the safe key differs — check it first.
         if (safeId !== id.data) {
           account = await accountsRepo.findById(safeId);
-        }
-        if (!account) {
-          account = await accountsRepo.createWithId(safeId, {
-            platform: 'website',
-            username: user.username,
-            displayName: user.name || user.username,
-            bio: user.bio || 'Platform User',
-            avatarUrl: user.photoUrl || `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(user.name || user.username)}`,
-            verified: true,
-            followers: String((user.followers ?? []).length),
-            claimable: true,
-            credibility: 80,
-            enrichmentStatus: 'none',
-            role: userRoleLabel(user) || undefined,
-            score: user.score ?? BASE_SCORE,
-            scoreHistory: user.scoreHistory?.map((h: any) => ({ ...h, s: h.s ?? h.score ?? BASE_SCORE })) ?? [{ t: new Date().toISOString(), s: BASE_SCORE, cause: 'seed' }],
-            breakdown: { authenticity: 50, engagement: 50, community: 50, content: 50, impact: 50 },
-            posts: [],
-            claimed: false,
-            claimedBy: null
-          });
         }
       } else {
         notFound();
@@ -153,6 +130,7 @@ export default async function AccountPage({
       notFound();
     }
   }
+  if (!account) notFound();
 
   // Synchronize dynamic user data if it's a website account
   let linkedUser: Awaited<ReturnType<typeof usersRepo.findById>> = null;
@@ -181,24 +159,10 @@ export default async function AccountPage({
     }
   }
 
-  if (needsProfileEnrichment(account)) {
-    try {
-      await accountsRepo.update(account._id, { enrichmentStatus: 'pending' });
-      const patch = await enrichPublicProfileDetails(account);
-      account = (await accountsRepo.update(account._id, patch)) ?? account;
-    } catch (error) {
-      console.error('[profile-enrichment] failed', error);
-      account = (await accountsRepo.update(account._id, {
-        enrichmentStatus: 'stale',
-        evidenceSummary: 'Gemini profile enrichment failed. Try again later.',
-      })) ?? account;
-    }
-  }
-
   const [filingsRaw, allTop, currentViewer] = await Promise.all([
     reportsRepo.listForAccount(account._id, ['approved', 'ai_reviewed', 'flagged'], 30),
     accountsRepo.listAll(120).catch(() => []),
-    getCurrentUser().catch(() => null),
+    getCurrentUserReadOnly().catch(() => null),
   ]);
   const viewerIsAdmin = isAdmin(currentViewer);
 
@@ -268,26 +232,20 @@ export default async function AccountPage({
     (sum: number, h: any) => sum + (h.delta && h.delta < 0 ? Math.abs(h.delta) : 0),
     0,
   );
+  const credibilityTracker = calcProfileCredibility({
+    baseCredibility: Math.min(account.profileCompletion ?? 80, 80),
+    trustBadgeBonus: account.trustBadge ? 20 : 0,
+    opposedPosts: account.opposedPosts ?? 0,
+    disputeLosses: account.disputesLost ?? 0,
+    aiFlaggedPosts: account.aiFlaggedPosts ?? 0,
+  });
+  const profileCredibility = credibilityTracker.updatedCredibility;
 
   function formatImpact(value: number) {
     if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
     if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`;
     return value.toLocaleString();
   }
-
-  // Area chart data
-  const sortedHistory = [...history]
-    .filter((h: any) => h.t)
-    .sort((a: any, b: any) => new Date(a.t).getTime() - new Date(b.t).getTime());
-  const creationTime = account.createdAt
-    ? new Date(account.createdAt)
-    : new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const areaChartData = sortedHistory.length > 0
-    ? sortedHistory.map((entry: any) => ({ date: new Date(entry.t), value: entry.s }))
-    : [
-      { date: creationTime, value: BASE_SCORE },
-      { date: new Date(), value: account.score },
-    ];
 
   const socialLinks = linkedUser
     ? canSeeLinkedSocialLinks ? userSocialLinks(linkedUser) : []
@@ -328,7 +286,7 @@ export default async function AccountPage({
                 username: account.username,
                 avatarUrl: account.avatarUrl,
                 ledgerScore: account.score,
-                credibility: account.credibility ?? 80,
+                credibility: profileCredibility,
                 weeklyDelta,
                 totalImpact: formatImpact(totalPositiveImpact),
                 followers: displayedFollowers || '0',
@@ -433,7 +391,7 @@ export default async function AccountPage({
             score: account.score,
             scoreHistory: account.scoreHistory,
             followers: displayedFollowers || account.followers,
-            credibility: account.credibility,
+            credibility: profileCredibility,
             createdAt: account.createdAt,
           }}
         />
@@ -628,20 +586,31 @@ export default async function AccountPage({
           {/* IMPACT TAB */}
           {activeTab === 'impact' && (
             <>
-              <div className="rounded-[24px] bg-background p-5 shadow-sm border border-border">
-                <h3 className="mb-1 text-[16px] font-bold text-foreground">Score History</h3>
-                <p className="mb-4 text-[12px] text-muted-foreground">
-                  Continuous trajectory from the public ledger.
-                </p>
-                {areaChartData.length >= 2 ? (
-                  <D3AreaChart data={areaChartData} height={220} />
-                ) : (
-                  <div className="flex flex-col items-center gap-3 py-8 text-center">
-                    <TrendingUp size={28} className="text-muted-foreground/40" />
-                    <p className="text-[13px] text-muted-foreground">No ledger entries yet.</p>
-                  </div>
-                )}
-              </div>
+              <ProfileImpactAnalytics
+                history={history.map((entry: any) => ({
+                  t: entry.t,
+                  s: entry.s,
+                  delta: entry.delta,
+                  category: entry.category,
+                  deed: entry.deed,
+                }))}
+                filings={filings.map((filing: any) => {
+                  const score =
+                    filing.adminDecision?.finalImpact ??
+                    filing.aiVerdict?.proposedImpact ??
+                    filing.reportScore ??
+                    filing.baseScore ??
+                    0;
+                  return {
+                    id: filing._id,
+                    title: filing.deed || filing.description || 'Filing recorded',
+                    category: filing.category || 'Uncategorized',
+                    delta: score,
+                    type: filing.type,
+                    createdAt: filing.createdAt,
+                  };
+                })}
+              />
               <div className="rounded-[24px] bg-background p-5 shadow-sm border border-border">
                 <h3 className="text-[16px] font-bold text-foreground">Score Breakdown</h3>
                 <p className="mt-1 text-[13px] text-muted-foreground mb-6">

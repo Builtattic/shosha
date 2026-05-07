@@ -1,5 +1,5 @@
 import { fail, fromZod, ok } from '@/lib/api';
-import { getCurrentUser, isAdmin, requireUser } from '@/lib/auth';
+import { getCurrentUserReadOnly, isAdmin, requireUser } from '@/lib/auth';
 import { accountPatchSchema, idSchema } from '@/lib/validators';
 import * as accountsRepo from '@/lib/repos/accounts';
 import * as usersRepo from '@/lib/repos/users';
@@ -14,7 +14,7 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
   if (account.platform !== 'website') return ok(account);
 
   const [viewer, linkedUser] = await Promise.all([
-    getCurrentUser().catch(() => null),
+    getCurrentUserReadOnly().catch(() => null),
     account.claimedBy
       ? usersRepo.findById(account.claimedBy).catch(() => null)
       : usersRepo.findByUsername(account.username).catch(() => null),

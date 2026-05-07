@@ -15,7 +15,7 @@ const ALLOWED_IMAGE_HOSTS = (process.env.PROXY_IMAGE_ALLOWED_HOSTS ?? '')
 
 /** Reject loopback/private host targets for proxy fetches. */
 function isPrivateHost(hostname: string): boolean {
-  const host = hostname.toLowerCase();
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, '');
   if (PRIVATE_HOSTS.has(host)) return true;
   if (PRIVATE_IPV4_RANGES.some((pattern) => pattern.test(host))) return true;
   return host.endsWith('.local') || host.endsWith('.internal');

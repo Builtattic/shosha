@@ -62,6 +62,9 @@ export type AccountRecord = {
   profileKind?: AccountProfileKind;
   claimable?: boolean;
   credibility?: number;
+  trustBadge?: boolean;
+  archived?: boolean;
+  regionScope?: 'global' | 'regional' | 'national' | 'local';
   globalScore?: number;
   displayScore?: number;
   windowScores?: {

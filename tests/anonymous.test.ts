@@ -14,7 +14,7 @@ describe('anonymousHash', () => {
   beforeEach(() => {
     process.env = { ...originalEnv };
     delete process.env.ANONYMOUS_TAG_SALT;
-    delete process.env.NODE_ENV;
+    delete (process.env as Record<string, string | undefined>).NODE_ENV;
   });
 
   afterEach(() => {
@@ -96,7 +96,7 @@ describe('anonymousHash', () => {
 
   it('throws in production environment when ANONYMOUS_TAG_SALT is not set', () => {
     delete process.env.ANONYMOUS_TAG_SALT;
-    process.env.NODE_ENV = 'production';
+    (process.env as Record<string, string | undefined>).NODE_ENV = 'production';
     const req = makeRequest({ ip: '1.2.3.4', ua: 'ua' });
     expect(() => anonymousHash(req)).toThrow('ANONYMOUS_TAG_SALT is required in production');
   });
@@ -108,7 +108,7 @@ describe('anonymousTag', () => {
   beforeEach(() => {
     process.env = { ...originalEnv };
     process.env.ANONYMOUS_TAG_SALT = 'tag-test-salt';
-    delete process.env.NODE_ENV;
+    delete (process.env as Record<string, string | undefined>).NODE_ENV;
   });
 
   afterEach(() => {

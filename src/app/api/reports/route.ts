@@ -1,7 +1,7 @@
 import { anonymousHash, anonymousTag } from '@/lib/anonymous';
 import { fail, fromZod, ok } from '@/lib/api';
 import { adjudicateReport } from '@/lib/gemini';
-import { getCurrentUser, isAdmin, isEmailVerified } from '@/lib/auth';
+import { getCurrentUser, getCurrentUserReadOnly, isAdmin, isEmailVerified } from '@/lib/auth';
 import { assertLimit, getRequestKey, rateLimits } from '@/lib/ratelimit';
 import { idSchema, reportCreateSchema } from '@/lib/validators';
 import {
@@ -19,7 +19,7 @@ import * as reportMetadataRepo from '@/lib/repos/reportMetadata';
 import * as siteSettingsRepo from '@/lib/repos/siteSettings';
 
 export async function GET(request: Request) {
-  const user = await getCurrentUser();
+  const user = await getCurrentUserReadOnly();
   const { searchParams } = new URL(request.url);
   const accountId = searchParams.get('accountId');
 
@@ -128,6 +128,10 @@ export async function POST(request: Request) {
       tags: parsed.data.tags ?? [],
       evidenceSourceUrl: parsed.data.evidenceSourceUrl || undefined,
       links: parsed.data.links ?? [],
+      contentSafety: {
+        ...verdict.contentSafety,
+        checkedAt: verdict.analyzedAt.toISOString(),
+      },
       aiUndertaking: true,
       disputeStatus: 'none',
       status: verdict.abuseFlags.length > 0 ? 'flagged' : 'ai_reviewed',

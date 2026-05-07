@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Flame, CloudLightning, Archive, ChevronDown, CheckCircle2, TrendingUp, TrendingDown, Globe, Flag, MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -94,9 +95,20 @@ const TABS = [
   { id: 'archived' as const, label: 'Archived', subtitle: 'Legends', Icon: Archive, accent: 'text-foreground' },
 ];
 
-export function RanksTabs({ topGainers, underFire }: { topGainers: RankRow[]; underFire: RankRow[] }) {
+export function RanksTabs({
+  topGainers,
+  underFire,
+  archived,
+  initialScope = 'global',
+}: {
+  topGainers: RankRow[];
+  underFire: RankRow[];
+  archived: RankRow[];
+  initialScope?: string;
+}) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'gainers' | 'losers' | 'archived'>('gainers');
-  const [scope, setScope] = useState<ScopeOption>(SCOPES[0]);
+  const [scope, setScope] = useState<ScopeOption>(SCOPES.find((option) => option.value === initialScope) ?? SCOPES[0]);
   const [scopeOpen, setScopeOpen] = useState(false);
   const scopeRef = useRef<HTMLDivElement>(null);
 
@@ -174,6 +186,7 @@ export function RanksTabs({ topGainers, underFire }: { topGainers: RankRow[]; un
                       onClick={() => {
                         setScope(opt);
                         setScopeOpen(false);
+                        router.push(`/ranks?scope=${opt.value}`);
                       }}
                       className={cn(
                         'flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-[12px] font-semibold transition-colors',
@@ -233,9 +246,22 @@ export function RanksTabs({ topGainers, underFire }: { topGainers: RankRow[]; un
               <EmptyState title="No accounts under fire." body="Negative reports lower scores below the baseline; none are flagged yet." />
             ))}
 
-          {activeTab === 'archived' && (
-            <EmptyState title="No archived legends yet." body="Once an account is archived, it will appear here for posterity." />
-          )}
+          {activeTab === 'archived' &&
+            (archived.length ? (
+              <div className="rounded-2xl border border-border bg-card px-4 py-1 shadow-sm">
+                <div className="flex items-center justify-between py-3">
+                  <h2 className="text-[11px] font-black uppercase tracking-widest text-foreground">Archived Legends</h2>
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Separate Ranking</span>
+                </div>
+                <div className="border-t border-border/50">
+                  {archived.map((row, i) => (
+                    <RankItem key={row.id} row={row} rank={i + 1} index={i} isNegative={row.score < 1000} />
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <EmptyState title="No archived legends yet." body="Once an account is archived, it will appear here for posterity." />
+            ))}
         </motion.div>
       </AnimatePresence>
 
