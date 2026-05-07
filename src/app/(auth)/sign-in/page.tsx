@@ -9,7 +9,18 @@ import type { ConfirmationResult } from 'firebase/auth';
 
 type AuthMode = 'choose' | 'email' | 'phone' | 'otp' | 'loading';
 
+function sanitizeRedirectPath(input: string | null): string {
+  if (!input) return '/dashboard';
+  if (!input.startsWith('/') || input.startsWith('//')) return '/dashboard';
+  const lowered = input.toLowerCase();
+  if (lowered.startsWith('/http:') || lowered.startsWith('/https:') || lowered.startsWith('/data:') || lowered.startsWith('/javascript:')) {
+    return '/dashboard';
+  }
+  return input;
+}
+
 async function resolveRedirect(redirectParam: string): Promise<string> {
+  const safeRedirect = sanitizeRedirectPath(redirectParam);
   try {
     const res = await fetch('/api/me');
     if (res.ok) {
@@ -25,7 +36,7 @@ async function resolveRedirect(redirectParam: string): Promise<string> {
   } catch {
     // fall through to default
   }
-  return redirectParam || '/dashboard';
+  return safeRedirect;
 }
 
 export default function SignInPage() {
@@ -53,7 +64,7 @@ export default function SignInPage() {
     if (!authLoading && user && mode !== 'loading') {
       setMode('loading');
       const searchParams = new URLSearchParams(window.location.search);
-      resolveRedirect(searchParams.get('redirect') || '/dashboard').then(dest => {
+      resolveRedirect(sanitizeRedirectPath(searchParams.get('redirect'))).then(dest => {
         router.push(dest);
       }).catch(() => {
         router.push('/dashboard');
@@ -89,7 +100,7 @@ export default function SignInPage() {
 
       const searchParams = new URLSearchParams(window.location.search);
       setMode('loading');
-      const dest = await resolveRedirect(searchParams.get('redirect') || '/dashboard');
+      const dest = await resolveRedirect(sanitizeRedirectPath(searchParams.get('redirect')));
       router.push(dest);
     } catch (err: any) {
       setError(err.message?.replace('Firebase: ', '').replace(/\(auth\/.*\)/, '').trim() || 'Something went wrong');
@@ -110,7 +121,7 @@ export default function SignInPage() {
       if (result === 'signed-in') {
         setMode('loading');
         const searchParams = new URLSearchParams(window.location.search);
-        const dest = await resolveRedirect(searchParams.get('redirect') || '/dashboard');
+        const dest = await resolveRedirect(sanitizeRedirectPath(searchParams.get('redirect')));
         router.push(dest);
       } else if (result === 'redirecting') {
         setMode('loading');
@@ -157,7 +168,7 @@ export default function SignInPage() {
 
       const searchParams = new URLSearchParams(window.location.search);
       setMode('loading');
-      const dest = await resolveRedirect(searchParams.get('redirect') || '/dashboard');
+      const dest = await resolveRedirect(sanitizeRedirectPath(searchParams.get('redirect')));
       router.push(dest);
     } catch (err: any) {
       setError('Invalid OTP. Please try again.');

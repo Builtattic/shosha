@@ -23,6 +23,10 @@ function createdTime(report: { createdAt?: string; timestamp?: string }) {
   return Number.isFinite(time) ? time : 0;
 }
 
+function classifyType(aligns: number, opposes: number): 'positive' | 'negative' {
+  return aligns >= opposes ? 'positive' : 'negative';
+}
+
 import Parser from 'rss-parser';
 
 const parser = new Parser({
@@ -62,28 +66,28 @@ async function fetchTwitterLive() {
         }
       }
 
-      const isPositive = Math.random() > 0.4;
+      const aligns = tweet.public_metrics?.like_count || 0;
+      const opposes = Math.floor(aligns * 0.1);
       return {
         _id: `twitter-${tweet.id}`,
         accountId: `twitter-${author.id}`,
         userId: 'system',
-        type: isPositive ? 'positive' : 'negative',
+        type: classifyType(aligns, opposes),
         status: 'published',
         description: tweet.text,
         media: mediaItem,
         stats: {
-          aligns: tweet.public_metrics?.like_count || 0,
-          opposes: Math.floor((tweet.public_metrics?.like_count || 0) * 0.1),
+          aligns,
+          opposes,
           comments: tweet.public_metrics?.reply_count || 0,
           shares: tweet.public_metrics?.retweet_count || 0
         },
-        adminDecision: { finalImpact: isPositive ? Math.floor(Math.random() * 10) + 1 : -(Math.floor(Math.random() * 10) + 1) },
         createdAt: tweet.created_at || new Date().toISOString(),
         account: {
           username: author.username || 'unknown',
           displayName: author.name || 'Unknown User',
           avatarUrl: author.profile_image_url,
-          platform: 'twitter',
+          platform: 'x',
           verified: author.verified || false
         },
         viewer: { vote: null, bookmarked: false }
@@ -119,22 +123,22 @@ async function fetchInstagramLive() {
         mediaItem = { type: 'image', url: post.media_url };
       }
 
-      const isPositive = Math.random() > 0.4;
+      const aligns = post.like_count || 0;
+      const opposes = Math.floor(aligns * 0.1);
       return {
         _id: `ig-${post.id}`,
         accountId: `ig-hashtag`,
         userId: 'system',
-        type: isPositive ? 'positive' : 'negative',
+        type: classifyType(aligns, opposes),
         status: 'published',
         description: post.caption || 'Instagram Post',
         media: mediaItem,
         stats: {
-          aligns: post.like_count || Math.floor(Math.random() * 1000),
-          opposes: Math.floor((post.like_count || 100) * 0.1),
-          comments: post.comments_count || Math.floor(Math.random() * 50),
-          shares: Math.floor((post.like_count || 100) * 0.05)
+          aligns,
+          opposes,
+          comments: post.comments_count || 0,
+          shares: Math.floor(aligns * 0.05)
         },
-        adminDecision: { finalImpact: isPositive ? 5 : -5 },
         createdAt: post.timestamp || new Date().toISOString(),
         account: {
           username: 'instagram_news',
@@ -163,22 +167,22 @@ async function fetchFacebookLive() {
     if (!data.data) return [];
 
     return data.data.map((post: any) => {
-      const isPositive = Math.random() > 0.4;
+      const aligns = post.likes?.summary?.total_count || 0;
+      const opposes = Math.floor(aligns * 0.1);
       return {
         _id: `fb-${post.id}`,
         accountId: `fb-cnn`,
         userId: 'system',
-        type: isPositive ? 'positive' : 'negative',
+        type: classifyType(aligns, opposes),
         status: 'published',
         description: post.message || 'Facebook Post',
         media: post.full_picture ? { type: 'image', url: post.full_picture } : undefined,
         stats: {
-          aligns: post.likes?.summary?.total_count || Math.floor(Math.random() * 1000),
-          opposes: Math.floor((post.likes?.summary?.total_count || 100) * 0.1),
-          comments: post.comments?.summary?.total_count || Math.floor(Math.random() * 50),
-          shares: post.shares?.count || Math.floor(Math.random() * 20)
+          aligns,
+          opposes,
+          comments: post.comments?.summary?.total_count || 0,
+          shares: post.shares?.count || 0
         },
-        adminDecision: { finalImpact: isPositive ? 5 : -5 },
         createdAt: post.created_time || new Date().toISOString(),
         account: {
           username: 'cnn',

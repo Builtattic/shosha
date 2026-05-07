@@ -1,5 +1,5 @@
 import { fail, fromZod, ok } from '@/lib/api';
-import { getCurrentUser, requireUser } from '@/lib/auth';
+import { getCurrentUser, isAdmin, requireUser } from '@/lib/auth';
 import { accountPatchSchema, idSchema } from '@/lib/validators';
 import * as accountsRepo from '@/lib/repos/accounts';
 import * as usersRepo from '@/lib/repos/users';
@@ -31,13 +31,19 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
 }
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+  let user: Awaited<ReturnType<typeof requireUser>>;
   try {
-    await requireUser();
+    user = await requireUser();
   } catch {
     return fail('unauthorized', 'Sign in before editing a dossier.', 401);
   }
   const id = idSchema.safeParse(params.id);
   if (!id.success) return fail('not_found', 'No dossier exists for that id.', 404);
+  const existing = await accountsRepo.findById(id.data);
+  if (!existing) return fail('not_found', 'No dossier exists for that id.', 404);
+  if (!isAdmin(user) && existing.claimedBy !== user._id) {
+    return fail('forbidden', 'You do not have permission to edit this dossier.', 403);
+  }
   const json = await request.json().catch(() => null);
   const parsed = accountPatchSchema.safeParse(json);
   if (!parsed.success) return fromZod(parsed.error);
