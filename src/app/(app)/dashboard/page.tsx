@@ -138,6 +138,7 @@ export default function DashboardPage() {
   const [accountCandidates, setAccountCandidates] = useState<AccountCandidate[]>([]);
   const [searchingAccounts, setSearchingAccounts] = useState(false);
   const [meData, setMeData] = useState<{ user: any; claimedAccounts: any[] } | null>(null);
+  const [heroImgError, setHeroImgError] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -277,8 +278,13 @@ export default function DashboardPage() {
   const hasOnboarded = !!(meData?.user?.onboardingComplete || meData?.user?.name || meData?.user?.occupationRole);
   const displayName = meData?.user?.name || firebaseUser?.displayName || firebaseUser?.email?.split('@')[0] || 'You';
   
-  const photo = meData?.user?.photoUrl || firebaseUser?.photoURL;
+  const accountAvatar = meData?.claimedAccounts?.find((account) => {
+    const avatar = account?.avatarUrl;
+    return Boolean(avatar && avatar !== 'null' && avatar !== 'undefined');
+  })?.avatarUrl;
+  const photo = meData?.user?.photoUrl || firebaseUser?.photoURL || accountAvatar;
   const avatarUrl = (photo && photo !== 'null' && photo !== 'undefined') ? photo : null;
+  const showHeroAvatar = Boolean(avatarUrl && !heroImgError);
 
   const displayScore = ledgerScore;
   const scoreLabel = 'Shosha Score';
@@ -425,20 +431,17 @@ export default function DashboardPage() {
                 <Link href="/profile" aria-label="Go to profile" className="h-14 w-14 overflow-hidden rounded-2xl border border-border bg-muted shadow-sm shrink-0 flex items-center justify-center relative hover:opacity-80 transition-opacity">
                   {avatarUrl ? (
                     <img
+                      key={avatarUrl}
                       src={avatarUrl}
                       alt=""
                       className="h-full w-full object-cover"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
-                        const fallback = target.parentElement?.querySelector('.avatar-fallback');
-                        if (fallback) fallback.classList.remove('hidden');
-                      }}
+                      onError={() => setHeroImgError(true)}
+                      onLoad={() => setHeroImgError(false)}
                     />
                   ) : null}
                   <div className={cn(
                     "avatar-fallback flex h-full w-full items-center justify-center text-lg font-black",
-                    avatarUrl && "hidden"
+                    showHeroAvatar && "hidden"
                   )}>
                     {displayName.slice(0, 1).toUpperCase()}
                   </div>
