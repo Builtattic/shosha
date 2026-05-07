@@ -36,12 +36,22 @@ export async function GET(request: Request) {
     return new NextResponse('Missing url parameter', { status: 400 });
   }
 
+  let parsed: URL;
   try {
-    const parsed = new URL(rawUrl);
-    if (parsed.protocol !== 'https:' || !isAllowedHost(parsed.hostname)) {
-      return new NextResponse('Disallowed image URL', { status: 400 });
+    parsed = new URL(rawUrl);
+  } catch (error) {
+    if (error instanceof TypeError) {
+      return new NextResponse('Invalid url parameter', { status: 400 });
     }
+    console.error('Image URL validation error:', error);
+    return new NextResponse('Failed to proxy image', { status: 500 });
+  }
 
+  if (parsed.protocol !== 'https:' || !isAllowedHost(parsed.hostname)) {
+    return new NextResponse('Disallowed image URL', { status: 400 });
+  }
+
+  try {
     const res = await fetch(parsed.toString(), { signal: AbortSignal.timeout(5000) });
     if (!res.ok) throw new Error(`Failed to fetch image: ${res.status} ${res.statusText}`);
     const contentType = res.headers.get('content-type') || '';
@@ -58,9 +68,6 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
-    if (error instanceof TypeError) {
-      return new NextResponse('Invalid url parameter', { status: 400 });
-    }
     console.error('Image proxy error:', error);
     return new NextResponse('Failed to proxy image', { status: 500 });
   }
