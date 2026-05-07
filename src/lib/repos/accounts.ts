@@ -391,6 +391,16 @@ export async function ensureLedger(id: string): Promise<AccountRecord | null> {
   return findById(id);
 }
 
+export async function findBySlug(slug: string): Promise<AccountRecord | null> {
+  const snap = await ref().orderByChild('slug').equalTo(slug).limitToFirst(1).once('value');
+  if (!snap.exists()) return null;
+  let found: AccountRecord | null = null;
+  snap.forEach((child) => {
+    found = withId<AccountRecord>(child.key!, child.val());
+  });
+  return found;
+}
+
 export async function rebuildLedger(id: string, entries: ScoreHistoryPoint[]): Promise<AccountRecord | null> {
   const existing = await findById(id);
   if (!existing) return null;
@@ -414,4 +424,6 @@ export async function rebuildLedger(id: string, entries: ScoreHistoryPoint[]): P
     updatedAt: new Date().toISOString(),
   }));
   return findById(id);
+
+  
 }
