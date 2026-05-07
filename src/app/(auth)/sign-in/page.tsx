@@ -63,16 +63,23 @@ export default function SignInPage() {
     }
   }, [user, authLoading, router, mode]);
 
-  // Safety timeout: if we're stuck in loading for >12s, allow the user to retry
+  // Cold-start fix: if still loading after 5s, reload the page to warm the server.
+  // A sessionStorage flag prevents an infinite loop — second timeout shows an error instead.
   useEffect(() => {
     if (mode !== 'loading') return;
     const timer = setTimeout(() => {
-      // If still on this page after 12s, offer recovery
-      setMode('choose');
-      setGoogleLoading(false);
-      setLoading(false);
-      setError('Sign-in timed out. Please try again.');
-    }, 12000);
+      const alreadyRefreshed = sessionStorage.getItem('auth_cold_start_refresh') === '1';
+      if (!alreadyRefreshed) {
+        sessionStorage.setItem('auth_cold_start_refresh', '1');
+        window.location.reload();
+      } else {
+        sessionStorage.removeItem('auth_cold_start_refresh');
+        setMode('choose');
+        setGoogleLoading(false);
+        setLoading(false);
+        setError('Sign-in timed out. Please try again.');
+      }
+    }, 5000);
     return () => clearTimeout(timer);
   }, [mode]);
 
