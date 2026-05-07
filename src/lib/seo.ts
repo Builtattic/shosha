@@ -1,10 +1,13 @@
 import type { AccountRecord } from '@/lib/repos/accounts';
 
 export function siteUrl() {
-  // Always use the canonical production URL for sitemaps and SEO tags.
-  // We completely ignore env vars here because Vercel often injects
-  // the preview URL (.vercel.app), causing GSC "URL not allowed" errors.
-  return 'https://www.noshosha.com';
+  // NEVER use VERCEL_URL — it's a per-deployment preview URL, not the canonical domain.
+  // Set NEXT_PUBLIC_SITE_URL in Vercel project settings → Production environment.
+  const raw =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.SITE_URL ||
+    'https://noshosha.com';
+  return raw.replace(/\/+$/, '');
 }
 
 export function profileSlug(value: string) {
