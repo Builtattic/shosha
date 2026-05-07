@@ -93,7 +93,7 @@ function FeedContent() {
             >
               <Plus size={22} />
             </button>
-            <button type="button" className="relative text-muted-foreground transition-colors hover:text-foreground" aria-label="Notifications">
+            <button type="button" onClick={() => router.push('/notifications')} className="relative text-muted-foreground transition-colors hover:text-foreground" aria-label="Notifications">
               <Bell size={22} />
               <span className="absolute right-0.5 top-0 h-2 w-2 rounded-full border border-background bg-destructive" />
             </button>

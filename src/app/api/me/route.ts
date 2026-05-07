@@ -13,7 +13,7 @@ export async function GET() {
 
     const [claimedAccountsRaw, myReports] = await Promise.all([
       Promise.all((user.claimedAccounts ?? []).slice(0, 10).map((id) => accountsRepo.findById(id))).catch(() => []),
-      reportsRepo.listByReporter(user._id, 10).catch(() => [])
+      reportsRepo.listByReporter(user._id, 50).catch(() => [])
     ]);
     const claimedAccounts = claimedAccountsRaw.filter(Boolean);
     const liveScoreAccount =

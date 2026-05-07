@@ -409,14 +409,14 @@ export default function ProfilePage() {
               <Shield size={16} strokeWidth={2.5} />
             </div>
             <p className="mt-2 text-[16px] font-bold text-foreground">{credibility || '0'}%</p>
-            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Credibility</p>
+            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Context</p>
           </div>
           <div className="rounded-2xl border border-border bg-background p-3 text-center shadow-sm">
             <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-muted text-foreground">
               <FileText size={16} strokeWidth={2.5} />
             </div>
             <p className="mt-2 text-[16px] font-bold text-foreground">{recentEvents.length}</p>
-            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Events Filed</p>
+            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Reports Filed</p>
           </div>
         </div>
 
@@ -509,13 +509,13 @@ export default function ProfilePage() {
           {activeTab === 'activity' && (
             <div className="rounded-[24px] bg-background p-5 shadow-sm border border-border">
               <div className="flex items-center justify-between mb-5">
-                <h3 className="text-[16px] font-bold text-foreground">All Events</h3>
+                <h3 className="text-[16px] font-bold text-foreground">Reports Filed by You</h3>
                 <span className="text-[12px] text-muted-foreground">{recentEvents.length} total</span>
               </div>
               {recentEvents.length === 0 ? (
                 <div className="py-12 flex flex-col items-center gap-3 text-center">
                   <FileText size={32} className="text-muted-foreground opacity-30" />
-                  <p className="text-[13px] text-muted-foreground">No events filed yet.</p>
+                  <p className="text-[13px] text-muted-foreground">No reports filed yet.</p>
                   <button
                     type="button"
                     onClick={() => reportModal.open()}
