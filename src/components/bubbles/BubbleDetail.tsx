@@ -13,7 +13,9 @@ import {
   CheckCircle2,
   XCircle,
   TrendingUp,
-  TrendingDown
+  TrendingDown,
+  Camera,
+  Trophy
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -69,7 +71,7 @@ export function BubbleDetail({ bubble, members, requests }: BubbleDetailProps) {
       <header className="relative">
         <div className="h-[240px] w-full bg-muted">
           {bubble.coverImageUrl && (
-            <img src={bubble.coverImageUrl} className="h-full w-full object-cover" />
+            <img src={bubble.coverImageUrl} alt={`${bubble.name} cover`} className="h-full w-full object-cover" />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
         </div>
@@ -95,7 +97,7 @@ export function BubbleDetail({ bubble, members, requests }: BubbleDetailProps) {
             <div className="relative -mt-10">
               <div className="h-20 w-20 overflow-hidden rounded-[24px] border-4 border-card bg-background shadow-lg">
                 {bubble.imageUrl ? (
-                  <img src={bubble.imageUrl} className="h-full w-full object-cover" />
+                  <img src={bubble.imageUrl} alt={bubble.name} className="h-full w-full object-cover" />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center bg-muted">
                     <Users size={32} className="text-muted-foreground" />
@@ -205,7 +207,7 @@ export function BubbleDetail({ bubble, members, requests }: BubbleDetailProps) {
                     </div>
                     <div className="flex items-center gap-3 pl-2">
                       <div className="h-8 w-8 rounded-full bg-muted overflow-hidden">
-                        <img src={m.avatar} className="h-full w-full object-cover" />
+                        <img src={m.avatar} alt={m.name} className="h-full w-full object-cover" />
                       </div>
                       <div className="min-w-0">
                         <p className="truncate text-[14px] font-black flex items-center gap-1">
@@ -297,7 +299,7 @@ export function BubbleDetail({ bubble, members, requests }: BubbleDetailProps) {
                         <div className="flex items-start justify-between">
                           <div className="flex items-center gap-3">
                             <div className="h-12 w-12 rounded-full bg-muted overflow-hidden shadow-inner">
-                              <img src={req.avatar} className="h-full w-full object-cover" />
+                              <img src={req.avatar} alt={req.name} className="h-full w-full object-cover" />
                             </div>
                             <div>
                               <p className="text-[15px] font-black">{req.name}</p>

@@ -384,3 +384,98 @@ Require stack:
 <w>  at file dependencies D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
 <w>  at file D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
 <w>  at resolve commonjs D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+ ⨯ ./src/app/(app)/profile/page.tsx:15:1
+Module not found: Can't resolve 'date-fns'
+[0m [90m 13 |[39m [36mimport[39m [33mLink[39m [36mfrom[39m [32m'next/link'[39m[33m;[39m[0m
+[0m [90m 14 |[39m [36mimport[39m { cn[33m,[39m formatDate } [36mfrom[39m [32m'@/lib/utils'[39m[33m;[39m[0m
+[0m[31m[1m>[22m[39m[90m 15 |[39m [36mimport[39m { formatDistanceToNow } [36mfrom[39m [32m'date-fns'[39m[33m;[39m[0m
+[0m [90m    |[39m [31m[1m^[22m[39m[0m
+[0m [90m 16 |[39m [36mimport[39m { calcProfileScores[33m,[39m calcShoshaScore[33m,[39m [33mBASE_SCORE[39m } [36mfrom[39m [32m'@/lib/scoring'[39m[33m;[39m[0m
+[0m [90m 17 |[39m [36mimport[39m { [33mD3ProfileGauge[39m } [36mfrom[39m [32m'@/components/viz/D3ProfileGauge'[39m[33m;[39m[0m
+[0m [90m 18 |[39m [36mimport[39m { [33mD3DonutChart[39m } [36mfrom[39m [32m'@/components/viz/D3DonutChart'[39m[33m;[39m[0m
+
+https://nextjs.org/docs/messages/module-not-found
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, lstat 'D:\Shosha\.next\server\app\_not-found'
+<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving '../../../../.next/server/app/_not-found/page' in D:\Shosha\node_modules\next\dist\server for build dependencies doesn't lead to expected result 'D:\Shosha\.next\server\app\_not-found\page.js', but to 'Error: Can't resolve '../../../../.next/server/app/_not-found/page' in 'D:\Shosha\node_modules\next\dist\server'' instead. Resolving dependencies are ignored for this path.
+<w>  at resolve commonjs file ../../../../.next/server/app/_not-found/page (expected D:\Shosha\.next\server\app\_not-found\page.js)
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\server\require.js
+<w>  at file D:\Shosha\node_modules\next\dist\server\require.js
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\server\load-components.js
+<w>  at file D:\Shosha\node_modules\next\dist\server\load-components.js
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\build\utils.js
+<w>  at file D:\Shosha\node_modules\next\dist\build\utils.js
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w>  at file D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w>  at resolve commonjs D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving '../../../../.next/server/app/icon.png/route' in D:\Shosha\node_modules\next\dist\server for build dependencies doesn't lead to expected result 'D:\Shosha\.next\server\app\icon.png\route.js', but to 'Error: Can't resolve '../../../../.next/server/app/icon.png/route' in 'D:\Shosha\node_modules\next\dist\server'' instead. Resolving dependencies are ignored for this path.
+<w>  at resolve commonjs file ../../../../.next/server/app/icon.png/route (expected D:\Shosha\.next\server\app\icon.png\route.js)
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\server\require.js
+<w>  at file D:\Shosha\node_modules\next\dist\server\require.js
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\server\load-components.js
+<w>  at file D:\Shosha\node_modules\next\dist\server\load-components.js
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\build\utils.js
+<w>  at file D:\Shosha\node_modules\next\dist\build\utils.js
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w>  at file D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w>  at resolve commonjs D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving '../../../../.next/server/app/favicon.ico/route' in D:\Shosha\node_modules\next\dist\server for build dependencies doesn't lead to expected result 'D:\Shosha\.next\server\app\favicon.ico\route.js', but to 'Error: Can't resolve '../../../../.next/server/app/favicon.ico/route' in 'D:\Shosha\node_modules\next\dist\server'' instead. Resolving dependencies are ignored for this path.
+<w>  at resolve commonjs file ../../../../.next/server/app/favicon.ico/route (expected D:\Shosha\.next\server\app\favicon.ico\route.js)
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\server\require.js
+<w>  at file D:\Shosha\node_modules\next\dist\server\require.js
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\server\load-components.js
+<w>  at file D:\Shosha\node_modules\next\dist\server\load-components.js
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\build\utils.js
+<w>  at file D:\Shosha\node_modules\next\dist\build\utils.js
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w>  at file D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w>  at resolve commonjs D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving '../../../../.next/server/app/(public)/[slug]/page' in D:\Shosha\node_modules\next\dist\server for build dependencies doesn't lead to expected result 'D:\Shosha\.next\server\app\(public)\[slug]\page.js', but to 'Error: Can't resolve '../../../../.next/server/app/(public)/[slug]/page' in 'D:\Shosha\node_modules\next\dist\server'' instead. Resolving dependencies are ignored for this path.
+<w>  at resolve commonjs file ../../../../.next/server/app/(public)/[slug]/page (expected D:\Shosha\.next\server\app\(public)\[slug]\page.js)
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\server\require.js
+<w>  at file D:\Shosha\node_modules\next\dist\server\require.js
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\server\load-components.js
+<w>  at file D:\Shosha\node_modules\next\dist\server\load-components.js
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\build\utils.js
+<w>  at file D:\Shosha\node_modules\next\dist\build\utils.js
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w>  at file D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w>  at resolve commonjs D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w> [webpack.cache.PackFileCacheStrategy] Restoring pack from D:\Shosha\.next\cache\webpack\client-development.pack.gz failed: TypeError: Cannot read properties of undefined (reading 'hasStartTime')
+ ⨯ ./src/app/(app)/profile/page.tsx:15:1
+Module not found: Can't resolve 'date-fns'
+[0m [90m 13 |[39m [36mimport[39m [33mLink[39m [36mfrom[39m [32m'next/link'[39m[33m;[39m[0m
+[0m [90m 14 |[39m [36mimport[39m { cn[33m,[39m formatDate } [36mfrom[39m [32m'@/lib/utils'[39m[33m;[39m[0m
+[0m[31m[1m>[22m[39m[90m 15 |[39m [36mimport[39m { formatDistanceToNow } [36mfrom[39m [32m'date-fns'[39m[33m;[39m[0m
+[0m [90m    |[39m [31m[1m^[22m[39m[0m
+[0m [90m 16 |[39m [36mimport[39m { calcProfileScores[33m,[39m calcShoshaScore[33m,[39m [33mBASE_SCORE[39m } [36mfrom[39m [32m'@/lib/scoring'[39m[33m;[39m[0m
+[0m [90m 17 |[39m [36mimport[39m { [33mD3ProfileGauge[39m } [36mfrom[39m [32m'@/components/viz/D3ProfileGauge'[39m[33m;[39m[0m
+[0m [90m 18 |[39m [36mimport[39m { [33mD3DonutChart[39m } [36mfrom[39m [32m'@/components/viz/D3DonutChart'[39m[33m;[39m[0m
+
+https://nextjs.org/docs/messages/module-not-found
+ ⨯ ./src/app/(app)/profile/page.tsx:15:1
+Module not found: Can't resolve 'date-fns'
+[0m [90m 13 |[39m [36mimport[39m [33mLink[39m [36mfrom[39m [32m'next/link'[39m[33m;[39m[0m
+[0m [90m 14 |[39m [36mimport[39m { cn[33m,[39m formatDate } [36mfrom[39m [32m'@/lib/utils'[39m[33m;[39m[0m
+[0m[31m[1m>[22m[39m[90m 15 |[39m [36mimport[39m { formatDistanceToNow } [36mfrom[39m [32m'date-fns'[39m[33m;[39m[0m
+[0m [90m    |[39m [31m[1m^[22m[39m[0m
+[0m [90m 16 |[39m [36mimport[39m { calcProfileScores[33m,[39m calcShoshaScore[33m,[39m [33mBASE_SCORE[39m } [36mfrom[39m [32m'@/lib/scoring'[39m[33m;[39m[0m
+[0m [90m 17 |[39m [36mimport[39m { [33mD3ProfileGauge[39m } [36mfrom[39m [32m'@/components/viz/D3ProfileGauge'[39m[33m;[39m[0m
+[0m [90m 18 |[39m [36mimport[39m { [33mD3DonutChart[39m } [36mfrom[39m [32m'@/components/viz/D3DonutChart'[39m[33m;[39m[0m
+
+https://nextjs.org/docs/messages/module-not-found
+<w> [webpack.cache.PackFileCacheStrategy] Restoring pack from D:\Shosha\.next\cache\webpack\client-development.pack.gz failed: TypeError: Cannot read properties of undefined (reading 'hasStartTime')
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, lstat 'D:\Shosha\.next\server\app\_not-found'
+<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving '../../../../.next/server/app/_not-found/page' in D:\Shosha\node_modules\next\dist\server for build dependencies doesn't lead to expected result 'D:\Shosha\.next\server\app\_not-found\page.js', but to 'Error: Can't resolve '../../../../.next/server/app/_not-found/page' in 'D:\Shosha\node_modules\next\dist\server'' instead. Resolving dependencies are ignored for this path.
+<w>  at resolve commonjs file ../../../../.next/server/app/_not-found/page (expected D:\Shosha\.next\server\app\_not-found\page.js)
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\server\require.js
+<w>  at file D:\Shosha\node_modules\next\dist\server\require.js
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\server\load-components.js
+<w>  at file D:\Shosha\node_modules\next\dist\server\load-components.js
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\build\utils.js
+<w>  at file D:\Shosha\node_modules\next\dist\build\utils.js
+<w>  at file dependencies D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w>  at file D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w>  at resolve commonjs D:\Shosha\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w> [webpack.cache.PackFileCacheStrategy] Restoring pack from D:\Shosha\.next\cache\webpack\client-development.pack.gz failed: TypeError: Cannot read properties of undefined (reading 'hasStartTime')
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'D:\Shosha\.next\cache\webpack\client-development\0.pack.gz_' -> 'D:\Shosha\.next\cache\webpack\client-development\0.pack.gz'
+<w> [webpack.cache.PackFileCacheStrategy] Restoring pack from D:\Shosha\.next\cache\webpack\client-development.pack.gz failed: TypeError: Cannot read properties of undefined (reading 'hasStartTime')

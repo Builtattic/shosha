@@ -102,7 +102,7 @@ export function BubblesPanel({ initialBubbles }: { initialBubbles: BubbleCard[] 
             >
               <div className="relative h-40 w-full overflow-hidden">
                 {bubble.coverImageUrl ? (
-                  <img src={bubble.coverImageUrl} alt="" className="h-full w-full object-cover transition-transform group-hover:scale-105" />
+                  <img src={bubble.coverImageUrl} alt={`${bubble.name} cover`} className="h-full w-full object-cover transition-transform group-hover:scale-105" />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center bg-muted/50">
                     <Building2 size={40} className="text-muted-foreground/40" />

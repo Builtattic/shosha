@@ -166,7 +166,7 @@ export function CreateBubbleFlow() {
                   <Upload size={32} className="text-muted-foreground" />
                   <p className="mt-2 text-[13px] font-bold">Upload cover image</p>
                   <p className="text-[11px] text-muted-foreground">Recommended size: 1600 x 600 px</p>
-                  {form.coverImageUrl && <img src={form.coverImageUrl} className="absolute inset-0 h-full w-full rounded-[20px] object-cover" />}
+                  {form.coverImageUrl && <img src={form.coverImageUrl} alt="Cover" className="absolute inset-0 h-full w-full rounded-[20px] object-cover" />}
                 </div>
               </div>
 
@@ -178,7 +178,7 @@ export function CreateBubbleFlow() {
                     <Users size={24} className="text-muted-foreground" />
                     <p className="mt-1 text-center text-[10px] font-bold leading-tight">Upload Image</p>
                     <p className="text-[9px] text-muted-foreground">512 x 512 px</p>
-                    {form.imageUrl && <img src={form.imageUrl} className="absolute inset-0 h-full w-full rounded-[20px] object-cover" />}
+                    {form.imageUrl && <img src={form.imageUrl} alt="Bubble" className="absolute inset-0 h-full w-full rounded-[20px] object-cover" />}
                   </div>
                 </div>
 
@@ -364,7 +364,7 @@ export function CreateBubbleFlow() {
               <div className="rounded-2xl border border-border bg-card p-4 space-y-4">
                 <div className="flex items-center gap-4">
                   <div className="h-16 w-16 rounded-xl bg-muted overflow-hidden">
-                    {form.imageUrl && <img src={form.imageUrl} className="h-full w-full object-cover" />}
+                    {form.imageUrl && <img src={form.imageUrl} alt="Preview" className="h-full w-full object-cover" />}
                   </div>
                   <div>
                     <h3 className="text-[16px] font-black">{form.name}</h3>

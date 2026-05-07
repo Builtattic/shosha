@@ -922,3 +922,22 @@
  GET / 200 in 47ms
  GET /_next/static/chunks/app/(public)/page.js 404 in 15ms
  GET /icon.png 200 in 13ms
+ ✓ Compiled in 664ms (3650 modules)
+ ✓ Compiled in 455ms (3650 modules)
+ ✓ Compiled in 649ms (3650 modules)
+ ✓ Compiled in 1100ms (1821 modules)
+ ✓ Compiled in 1746ms (3765 modules)
+ ✓ Compiled in 295ms (1821 modules)
+ ✓ Compiled in 314ms (1821 modules)
+ ✓ Compiled in 298ms (1821 modules)
+ ✓ Compiled in 349ms (1821 modules)
+ ✓ Compiled in 256ms (1821 modules)
+ ✓ Compiled in 441ms (1821 modules)
+ ✓ Compiled in 370ms (1821 modules)
+ ✓ Compiled in 394ms (1821 modules)
+ ✓ Compiled in 851ms (3765 modules)
+ ✓ Compiled in 437ms (1821 modules)
+ ✓ Compiled in 912ms (3751 modules)
+ ✓ Compiled in 549ms (1821 modules)
+ ✓ Compiled in 352ms (1821 modules)
+ ✓ Compiled in 255ms (1821 modules)
