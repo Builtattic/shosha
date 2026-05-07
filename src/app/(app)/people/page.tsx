@@ -10,10 +10,14 @@ function reportDelta(report: reportsRepo.ReportRecord) {
 }
 
 export default async function PeoplePage() {
-  const accounts = await accountsRepo.listTop(30).catch(() => []);
-  const selected = accounts.filter((account) => !account.archived).slice(0, 12);
+  const accounts = await accountsRepo.listTop(60).catch(() => []);
+  const selected = accounts.filter((a) => !a.archived).slice(0, 20);
+
+  // Fetch reports for all selected accounts in parallel
   const filings = await Promise.all(
-    selected.map((account) => reportsRepo.listForAccount(account._id, ['approved', 'ai_reviewed'], 8).catch(() => []))
+    selected.map((account) =>
+      reportsRepo.listForAccount(account._id, ['approved', 'ai_reviewed'], 8).catch(() => [])
+    )
   );
 
   const items: PeopleDeckItem[] = selected.map((account, index) => ({

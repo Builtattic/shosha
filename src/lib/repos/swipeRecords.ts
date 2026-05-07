@@ -60,6 +60,15 @@ export async function getAccountSwipeScore(accountId: string) {
   return { score, aligns, opposes };
 }
 
+export async function listForUser(userId: string): Promise<SwipeRecord[]> {
+  const snap = await db().ref('swipeRecords').orderByChild('userId').equalTo(userId).once('value');
+  const out: SwipeRecord[] = [];
+  snap.forEach((child) => {
+    out.push(withId<SwipeRecord>(child.key!, child.val()));
+  });
+  return out;
+}
+
 export async function listForAccount(accountId: string): Promise<SwipeRecord[]> {
   const snap = await db().ref('swipeRecords').orderByChild('accountId').equalTo(accountId).once('value');
   const out: SwipeRecord[] = [];
