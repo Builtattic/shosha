@@ -63,3 +63,862 @@
  ✓ Compiled in 308ms (2850 modules)
  GET /sitemap.xml 200 in 360ms
  GET /sitemap.xml 200 in 338ms
+ GET /the-weeknd 200 in 365ms
+ GET /giorgia-meloni 200 in 348ms
+ GET /sitemap.xml 200 in 389ms
+[shosha-ai] discovery starting with model=gemini-1.5-flash (timeout=75000ms)
+[shosha-ai] discovery finished in 548ms
+ GET /the-weeknd 200 in 3733ms
+[shosha-ai] discovery starting with model=gemini-1.5-flash (timeout=75000ms)
+[shosha-ai] discovery finished in 155ms
+ GET /jd-vance 200 in 3239ms
+[shosha-ai] discovery starting with model=gemini-1.5-flash (timeout=75000ms)
+[shosha-ai] discovery finished in 156ms
+ GET /zohran-mamdani 200 in 3164ms
+[shosha-ai] discovery starting with model=gemini-1.5-flash (timeout=75000ms)
+[shosha-ai] discovery finished in 143ms
+ GET /megan-fox 200 in 3109ms
+[shosha-ai] discovery starting with model=gemini-1.5-flash (timeout=75000ms)
+[shosha-ai] discovery finished in 149ms
+ GET /timothee-chalamet 200 in 3128ms
+[shosha-ai] discovery starting with model=gemini-1.5-flash (timeout=75000ms)
+[shosha-ai] discovery finished in 175ms
+ GET /d4vd 200 in 3186ms
+[shosha-ai] discovery starting with model=gemini-1.5-flash (timeout=75000ms)
+[shosha-ai] discovery finished in 146ms
+ GET /lewis-hamilton 200 in 3146ms
+[shosha-ai] discovery starting with model=gemini-1.5-flash (timeout=75000ms)
+[shosha-ai] discovery finished in 138ms
+ GET /max-verstappen 200 in 3136ms
+[shosha-ai] discovery starting with model=gemini-1.5-flash (timeout=75000ms)
+[shosha-ai] discovery finished in 134ms
+ GET /kendrick-lamar 200 in 3150ms
+[shosha-ai] discovery starting with model=gemini-1.5-flash (timeout=75000ms)
+[shosha-ai] discovery finished in 150ms
+ GET /pope-leo-xiv 200 in 3163ms
+[shosha-ai] discovery starting with model=gemini-1.5-flash (timeout=75000ms)
+[shosha-ai] discovery finished in 136ms
+ GET /ranbir-kapoor 200 in 3153ms
+[shosha-ai] discovery starting with model=gemini-1.5-flash (timeout=75000ms)
+[shosha-ai] discovery finished in 151ms
+ GET /sydney-sweeney 200 in 3169ms
+[shosha-ai] discovery starting with model=gemini-1.5-flash (timeout=75000ms)
+[shosha-ai] discovery finished in 135ms
+ GET /zendaya 200 in 3136ms
+[shosha-ai] discovery starting with model=gemini-1.5-flash (timeout=75000ms)
+[shosha-ai] discovery finished in 137ms
+ GET /kim-jong-un 200 in 3133ms
+[shosha-ai] discovery starting with model=gemini-1.5-flash (timeout=75000ms)
+[shosha-ai] discovery finished in 144ms
+ GET /samay-raina 200 in 3153ms
+ GET /giorgia-meloni 200 in 1252ms
+[shosha-ai] discovery starting with model=gemini-1.5-flash (timeout=75000ms)
+[shosha-ai] discovery finished in 174ms
+ GET /apoorva-mukhija 200 in 3179ms
+ GET /kusha-kapila 200 in 1252ms
+ GET /yogi-adityanath 200 in 1246ms
+ GET /diljit-dosanjh 200 in 1254ms
+ GET /lando-norris 200 in 1247ms
+ GET /zayn-malik 200 in 1232ms
+ GET /billie-eilish 200 in 1235ms
+[shosha-ai] discovery starting with model=gemini-1.5-flash (timeout=75000ms)
+[shosha-ai] discovery finished in 265ms
+ GET /jungkook 200 in 3372ms
+ GET /pinkpantheress 200 in 1245ms
+ ✓ Compiled in 266ms (1334 modules)
+ ✓ Compiled in 185ms (1334 modules)
+ ✓ Compiled in 343ms (1435 modules)
+ ✓ Compiled in 177ms (1334 modules)
+ ✓ Compiled in 246ms (1435 modules)
+ ✓ Compiled in 240ms (1334 modules)
+ ✓ Compiled in 159ms (1334 modules)
+ ✓ Compiled in 132ms (1334 modules)
+ ✓ Compiled in 141ms (1334 modules)
+ ✓ Compiled in 159ms (1334 modules)
+ ✓ Compiled in 241ms (1334 modules)
+ ✓ Compiled in 310ms (367 modules)
+ ✓ Compiled in 153ms (381 modules)
+ ✓ Compiled in 111ms (266 modules)
+ ✓ Compiled in 53ms (367 modules)
+ ✓ Compiled in 172ms (266 modules)
+ ✓ Compiled in 151ms (266 modules)
+ ✓ Compiled in 58ms (367 modules)
+ ✓ Compiled in 336ms (367 modules)
+ ✓ Compiled in 127ms (266 modules)
+ ✓ Compiled in 133ms (266 modules)
+ ○ Compiling / ...
+ ✓ Compiled / in 1144ms (660 modules)
+ GET / 200 in 1285ms
+ ○ Compiling /sign-in ...
+ ✓ Compiled /sign-in in 963ms (1470 modules)
+ ✓ Compiled /api/me in 218ms (829 modules)
+ GET /api/me 200 in 2123ms
+ GET /api/me 200 in 1781ms
+ GET /sign-in?redirect=%2Fdashboard 200 in 104ms
+ ✓ Compiled /icon.png in 88ms (857 modules)
+ GET /icon.png 200 in 134ms
+ GET /api/me 200 in 1788ms
+ ○ Compiling /dashboard ...
+ ✓ Compiled /dashboard in 1437ms (2825 modules)
+ ✓ Compiled /api/feed in 125ms (1501 modules)
+ ✓ Compiled (1563 modules)
+ GET /api/stats 200 in 794ms
+ GET /api/stats 200 in 803ms
+ GET /api/me 200 in 1707ms
+ GET /api/me 200 in 1704ms
+ GET /api/me 200 in 1704ms
+ ✓ Compiled /api/notifications in 121ms (1566 modules)
+ GET /api/me 200 in 1787ms
+ GET /api/me 200 in 1790ms
+ GET /api/feed?filter=for_you 200 in 2632ms
+ GET /api/me 200 in 1768ms
+ GET /api/notifications 200 in 1775ms
+ GET /sign-in 200 in 92ms
+ GET /api/notifications 200 in 107ms
+ GET /api/feed?filter=for_you 200 in 969ms
+ GET /api/me 200 in 2616ms
+ GET /api/stats 200 in 386ms
+ GET /api/stats 200 in 362ms
+ GET /api/me 200 in 2678ms
+ GET /api/me 200 in 2683ms
+ GET /api/me 200 in 2683ms
+ GET /api/notifications 200 in 2681ms
+ GET /api/me 200 in 2794ms
+ GET /api/feed?filter=for_you 200 in 3576ms
+ GET /api/me 200 in 2641ms
+ GET /api/me 200 in 2643ms
+ GET /api/notifications 200 in 2644ms
+ GET /api/feed?filter=for_you 200 in 3498ms
+ GET /api/me 200 in 2578ms
+ GET /api/me 200 in 2580ms
+ GET /api/me 200 in 2624ms
+ GET /api/me 200 in 2625ms
+ ○ Compiling /profile ...
+ GET /api/me 200 in 2842ms
+ ✓ Compiled /profile in 1683ms (3422 modules)
+ ✓ Compiled /api/me/score/replay in 184ms (1870 modules)
+ GET /api/me 200 in 2668ms
+ POST /api/me/score/replay 200 in 3829ms
+ ○ Compiling /admin ...
+ ✓ Compiled /admin in 561ms (3485 modules)
+ GET /api/me 200 in 2611ms
+ GET /admin?_rsc=7pq0f 200 in 2948ms
+ ✓ Compiled /admin/activity in 345ms (3480 modules)
+ ✓ Compiled /admin/data in 415ms (3507 modules)
+ GET /admin/data?_rsc=n0n9s 200 in 2847ms
+ ✓ Compiled /api/admin/data/[collection] in 197ms (1902 modules)
+ GET /api/admin/data/accounts?q=&limit=100 200 in 5383ms
+ GET /api/stats 200 in 375ms
+ GET /api/admin/data/auditRequests?q=&limit=100 200 in 2610ms
+ GET /api/admin/data/users?q=&limit=100 200 in 2615ms
+ GET /api/stats 200 in 355ms
+ GET /api/stats 200 in 357ms
+ GET /api/stats 200 in 359ms
+ GET /api/stats 200 in 349ms
+ GET /api/stats 200 in 349ms
+ GET /api/stats 200 in 356ms
+ GET /api/stats 200 in 360ms
+ GET /api/stats 200 in 362ms
+ GET /api/stats 200 in 363ms
+ GET /api/stats 200 in 373ms
+ GET /api/stats 200 in 349ms
+ GET /api/stats 200 in 359ms
+ GET /api/stats 200 in 362ms
+ GET /admin/data?_rsc=xt7zo 200 in 2971ms
+ ✓ Compiled in 539ms (3422 modules)
+ ○ Compiling /api/me ...
+ ✓ Compiled /api/me in 504ms (1827 modules)
+ GET /api/stats 200 in 1186ms
+ GET /api/stats 200 in 1192ms
+ ✓ Compiled /api/admin/data/[collection] in 308ms (1829 modules)
+ GET /api/me 200 in 3520ms
+ GET /api/me 200 in 3522ms
+ GET /api/admin/data/accounts?q=&limit=100 200 in 2644ms
+ GET /admin/data?_rsc=kuxxl 200 in 3530ms
+ GET /sign-in?redirect=%2Fadmin%2Fdata 200 in 135ms
+ ✓ Compiled /_not-found in 326ms (3416 modules)
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 378ms
+ GET /_next/static/chunks/app/(auth)/sign-in/LayoutGroupContext.mjs.map 404 in 49ms
+ GET /_next/static/chunks/app/(app)/LayoutGroupContext.mjs.map 404 in 14ms
+ GET /_next/static/chunks/app/(app)/dashboard/LayoutGroupContext.mjs.map 404 in 15ms
+ GET /_next/static/chunks/app/(app)/profile/LayoutGroupContext.mjs.map 404 in 20ms
+ GET /_next/static/chunks/app/(app)/admin/LayoutGroupContext.mjs.map 404 in 40ms
+ GET /api/stats 200 in 391ms
+ GET /api/stats 200 in 362ms
+ GET /api/admin/data/accounts?q=&limit=50 200 in 2630ms
+ GET /api/stats 200 in 362ms
+ GET /api/admin/data/reportMetadata?q=&limit=50 200 in 2595ms
+ GET /api/admin/data/reportBookmarks?q=&limit=50 200 in 2597ms
+ GET /api/admin/data/subscriptions?q=&limit=50 200 in 2603ms
+ GET /api/admin/data/siteSettings?q=&limit=50 200 in 2154ms
+ GET /api/admin/data/subscriptions?q=&limit=50 200 in 2597ms
+ GET /api/admin/data/users?q=&limit=50 200 in 2597ms
+ GET /api/stats 200 in 372ms
+ ✓ Compiled /api/admin/data/[collection]/[id] in 351ms (1828 modules)
+ DELETE /api/admin/data/users/2UAUAe5IkKWOTqGOVrHSDCEjlP93 200 in 3930ms
+ ✓ Compiled /api/admin/data in 165ms (1830 modules)
+ DELETE /api/admin/data/users/2UAUAe5IkKWOTqGOVrHSDCEjlP93 404 in 2662ms
+ GET /api/admin/data 200 in 3181ms
+ GET /admin/data?_rsc=kuxxl 200 in 3181ms
+ ✓ Compiled /api/me in 170ms (1833 modules)
+ GET /api/stats 200 in 367ms
+ ✓ Compiled in 1ms (1833 modules)
+ ✓ Compiled in 0ms (1833 modules)
+ ✓ Compiled in 0ms (1833 modules)
+ GET /api/stats 200 in 772ms
+ GET /api/me 200 in 3314ms
+ GET /api/me 200 in 3316ms
+ GET /api/admin/data/accounts?q=&limit=100 200 in 3131ms
+ GET /api/admin/data/users?q=&limit=100 200 in 2590ms
+ ✓ Compiled in 1082ms (3425 modules)
+ GET /api/stats 200 in 376ms
+ GET /api/admin/data/accounts?q=&limit=100 200 in 2713ms
+ GET /admin/data?_rsc=kuxxl 200 in 2751ms
+ GET /api/stats 200 in 359ms
+ GET /api/stats 200 in 363ms
+ GET /api/me 200 in 2684ms
+ GET /api/me 200 in 2687ms
+ GET /api/admin/data/accounts?q=&limit=100 200 in 2492ms
+ GET /sign-in?redirect=%2Fadmin%2Fdata 200 in 123ms
+ GET /api/stats 200 in 360ms
+ GET /api/admin/data/accounts?q=&limit=100 200 in 2621ms
+ GET /api/admin/data/events?q=&limit=100 200 in 2631ms
+ GET /api/stats 200 in 369ms
+ GET /api/admin/data/adminActions?q=&limit=100 200 in 2647ms
+ GET /api/stats 200 in 360ms
+ ✓ Compiled in 369ms (1596 modules)
+ GET /admin/data?_rsc=kuxxl 200 in 2648ms
+ GET /api/stats 200 in 357ms
+ ○ Compiling /admin/create ...
+ ✓ Compiled /admin/create in 818ms (3417 modules)
+ GET /api/stats 200 in 360ms
+ GET /api/stats 200 in 374ms
+ GET /api/stats 200 in 387ms
+ GET /api/stats 200 in 361ms
+ GET /api/stats 200 in 359ms
+ GET /api/stats 200 in 376ms
+ GET /api/stats 200 in 368ms
+ GET /api/stats 200 in 367ms
+ GET /api/stats 200 in 363ms
+ GET /api/stats 200 in 365ms
+ GET /api/stats 200 in 361ms
+ GET /api/stats 200 in 369ms
+ GET /admin/data?_rsc=n0n9s 200 in 2679ms
+ ✓ Compiled /api/admin/data/[collection] in 290ms (1825 modules)
+ ✓ Compiled /dashboard in 466ms (1834 modules)
+ ✓ Compiled /api/notifications in 166ms (1837 modules)
+ GET /api/admin/data/accounts?q=&limit=100 200 in 2997ms
+ ✓ Compiled (1902 modules)
+ GET /api/notifications 200 in 3294ms
+ GET /api/me 200 in 3306ms
+ GET /api/me 200 in 3017ms
+ GET /api/me 200 in 3298ms
+ GET /api/me 200 in 3301ms
+ GET /api/feed?filter=for_you 200 in 4186ms
+ GET /api/notifications 200 in 2620ms
+ ✓ Compiled /api/me/score/replay in 286ms (1906 modules)
+ GET /api/feed?filter=for_you 200 in 3484ms
+ GET /api/me 200 in 3079ms
+ POST /api/me/score/replay 200 in 4245ms
+ GET /api/me 200 in 2609ms
+ ○ Compiling /profile/edit ...
+ ✓ Compiled /profile/edit in 694ms (3533 modules)
+ GET /api/me 200 in 2622ms
+ GET /api/me 200 in 2917ms
+ ✓ Compiled /api/media/upload in 237ms (1945 modules)
+[upload] 14669B → 6780B (54% saved)
+ POST /api/media/upload 200 in 6016ms
+ PATCH /api/me 200 in 3213ms
+ GET /api/me 200 in 2615ms
+ POST /api/me/score/replay 200 in 3791ms
+ GET /api/me 200 in 2491ms
+ GET /api/me 200 in 2627ms
+ GET /api/me 200 in 2635ms
+ GET /api/me 200 in 2641ms
+ GET /api/notifications 200 in 2634ms
+ GET /dashboard 200 in 205ms
+ GET /api/notifications 200 in 214ms
+ GET /api/me 200 in 1101ms
+ GET /api/feed?filter=for_you 200 in 2860ms
+ ✓ Compiled /icon.png in 427ms (1973 modules)
+ GET /icon.png 200 in 700ms
+ GET /api/stats 200 in 366ms
+ GET /api/stats 200 in 1023ms
+ GET /api/me 200 in 2772ms
+ GET /api/me 200 in 2782ms
+ GET /api/notifications 200 in 2774ms
+ GET /api/me 200 in 2623ms
+ GET /api/me 200 in 2623ms
+ GET /api/feed?filter=for_you 200 in 3659ms
+ GET /api/me 200 in 2619ms
+ GET /api/notifications 200 in 2624ms
+ GET /api/feed?filter=for_you 200 in 3490ms
+ GET /api/me 200 in 2781ms
+ GET /api/me 200 in 2615ms
+ GET /api/me 200 in 2617ms
+ GET /api/stats 200 in 368ms
+ GET /api/me 200 in 2907ms
+ GET /api/me 200 in 2622ms
+ GET /api/me 200 in 2624ms
+ GET /api/me 200 in 2613ms
+ GET /api/stats 200 in 389ms
+ GET /api/me 200 in 2725ms
+ GET /api/me 200 in 2612ms
+ GET /api/me 200 in 2625ms
+ GET /api/me 200 in 2617ms
+ GET /api/stats 200 in 371ms
+ GET /api/me 200 in 2933ms
+ GET /api/me 200 in 2612ms
+ GET /api/me 200 in 2613ms
+ GET /api/me 200 in 2613ms
+ GET /api/stats 200 in 372ms
+ GET /api/me 200 in 2618ms
+ GET /api/me 200 in 2614ms
+ GET /api/me 200 in 2613ms
+ GET /api/me 200 in 2614ms
+ GET /api/stats 200 in 371ms
+ GET /api/me 200 in 2704ms
+ GET /api/me 200 in 2611ms
+ GET /api/me 200 in 2616ms
+ GET /api/me 200 in 2610ms
+ GET /api/stats 200 in 366ms
+ GET /api/me 200 in 2700ms
+ GET /api/me 200 in 2614ms
+ GET /api/me 200 in 2616ms
+ GET /api/me 200 in 2670ms
+ GET /api/stats 200 in 372ms
+ GET /api/me 200 in 2709ms
+ GET /api/me 200 in 2710ms
+ GET /api/me 200 in 2606ms
+ GET /api/me 200 in 2753ms
+ GET /api/stats 200 in 366ms
+ GET /api/me 200 in 2693ms
+ GET /api/me 200 in 2608ms
+ GET /api/me 200 in 2617ms
+ GET /api/me 200 in 2608ms
+ GET /api/stats 200 in 365ms
+ GET /api/me 200 in 2695ms
+ GET /api/me 200 in 2605ms
+ GET /api/me 200 in 2611ms
+ GET /api/me 200 in 2606ms
+ GET /api/stats 200 in 367ms
+ GET /api/me 200 in 2696ms
+ GET /api/me 200 in 2604ms
+ GET /api/me 200 in 2606ms
+ GET /api/me 200 in 2606ms
+ GET /api/stats 200 in 366ms
+ GET /api/me 200 in 2697ms
+ GET /api/me 200 in 2604ms
+ GET /api/me 200 in 2686ms
+ GET /api/me 200 in 2607ms
+ GET /api/stats 200 in 371ms
+ GET /api/me 200 in 2607ms
+ GET /api/me 200 in 2608ms
+ GET /api/me 200 in 2587ms
+ GET /api/me 200 in 2581ms
+ GET /api/stats 200 in 363ms
+ GET /api/me 200 in 2675ms
+ GET /api/me 200 in 2585ms
+ GET /api/me 200 in 2583ms
+ GET /api/me 200 in 2583ms
+ GET /api/stats 200 in 364ms
+ GET /api/me 200 in 2662ms
+ GET /api/me 200 in 2584ms
+ GET /api/me 200 in 2585ms
+ GET /api/me 200 in 2589ms
+ GET /api/stats 200 in 383ms
+ GET /api/me 200 in 2690ms
+ GET /api/me 200 in 2587ms
+ GET /api/me 200 in 2587ms
+ GET /api/me 200 in 2582ms
+ GET /api/stats 200 in 363ms
+ GET /api/me 200 in 2722ms
+ GET /api/me 200 in 2587ms
+ GET /api/me 200 in 2584ms
+ GET /api/me 200 in 2582ms
+ GET /api/stats 200 in 363ms
+ GET /api/me 200 in 2681ms
+ GET /api/me 200 in 3192ms
+ GET /api/me 200 in 2590ms
+ GET /api/me 200 in 2588ms
+ GET /api/stats 200 in 361ms
+ GET /api/me 200 in 2674ms
+ GET /api/me 200 in 2590ms
+ GET /api/me 200 in 2587ms
+ GET /api/me 200 in 2587ms
+ GET /api/stats 200 in 364ms
+ GET /api/me 200 in 2679ms
+ GET /api/me 200 in 2588ms
+ GET /api/me 200 in 2586ms
+ GET /api/me 200 in 2587ms
+ GET /api/stats 200 in 364ms
+ GET /api/me 200 in 2690ms
+ GET /api/me 200 in 2588ms
+ GET /api/me 200 in 2586ms
+ GET /api/me 200 in 2626ms
+ GET /api/stats 200 in 368ms
+ GET /api/me 200 in 2623ms
+ GET /api/me 200 in 2617ms
+ GET /api/me 200 in 2663ms
+ GET /api/me 200 in 2618ms
+ GET /api/stats 200 in 367ms
+ GET /api/me 200 in 2711ms
+ GET /api/me 200 in 2643ms
+ GET /api/me 200 in 11ms
+ GET /api/me 200 in 11ms
+ GET /api/me 200 in 15ms
+ GET /api/stats 200 in 370ms
+ GET /api/me 200 in 10ms
+ GET /api/me 200 in 11ms
+ GET /api/me 200 in 11ms
+ GET /api/me 200 in 14ms
+ GET /api/stats 200 in 368ms
+ GET /api/me 200 in 13ms
+ GET /api/me 200 in 9ms
+ GET /api/me 200 in 11ms
+ GET /api/me 200 in 12ms
+ GET /api/stats 200 in 374ms
+ GET /api/me 200 in 9ms
+ GET /api/me 200 in 13ms
+ GET /api/me 200 in 8ms
+ GET /api/me 200 in 14ms
+ GET /api/stats 200 in 365ms
+ GET /api/me 200 in 12ms
+ GET /api/me 200 in 10ms
+ GET /api/me 200 in 9ms
+ GET /api/me 200 in 15ms
+ GET /api/stats 200 in 365ms
+ GET /api/me 200 in 9ms
+ GET /api/me 200 in 8ms
+ GET /api/me 200 in 11ms
+ GET /api/me 200 in 13ms
+ GET /api/stats 200 in 370ms
+ GET /api/me 200 in 10ms
+ GET /api/me 200 in 11ms
+ GET /api/me 200 in 11ms
+ GET /api/me 200 in 14ms
+ GET /api/stats 200 in 369ms
+ GET /api/me 200 in 9ms
+ GET /api/me 200 in 10ms
+ GET /api/me 200 in 10ms
+ GET /api/me 200 in 9ms
+ GET /api/stats 200 in 370ms
+ GET /api/me 200 in 2655ms
+ GET /api/me 200 in 2650ms
+ GET /api/me 200 in 2650ms
+ GET /api/stats 200 in 370ms
+ GET /api/me 200 in 2885ms
+ GET /api/me 200 in 2650ms
+ GET /api/me 200 in 2646ms
+ GET /api/me 200 in 2651ms
+ GET /api/stats 200 in 370ms
+ GET /api/me 200 in 2740ms
+ GET /api/me 200 in 2647ms
+ GET /api/me 200 in 2878ms
+ GET /api/me 200 in 2666ms
+ GET /api/stats 200 in 368ms
+ GET /api/me 200 in 2816ms
+ GET /api/me 200 in 2620ms
+ GET /api/me 200 in 2622ms
+ GET /api/me 200 in 2620ms
+ GET /api/stats 200 in 366ms
+ GET /api/me 200 in 2619ms
+ GET /api/me 200 in 2616ms
+ GET /api/me 200 in 2616ms
+ GET /api/me 200 in 2618ms
+ GET /api/stats 200 in 366ms
+ GET /api/me 200 in 2622ms
+ GET /api/me 200 in 2786ms
+ GET /api/me 200 in 2615ms
+ GET /api/me 200 in 2601ms
+ GET /api/stats 200 in 360ms
+ GET /api/me 200 in 2653ms
+ GET /api/me 200 in 2567ms
+ GET /api/me 200 in 2563ms
+ GET /api/me 200 in 2562ms
+ GET /api/stats 200 in 359ms
+ GET /api/me 200 in 2647ms
+ GET /api/me 200 in 2578ms
+ GET /api/me 200 in 2591ms
+ GET /api/me 200 in 2586ms
+ GET /api/stats 200 in 364ms
+ GET /api/me 200 in 2596ms
+ GET /api/me 200 in 2588ms
+ GET /api/me 200 in 2589ms
+ GET /api/me 200 in 2587ms
+ GET /api/stats 200 in 366ms
+ GET /api/me 200 in 2679ms
+ GET /api/me 200 in 2590ms
+ GET /api/me 200 in 2590ms
+ GET /api/me 200 in 2590ms
+ GET /api/stats 200 in 363ms
+ GET /api/me 200 in 2676ms
+ GET /api/me 200 in 2593ms
+ GET /api/me 200 in 2591ms
+ GET /api/me 200 in 2586ms
+ GET /api/stats 200 in 364ms
+ GET /api/me 200 in 2667ms
+ GET /api/me 200 in 2712ms
+ GET /api/me 200 in 2592ms
+ GET /api/me 200 in 2593ms
+ GET /api/stats 200 in 363ms
+ GET /api/me 200 in 2678ms
+ GET /api/me 200 in 2590ms
+ GET /api/me 200 in 2588ms
+ GET /api/me 200 in 2587ms
+ GET /api/stats 200 in 363ms
+ GET /api/me 200 in 2592ms
+ GET /api/me 200 in 2587ms
+ GET /api/me 200 in 2673ms
+ GET /api/me 200 in 2591ms
+ GET /api/stats 200 in 363ms
+ GET /api/me 200 in 2717ms
+ GET /api/me 200 in 2589ms
+ GET /api/me 200 in 2585ms
+ GET /api/me 200 in 2577ms
+ GET /api/stats 200 in 368ms
+ GET /api/me 200 in 2664ms
+ GET /api/me 200 in 2580ms
+ GET /api/me 200 in 2579ms
+ GET /api/me 200 in 2872ms
+ GET /api/stats 200 in 364ms
+ GET /api/me 200 in 2669ms
+ GET /api/me 200 in 2577ms
+ GET /api/me 200 in 2581ms
+ GET /api/me 200 in 2580ms
+ GET /api/stats 200 in 364ms
+ GET /api/me 200 in 2669ms
+ GET /api/me 200 in 2579ms
+ GET /api/me 200 in 2585ms
+ GET /api/me 200 in 2592ms
+ GET /api/stats 200 in 365ms
+ GET /api/me 200 in 2680ms
+ GET /api/me 200 in 2579ms
+ GET /api/me 200 in 2579ms
+ GET /api/me 200 in 2598ms
+ GET /api/stats 200 in 395ms
+ GET /api/me 200 in 2708ms
+ GET /api/me 200 in 2590ms
+ GET /api/me 200 in 2580ms
+ GET /api/me 200 in 2589ms
+ GET /api/stats 200 in 366ms
+ GET /api/me 200 in 2682ms
+ GET /api/me 200 in 2591ms
+ GET /api/me 200 in 2642ms
+ GET /api/me 200 in 2592ms
+ GET /api/stats 200 in 370ms
+ GET /api/me 200 in 2688ms
+ GET /api/me 200 in 2588ms
+ GET /api/me 200 in 2591ms
+ GET /api/me 200 in 2593ms
+ GET /api/stats 200 in 361ms
+ GET /api/me 200 in 2675ms
+ GET /api/me 200 in 2589ms
+ GET /api/me 200 in 2586ms
+ GET /api/me 200 in 2588ms
+ GET /api/stats 200 in 360ms
+ GET /api/me 200 in 2673ms
+ GET /api/me 200 in 2586ms
+ GET /api/me 200 in 2592ms
+ GET /api/me 200 in 2588ms
+ GET /api/stats 200 in 364ms
+ GET /api/me 200 in 2682ms
+ GET /api/me 200 in 2586ms
+ GET /api/me 200 in 2589ms
+ GET /api/me 200 in 2587ms
+ GET /api/stats 200 in 364ms
+ GET /api/me 200 in 2676ms
+ GET /api/me 200 in 2588ms
+ GET /api/me 200 in 2589ms
+ GET /api/me 200 in 2587ms
+ GET /api/stats 200 in 365ms
+ GET /api/me 200 in 2678ms
+ GET /api/me 200 in 2589ms
+ GET /api/me 200 in 2589ms
+ GET /api/me 200 in 2603ms
+ GET /api/stats 200 in 360ms
+ GET /api/me 200 in 2674ms
+ GET /api/me 200 in 2588ms
+ GET /api/me 200 in 2589ms
+ GET /api/me 200 in 2588ms
+ GET /api/stats 200 in 363ms
+ GET /api/me 200 in 2668ms
+ GET /api/me 200 in 2585ms
+ GET /api/me 200 in 2593ms
+ GET /api/me 200 in 2589ms
+ GET /api/stats 200 in 361ms
+ GET /api/me 200 in 2951ms
+ GET /api/me 200 in 2587ms
+ GET /api/me 200 in 2587ms
+ GET /api/me 200 in 2588ms
+ GET /api/stats 200 in 356ms
+ GET /api/me 200 in 2670ms
+ GET /api/me 200 in 2586ms
+ GET /api/me 200 in 2593ms
+ GET /api/stats 200 in 593ms
+ GET /api/me 200 in 3102ms
+ GET /api/stats 200 in 371ms
+ GET /api/me 200 in 2594ms
+ GET /api/stats 200 in 361ms
+ GET /api/me 200 in 2594ms
+ GET /api/stats 200 in 361ms
+ GET /api/me 200 in 2594ms
+ GET /api/stats 200 in 357ms
+ GET /api/me 200 in 2591ms
+ GET /api/stats 200 in 360ms
+ GET /api/me 200 in 2596ms
+ GET /api/stats 200 in 377ms
+ GET /api/me 200 in 2596ms
+ GET /api/stats 200 in 365ms
+ GET /api/me 200 in 2600ms
+ GET /api/stats 200 in 370ms
+ GET /api/me 200 in 2602ms
+ GET /api/stats 200 in 574ms
+ GET /api/me 200 in 2862ms
+ GET /api/stats 200 in 366ms
+ GET /api/me 200 in 2643ms
+ GET /api/stats 200 in 368ms
+ GET /api/me 200 in 2642ms
+ GET /api/stats 200 in 368ms
+ GET /api/me 200 in 2887ms
+ GET /api/stats 200 in 364ms
+ GET /api/me 200 in 2638ms
+ GET /api/stats 200 in 365ms
+ GET /api/me 200 in 2597ms
+ GET /api/stats 200 in 363ms
+ GET /api/me 200 in 2859ms
+ GET /api/stats 200 in 364ms
+ GET /api/me 200 in 2601ms
+ GET /api/stats 200 in 359ms
+ GET /api/me 200 in 2570ms
+ GET /api/stats 200 in 355ms
+ GET /api/me 200 in 2571ms
+ GET /api/stats 200 in 366ms
+ GET /api/me 200 in 2640ms
+ ✓ Compiled in 458ms (1613 modules)
+ ✓ Compiled /icon.png in 390ms (1852 modules)
+ ✓ Compiled (1854 modules)
+ GET /icon.png 200 in 645ms
+ GET /favicon.ico 200 in 654ms
+ GET /icon.png 200 in 12ms
+ GET /api/stats 200 in 386ms
+ GET /api/me 200 in 2674ms
+ ✓ Compiled in 975ms (3467 modules)
+ ✓ Compiled in 418ms (3437 modules)
+ GET /api/me 200 in 3027ms
+ ✓ Compiled in 364ms (1613 modules)
+ ✓ Compiled in 201ms (1613 modules)
+ GET /api/me 200 in 2652ms
+ ✓ Compiled in 272ms (1613 modules)
+ GET /api/me 200 in 2854ms
+ ✓ Compiled in 260ms (1613 modules)
+ GET /api/stats 200 in 386ms
+ GET /api/me 200 in 2764ms
+ ✓ Compiled in 225ms (1613 modules)
+ ✓ Compiled in 267ms (1613 modules)
+ GET /api/me 200 in 2740ms
+ ✓ Compiled in 1042ms (3437 modules)
+ GET /api/me 200 in 2639ms
+ ✓ Compiled in 542ms (3437 modules)
+ GET /api/stats 200 in 388ms
+ GET /api/me 200 in 2647ms
+ ✓ Compiled in 268ms (1613 modules)
+ GET /api/me 200 in 2643ms
+ ✓ Compiled in 243ms (1613 modules)
+ GET /api/me 200 in 2663ms
+ GET /api/stats 200 in 363ms
+ GET /api/me 200 in 2643ms
+ ✓ Compiled in 404ms (1613 modules)
+ GET /api/me 200 in 2640ms
+ GET /api/me 200 in 2643ms
+ ✓ Compiled in 899ms (3538 modules)
+ GET /api/me 200 in 2645ms
+ GET /api/stats 200 in 365ms
+ GET /api/me 200 in 2717ms
+ ✓ Compiled in 198ms (1613 modules)
+ GET /api/me 200 in 2636ms
+ ✓ Compiled in 826ms (3538 modules)
+ GET /api/me 200 in 2642ms
+ ✓ Compiled in 663ms (3538 modules)
+ GET /api/me 200 in 2644ms
+ GET /api/stats 200 in 410ms
+ GET /api/me 200 in 3044ms
+ ✓ Compiled in 314ms (1613 modules)
+ GET /api/me 200 in 2560ms
+ GET /api/me 200 in 2566ms
+ ✓ Compiled in 1073ms (3552 modules)
+ ✓ Compiled in 1403ms (3439 modules)
+ GET /api/stats 200 in 375ms
+ GET /api/me 200 in 2609ms
+ ✓ Compiled in 567ms (3439 modules)
+ GET /api/me 200 in 2617ms
+ ✓ Compiled in 420ms (3439 modules)
+ ✓ Compiled in 502ms (3439 modules)
+ ✓ Compiled in 289ms (1614 modules)
+ GET /api/me 200 in 2575ms
+ GET /api/me 200 in 2566ms
+ ✓ Compiled in 249ms (1614 modules)
+ GET /api/stats 200 in 375ms
+ GET /api/me 200 in 2665ms
+ GET /api/stats 200 in 557ms
+ ✓ Compiled in 522ms (1614 modules)
+ GET /api/me 200 in 2828ms
+ ✓ Compiled in 270ms (1614 modules)
+ GET /api/me 200 in 2565ms
+ ✓ Compiled in 271ms (1614 modules)
+ GET /api/me 200 in 2568ms
+ ✓ Compiled in 382ms (1614 modules)
+ GET /api/me 200 in 2568ms
+ GET /api/me 200 in 17ms
+ GET /api/stats 200 in 361ms
+ ✓ Compiled in 249ms (1614 modules)
+ ✓ Compiled in 271ms (1614 modules)
+ GET /api/me 200 in 2560ms
+ ✓ Compiled in 632ms (3439 modules)
+ GET /api/me 200 in 2576ms
+ ✓ Compiled in 365ms (1614 modules)
+ ✓ Compiled in 243ms (1614 modules)
+ GET /api/stats 200 in 359ms
+ GET /api/me 200 in 2680ms
+ ✓ Compiled in 381ms (1614 modules)
+ GET /api/me 200 in 2577ms
+ ✓ Compiled in 262ms (1614 modules)
+ ✓ Compiled in 391ms (3439 modules)
+ GET /api/me 200 in 584ms
+ GET /api/me 200 in 376ms
+ GET /api/stats 200 in 374ms
+ ✓ Compiled in 230ms (1614 modules)
+ ✓ Compiled in 344ms (1614 modules)
+ GET /api/me 200 in 579ms
+ ✓ Compiled in 235ms (1614 modules)
+ GET /api/me 200 in 575ms
+ GET /api/stats 200 in 364ms
+ GET /api/me 200 in 668ms
+ ✓ Compiled in 259ms (1614 modules)
+ GET /api/me 200 in 576ms
+ ✓ Compiled in 238ms (1614 modules)
+ GET /api/me 200 in 576ms
+ ✓ Compiled in 223ms (1614 modules)
+ GET /api/me 200 in 362ms
+ GET /api/stats 200 in 355ms
+ ✓ Compiled in 209ms (1614 modules)
+ ✓ Compiled in 328ms (1614 modules)
+ GET /api/me 200 in 600ms
+ ✓ Compiled in 364ms (1614 modules)
+ GET /api/me 200 in 368ms
+ GET /api/stats 200 in 357ms
+ ✓ Compiled in 343ms (1614 modules)
+ GET /api/me 200 in 579ms
+ ✓ Compiled in 247ms (1614 modules)
+ ✓ Compiled in 206ms (1614 modules)
+ GET /api/me 200 in 577ms
+ ✓ Compiled in 243ms (1614 modules)
+ ✓ Compiled in 191ms (1614 modules)
+ GET /api/me 200 in 578ms
+ ✓ Compiled in 348ms (1614 modules)
+ ✓ Compiled in 218ms (1614 modules)
+ GET /api/me 200 in 365ms
+ GET /api/stats 200 in 365ms
+ GET /api/stats 200 in 368ms
+ GET /api/me 200 in 671ms
+ ✓ Compiled in 361ms (1614 modules)
+ GET /api/me 200 in 579ms
+ GET /api/me 200 in 393ms
+ GET /api/stats 200 in 388ms
+ GET /api/me 200 in 377ms
+ GET /api/stats 200 in 374ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 554ms (3428 modules)
+ GET /api/stats 404 in 673ms
+ GET /api/me 404 in 674ms
+ GET /api/stats 404 in 26ms
+ GET /api/me 404 in 51ms
+ GET /api/me 404 in 39ms
+ GET /api/stats 404 in 39ms
+ GET /api/me 404 in 44ms
+ GET /api/stats 404 in 43ms
+ GET /api/me 404 in 29ms
+ GET /api/stats 404 in 22ms
+ GET /api/me 404 in 42ms
+ GET /api/stats 404 in 42ms
+ GET /api/me 404 in 32ms
+ GET /api/stats 404 in 28ms
+ GET /api/me 404 in 28ms
+ GET /api/stats 404 in 24ms
+ GET /api/stats 404 in 25ms
+ GET /api/me 404 in 37ms
+ GET /api/me 404 in 56ms
+ GET /api/stats 404 in 55ms
+ GET /api/me 404 in 25ms
+ GET /api/stats 404 in 24ms
+ GET /api/me 404 in 37ms
+ GET /api/me 404 in 42ms
+ GET /api/me 404 in 43ms
+ GET /api/me 404 in 24ms
+ GET /api/me 404 in 26ms
+ GET /dashboard 200 in 152ms
+ GET /_next/static/css/app/layout.css?v=1778161251693 404 in 28ms
+ GET /_next/static/chunks/app-pages-internals.js 404 in 28ms
+ GET /_next/static/chunks/main-app.js?v=1778161251693 404 in 30ms
+ GET /_next/static/chunks/app/(app)/dashboard/page.js 404 in 36ms
+ GET /_next/static/chunks/app/(app)/layout.js 404 in 39ms
+ GET /_next/static/chunks/app/layout.js 404 in 25ms
+ GET /_next/static/chunks/app/error.js 404 in 29ms
+ ○ Compiling /icon.png ...
+ ✓ Compiled /icon.png in 506ms (1854 modules)
+ GET /icon.png 200 in 554ms
+ ○ Compiling /[slug] ...
+ ✓ Compiled /[slug] in 1097ms (3554 modules)
+ GET /dashboard 200 in 1516ms
+ ○ Compiling /_error ...
+ ✓ Compiled /_error in 1216ms (3765 modules)
+ GET /_next/static/css/app/layout.css?v=1778161266241 404 in 1309ms
+ GET /_next/static/chunks/main-app.js?v=1778161266241 404 in 1337ms
+ GET /_next/static/chunks/app-pages-internals.js 404 in 1333ms
+ GET /_next/static/chunks/app/error.js 404 in 11ms
+ GET /icon.png 500 in 316ms
+ ✓ Compiled /favicon.ico in 336ms (1957 modules)
+ GET /favicon.ico 200 in 372ms
+ GET /dashboard 200 in 156ms
+ GET /_next/static/css/app/layout.css?v=1778161270837 404 in 30ms
+ GET /_next/static/chunks/app/(app)/layout.js 404 in 31ms
+ GET /_next/static/chunks/main-app.js?v=1778161270837 404 in 37ms
+ GET /_next/static/chunks/app/(app)/dashboard/page.js 404 in 37ms
+ GET /_next/static/chunks/app-pages-internals.js 404 in 38ms
+ GET /_next/static/chunks/app/error.js 404 in 16ms
+ GET /icon.png 500 in 278ms
+ GET /favicon.ico 200 in 11ms
+ ✓ Compiled in 1929ms (3646 modules)
+ ✓ Compiled in 607ms (3644 modules)
+ ✓ Compiled in 412ms (1818 modules)
+ ✓ Compiled in 1094ms (3646 modules)
+ ✓ Compiled in 487ms (3646 modules)
+ ✓ Compiled in 560ms (3646 modules)
+ ○ Compiling / ...
+ ✓ Compiled / in 702ms (1839 modules)
+ GET / 200 in 842ms
+ ✓ Compiled /_not-found in 414ms (3647 modules)
+ GET /_next/static/chunks/app/(public)/page.js 404 in 462ms
+ ✓ Compiled /icon.png in 235ms (1871 modules)
+ GET /icon.png 200 in 287ms
+ GET / 200 in 89ms
+ GET /_next/static/chunks/app/(public)/page.js 404 in 18ms
+ GET /icon.png 200 in 16ms
+ GET / 200 in 60ms
+ GET /_next/static/chunks/app/(public)/page.js 404 in 15ms
+ GET /icon.png 200 in 13ms
+ GET / 200 in 58ms
+ GET /_next/static/chunks/app/(public)/page.js 404 in 17ms
+ GET /icon.png 200 in 15ms
+ GET / 200 in 74ms
+ GET /_next/static/chunks/app/(public)/page.js 404 in 17ms
+ GET /icon.png 200 in 21ms
+ GET / 200 in 62ms
+ GET /_next/static/chunks/app/(public)/page.js 404 in 17ms
+ GET /icon.png 200 in 15ms
+ GET / 200 in 57ms
+ GET /_next/static/chunks/app/(public)/page.js 404 in 16ms
+ GET /icon.png 200 in 13ms
+ GET / 200 in 47ms
+ GET /_next/static/chunks/app/(public)/page.js 404 in 15ms
+ GET /icon.png 200 in 13ms

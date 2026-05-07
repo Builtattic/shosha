@@ -166,3 +166,12 @@ export async function findJoinRequest(id: string): Promise<BubbleJoinRequestReco
   if (!snap.exists()) return null;
   return withId<BubbleJoinRequestRecord>(snap.key!, snap.val());
 }
+
+export async function listJoinRequests(bubbleId: string): Promise<BubbleJoinRequestRecord[]> {
+  const snap = await db().ref('bubbleJoinRequests').orderByChild('bubbleId').equalTo(bubbleId).once('value');
+  const out: BubbleJoinRequestRecord[] = [];
+  snap.forEach((child) => {
+    out.push(withId<BubbleJoinRequestRecord>(child.key!, child.val()));
+  });
+  return out.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
