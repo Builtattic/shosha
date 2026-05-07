@@ -1,12 +1,10 @@
 import type { AccountRecord } from '@/lib/repos/accounts';
 
 export function siteUrl() {
-  const raw =
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    process.env.SITE_URL ||
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '') ||
-    'http://localhost:3000';
-  return raw.replace(/\/+$/, '');
+  // Always use the canonical production URL for sitemaps and SEO tags.
+  // Using VERCEL_URL causes GSC "URL not allowed" errors because the
+  // sitemap outputs preview URLs instead of the verified domain.
+  return process.env.NEXT_PUBLIC_SITE_URL || 'https://www.noshosha.com';
 }
 
 export function profileSlug(value: string) {
