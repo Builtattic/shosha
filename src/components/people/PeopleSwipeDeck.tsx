@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   motion,
   AnimatePresence,
@@ -24,6 +24,10 @@ import {
   ArrowRight,
   Lock,
   Link2,
+  Share2,
+  MapPin,
+  X,
+  Check,
 } from 'lucide-react';
 import { cn, formatPlatform } from '@/lib/utils';
 import { useToast } from '@/components/ui/Toast';
@@ -87,22 +91,17 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
   const next = items[1];
   const afterNext = items[2];
 
-  // Framer Motion values for the top card
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const rotate = useTransform(x, [-260, 0, 260], [-18, 0, 18]);
 
-  // Derived opacities for stamps
   const alignOpacity = useTransform(x, [20, 100], [0, 1]);
   const opposeOpacity = useTransform(x, [-100, -20], [1, 0]);
   const upOpacity = useTransform(y, [-120, -40], [1, 0]);
 
-  // Button scale on drag
   const springX = useSpring(x, { stiffness: 350, damping: 28 });
   const alignScale = useTransform(springX, [0, 130], [1, 1.25]);
   const opposeScale = useTransform(springX, [-130, 0], [1.25, 1]);
-
-  // Background card x-parallax: the next card shifts slightly opposite
   const nextX = useTransform(x, [-300, 0, 300], [10, 0, -10]);
 
   const fetchMore = useCallback(async () => {
@@ -126,12 +125,9 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
   }, [cursor, hasMore, loading]);
 
   useEffect(() => {
-    if (items.length <= 3 && hasMore && !loading) {
-      void fetchMore();
-    }
+    if (items.length <= 3 && hasMore && !loading) void fetchMore();
   }, [items.length, hasMore, loading, fetchMore]);
 
-  // Keyboard navigation
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (!current) return;
@@ -147,7 +143,6 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
   const handleSwipe = useCallback(
     (direction: 'align' | 'oppose') => {
       if (!current) return;
-
       const targetX = direction === 'align' ? 1400 : -1400;
       setExitX(targetX);
       setExitY(-20);
@@ -185,27 +180,15 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
     info: { offset: { x: number; y: number }; velocity: { x: number; y: number } }
   ) {
     setDragging(false);
-    const velX = info.velocity.x;
-    const velY = info.velocity.y;
-
-    if (info.offset.y < -SWIPE_THRESHOLD || velY < -700) {
+    if (info.offset.y < -SWIPE_THRESHOLD || info.velocity.y < -700) {
       if (current) router.push(`/account/${current.id}`);
       animate(x, 0, { type: 'spring', stiffness: 500, damping: 30 });
       animate(y, 0, { type: 'spring', stiffness: 500, damping: 30 });
       setShowUpHint(false);
       return;
     }
-
-    if (info.offset.x > SWIPE_THRESHOLD || velX > 700) {
-      handleSwipe('align');
-      return;
-    }
-
-    if (info.offset.x < -SWIPE_THRESHOLD || velX < -700) {
-      handleSwipe('oppose');
-      return;
-    }
-
+    if (info.offset.x > SWIPE_THRESHOLD || info.velocity.x > 700) { handleSwipe('align'); return; }
+    if (info.offset.x < -SWIPE_THRESHOLD || info.velocity.x < -700) { handleSwipe('oppose'); return; }
     animate(x, 0, { type: 'spring', stiffness: 480, damping: 32 });
     animate(y, 0, { type: 'spring', stiffness: 480, damping: 32 });
     setShowUpHint(false);
@@ -216,7 +199,7 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
     setShowUpHint(info.offset.y < -35);
   }
 
-  /* ──────── Empty state ──────── */
+  /* ── Empty state ── */
   if (!current && !loading) {
     return (
       <div className="mx-auto flex min-h-[70vh] max-w-md flex-col items-center justify-center px-4 text-center">
@@ -238,21 +221,25 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
     );
   }
 
-  /* ──────── Main layout ──────── */
+  /* ── Main layout ── */
   return (
-    <main className="min-h-screen bg-background overflow-hidden">
-      <div className="mx-auto max-w-[430px] px-4 pt-5 pb-28">
+    <main className="min-h-screen bg-background overflow-hidden safe-bottom">
+      {/* Center wrapper — mobile fills screen, desktop centers nicely */}
+      <div className="mx-auto max-w-[430px] lg:max-w-[480px] px-4 pt-5 pb-28 lg:pt-8">
 
         {/* ── Header ── */}
         <header className="mb-4 flex items-start justify-between gap-2">
           <div>
-            <p className="font-black text-[22px] leading-none tracking-tight text-foreground" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>
-              Sho<span className="text-muted-foreground">ша</span>
+            <p
+              className="font-black text-[22px] lg:text-[26px] leading-none tracking-tight text-foreground"
+              style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}
+            >
+              Sho<span className="text-muted-foreground">sha</span>
             </p>
-            <p className="mt-0.5 text-[11px] font-semibold text-muted-foreground leading-none">
+            <p className="mt-1 text-[13px] lg:text-[14px] font-bold text-foreground leading-none">
               Discover &amp; Rate
             </p>
-            <p className="text-[10px] text-muted-foreground/60 mt-0.5">
+            <p className="text-[10px] lg:text-[11px] text-muted-foreground/70 mt-0.5">
               Swipe to align or oppose impact.
             </p>
           </div>
@@ -264,7 +251,7 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
               aria-label="Notifications"
             >
               <Bell size={16} />
-              <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-black text-white">
+              <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-black text-white">
                 3
               </span>
             </button>
@@ -300,10 +287,10 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
 
         {/* ── Card Stack ── */}
         <section className="relative flex flex-col items-center">
-          <div className="relative h-[570px] w-full">
+          <div className="relative h-[520px] lg:h-[560px] w-full">
             <AnimatePresence mode="sync">
 
-              {/* Third card — farthest back */}
+              {/* Third card */}
               {afterNext && (
                 <motion.div
                   key={afterNext.id + '-c3'}
@@ -314,15 +301,11 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
                   className="absolute inset-0 overflow-hidden rounded-[28px] border border-border"
                   style={{ zIndex: 1 }}
                 >
-                  <img
-                    src={afterNext.avatar}
-                    alt=""
-                    className="absolute inset-0 h-full w-full object-cover brightness-[0.35] blur-sm"
-                  />
+                  <img src={afterNext.avatar} alt="" className="absolute inset-0 h-full w-full object-cover brightness-[0.35] blur-sm" draggable={false} />
                 </motion.div>
               )}
 
-              {/* Second card — peeking */}
+              {/* Second card */}
               {next && (
                 <motion.div
                   key={next.id + '-c2'}
@@ -333,15 +316,11 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
                   transition={{ duration: 0.28 }}
                   className="absolute inset-0 overflow-hidden rounded-[28px] border border-border shadow-xl"
                 >
-                  <img
-                    src={next.avatar}
-                    alt=""
-                    className="absolute inset-0 h-full w-full object-cover brightness-50 blur-[1px]"
-                  />
+                  <img src={next.avatar} alt="" className="absolute inset-0 h-full w-full object-cover brightness-50 blur-[1px]" draggable={false} />
                 </motion.div>
               )}
 
-              {/* Top / current card */}
+              {/* Top card */}
               {current && (
                 <motion.article
                   key={current.id}
@@ -354,10 +333,7 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
                   initial={{ scale: 0.94, opacity: 0, y: 20 }}
                   animate={{ scale: 1, opacity: 1, y: 0, transition: { type: 'spring', stiffness: 340, damping: 26 } }}
                   exit={{
-                    x: exitX,
-                    y: exitY,
-                    opacity: 0,
-                    scale: 0.86,
+                    x: exitX, y: exitY, opacity: 0, scale: 0.86,
                     rotate: exitX > 0 ? 18 : -18,
                     transition: { duration: 0.3, ease: [0.4, 0, 0.2, 1] },
                   }}
@@ -368,9 +344,7 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
                     style={{ opacity: alignOpacity }}
                     className="pointer-events-none absolute left-5 top-10 z-30 -rotate-[20deg] rounded-2xl border-[3px] border-emerald-400 bg-emerald-400/10 px-4 py-1.5 backdrop-blur-sm"
                   >
-                    <span className="text-[26px] font-black tracking-widest text-emerald-400 drop-shadow">
-                      ALIGN
-                    </span>
+                    <span className="text-[26px] font-black tracking-widest text-emerald-400 drop-shadow">ALIGN</span>
                   </motion.div>
 
                   {/* OPPOSE stamp */}
@@ -378,9 +352,7 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
                     style={{ opacity: opposeOpacity }}
                     className="pointer-events-none absolute right-5 top-10 z-30 rotate-[20deg] rounded-2xl border-[3px] border-red-400 bg-red-400/10 px-4 py-1.5 backdrop-blur-sm"
                   >
-                    <span className="text-[26px] font-black tracking-widest text-red-400 drop-shadow">
-                      OPPOSE
-                    </span>
+                    <span className="text-[26px] font-black tracking-widest text-red-400 drop-shadow">OPPOSE</span>
                   </motion.div>
 
                   {/* Swipe-up hint */}
@@ -392,10 +364,7 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
                         exit={{ opacity: 0 }}
                         className="pointer-events-none absolute inset-x-0 top-5 z-30 flex items-center justify-center"
                       >
-                        <motion.div
-                          style={{ opacity: upOpacity }}
-                          className="flex items-center gap-1.5 rounded-full bg-white/90 px-5 py-2 shadow-lg backdrop-blur"
-                        >
+                        <motion.div style={{ opacity: upOpacity }} className="flex items-center gap-1.5 rounded-full bg-white/90 px-5 py-2 shadow-lg backdrop-blur">
                           <ChevronUp size={14} className="text-black" />
                           <span className="text-[12px] font-black text-black">Open Profile</span>
                         </motion.div>
@@ -404,207 +373,175 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
                   </AnimatePresence>
 
                   {/* Full-bleed avatar */}
-                  <img
-                    src={current.avatar}
-                    alt={current.name}
-                    className="absolute inset-0 h-full w-full object-cover"
-                    draggable={false}
-                  />
+                  <img src={current.avatar} alt={current.name} className="absolute inset-0 h-full w-full object-cover" draggable={false} />
 
-                  {/* Gradient overlay — heavier at bottom */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/98 via-black/25 to-black/10" />
+                  {/* Gradient overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-black/10" />
 
-                  {/* Top badges row */}
+                  {/* Top badges */}
                   <div className="absolute left-4 right-4 top-4 z-10 flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-1.5 truncate rounded-full bg-black/55 px-3 py-1 backdrop-blur-md">
-                      {current.profileKind === 'public_figure' && (
-                        <Lock size={9} className="text-white/80 shrink-0" />
-                      )}
-                      <Link2 size={9} className="text-white/70 shrink-0" />
-                      <span className="max-w-[130px] truncate text-[11px] font-semibold text-white">
-                        {current.role || formatPlatform(current.platform) || 'Public Figure'}
+                    <div className="flex items-center gap-2">
+                      <span className="flex items-center gap-1.5 rounded-full bg-black/50 px-3 py-1.5 backdrop-blur-md border border-white/10">
+                        <ShieldCheck size={10} className="text-white/80" />
+                        <span className="text-[11px] font-bold text-white">{current.role || 'Public Figure'}</span>
                       </span>
+                      <button type="button" className="flex h-8 w-8 items-center justify-center rounded-full bg-black/50 backdrop-blur-md border border-white/10 text-white/80 hover:text-white transition-colors">
+                        <Share2 size={13} />
+                      </button>
                     </div>
-                    <span className="flex items-center gap-1 rounded-full bg-black/55 px-3 py-1 text-[11px] font-semibold text-white backdrop-blur-md">
-                      <Globe size={10} className="shrink-0" />
+                    <span className="flex items-center gap-1 rounded-full bg-black/50 px-3 py-1.5 text-[11px] font-bold text-white backdrop-blur-md border border-white/10">
+                      <MapPin size={10} className="shrink-0" />
                       {current.region || 'Global'}
                     </span>
                   </div>
 
                   {/* Bottom content */}
-                  <div className="absolute bottom-0 left-0 right-0 z-10 p-4">
-
-                    {/* Name row */}
-                    <div className="mb-2.5 flex items-center gap-2">
-                      <h2 className="min-w-0 truncate text-[25px] font-black leading-none text-white drop-shadow-lg">
+                  <div className="absolute bottom-0 left-0 right-0 z-10 p-5">
+                    {/* Name */}
+                    <div className="mb-1 flex items-center gap-2">
+                      <h2 className="min-w-0 truncate text-[26px] font-black leading-tight text-white drop-shadow-lg">
                         {current.name}
                       </h2>
-                      {current.verified && (
-                        <ShieldCheck size={18} className="shrink-0 text-blue-400 drop-shadow" />
-                      )}
+                      {current.verified && <ShieldCheck size={20} className="shrink-0 text-blue-400 drop-shadow" />}
                     </div>
 
-                    {/* Handle */}
-                    <p className="mb-2.5 text-[12px] font-medium text-white/65">
-                      @{current.handle}
-                    </p>
+                    <p className="mb-1 text-[13px] font-medium text-white/60">@{current.handle}</p>
 
-                    {/* Stats row: followers + impact score */}
-                    <div className="mb-3 grid grid-cols-2 gap-2">
-                      <div className="flex items-center gap-2 rounded-2xl bg-white/10 px-3 py-2.5 backdrop-blur-md ring-1 ring-white/10">
-                        <Users size={14} className="text-white/60 shrink-0" />
-                        <div>
-                          <p className="text-[9px] font-black uppercase tracking-wider text-white/55">
-                            Followers
-                          </p>
-                          <p className="text-[16px] font-black tabular-nums text-white leading-none">
-                            {compactFollowers(current.followers)}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 rounded-2xl bg-white/10 px-3 py-2.5 backdrop-blur-md ring-1 ring-white/10">
-                        <TrendingUp size={14} className="text-emerald-400 shrink-0" />
-                        <div>
-                          <p className="text-[9px] font-black uppercase tracking-wider text-white/55">
-                            Impact Score
-                          </p>
-                          <p className="text-[16px] font-black tabular-nums text-white leading-none">
-                            {compact(current.score)}
-                          </p>
-                        </div>
-                      </div>
+                    {/* Role description */}
+                    {current.bio && (
+                      <p className="mb-3 text-[12px] font-medium text-white/70">{current.role || 'Public Figure'}</p>
+                    )}
+
+                    {/* Stats row */}
+                    <div className="mb-3 flex items-center gap-3 text-[13px] text-white/80">
+                      <span className="flex items-center gap-1.5">
+                        <Users size={14} className="text-white/60" />
+                        <span className="font-black">{compactFollowers(current.followers)}</span>
+                        <span className="text-white/50">Followers</span>
+                      </span>
+                      <span className="text-white/30">|</span>
+                      <span className="flex items-center gap-1.5">
+                        <TrendingUp size={14} className="text-emerald-400" />
+                        <span className="font-black">Impact Score {compact(current.score)}</span>
+                      </span>
                     </div>
 
                     {/* Category tags */}
                     {current.categories && current.categories.length > 0 && (
-                      <div className="mb-2.5 flex flex-wrap gap-1.5">
+                      <div className="mb-3 flex flex-wrap gap-1.5">
                         {current.categories.slice(0, 3).map((cat) => (
-                          <span
-                            key={cat}
-                            className="rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-bold text-white/90 backdrop-blur-sm ring-1 ring-white/10"
-                          >
+                          <span key={cat} className="rounded-full bg-white/15 px-3 py-1 text-[11px] font-bold text-white/90 backdrop-blur-sm ring-1 ring-white/10">
                             {cat}
                           </span>
                         ))}
                         {current.categories.length > 3 && (
-                          <span className="rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-bold text-white/60">
+                          <span className="rounded-full bg-white/10 px-3 py-1 text-[11px] font-bold text-white/60">
                             +{current.categories.length - 3}
                           </span>
                         )}
                       </div>
                     )}
 
-                    {/* Bio snippet OR top reports */}
+                    {/* Bio */}
                     {current.bio ? (
-                      <p className="line-clamp-2 text-[12px] leading-[1.55] text-white/70">
-                        {current.bio}
-                      </p>
+                      <p className="line-clamp-2 text-[13px] leading-relaxed text-white/70">{current.bio}</p>
                     ) : current.topReports.length > 0 ? (
-                      <div className="space-y-1">
+                      <div className="space-y-1.5">
                         {current.topReports.slice(0, 2).map((r, i) => (
-                          <div
-                            key={i}
-                            className="flex items-center gap-2 rounded-xl bg-white/10 px-3 py-1.5 backdrop-blur-md ring-1 ring-white/5"
-                          >
-                            {r.delta >= 0 ? (
-                              <TrendingUp size={11} className="shrink-0 text-emerald-400" />
-                            ) : (
-                              <TrendingDown size={11} className="shrink-0 text-red-400" />
-                            )}
-                            <p className="line-clamp-1 flex-1 text-[11px] font-medium text-white/85">
-                              {r.title}
-                            </p>
-                            <span
-                              className={cn(
-                                'shrink-0 text-[11px] font-black',
-                                r.delta >= 0 ? 'text-emerald-400' : 'text-red-400'
-                              )}
-                            >
+                          <div key={i} className="flex items-center gap-2 rounded-xl bg-white/10 px-3 py-1.5 backdrop-blur-md ring-1 ring-white/5">
+                            {r.delta >= 0 ? <TrendingUp size={11} className="shrink-0 text-emerald-400" /> : <TrendingDown size={11} className="shrink-0 text-red-400" />}
+                            <p className="line-clamp-1 flex-1 text-[11px] font-medium text-white/85">{r.title}</p>
+                            <span className={cn('shrink-0 text-[11px] font-black', r.delta >= 0 ? 'text-emerald-400' : 'text-red-400')}>
                               {r.delta > 0 ? '+' : ''}{Math.round(r.delta)}
                             </span>
                           </div>
                         ))}
                       </div>
                     ) : null}
+
+                    {/* Dot indicators */}
+                    <div className="mt-3 flex justify-center gap-1.5">
+                      {items.slice(0, 5).map((item, i) => (
+                        <div key={item.id} className={cn('h-2 rounded-full transition-all', i === 0 ? 'w-5 bg-white' : 'w-2 bg-white/30')} />
+                      ))}
+                    </div>
                   </div>
                 </motion.article>
               )}
             </AnimatePresence>
           </div>
 
-          {/* ── Action Row ── */}
+          {/* ── Oppose / Align side buttons (visible alongside card) ── */}
           {current && (
-            <motion.div
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.18 }}
-              className="mt-5 w-full"
-            >
-              {/* Buttons row */}
-              <div className="flex items-center justify-center gap-8">
-                {/* Oppose button */}
-                <div className="flex flex-col items-center gap-1.5">
-                  <motion.button
-                    type="button"
-                    onClick={() => handleSwipe('oppose')}
-                    style={{ scale: opposeScale }}
-                    whileTap={{ scale: 0.88 }}
-                    className="flex h-[60px] w-[60px] items-center justify-center rounded-full border-2 border-red-200 bg-white text-red-500 shadow-xl hover:shadow-red-200/70 dark:bg-card transition-shadow"
-                    aria-label="Oppose"
-                  >
-                    <ArrowLeft size={24} strokeWidth={2.5} />
-                  </motion.button>
-                  <span className="text-[10px] font-bold text-muted-foreground/70 text-center leading-tight">
-                    Left swipe = Oppose<br />
-                    <span className="text-red-500/80">-5 Rating</span>
-                  </span>
-                </div>
-
-                {/* View Profile center */}
+            <>
+              <motion.div
+                style={{ scale: opposeScale }}
+                className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-2 z-20 flex flex-col items-center gap-1"
+              >
                 <motion.button
                   type="button"
-                  onClick={() => router.push(`/account/${current.id}`)}
-                  whileTap={{ scale: 0.93 }}
-                  className="rounded-full border border-border bg-card px-5 py-3 text-[12px] font-black shadow-md transition-all hover:bg-muted hover:scale-105 active:scale-95"
+                  onClick={() => handleSwipe('oppose')}
+                  whileTap={{ scale: 0.85 }}
+                  className="flex h-14 w-14 lg:h-16 lg:w-16 items-center justify-center rounded-full border-2 border-red-200 bg-white text-red-500 shadow-xl hover:shadow-red-200/50 dark:bg-card transition-shadow"
+                  aria-label="Oppose"
                 >
-                  View Profile
+                  <X size={24} strokeWidth={2.5} />
                 </motion.button>
+                <span className="text-[10px] font-black uppercase text-red-500 tracking-wide">Oppose</span>
+                <span className="text-[10px] font-bold text-red-400">-5</span>
+              </motion.div>
 
-                {/* Align button */}
-                <div className="flex flex-col items-center gap-1.5">
-                  <motion.button
-                    type="button"
-                    onClick={() => handleSwipe('align')}
-                    style={{ scale: alignScale }}
-                    whileTap={{ scale: 0.88 }}
-                    className="flex h-[60px] w-[60px] items-center justify-center rounded-full border-2 border-emerald-200 bg-white text-emerald-600 shadow-xl hover:shadow-emerald-200/70 dark:bg-card transition-shadow"
-                    aria-label="Align"
-                  >
-                    <ArrowRight size={24} strokeWidth={2.5} />
-                  </motion.button>
-                  <span className="text-[10px] font-bold text-muted-foreground/70 text-center leading-tight">
-                    Right swipe = Align<br />
-                    <span className="text-emerald-600/80">+5 Rating &amp; Follow</span>
-                  </span>
+              <motion.div
+                style={{ scale: alignScale }}
+                className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-2 z-20 flex flex-col items-center gap-1"
+              >
+                <motion.button
+                  type="button"
+                  onClick={() => handleSwipe('align')}
+                  whileTap={{ scale: 0.85 }}
+                  className="flex h-14 w-14 lg:h-16 lg:w-16 items-center justify-center rounded-full border-2 border-emerald-200 bg-white text-emerald-600 shadow-xl hover:shadow-emerald-200/50 dark:bg-card transition-shadow"
+                  aria-label="Align"
+                >
+                  <Check size={24} strokeWidth={2.5} />
+                </motion.button>
+                <span className="text-[10px] font-black uppercase text-emerald-600 tracking-wide">Align</span>
+                <span className="text-[10px] font-bold text-emerald-500">+5</span>
+              </motion.div>
+            </>
+          )}
+        </section>
+
+        {/* ── Bottom instruction bar ── */}
+        {current && (
+          <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }} className="mt-6 w-full">
+            <div className="flex items-stretch rounded-2xl border border-border bg-card overflow-hidden">
+              <div className="flex-1 flex items-center justify-center gap-2 py-3 px-4 border-r border-border">
+                <span className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-red-300 text-red-500"><X size={14} strokeWidth={2.5} /></span>
+                <div>
+                  <p className="text-[11px] font-bold text-foreground">Left swipe = Oppose</p>
+                  <p className="text-[10px] font-bold text-red-500">-5 Rating</p>
                 </div>
               </div>
+              <div className="flex-1 flex items-center justify-center gap-2 py-3 px-4">
+                <span className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-emerald-300 text-emerald-600"><Check size={14} strokeWidth={2.5} /></span>
+                <div>
+                  <p className="text-[11px] font-bold text-foreground">Right swipe = Align</p>
+                  <p className="text-[10px] font-bold text-emerald-600">+5 Rating &amp; Follow</p>
+                </div>
+              </div>
+            </div>
 
-              {/* Privacy disclaimer — matches design spec */}
-              <p className="mt-3 flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground/55">
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                </svg>
-                This action is public and the user will be notified.
-              </p>
-            </motion.div>
-          )}
+            <p className="mt-3 flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground/60">
+              <Lock size={11} />
+              This action is public and the user will be notified.
+            </p>
+          </motion.div>
+        )}
 
-          {/* Keyboard hint */}
-          <p className="mt-3 text-center text-[10px] text-muted-foreground/40">
-            ← → arrow keys to rate · ↑ open profile
-          </p>
-        </section>
+        {/* Keyboard hint (desktop) */}
+        <p className="mt-3 text-center text-[10px] text-muted-foreground/40 hidden lg:block">
+          ← → arrow keys to rate · ↑ open profile
+        </p>
       </div>
     </main>
   );
