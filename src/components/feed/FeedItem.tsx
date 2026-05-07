@@ -414,25 +414,27 @@ export function FeedItem({
 
       {/* Media Content */}
       {media && (
-        <div className="relative mx-5 mt-2 overflow-hidden rounded-[16px] bg-muted aspect-video shadow-sm group cursor-pointer">
+        <div className={cn(
+          "relative mx-5 mt-2 overflow-hidden rounded-[16px] bg-muted shadow-sm group cursor-pointer",
+          media.type === 'video' && "aspect-video"
+        )}>
           {media.type === 'video' ? (
-            <video 
+            <video
               src={media.url}
               poster={media.thumbUrl || undefined}
-              autoPlay 
-              muted 
-              loop 
+              autoPlay
+              muted
+              loop
               playsInline
               className="h-full w-full object-cover"
             />
           ) : (
-            <img 
-              src={media.thumbUrl || media.url} 
-              alt={title} 
-              className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" 
+            <img
+              src={media.thumbUrl || media.url}
+              alt={title}
+              className="w-full h-auto block transition-transform duration-700 group-hover:scale-105"
               onError={(e) => {
                 const img = e.target as HTMLImageElement;
-                // If thumb failed, try the full URL
                 if (media.thumbUrl && img.src !== media.url) {
                   img.src = media.url;
                 } else {

@@ -31,7 +31,9 @@
       "Bash(gh repo *)",
       "Bash(gh auth *)",
       "Bash(Get-ChildItem -Path \"D:\\\\Shosha\" -Directory)",
-      "Bash(Select-Object Name)"
+      "Bash(Select-Object Name)",
+      "Bash(cd /d \"d:\\\\Shosha\")",
+      "Bash(findstr /r \"object-fit\\\\|aspect-ratio\\\\|image-\\\\|media-\\\\|thumbnail\" src\\\\**\\\\*.tsx src\\\\**\\\\*.ts)"
     ],
     "additionalDirectories": [
       "D:\\Shosha\\src\\app\\(app)\\account",
