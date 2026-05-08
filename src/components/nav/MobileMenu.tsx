@@ -66,7 +66,6 @@ const groups: NavGroup[] = [
   {
     label: 'About',
     items: [
-      { href: '/about', label: 'About Shosha', icon: Info },
       { href: '/how-it-works', label: 'How It Works', icon: HelpCircle },
       { href: '/admin', label: 'Admin Console', icon: ShieldCheck, admin: true },
     ],

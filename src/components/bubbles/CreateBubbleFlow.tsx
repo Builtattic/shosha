@@ -134,7 +134,10 @@ export function CreateBubbleFlow() {
       const res = await fetch('/api/bubbles', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          invitedUsernames: invited.map((user) => user.username).filter(Boolean),
+        }),
       });
       const payload = await res.json();
       if (!payload.ok) throw new Error(payload.error?.message ?? 'Failed to create bubble');
@@ -225,7 +228,7 @@ export function CreateBubbleFlow() {
 
                 {/* Cover Image Upload */}
                 <div className="space-y-2">
-                  <label className="text-[12px] font-black uppercase tracking-wider">Cover Image <span className="text-red-500">*</span></label>
+                  <label className="text-[12px] font-black uppercase tracking-wider">Cover Image <span className="text-muted-foreground">(Recommended)</span></label>
                   <label className="relative block cursor-pointer">
                     <div className="relative flex aspect-[16/6] w-full flex-col items-center justify-center rounded-[24px] border-2 border-dashed border-border bg-muted/30 transition-all hover:bg-muted/50 group">
                       {uploading === 'cover' ? (
@@ -249,7 +252,7 @@ export function CreateBubbleFlow() {
                 <div className="grid grid-cols-[120px_1fr] md:grid-cols-[160px_1fr] gap-4">
                   {/* Bubble Image Upload */}
                   <div className="space-y-2">
-                    <label className="text-[12px] font-black uppercase tracking-wider">Bubble Image <span className="text-red-500">*</span></label>
+                    <label className="text-[12px] font-black uppercase tracking-wider">Bubble Image <span className="text-muted-foreground">(Recommended)</span></label>
                     <label className="relative block cursor-pointer">
                       <div className="relative flex aspect-square w-full flex-col items-center justify-center rounded-[24px] border-2 border-dashed border-border bg-muted/30 transition-all hover:bg-muted/50 group">
                         {uploading === 'image' ? (

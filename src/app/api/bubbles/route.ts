@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { fail, ok } from '@/lib/api';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
 import * as bubblesRepo from '@/lib/repos/bubbles';
+import * as usersRepo from '@/lib/repos/users';
 
 const createBubbleSchema = z.object({
   name: z.string().min(2).max(80),
@@ -13,6 +14,7 @@ const createBubbleSchema = z.object({
   imageUrl: z.string().url().optional(),
   visibility: z.enum(['public', 'private']).default('public'),
   sourceLinks: z.array(z.string().url()).max(8).optional(),
+  invitedUsernames: z.array(z.string().min(1).max(120)).max(25).optional(),
 });
 
 export async function GET() {
@@ -37,10 +39,20 @@ export async function POST(request: Request) {
     return fail('forbidden', 'College bubbles must be created by an admin profile.', 403);
   }
 
+  const { invitedUsernames, ...bubbleInput } = parsed.data;
   const bubble = await bubblesRepo.create({
-    ...parsed.data,
+    ...bubbleInput,
     createdBy: user._id,
     createdByAdmin: isAdmin(user),
   });
+  if (invitedUsernames?.length) {
+    const uniqueUsernames = Array.from(new Set(invitedUsernames.map((name) => name.trim().toLowerCase()).filter(Boolean)));
+    await Promise.all(uniqueUsernames.map(async (username) => {
+      const invitee = await usersRepo.findByUsername(username).catch(() => null);
+      if (invitee && invitee._id !== user._id) {
+        await bubblesRepo.requestJoin(bubble._id, invitee._id).catch(() => null);
+      }
+    }));
+  }
   return ok(bubble, 201);
 }

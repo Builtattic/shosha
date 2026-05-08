@@ -27,15 +27,19 @@ import { ConnectionListModal } from '@/components/profile/ConnectionListModal';
 import { ScoreLedgerPanel } from '@/components/profile/ScoreLedgerPanel';
 import { ProfileImpactAnalytics } from '@/components/profile/ProfileImpactAnalytics';
 import { formatPlatform, cn, formatDate } from '@/lib/utils';
-import { BASE_SCORE, calcProfileCredibility } from '@/lib/scoring';
 import { idSchema } from '@/lib/validators';
-import * as accountsRepo from '@/lib/repos/accounts';
 import * as reportsRepo from '@/lib/repos/reports';
 import * as usersRepo from '@/lib/repos/users';
 import { getCurrentUserReadOnly, isAdmin } from '@/lib/auth';
 import { hidesReporterOnPublicSurfaces } from '@/lib/reportPrivacy';
 import { canViewProfileField, restrictedLabel, visibilityFor } from '@/lib/profilePrivacy';
 import { profileDescription, profilePath, profileTitle, siteUrl } from '@/lib/seo';
+import {
+  getCachedAccountById,
+  getCachedProfileBundle,
+  type ReporterSummary
+} from '@/lib/profileData';
+import * as accountsRepo from '@/lib/repos/accounts';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,7 +47,7 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   const id = idSchema.safeParse(params.id);
   if (!id.success) return { title: 'Profile not found | Shosha', robots: { index: false, follow: false } };
 
-  const account = await accountsRepo.findById(id.data);
+  const account = await getCachedAccountById(id.data);
   if (!account) return { title: 'Profile not found | Shosha', robots: { index: false, follow: false } };
 
   const path = profilePath(account) || `/account/${account._id}`;
@@ -142,7 +146,8 @@ export default async function AccountPage({
   const id = idSchema.safeParse(params.id);
   if (!id.success) notFound();
 
-  let account = await accountsRepo.findById(id.data);
+  let bundle = await getCachedProfileBundle(id.data);
+  let account = bundle?.account ? { ...bundle.account } : null;
   if (!account) {
     const [platform, ...rest] = id.data.split('_');
     const username = rest.join('_');
@@ -155,7 +160,8 @@ export default async function AccountPage({
         // flow instead of writing data during navigation.
         const safeId = accountsRepo.deriveId('website', user.username);
         if (safeId !== id.data) {
-          account = await accountsRepo.findById(safeId);
+          bundle = await getCachedProfileBundle(safeId);
+          account = bundle?.account ? { ...bundle.account } : null;
         }
       } else {
         notFound();
@@ -165,6 +171,7 @@ export default async function AccountPage({
     }
   }
   if (!account) notFound();
+  if (!bundle) notFound();
 
   // Synchronize dynamic user data if it's a website account
   let linkedUser: Awaited<ReturnType<typeof usersRepo.findById>> = null;
@@ -180,8 +187,7 @@ export default async function AccountPage({
       account.followers = String((user.followers ?? []).length);
       
       // Inject the user's filed reports as "posts" to populate the feed
-      const { listByReporter } = await import('@/lib/repos/reports');
-      const userReports = await listByReporter(user._id);
+      const userReports = await reportsRepo.listByReporter(user._id);
       
       account.posts = userReports.filter((report) => !hidesReporterOnPublicSurfaces(report)).map(report => ({
         externalId: report._id,
@@ -193,11 +199,8 @@ export default async function AccountPage({
     }
   }
 
-  const [filingsRaw, allTop, currentViewer] = await Promise.all([
-    reportsRepo.listForAccount(account._id, ['approved', 'ai_reviewed', 'flagged'], 30),
-    accountsRepo.listAll(120).catch(() => []),
-    getCurrentUserReadOnly().catch(() => null),
-  ]);
+  const filingsRaw = bundle.filingsRaw;
+  const currentViewer = await getCurrentUserReadOnly().catch(() => null);
   const viewerIsAdmin = isAdmin(currentViewer);
 
   const isViewerFollowing = linkedUser
@@ -217,7 +220,9 @@ export default async function AccountPage({
     : cleanDisplayValue(account.followers);
   const displayedLocation = linkedUser && canSeeLinkedLocation
     ? linkedUserLocation
-    : cleanDisplayValue(account.region);
+    : linkedUser
+      ? ''
+      : cleanDisplayValue(account.region);
   const locationOverviewValue = linkedUser
     ? linkedUserLocation
       ? canSeeLinkedLocation ? linkedUserLocation : restrictedLabel(visibilityFor(linkedUser, 'location'))
@@ -229,14 +234,9 @@ export default async function AccountPage({
       : 'Not provided'
     : normalizeExternalUrl(account.sourceUrl) || 'Not provided';
 
-  const reporterIds = Array.from(new Set(
-    filingsRaw
-      .filter((f) => !hidesReporterOnPublicSurfaces(f))
-      .map(f => f.reporterId)
-      .filter(Boolean) as string[]
-  ));
-  const reporters = await Promise.all(reporterIds.map(rid => usersRepo.findById(rid)));
-  const reporterMap = new Map(reporters.filter(Boolean).map(u => [u!._id, u!]));
+  const reporterMap = new Map<string, ReporterSummary>(
+    bundle.reporters.map((reporter) => [reporter._id, reporter])
+  );
 
   const filings = filingsRaw.map(f => ({
     ...f,
@@ -245,35 +245,14 @@ export default async function AccountPage({
   }));
 
   // Real ledger history → derive deltas, total impact, weekly delta, area chart points
-  const history = account.scoreHistory?.length
-    ? account.scoreHistory
-    : [{ t: account.createdAt ?? new Date().toISOString(), s: account.score, cause: 'seed' as const }];
-
-  const previous = history.length > 1 ? history[history.length - 2].s : BASE_SCORE;
-  const delta = Number((account.score - previous).toFixed(2));
-
-  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-  const weeklyDeltaRaw = history
-    .filter((h: any) => h.t && new Date(h.t).getTime() >= weekAgo)
-    .reduce((sum: number, h: any) => sum + (h.delta ?? 0), 0);
-  const weeklyDelta = Number(weeklyDeltaRaw.toFixed(2));
-
-  const totalPositiveImpact = history.reduce(
-    (sum: number, h: any) => sum + (h.delta && h.delta > 0 ? h.delta : 0),
-    0,
-  );
-  const totalNegativeImpact = history.reduce(
-    (sum: number, h: any) => sum + (h.delta && h.delta < 0 ? Math.abs(h.delta) : 0),
-    0,
-  );
-  const credibilityTracker = calcProfileCredibility({
-    baseCredibility: Math.min(account.profileCompletion ?? 80, 80),
-    trustBadgeBonus: account.trustBadge ? 20 : 0,
-    opposedPosts: account.opposedPosts ?? 0,
-    disputeLosses: account.disputesLost ?? 0,
-    aiFlaggedPosts: account.aiFlaggedPosts ?? 0,
-  });
-  const profileCredibility = credibilityTracker.updatedCredibility;
+  const {
+    history,
+    delta,
+    weeklyDelta,
+    totalPositiveImpact,
+    totalNegativeImpact,
+    profileCredibility
+  } = bundle.metrics;
 
   function formatImpact(value: number) {
     if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
@@ -288,9 +267,7 @@ export default async function AccountPage({
   const windowScores = account.windowScores;
 
   // Similar profiles: same platform, exclude self, sort by score descending
-  const similarProfiles = allTop
-    .filter((acc) => acc._id !== account!._id && acc.platform === account!.platform)
-    .slice(0, 5);
+  const similarProfiles = bundle.similarProfiles;
 
   const activeTab = searchParams.tab || 'overview';
 
@@ -415,6 +392,9 @@ export default async function AccountPage({
               accountId={account._id}
               claimedBy={account.claimedBy}
               claimable={(account.claimable as boolean | undefined) !== false}
+              targetName={account.displayName}
+              targetHandle={account.username}
+              targetAvatar={account.avatarUrl}
             />
           </div>
         </div>

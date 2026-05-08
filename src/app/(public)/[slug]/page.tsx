@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import AccountPage from '../../(app)/account/[id]/page';
 import { ReportModalProvider } from '@/components/report/ReportModalProvider';
-import * as accountsRepo from '@/lib/repos/accounts';
 import { profileDescription, profilePath, profileSlug, profileTitle, siteUrl } from '@/lib/seo';
+import { getCachedAccountByUsername } from '@/lib/profileData';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,7 +15,7 @@ type SlugPageProps = {
 async function accountForSlug(slug: string) {
   const safeSlug = profileSlug(slug);
   if (!safeSlug || safeSlug !== slug.toLowerCase()) return null;
-  return accountsRepo.findByUsername(safeSlug);
+  return getCachedAccountByUsername(safeSlug);
 }
 
 export async function generateMetadata({ params }: SlugPageProps): Promise<Metadata> {

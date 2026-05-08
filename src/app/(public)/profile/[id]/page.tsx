@@ -1,21 +1,21 @@
 import { cache } from 'react';
 import { notFound, redirect } from 'next/navigation';
 import type { Metadata } from 'next';
-import * as accountsRepo from '@/lib/repos/accounts';
 import { idSchema } from '@/lib/validators';
 import { profileDescription, profileSlug, profileTitle, siteUrl } from '@/lib/seo';
+import { getCachedAccountById, getCachedAccountBySlug } from '@/lib/profileData';
 
 export const revalidate = 3600;
 export const dynamicParams = true;
 
 const resolveAccount = cache(async (param: string) => {
-  const bySlug = await accountsRepo.findBySlug(param);
+  const bySlug = await getCachedAccountBySlug(param);
   if (bySlug) return { account: bySlug, resolvedVia: 'slug' as const };
 
   const parsed = idSchema.safeParse(param);
   if (!parsed.success) return null;
 
-  const byId = await accountsRepo.findById(parsed.data);
+  const byId = await getCachedAccountById(parsed.data);
   if (!byId) return null;
 
   return { account: byId, resolvedVia: 'id' as const };

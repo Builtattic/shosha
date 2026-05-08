@@ -1,16 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   Building2, 
   CalendarDays, 
-  Camera, 
-  ChevronUp, 
   Users, 
   Plus,
   Search,
-  SlidersHorizontal,
   ArrowRight,
   Bell,
   Menu
@@ -31,12 +28,34 @@ type BubbleCard = {
   topMembers?: Array<{ userId: string; name?: string; avatar?: string; score: number; previousRank?: number }>;
 };
 
-const BUBBLE_FILTERS = ['Global', 'My Bubbles', 'Trending', 'Newest'];
+const BUBBLE_FILTERS = ['Global', 'Trending', 'Newest'];
+
+function formatDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Recently';
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
 
 export function BubblesPanel({ initialBubbles }: { initialBubbles: BubbleCard[] }) {
   const router = useRouter();
   const [bubbles] = useState(initialBubbles);
   const [filter, setFilter] = useState('Global');
+  const [query, setQuery] = useState('');
+  const filteredBubbles = useMemo(() => {
+    const cleaned = query.trim().toLowerCase();
+    const matches = bubbles.filter((bubble) => {
+      const memberNames = (bubble.topMembers ?? []).map((member) => member.name ?? '').join(' ');
+      const haystack = `${bubble.name} ${bubble.tagline ?? ''} ${bubble.description} ${bubble.type} ${bubble.category ?? ''} ${memberNames}`.toLowerCase();
+      return !cleaned || haystack.includes(cleaned);
+    });
+    if (filter === 'Newest') {
+      return [...matches].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }
+    if (filter === 'Trending') {
+      return [...matches].sort((a, b) => (b.memberCount ?? 0) - (a.memberCount ?? 0));
+    }
+    return matches;
+  }, [bubbles, filter, query]);
 
   return (
     <main className="min-h-screen bg-background safe-bottom">
@@ -55,11 +74,10 @@ export function BubblesPanel({ initialBubbles }: { initialBubbles: BubbleCard[] 
                 <Plus size={20} strokeWidth={3} />
                 <span className="font-black text-sm uppercase tracking-wider">Create Bubble</span>
               </button>
-              <button className="relative flex h-12 w-12 items-center justify-center rounded-full bg-muted/50 text-foreground transition-all hover:bg-muted active:scale-90">
+              <button onClick={() => router.push('/notifications')} className="relative flex h-12 w-12 items-center justify-center rounded-full bg-muted/50 text-foreground transition-all hover:bg-muted active:scale-90" aria-label="Notifications">
                 <Bell size={22} />
-                <span className="absolute right-2.5 top-2.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-black text-white ring-2 ring-background">3</span>
               </button>
-              <button className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/50 text-foreground transition-all hover:bg-muted active:scale-90">
+              <button onClick={() => router.push('/settings')} className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/50 text-foreground transition-all hover:bg-muted active:scale-90" aria-label="Settings">
                 <Menu size={22} />
               </button>
             </div>
@@ -70,11 +88,12 @@ export function BubblesPanel({ initialBubbles }: { initialBubbles: BubbleCard[] 
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} />
               <input 
                 placeholder="Search communities, topics, or members..." 
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
                 className="h-14 w-full rounded-[24px] border border-border bg-card/50 pl-12 pr-4 text-sm md:text-base outline-none transition-all focus:bg-card focus:ring-4 focus:ring-primary/10"
               />
             </div>
-            <div className="flex gap-2">
-              <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
+            <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
                 {BUBBLE_FILTERS.map(f => (
                   <button
                     key={f}
@@ -89,33 +108,31 @@ export function BubblesPanel({ initialBubbles }: { initialBubbles: BubbleCard[] 
                     {f}
                   </button>
                 ))}
-              </div>
-              <button className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[24px] border border-border bg-card text-foreground transition-all hover:border-primary/50">
-                <SlidersHorizontal size={20} />
-              </button>
             </div>
           </div>
         </header>
 
         <section className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {bubbles.map((bubble) => (
+          {filteredBubbles.map((bubble) => {
+            const topMembers = (bubble.topMembers ?? []).filter((member) => member.avatar || member.name);
+            return (
             <article 
               key={bubble._id} 
               onClick={() => router.push(`/bubbles/${bubble._id}`)}
-              className="group cursor-pointer relative overflow-hidden rounded-[32px] border border-border bg-card shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-black/5 active:scale-[0.98]"
+              className="group cursor-pointer relative overflow-hidden rounded-[26px] border border-border bg-card shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary/20 hover:shadow-xl hover:shadow-black/5 active:scale-[0.98]"
             >
               <div className="relative h-48 w-full overflow-hidden">
                 {bubble.coverImageUrl ? (
-                  <img src={bubble.coverImageUrl} alt={`${bubble.name} cover`} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                  <img src={bubble.coverImageUrl} alt={`${bubble.name} cover`} className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]" />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-muted/50">
+                  <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_20%_20%,rgba(249,115,22,0.22),transparent_30%),radial-gradient(circle_at_80%_10%,rgba(59,130,246,0.18),transparent_30%),linear-gradient(135deg,var(--muted),var(--card))]">
                     <Building2 size={48} className="text-muted-foreground/30" />
                   </div>
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-60 transition-opacity group-hover:opacity-80" />
                 
                 <div className="absolute bottom-5 left-5 flex items-center gap-4">
-                  <div className="h-16 w-16 overflow-hidden rounded-[20px] border-2 border-white/20 shadow-2xl backdrop-blur-md">
+                  <div className="h-16 w-16 shrink-0 overflow-hidden rounded-[18px] border-2 border-white/40 bg-white/15 shadow-2xl backdrop-blur-md">
                     {bubble.imageUrl ? (
                       <img src={bubble.imageUrl} alt={bubble.name} className="h-full w-full object-cover" />
                     ) : (
@@ -124,8 +141,8 @@ export function BubblesPanel({ initialBubbles }: { initialBubbles: BubbleCard[] 
                       </div>
                     )}
                   </div>
-                  <div className="text-white">
-                    <h2 className="text-[20px] font-black leading-tight drop-shadow-lg">{bubble.name}</h2>
+                  <div className="min-w-0 text-white">
+                    <h2 className="truncate text-[20px] font-black leading-tight drop-shadow-lg">{bubble.name}</h2>
                     <p className="text-[12px] font-bold text-white/80 uppercase tracking-wider">{bubble.tagline || bubble.type.replace('_', ' ')}</p>
                   </div>
                 </div>
@@ -135,7 +152,7 @@ export function BubblesPanel({ initialBubbles }: { initialBubbles: BubbleCard[] 
                 </div>
               </div>
 
-              <div className="flex flex-col p-6 h-[200px]">
+              <div className="flex h-[210px] flex-col p-6">
                 <p className="line-clamp-3 text-[14px] leading-relaxed text-muted-foreground flex-1">
                   {bubble.description}
                 </p>
@@ -146,11 +163,26 @@ export function BubblesPanel({ initialBubbles }: { initialBubbles: BubbleCard[] 
                       <Users size={14} className="text-muted-foreground" />
                       <span className="text-[13px] font-black">{bubble.memberCount ?? 1}</span>
                     </div>
-                    <div className="flex -space-x-2">
-                      {[1, 2, 3].map(i => (
-                        <div key={i} className="h-7 w-7 rounded-full border-2 border-card bg-muted shadow-sm" />
-                      ))}
-                    </div>
+                    {topMembers.length > 0 ? (
+                      <div className="flex -space-x-2">
+                        {topMembers.slice(0, 3).map((member) => (
+                          <div key={member.userId} className="h-7 w-7 overflow-hidden rounded-full border-2 border-card bg-muted shadow-sm">
+                            {member.avatar ? (
+                              <img src={member.avatar} alt={member.name ?? 'Member'} className="h-full w-full object-cover" />
+                            ) : (
+                              <span className="flex h-full w-full items-center justify-center text-[10px] font-black text-muted-foreground">
+                                {(member.name ?? '?').slice(0, 1).toUpperCase()}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 rounded-full bg-muted/40 px-3 py-1 text-[12px] font-bold text-muted-foreground">
+                        <CalendarDays size={13} />
+                        {formatDate(bubble.createdAt)}
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center gap-1 text-[13px] font-black text-primary group-hover:translate-x-1 transition-transform">
                     View <ArrowRight size={14} strokeWidth={3} />
@@ -158,8 +190,16 @@ export function BubblesPanel({ initialBubbles }: { initialBubbles: BubbleCard[] 
                 </div>
               </div>
             </article>
-          ))}
+            );
+          })}
         </section>
+        {filteredBubbles.length === 0 && (
+          <div className="mt-12 rounded-[26px] border border-dashed border-border bg-card/60 px-6 py-14 text-center">
+            <Users size={34} className="mx-auto mb-3 text-muted-foreground/40" />
+            <p className="text-sm font-black">No bubbles found</p>
+            <p className="mt-1 text-[13px] text-muted-foreground">Try a different search or create the first one for this topic.</p>
+          </div>
+        )}
       </div>
     </main>
   );

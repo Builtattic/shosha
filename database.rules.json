@@ -45,7 +45,7 @@
       "$uid": {
         ".read": "auth != null && $uid === auth.uid",
         ".write": "auth != null && ($uid === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'super_admin')",
-        ".indexOn": ["createdAt", "status"]
+        ".indexOn": ["createdAt", "status", "read"]
       }
     },
 

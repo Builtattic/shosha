@@ -1,4 +1,5 @@
 import { ok } from '@/lib/api';
+import { cached } from '@/lib/cache';
 import { getCurrentUserReadOnly } from '@/lib/auth';
 import * as accountsRepo from '@/lib/repos/accounts';
 import * as reportsRepo from '@/lib/repos/reports';
@@ -22,6 +23,12 @@ const parser = new Parser({
     item: ['media:content', 'description']
   }
 });
+
+const LIVE_REPORT_PREFIXES = ['news-', 'reddit-', 'twitter-', 'ig-', 'fb-'];
+
+function isLiveReport(id: string) {
+  return LIVE_REPORT_PREFIXES.some((prefix) => id.startsWith(prefix));
+}
 
 async function fetchTwitterLive() {
   const token = process.env.X_BEARER_TOKEN;
@@ -199,43 +206,54 @@ async function getLiveNews() {
   return posts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
+async function getCachedFeedBase() {
+  return cached('shosha:v1:feed:base', 45, async () => {
+    const settings = await siteSettingsRepo.get();
+
+    const reports = await reportsRepo.listPublicFeed(75, siteSettingsRepo.publicFeedStatuses(settings));
+    const accountIds = Array.from(new Set(reports.map((report) => report.accountId)));
+    const reporterIds = Array.from(
+      new Set(
+        reports
+          .filter((report) => !hidesReporterOnPublicSurfaces(report))
+          .map((report) => report.reporterId)
+          .filter(Boolean)
+      )
+    ) as string[];
+
+    const [accounts, reporters, liveNews] = await Promise.all([
+      Promise.all(accountIds.map((id) => accountsRepo.findById(id))),
+      Promise.all(reporterIds.map((id) => usersRepo.findById(id))),
+      settings.liveFeedEnabled ? getLiveNews() : Promise.resolve([])
+    ]);
+
+    const accountMap = new Map(accounts.filter(Boolean).map((account) => [account!._id, account!]));
+    const reporterMap = new Map(reporters.filter(Boolean).map((reporter) => [reporter!._id, reporter!]));
+
+    const feed = reports
+      .map((report) => ({
+        ...report,
+        account: accountMap.get(report.accountId) ?? null,
+        reporter: !hidesReporterOnPublicSurfaces(report) && report.reporterId
+          ? (reporterMap.get(report.reporterId) ?? null)
+          : null
+      }))
+      .filter((report) => report.account !== null);
+
+    return { settings, feed, liveNews };
+  });
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const filter = searchParams.get('filter') ?? 'for_you';
   const user = await getCurrentUserReadOnly();
-  const settings = await siteSettingsRepo.get();
+  const { settings, feed: cachedFeed, liveNews } = await getCachedFeedBase();
 
-  const reports = await reportsRepo.listPublicFeed(75, siteSettingsRepo.publicFeedStatuses(settings));
-  const accountIds = Array.from(new Set(reports.map((report) => report.accountId)));
-  const reporterIds = Array.from(
-    new Set(
-      reports
-        .filter((report) => !hidesReporterOnPublicSurfaces(report))
-        .map((report) => report.reporterId)
-        .filter(Boolean)
-    )
-  ) as string[];
-
-  const [accounts, reporters] = await Promise.all([
-    Promise.all(accountIds.map((id) => accountsRepo.findById(id))),
-    Promise.all(reporterIds.map((id) => usersRepo.findById(id)))
-  ]);
-  
-  const accountMap = new Map(accounts.filter(Boolean).map((account) => [account!._id, account!]));
-  const reporterMap = new Map(reporters.filter(Boolean).map((reporter) => [reporter!._id, reporter!]));
-
-  let feed: any[] = reports
-    .map((report) => ({
-      ...report,
-      account: accountMap.get(report.accountId) ?? null,
-      reporter: !hidesReporterOnPublicSurfaces(report) && report.reporterId
-        ? (reporterMap.get(report.reporterId) ?? null)
-        : null,
-      canRequestModeration: Boolean(user && report.reporterId === user._id)
-    }))
-    .filter((report) => report.account !== null);
-
-  const liveNews = settings.liveFeedEnabled ? await getLiveNews() : [];
+  let feed: any[] = cachedFeed.map((report: any) => ({
+    ...report,
+    canRequestModeration: Boolean(user && report.reporterId === user._id)
+  }));
 
   if (filter === 'following') {
     const followedAccounts = new Set(user?.claimedAccounts ?? []);
@@ -290,7 +308,7 @@ export async function GET(request: Request) {
 
   const viewerStates = await Promise.all(
     feed.map((report) =>
-      (report._id.startsWith('news-') || report._id.startsWith('reddit-') || report._id.startsWith('twitter-') || report._id.startsWith('ig-') || report._id.startsWith('fb-'))
+      isLiveReport(report._id)
         ? Promise.resolve({ vote: null, bookmarked: false })
         : interactionsRepo.getViewerState(report._id, user?._id)
     )
@@ -298,7 +316,7 @@ export async function GET(request: Request) {
 
   return ok(
     feed.map((report, index) => ({
-      ...(report._id.startsWith('news-') || report._id.startsWith('reddit-') || report._id.startsWith('twitter-') || report._id.startsWith('ig-') || report._id.startsWith('fb-')
+      ...(isLiveReport(report._id)
         ? report
         : redactPublicReporter(report)),
       viewer: viewerStates[index]

@@ -4,6 +4,7 @@ import * as accountsRepo from '@/lib/repos/accounts';
 import * as reportsRepo from '@/lib/repos/reports';
 import * as usersRepo from '@/lib/repos/users';
 import { normalizeProfileVisibility } from '@/lib/profilePrivacy';
+import { calcCredibility } from '@/lib/credibility';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET() {
@@ -70,7 +71,7 @@ export async function PATCH(req: NextRequest) {
       'headline', 'bio', 'category', 'primaryFocus', 'profileVisibility',
       'massiveAction', 'peopleMultiplier', 'reachMultiplier', 'impactMultiplier', 'credibilityMultiplier',
       'momentumMultiplier', 'innovationMultiplier', 'communityMultiplier', 'resourceMultiplier', 'legacyMultiplier',
-      'websiteUrl', 'photoUrl', 'profileFieldVisibility'
+      'websiteUrl', 'photoUrl', 'profileFieldVisibility', 'quote'
     ] as const;
 
     const patch: Record<string, unknown> = {};
@@ -108,6 +109,37 @@ export async function PATCH(req: NextRequest) {
         return NextResponse.json({ error: `Please enter your ${missing[1]}.` }, { status: 400 });
       }
     }
+
+    // Recompute credibility from the merged profile state. trustBadge can only
+    // be granted via the /api/me/upgrade endpoint, never directly through PATCH.
+    const merged = { ...user, ...patch } as Record<string, unknown>;
+    const cred = calcCredibility({
+      name: merged.name as string | undefined,
+      username: merged.username as string | undefined,
+      phone: merged.phone as string | undefined,
+      dob: merged.dob as string | undefined,
+      city: merged.city as string | undefined,
+      country: merged.country as string | undefined,
+      occupationRole: merged.occupationRole as string | undefined,
+      networkSize: merged.networkSize as string | undefined,
+      education: merged.education as string | undefined,
+      specializedField: merged.specializedField as string | undefined,
+      managesMoneyPeopleSystem: merged.managesMoneyPeopleSystem as string | undefined,
+      physicalIntellectualLimitations: merged.physicalIntellectualLimitations as string | undefined,
+      igUrl: merged.igUrl as string | undefined,
+      tiktokUrl: merged.tiktokUrl as string | undefined,
+      xUrl: merged.xUrl as string | undefined,
+      linkedinUrl: merged.linkedinUrl as string | undefined,
+      redditUrl: merged.redditUrl as string | undefined,
+      ytUrl: merged.ytUrl as string | undefined,
+      fbUrl: merged.fbUrl as string | undefined,
+      snapchatUrl: merged.snapchatUrl as string | undefined,
+      photoUrl: merged.photoUrl as string | undefined,
+      bio: merged.bio as string | undefined,
+      quote: merged.quote as string | undefined,
+      trustBadge: Boolean(merged.trustBadge),
+    });
+    patch.credibility = cred.total;
 
     const updated = await usersRepo.update(user._id, patch);
     return ok({ user: updated });

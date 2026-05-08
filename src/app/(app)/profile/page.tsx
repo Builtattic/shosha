@@ -13,6 +13,7 @@ import { useReportModal } from '@/components/report/ReportModalProvider';
 import Link from 'next/link';
 import { cn, formatDate, formatRelativeTime } from '@/lib/utils';
 import { calcProfileScores, calcShoshaScore, BASE_SCORE } from '@/lib/scoring';
+import { calcCredibility } from '@/lib/credibility';
 import { D3ProfileGauge } from '@/components/viz/D3ProfileGauge';
 import { D3DonutChart } from '@/components/viz/D3DonutChart';
 import { D3AreaChart } from '@/components/viz/D3AreaChart';
@@ -148,7 +149,12 @@ export default function ProfilePage() {
   const appUser = data?.user ?? null;
   const scores = appUser ? calcProfileScores(appUser) : [];
   const contextPercent = calcShoshaScore(scores); // 0–100 composite of profile multipliers
-  const credibility = contextPercent;
+  // Credibility = completion + verification (max 80% from completion alone, +20% with Trust Badge).
+  // Falls back to the live recompute when the persisted value isn't available.
+  const credibility = appUser
+    ? (typeof appUser.credibility === 'number' ? appUser.credibility : calcCredibility(appUser).total)
+    : 0;
+  const trustBadge = Boolean(appUser?.trustBadge);
   const ledgerScore = typeof appUser?.score === 'number' ? appUser.score : BASE_SCORE;
   const ledgerHistory: any[] = appUser?.scoreHistory ?? [];
 

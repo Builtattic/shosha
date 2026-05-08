@@ -119,6 +119,10 @@ export type AppUser = {
   legacyMultiplier?: string;
   websiteUrl?: string;
   photoUrl?: string;
+  quote?: string;
+  trustBadge?: boolean;
+  trustBadgeAt?: string;
+  credibility?: number;
   followers?: string[];
   following?: string[];
 

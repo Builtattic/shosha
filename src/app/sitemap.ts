@@ -5,7 +5,7 @@ import { profilePath, siteUrl } from '@/lib/seo';
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = siteUrl();
   const now = new Date();
-  const staticPaths = ['/', '/leaderboard', '/ranks', '/about', '/how-it-works', '/impact'];
+  const staticPaths = ['/', '/leaderboard', '/ranks', '/how-it-works', '/impact'];
 
   let profileUrls: MetadataRoute.Sitemap = [];
   try {

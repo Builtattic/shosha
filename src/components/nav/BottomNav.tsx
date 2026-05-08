@@ -38,9 +38,9 @@ export function BottomNav() {
   if (hideOnAdmin) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/40 bg-background/80 backdrop-blur-md lg:hidden">
-      <div className="mx-auto flex h-[calc(4.5rem+env(safe-area-inset-bottom))] max-w-md items-stretch px-2 pb-[env(safe-area-inset-bottom)]">
-        <nav className="flex w-full items-center justify-between">
+    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/40 bg-background/85 backdrop-blur-xl lg:hidden shadow-[0_-4px_24px_-8px_rgba(0,0,0,0.1)]">
+      <div className="mx-auto flex h-[calc(4.5rem+env(safe-area-inset-bottom))] max-w-md items-stretch px-1 pb-[env(safe-area-inset-bottom)]">
+        <nav className="flex h-full w-full items-stretch justify-between">
           {items.map((item) => (
             <NavLink key={item.href} item={item} active={isActive(item)} />
           ))}
@@ -55,30 +55,32 @@ function NavLink({ item, active }: { item: BottomNavItem; active: boolean }) {
   return (
     <Link
       href={item.href}
-      className={cn(
-        'group relative flex flex-1 flex-col items-center justify-center gap-1 transition-colors',
-        active ? 'text-foreground' : 'text-muted-foreground/50 hover:text-foreground'
-      )}
+      className="group relative flex h-full flex-1 flex-col items-center justify-center gap-1 transition-colors"
     >
       {active && (
         <motion.div
           layoutId="bottomNavActivePill"
-          className="absolute top-0 h-[3px] w-12 rounded-b-[2px] bg-gradient-to-r from-orange-500 to-red-600"
+          className="absolute top-0 h-[3px] w-12 rounded-b-[4px] bg-gradient-to-r from-orange-500 to-red-600 shadow-[0_2px_8px_rgba(239,68,68,0.4)]"
           transition={{ type: 'spring', stiffness: 380, damping: 32 }}
         />
       )}
-      <Icon
-        size={24}
-        strokeWidth={active ? 2.5 : 1.5}
-        className={cn(
-          'mb-0.5 transition-all duration-300 group-active:scale-90',
-          active ? 'fill-foreground/10' : 'fill-none'
-        )}
-      />
+      <div className={cn(
+        "relative mt-1 flex items-center justify-center p-1.5 rounded-2xl transition-all duration-300",
+        active ? "scale-110" : "group-active:scale-95 group-hover:bg-foreground/5"
+      )}>
+        <Icon
+          size={24}
+          strokeWidth={active ? 2.5 : 2}
+          className={cn(
+            'transition-all duration-300',
+            active ? 'fill-foreground/10 text-foreground' : 'fill-none text-muted-foreground/60 group-hover:text-foreground'
+          )}
+        />
+      </div>
       <span
         className={cn(
-          'text-[11px] font-bold tracking-tight transition-all',
-          active ? 'opacity-100' : 'opacity-60'
+          'text-[10px] font-bold tracking-wide transition-all mt-[-2px]',
+          active ? 'opacity-100 text-foreground scale-105' : 'opacity-60 text-muted-foreground/60'
         )}
       >
         {item.label}

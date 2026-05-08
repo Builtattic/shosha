@@ -4,11 +4,12 @@ import { accountPatchSchema, idSchema } from '@/lib/validators';
 import * as accountsRepo from '@/lib/repos/accounts';
 import * as usersRepo from '@/lib/repos/users';
 import { canViewProfileField } from '@/lib/profilePrivacy';
+import { getCachedAccountById } from '@/lib/profileData';
 
 export async function GET(_: Request, { params }: { params: { id: string } }) {
   const id = idSchema.safeParse(params.id);
   if (!id.success) return fail('not_found', 'No dossier exists for that id.', 404);
-  const account = await accountsRepo.findById(id.data);
+  const account = await getCachedAccountById(id.data);
   if (!account) return fail('not_found', 'No dossier exists for that id.', 404);
 
   if (account.platform !== 'website') return ok(account);

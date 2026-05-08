@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence, useMotionValue, useTransform, useSpring, animate } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { ChevronUp, Globe, Loader2, ShieldCheck, Users, TrendingUp, TrendingDown, Share2, MapPin, X, Check, Lock } from 'lucide-react';
@@ -42,6 +42,7 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
   const [cursor, setCursor] = useState(initialItems.length);
   const [hasMore, setHasMore] = useState(true);
   const [showUpHint, setShowUpHint] = useState(false);
+  const fetchState = useRef({ loading: false, hasMore: true });
 
   const current = items[0];
   const x = useMotionValue(0), y = useMotionValue(0);
@@ -54,30 +55,41 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
   const opposeSc = useTransform(sx, [-130, 0], [1.25, 1]);
   const nextX = useTransform(x, [-300, 0, 300], [10, 0, -10]);
 
-  const fetchMore = useCallback(async (currentCursor: number, reset: boolean = false) => {
-    if (loading || (!hasMore && !reset)) return;
+  const fetchMore = useCallback(async (currentCursor: number, filterVal: string, reset: boolean = false) => {
+    if (fetchState.current.loading || (!fetchState.current.hasMore && !reset)) return;
+    fetchState.current.loading = true;
     setLoading(true);
     try {
-      const res = await fetch(`/api/people/deck?cursor=${currentCursor}&filter=${encodeURIComponent(activeFilter)}`);
+      const res = await fetch(`/api/people/deck?cursor=${currentCursor}&filter=${encodeURIComponent(filterVal)}`);
       const data = await res.json();
       if (data.ok && data.items?.length) { 
         setItems(p => reset ? data.items : [...p, ...data.items]); 
         setCursor(data.nextCursor); 
         setHasMore(data.hasMore); 
+        fetchState.current.hasMore = data.hasMore;
       } else {
         if (reset) setItems([]);
         setHasMore(false);
+        fetchState.current.hasMore = false;
       }
-    } catch {} finally { setLoading(false); }
-  }, [activeFilter, hasMore, loading]);
+    } catch {} finally { 
+      setLoading(false); 
+      fetchState.current.loading = false;
+    }
+  }, []);
 
   useEffect(() => {
     setCursor(0);
     setHasMore(true);
-    fetchMore(0, true);
+    fetchState.current.hasMore = true;
+    fetchMore(0, activeFilter, true);
   }, [activeFilter, fetchMore]);
 
-  useEffect(() => { if (items.length <= 3 && hasMore && !loading) void fetchMore(cursor, false); }, [items.length, hasMore, loading, cursor, fetchMore]);
+  useEffect(() => { 
+    if (items.length <= 3 && hasMore && !loading) {
+      void fetchMore(cursor, activeFilter, false); 
+    }
+  }, [items.length, hasMore, loading, cursor, activeFilter, fetchMore]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -136,11 +148,11 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
   );
 
   return (
-    <main className="min-h-screen bg-background overflow-hidden">
-      <div className="mx-auto flex flex-col items-center px-4 pt-6 pb-32 lg:pt-10 lg:pb-12" style={{ maxWidth: 520 }}>
+    <main className="h-[100dvh] lg:h-screen bg-background overflow-hidden flex flex-col">
+      <div className="mx-auto flex flex-col items-center px-4 pt-4 pb-20 lg:pt-8 lg:pb-8 w-full h-full max-w-[520px]">
 
         {/* Header */}
-        <header className="mb-5 flex w-full items-start justify-between">
+        <header className="mb-4 shrink-0 flex w-full items-start justify-between">
           <div>
             <h1 className="text-[24px] lg:text-[28px] font-black tracking-tight" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>
               Sho<span className="text-muted-foreground">sha</span>
@@ -154,7 +166,7 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
         </header>
 
         {/* Filters */}
-        <div className="mb-6 flex w-full gap-2 overflow-x-auto pb-1 no-scrollbar">
+        <div className="mb-4 shrink-0 flex w-full gap-2 overflow-x-auto pb-1 no-scrollbar">
           {FILTERS.map(({ label, icon }) => (
             <button key={label} onClick={() => setActiveFilter(label)} className={cn(
               'shrink-0 flex items-center gap-1.5 rounded-full border px-4 py-2 text-[12px] font-bold transition-all duration-300',
@@ -164,7 +176,7 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
         </div>
 
         {/* Card + buttons wrapper */}
-        <div className="relative w-full flex items-center justify-center">
+        <div className="relative w-full flex-1 min-h-0 flex items-center justify-center">
 
           {/* Oppose button — outside card on left */}
           {current && (
@@ -179,7 +191,7 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
           )}
 
           {/* Card stack */}
-          <div className="relative w-full max-w-[400px] lg:max-w-[420px]" style={{ aspectRatio: '9/14' }}>
+          <div className="relative w-full max-w-[400px] lg:max-w-[420px]" style={{ aspectRatio: '9/14', maxHeight: 'min(62dvh, 650px)' }}>
             <AnimatePresence mode="popLayout">
               {items.slice(0, 3).map((item, index) => {
                 const isCurrent = index === 0;
@@ -340,7 +352,7 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
 
         {/* Bottom bar */}
         {current && (
-          <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }} className="mt-6 w-full max-w-[420px]">
+          <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }} className="mt-4 shrink-0 w-full max-w-[420px]">
             <div className="flex items-stretch rounded-2xl border border-border bg-card/80 backdrop-blur-sm overflow-hidden shadow-sm">
               <div className="flex-1 flex items-center justify-center gap-2.5 py-3.5 px-4 border-r border-border">
                 <span className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-red-300 text-red-500"><X size={14} strokeWidth={2.5} /></span>
@@ -354,7 +366,7 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
             <p className="mt-3 flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground/55"><Lock size={11} />This action is public and the user will be notified.</p>
           </motion.div>
         )}
-        <p className="mt-3 text-center text-[10px] text-muted-foreground/40 hidden lg:block">← → arrow keys to rate · ↑ open profile</p>
+        <p className="mt-3 shrink-0 text-center text-[10px] text-muted-foreground/40 hidden lg:block">← → arrow keys to rate · ↑ open profile</p>
       </div>
     </main>
   );

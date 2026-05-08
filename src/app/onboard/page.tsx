@@ -1,43 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-  ArrowRight, ArrowLeft, CheckCircle2, User, Briefcase, Link2,
-  Instagram, Youtube, Facebook, Linkedin, Twitter, Sparkles
+  ShieldCheck, CheckCircle2, Camera, Upload, Quote as QuoteIcon, Sparkles,
+  Instagram, Youtube, Facebook, Linkedin, Twitter, ChevronDown, Loader2,
+  AlertCircle, Lock,
 } from 'lucide-react';
-
-// ── Types ──────────────────────────────────────────────────────────────────────
-
-type Step = 1 | 2 | 3;
-
-interface FormData {
-  // Step 1 – Basic info
-  name: string;
-  username: string;
-  phone: string;
-  dob: string;
-  city: string;
-  country: string;
-  // Step 2 – Profile
-  occupationRole: string;
-  networkSize: string;
-  education: string;
-  specializedField: string;
-  managesMoneyPeopleSystem: string;
-  physicalIntellectualLimitations: string;
-  // Step 3 – Social URLs
-  igUrl: string;
-  tiktokUrl: string;
-  xUrl: string;
-  linkedinUrl: string;
-  redditUrl: string;
-  ytUrl: string;
-  fbUrl: string;
-  snapchatUrl: string;
-}
+import { calcCredibility, CRED_SECTIONS, SOCIAL_LINKS_GATE, type CredibilityInput } from '@/lib/credibility';
+import { cn } from '@/lib/utils';
 
 // ── Option maps ────────────────────────────────────────────────────────────────
 
@@ -90,11 +64,248 @@ const LIMITATIONS = [
   { value: 'prefer_not_to_say', label: 'Prefer not to say' },
 ];
 
+// ── Types ──────────────────────────────────────────────────────────────────────
+
+type FormState = CredibilityInput & {
+  // additionally tracked
+  email?: string;
+  region?: string;
+};
+
+const EMPTY: FormState = {
+  name: '', username: '', phone: '', dob: '', city: '', country: '',
+  occupationRole: '', networkSize: '', education: '', specializedField: '',
+  managesMoneyPeopleSystem: '', physicalIntellectualLimitations: '',
+  igUrl: '', tiktokUrl: '', xUrl: '', linkedinUrl: '', redditUrl: '',
+  ytUrl: '', fbUrl: '', snapchatUrl: '',
+  photoUrl: '', bio: '', quote: '',
+  trustBadge: false,
+  email: '', region: '',
+};
+
+// ── Small inputs ───────────────────────────────────────────────────────────────
+
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <label className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
+      {children}
+    </label>
+  );
+}
+
+function TextField({
+  value, onChange, placeholder, type = 'text', readOnly,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  type?: string;
+  readOnly?: boolean;
+}) {
+  return (
+    <input
+      type={type}
+      value={value}
+      readOnly={readOnly}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className={cn(
+        'w-full rounded-xl border border-border bg-card px-3.5 py-2.5 text-[13px] outline-none',
+        'transition-all focus:border-primary focus:ring-2 focus:ring-primary/15',
+        readOnly && 'bg-muted/40 text-muted-foreground cursor-not-allowed',
+      )}
+    />
+  );
+}
+
+function SelectField({
+  value, onChange, options, placeholder = 'Select option',
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+  placeholder?: string;
+}) {
+  return (
+    <div className="relative">
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={cn(
+          'w-full appearance-none rounded-xl border border-border bg-card px-3.5 py-2.5 pr-9 text-[13px] outline-none',
+          'transition-all focus:border-primary focus:ring-2 focus:ring-primary/15',
+          !value && 'text-muted-foreground'
+        )}
+      >
+        <option value="" disabled>{placeholder}</option>
+        {options.map((opt) => (
+          <option key={opt.value} value={opt.value} className="text-foreground">{opt.label}</option>
+        ))}
+      </select>
+      <ChevronDown size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+    </div>
+  );
+}
+
+function SocialField({
+  icon, label, value, onChange, placeholder,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+}) {
+  const filled = value.trim().length > 0;
+  return (
+    <div className={cn(
+      'flex items-center gap-2.5 rounded-xl border bg-card px-3 py-2 transition-all',
+      filled ? 'border-primary/50 bg-primary/5' : 'border-border'
+    )}>
+      <span className={cn('shrink-0', filled ? 'text-primary' : 'text-muted-foreground')}>{icon}</span>
+      <div className="flex-1 min-w-0">
+        <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground leading-none mb-0.5">{label}</p>
+        <input
+          type="url"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="w-full bg-transparent text-[12px] font-medium outline-none placeholder:text-muted-foreground/50"
+        />
+      </div>
+    </div>
+  );
+}
+
+// ── Section card ───────────────────────────────────────────────────────────────
+
+function SectionCard({
+  step, title, subtitle, weight, percent, children,
+}: {
+  step: number;
+  title: string;
+  subtitle?: string;
+  weight: number;
+  percent: number; // 0..100 of weight earned
+  children: React.ReactNode;
+}) {
+  const complete = percent >= 99;
+  return (
+    <section className="rounded-[20px] border border-border bg-background p-5 sm:p-6">
+      <header className="mb-5 flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <div className={cn(
+            'mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-black',
+            complete ? 'bg-foreground text-background' : 'bg-muted text-foreground'
+          )}>
+            {complete ? <CheckCircle2 size={14} /> : step}
+          </div>
+          <div>
+            <h3 className="text-[15px] font-bold leading-tight">{title}</h3>
+            {subtitle && <p className="mt-0.5 text-[11px] text-muted-foreground">{subtitle}</p>}
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-[11px] font-bold text-muted-foreground tabular-nums">
+            {Math.round((percent / 100) * weight)}/{weight}%
+          </div>
+          <div className="mt-1 h-1 w-16 overflow-hidden rounded-full bg-muted">
+            <div
+              className={cn('h-full transition-all', complete ? 'bg-foreground' : 'bg-primary')}
+              style={{ width: `${percent}%` }}
+            />
+          </div>
+        </div>
+      </header>
+      {children}
+    </section>
+  );
+}
+
+// ── Live credibility panel ─────────────────────────────────────────────────────
+
+function CredibilityPanel({ input }: { input: CredibilityInput }) {
+  const { total, breakdown } = useMemo(() => calcCredibility(input), [input]);
+  const cap = input.trustBadge ? 100 : 80;
+  const radius = 56;
+  const circ = 2 * Math.PI * radius;
+  const dash = circ * (total / 100);
+
+  return (
+    <aside className="lg:sticky lg:top-6 lg:self-start space-y-4">
+      <div className="rounded-[24px] border border-border bg-background p-5 shadow-sm">
+        <div className="flex flex-col items-center text-center">
+          <div className="relative h-32 w-32">
+            <svg viewBox="0 0 140 140" className="h-full w-full -rotate-90">
+              <circle cx="70" cy="70" r={radius} stroke="currentColor" strokeWidth="10" fill="none" className="text-muted/40" />
+              <circle
+                cx="70" cy="70" r={radius}
+                stroke="currentColor" strokeWidth="10" fill="none"
+                strokeLinecap="round"
+                strokeDasharray={`${dash} ${circ}`}
+                className={cn('transition-all duration-500', total >= cap ? 'text-foreground' : 'text-primary')}
+              />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <div className="text-[26px] font-black leading-none tabular-nums">{total}%</div>
+              <div className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                Profile Complete
+              </div>
+            </div>
+          </div>
+          <p className="mt-4 max-w-[14rem] text-[11px] text-muted-foreground leading-relaxed">
+            Read each section&apos;s contribution to your <span className="font-semibold text-foreground">credibility</span> below.
+          </p>
+        </div>
+      </div>
+
+      <div className="rounded-[24px] border border-border bg-background p-5 shadow-sm">
+        <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3">
+          Section breakdown
+        </h4>
+        <ul className="space-y-3">
+          {(Object.keys(CRED_SECTIONS) as Array<keyof typeof CRED_SECTIONS>).map((key) => {
+            const row = breakdown[key];
+            const pct = Math.round(row.ratio * 100);
+            return (
+              <li key={key} className="space-y-1.5">
+                <div className="flex items-center justify-between text-[12px]">
+                  <span className="font-semibold">{row.label}</span>
+                  <span className="text-muted-foreground tabular-nums">
+                    {Math.round(row.earned)}<span className="text-muted-foreground/60">/{row.weight}%</span>
+                  </span>
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className={cn(
+                      'h-full transition-all',
+                      pct >= 99 ? 'bg-foreground' : 'bg-primary'
+                    )}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+                {row.hint && <p className="text-[10px] text-muted-foreground">{row.hint}</p>}
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+
+      <div className="rounded-[24px] border border-dashed border-border bg-muted/20 p-4 text-[11px] leading-relaxed text-muted-foreground">
+        Credibility is independent of reports made by other people — it&apos;s built from
+        <span className="font-semibold text-foreground"> profile completion</span> and
+        <span className="font-semibold text-foreground"> verification</span> only.
+      </div>
+    </aside>
+  );
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-function calcAge(dob: string): number | null {
+function calcAge(dob?: string): number | null {
   if (!dob) return null;
   const birth = new Date(dob);
+  if (Number.isNaN(birth.getTime())) return null;
   const today = new Date();
   let age = today.getFullYear() - birth.getFullYear();
   if (
@@ -104,191 +315,23 @@ function calcAge(dob: string): number | null {
   return age;
 }
 
-// ── Animations ─────────────────────────────────────────────────────────────────
-
-const stepContainerVariants = {
-  enter: { opacity: 0, x: 20 },
-  center: { 
-    opacity: 1, 
-    x: 0,
-    transition: {
-      duration: 0.4,
-      ease: [0.25, 0.1, 0.25, 1] as any,
-      staggerChildren: 0.08
-    }
-  },
-  exit: { 
-    opacity: 0, 
-    x: -20,
-    transition: { duration: 0.3 }
-  },
-};
-
-const itemVariants = {
-  enter: { opacity: 0, y: 15 },
-  center: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" as any } }
-};
-
-// ── Sub-components ─────────────────────────────────────────────────────────────
-
-function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">{children}</label>;
-}
-
-function TextInput({
-  value, onChange, placeholder, type = 'text', required
-}: {
-  value: string; onChange: (v: string) => void; placeholder?: string; type?: string; required?: boolean;
-}) {
-  return (
-    <motion.div whileTap={{ scale: 0.995 }} className="relative group">
-      <input
-        type={type}
-        required={required}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full rounded-2xl border border-border/60 bg-card/50 px-4 py-3.5 text-sm outline-none transition-all duration-300 focus:bg-card focus:border-primary focus:ring-4 focus:ring-primary/10 placeholder:text-muted-foreground/50 hover:border-border"
-      />
-    </motion.div>
-  );
-}
-
-function SelectGrid({
-  options, value, onChange
-}: {
-  options: { value: string; label: string }[];
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      {options.map((opt) => {
-        const isSelected = value === opt.value;
-        return (
-          <motion.button
-            whileHover={{ scale: 1.02, y: -1 }}
-            whileTap={{ scale: 0.98 }}
-            key={opt.value}
-            type="button"
-            onClick={() => onChange(opt.value)}
-            className={`relative rounded-xl border px-4 py-3 text-sm font-medium text-left transition-all duration-300 ${
-              isSelected
-                ? 'border-primary bg-primary text-primary-foreground shadow-lg shadow-primary/25'
-                : 'border-border/60 bg-card/50 text-foreground hover:border-primary/40 hover:bg-muted/30'
-            }`}
-          >
-            {opt.label}
-          </motion.button>
-        );
-      })}
-    </div>
-  );
-}
-
-function UrlInput({
-  icon, label, value, onChange, placeholder
-}: {
-  icon: React.ReactNode; label: string; value: string; onChange: (v: string) => void; placeholder: string;
-}) {
-  const isFilled = value.trim().length > 0;
-  return (
-    <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }} className={`flex items-center gap-3 rounded-2xl border bg-card/50 px-4 py-3 transition-all duration-300 focus-within:bg-card focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10 hover:border-border ${isFilled ? 'border-primary/50 bg-primary/5 shadow-sm shadow-primary/5' : 'border-border/60'}`}>
-      <span className={`shrink-0 transition-colors duration-300 ${isFilled ? 'text-primary' : 'text-muted-foreground'}`}>{icon}</span>
-      <div className="flex-1 min-w-0">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground leading-none mb-1">{label}</p>
-        <input
-          type="url"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground/40 font-medium"
-        />
-      </div>
-    </motion.div>
-  );
-}
-
-// ── Progress bar ───────────────────────────────────────────────────────────────
-
-function ProgressBar({ step }: { step: Step }) {
-  const steps = [
-    { n: 1, label: 'About You', icon: <User size={14} /> },
-    { n: 2, label: 'Profile', icon: <Briefcase size={14} /> },
-    { n: 3, label: 'Presence', icon: <Link2 size={14} /> },
-  ];
-
-  return (
-    <div className="flex items-center justify-center gap-0 mb-10 relative">
-      {steps.map((s, i) => {
-        const isActive = step === s.n;
-        const isPast = step > s.n;
-        
-        return (
-          <div key={s.n} className="flex items-center">
-            <motion.div 
-              layout
-              className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all duration-500 ${
-                isActive
-                  ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/30 ring-4 ring-primary/10'
-                  : isPast
-                  ? 'bg-foreground text-background'
-                  : 'bg-muted/50 text-muted-foreground'
-              }`}
-            >
-              {isPast ? <CheckCircle2 size={14} /> : s.icon}
-              <motion.span layout className="hidden sm:inline-block">{s.label}</motion.span>
-            </motion.div>
-            {i < steps.length - 1 && (
-              <div className="w-8 sm:w-16 h-1 mx-2 rounded-full bg-muted/50 overflow-hidden relative">
-                <motion.div 
-                  className="absolute top-0 left-0 h-full bg-foreground"
-                  initial={{ width: '0%' }}
-                  animate={{ width: isPast ? '100%' : '0%' }}
-                  transition={{ duration: 0.6, ease: 'easeInOut' }}
-                />
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// ── Main component ─────────────────────────────────────────────────────────────
+// ── Main page ──────────────────────────────────────────────────────────────────
 
 export default function OnboardPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
 
-  const [step, setStep] = useState<Step>(1);
+  const [form, setForm] = useState<FormState>(EMPTY);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
   const [checking, setChecking] = useState(true);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
-  const [form, setForm] = useState<FormData>({
-    name: '', username: '', phone: '', dob: '', city: '', country: '',
-    occupationRole: '', networkSize: '', education: '', specializedField: '',
-    managesMoneyPeopleSystem: '', physicalIntellectualLimitations: '',
-    igUrl: '', tiktokUrl: '', xUrl: '', linkedinUrl: '', redditUrl: '',
-    ytUrl: '', fbUrl: '', snapchatUrl: '',
-  });
+  function set<K extends keyof FormState>(key: K, value: FormState[K]) {
+    setForm((f) => ({ ...f, [key]: value }));
+  }
 
-  // Pre-fill name from Firebase user
-  useEffect(() => {
-    if (user) {
-      setForm((f) => ({
-        ...f,
-        name: f.name || user.displayName || '',
-        username: f.username || (user.email?.split('@')[0] ?? ''),
-        phone: f.phone || user.phoneNumber || '',
-      }));
-    }
-  }, [user]);
-
-  // Redirect to sign-in if not authenticated; pre-fill form from existing profile
   useEffect(() => {
     if (loading) return;
     if (!user) {
@@ -297,16 +340,14 @@ export default function OnboardPage() {
     }
     fetch('/api/me')
       .then((r) => r.json())
-      .then((data) => {
-        const u = data.user;
+      .then((payload) => {
+        const u = payload?.data?.user ?? payload?.user;
         if (u) {
-          // Pre-fill form with any existing profile data so returning users
-          // can edit their profile without starting from scratch.
           setForm((f) => ({
             ...f,
-            name: u.name || f.name,
-            username: u.username || f.username,
-            phone: u.phone || f.phone,
+            name: u.name || user.displayName || f.name,
+            username: u.username || (user.email?.split('@')[0] ?? '') || f.username,
+            phone: u.phone || user.phoneNumber || f.phone,
             dob: u.dob || f.dob,
             city: u.city || f.city,
             country: u.country || f.country,
@@ -324,6 +365,19 @@ export default function OnboardPage() {
             ytUrl: u.ytUrl || f.ytUrl,
             fbUrl: u.fbUrl || f.fbUrl,
             snapchatUrl: u.snapchatUrl || f.snapchatUrl,
+            photoUrl: u.photoUrl || user.photoURL || f.photoUrl,
+            bio: u.bio || f.bio,
+            quote: u.quote || f.quote,
+            email: u.email || user.email || f.email,
+            trustBadge: Boolean(u.trustBadge),
+          }));
+        } else if (user) {
+          setForm((f) => ({
+            ...f,
+            name: user.displayName || f.name,
+            username: user.email?.split('@')[0] ?? f.username,
+            email: user.email || f.email,
+            photoUrl: user.photoURL || f.photoUrl,
           }));
         }
         setChecking(false);
@@ -331,75 +385,78 @@ export default function OnboardPage() {
       .catch(() => setChecking(false));
   }, [loading, user, router]);
 
-  function set<K extends keyof FormData>(key: K, value: FormData[K]) {
-    setForm((f) => ({ ...f, [key]: value }));
+  const credibility = useMemo(() => calcCredibility(form), [form]);
+  const age = calcAge(form.dob);
+
+  function handlePhotoUpload(file: File | null) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result;
+      if (typeof result === 'string') set('photoUrl', result);
+    };
+    reader.readAsDataURL(file);
   }
 
-  function validateStep1() {
-    if (!form.name.trim()) return 'Please enter your name.';
-    if (!form.username.trim()) return 'Please enter a username.';
-    if (!/^[a-z0-9_]{2,30}$/.test(form.username.trim())) return 'Username: 2–30 chars, lowercase letters, numbers, underscores only.';
-    if (!form.dob) return 'Please enter your date of birth.';
-    if (!form.phone.trim()) return 'Please enter your phone number.';
-    if (!form.city.trim()) return 'Please enter your city.';
-    if (!form.country.trim()) return 'Please enter your country.';
-    return null;
-  }
-
-  function validateStep2() {
-    if (!form.occupationRole) return 'Please select your role.';
-    if (!form.networkSize) return 'Please select your network size.';
-    if (!form.education) return 'Please select your education level.';
-    if (!form.specializedField) return 'Please select your specialization level.';
-    if (!form.managesMoneyPeopleSystem) return 'Please select a management level.';
-    if (!form.physicalIntellectualLimitations) return 'Please answer the limitations question.';
-    return null;
-  }
-
-  function handleNext() {
+  async function handleSave({ markComplete }: { markComplete: boolean }) {
     setError('');
-    if (step === 1) {
-      const err = validateStep1();
-      if (err) { setError(err); return; }
-    }
-    if (step === 2) {
-      const err = validateStep2();
-      if (err) { setError(err); return; }
-    }
-    setStep((s) => (s < 3 ? (s + 1) as Step : s));
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  async function handleSubmit() {
-    setError('');
-    const step1Error = validateStep1();
-    if (step1Error) {
-      setStep(1);
-      setError(step1Error);
-      return;
-    }
-    const step2Error = validateStep2();
-    if (step2Error) {
-      setStep(2);
-      setError(step2Error);
-      return;
+    if (markComplete) {
+      const required: Array<[keyof FormState, string]> = [
+        ['name', 'full name'],
+        ['username', 'username'],
+        ['dob', 'date of birth'],
+        ['phone', 'phone number'],
+        ['city', 'city'],
+        ['country', 'country'],
+        ['occupationRole', 'role'],
+        ['networkSize', 'network size'],
+        ['education', 'education level'],
+        ['specializedField', 'specialization level'],
+        ['managesMoneyPeopleSystem', 'management level'],
+        ['physicalIntellectualLimitations', 'limitations answer'],
+      ];
+      const missing = required.find(([k]) => !String(form[k] ?? '').trim());
+      if (missing) {
+        setError(`Please enter your ${missing[1]}.`);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
     }
     setSaving(true);
     try {
       const token = await user?.getIdToken();
+      const body: Record<string, unknown> = {
+        name: form.name, username: form.username, phone: form.phone, dob: form.dob,
+        city: form.city, country: form.country,
+        occupationRole: form.occupationRole, networkSize: form.networkSize,
+        education: form.education, specializedField: form.specializedField,
+        managesMoneyPeopleSystem: form.managesMoneyPeopleSystem,
+        physicalIntellectualLimitations: form.physicalIntellectualLimitations,
+        igUrl: form.igUrl, tiktokUrl: form.tiktokUrl, xUrl: form.xUrl,
+        linkedinUrl: form.linkedinUrl, redditUrl: form.redditUrl,
+        ytUrl: form.ytUrl, fbUrl: form.fbUrl, snapchatUrl: form.snapchatUrl,
+        photoUrl: form.photoUrl, bio: form.bio, quote: form.quote,
+      };
+      if (markComplete) body.onboardingComplete = true;
       const res = await fetch('/api/me', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ ...form, onboardingComplete: true }),
+        body: JSON.stringify(body),
       });
-      if (!res.ok) throw new Error('Failed to save profile');
-      setDone(true);
-      setTimeout(() => router.push('/dashboard'), 2000);
-    } catch (err: unknown) {
+      if (!res.ok) {
+        const text = await res.json().catch(() => null);
+        throw new Error(text?.error || 'Failed to save profile');
+      }
+      if (markComplete) {
+        setDone(true);
+        setTimeout(() => router.push('/dashboard'), 1500);
+      }
+    } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
+    } finally {
       setSaving(false);
     }
   }
@@ -407,252 +464,325 @@ export default function OnboardPage() {
   if (loading || !user || checking) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
-        <motion.div 
-          animate={{ rotate: 360 }} 
-          transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-          className="w-10 h-10 rounded-full border-4 border-muted border-t-primary" 
-        />
+        <Loader2 size={28} className="animate-spin text-primary" />
       </div>
     );
   }
 
   if (done) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background px-4 relative overflow-hidden">
-        <div className="absolute inset-0 bg-primary/5 -z-10" />
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
         <motion.div
-          initial={{ opacity: 0, scale: 0.8, y: 20 }}
+          initial={{ opacity: 0, scale: 0.9, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ type: "spring", bounce: 0.5 }}
-          className="text-center bg-card/60 backdrop-blur-xl p-10 rounded-[3rem] border border-border shadow-2xl"
+          className="text-center rounded-[28px] border border-border bg-background p-10 shadow-2xl"
         >
-          <motion.div 
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-            className="mx-auto w-24 h-24 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-6"
-          >
-            <CheckCircle2 size={48} />
-          </motion.div>
-          <h2 className="text-3xl font-black tracking-tight mb-3">You&apos;re officially in.</h2>
-          <p className="text-muted-foreground text-base">Preparing your public ledger...</p>
+          <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <CheckCircle2 size={40} />
+          </div>
+          <h2 className="text-[22px] font-black tracking-tight">Profile Saved</h2>
+          <p className="mt-1 text-[13px] text-muted-foreground">Routing you to your dashboard…</p>
         </motion.div>
       </div>
     );
   }
 
-  const age = calcAge(form.dob);
-
   return (
-    <main className="min-h-screen bg-background relative flex flex-col items-center justify-start px-4 py-12 sm:py-20 overflow-hidden">
-      {/* Ambient background effects */}
-      <div className="fixed top-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-primary/5 rounded-full blur-[100px] -z-10 pointer-events-none" />
-      <div className="fixed bottom-[-10%] right-[-10%] w-[40vw] h-[40vw] bg-blue-500/5 rounded-full blur-[120px] -z-10 pointer-events-none" />
+    <main className="min-h-screen bg-background pb-16">
+      {/* Header */}
+      <header className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
+          <Link href="/" className="font-serif text-[20px] font-black tracking-tight">
+            Sho<span className="font-normal italic text-muted-foreground">शा</span>
+          </Link>
+          <div className="hidden sm:flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5">
+            <div className={cn(
+              'h-2 w-2 rounded-full',
+              credibility.total >= 80 ? 'bg-foreground' : 'bg-primary animate-pulse'
+            )} />
+            <span className="text-[11px] font-bold tabular-nums">{credibility.total}% complete</span>
+          </div>
+        </div>
+      </header>
 
-      <div className="w-full max-w-2xl z-10">
-        {/* Header */}
-        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="text-center mb-10">
-          <h1 className="text-4xl font-black tracking-tight mb-2 flex items-center justify-center gap-2">
-            Sho<span className="text-primary">शा</span> <Sparkles className="text-primary" size={24} />
-          </h1>
-          <p className="text-muted-foreground text-sm font-medium uppercase tracking-widest">Setup your identity</p>
-        </motion.div>
+      <div className="mx-auto max-w-6xl px-4 pt-6 sm:pt-10">
+        {/* Title */}
+        <div className="mb-8 text-center sm:text-left">
+          <h1 className="text-[26px] sm:text-[32px] font-black tracking-tight">Create Your Profile</h1>
+          <p className="mt-1 text-[13px] text-muted-foreground max-w-xl">
+            Completing your profile defines your <span className="font-semibold text-foreground">base credibility</span> before verification.
+            Reach 80% from completion alone — verify to unlock the final 20%.
+          </p>
+        </div>
 
-        <ProgressBar step={step} />
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-5 flex items-start gap-2 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-[12px] font-medium text-red-600"
+          >
+            <AlertCircle size={14} className="mt-0.5 shrink-0" />
+            <span>{error}</span>
+          </motion.div>
+        )}
 
-        <motion.div 
-          layout
-          className="rounded-[2.5rem] border border-border/60 bg-card/40 backdrop-blur-2xl p-6 sm:p-10 shadow-2xl shadow-black/5"
-        >
-          <AnimatePresence mode="wait">
+        <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6">
+          {/* Sidebar — credibility panel */}
+          <CredibilityPanel input={form} />
 
-            {/* ── Step 1: About You ─────────────────────────────────────────── */}
-            {step === 1 && (
-              <motion.div key="step1" variants={stepContainerVariants} initial="enter" animate="center" exit="exit">
-                <motion.div variants={itemVariants} className="mb-8">
-                  <h2 className="text-2xl font-black tracking-tight mb-2">Who are you?</h2>
-                  <p className="text-base text-muted-foreground">Let&apos;s start with the basics to build your public profile.</p>
-                </motion.div>
+          {/* Right: form sections */}
+          <div className="space-y-5">
+            {/* ── Section 1: Basic Info ─────────────────────────────────────── */}
+            <SectionCard
+              step={1}
+              title="Basic Info"
+              subtitle="Identity essentials. Auto-fills where we can."
+              weight={CRED_SECTIONS.basicInfo.weight}
+              percent={credibility.breakdown.basicInfo.ratio * 100}
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <FieldLabel>Full Name</FieldLabel>
+                  <TextField value={form.name ?? ''} onChange={(v) => set('name', v)} placeholder="Your full name" />
+                </div>
+                <div>
+                  <FieldLabel>Username</FieldLabel>
+                  <TextField
+                    value={form.username ?? ''}
+                    onChange={(v) => set('username', v.toLowerCase())}
+                    placeholder="auto_handle"
+                  />
+                </div>
+                <div>
+                  <FieldLabel>Phone Number</FieldLabel>
+                  <TextField type="tel" value={form.phone ?? ''} onChange={(v) => set('phone', v)} placeholder="+1 (555) 000-0000" />
+                </div>
+                <div>
+                  <FieldLabel>Date of Birth</FieldLabel>
+                  <TextField type="date" value={form.dob ?? ''} onChange={(v) => set('dob', v)} />
+                  {age !== null && <p className="mt-1 text-[10px] font-bold text-primary tabular-nums">Age: {age}</p>}
+                </div>
+                <div>
+                  <FieldLabel>City</FieldLabel>
+                  <TextField value={form.city ?? ''} onChange={(v) => set('city', v)} placeholder="e.g. New York" />
+                </div>
+                <div>
+                  <FieldLabel>Country</FieldLabel>
+                  <TextField value={form.country ?? ''} onChange={(v) => set('country', v)} placeholder="e.g. United States" />
+                </div>
+                <div className="sm:col-span-2">
+                  <FieldLabel>Email</FieldLabel>
+                  <TextField value={form.email ?? user.email ?? ''} onChange={() => {}} readOnly />
+                </div>
+              </div>
+            </SectionCard>
 
-                {error && (
-                  <motion.p initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-sm font-medium text-red-500 bg-red-500/10 border border-red-500/20 rounded-xl p-4 mb-6">
-                    {error}
-                  </motion.p>
-                )}
+            {/* ── Section 2: Profile Questions ──────────────────────────────── */}
+            <SectionCard
+              step={2}
+              title="Profile Questions"
+              subtitle="The signals that calibrate your influence."
+              weight={CRED_SECTIONS.questions.weight}
+              percent={credibility.breakdown.questions.ratio * 100}
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <FieldLabel>Role</FieldLabel>
+                  <SelectField value={form.occupationRole ?? ''} onChange={(v) => set('occupationRole', v)} options={ROLES} />
+                </div>
+                <div>
+                  <FieldLabel>Network / Audience Size</FieldLabel>
+                  <SelectField value={form.networkSize ?? ''} onChange={(v) => set('networkSize', v)} options={NETWORK_SIZES} />
+                </div>
+                <div>
+                  <FieldLabel>Education</FieldLabel>
+                  <SelectField value={form.education ?? ''} onChange={(v) => set('education', v)} options={EDUCATION_LEVELS} />
+                </div>
+                <div>
+                  <FieldLabel>Specialised Field</FieldLabel>
+                  <SelectField value={form.specializedField ?? ''} onChange={(v) => set('specializedField', v)} options={SPECIALIZED_FIELD} />
+                </div>
+                <div>
+                  <FieldLabel>Manage money / people / systems?</FieldLabel>
+                  <SelectField value={form.managesMoneyPeopleSystem ?? ''} onChange={(v) => set('managesMoneyPeopleSystem', v)} options={MANAGEMENT_LEVELS} />
+                </div>
+                <div>
+                  <FieldLabel>Disability / Limitations</FieldLabel>
+                  <SelectField value={form.physicalIntellectualLimitations ?? ''} onChange={(v) => set('physicalIntellectualLimitations', v)} options={LIMITATIONS} />
+                </div>
+              </div>
+            </SectionCard>
 
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <motion.div variants={itemVariants}>
-                      <FieldLabel>Full Name *</FieldLabel>
-                      <TextInput required value={form.name} onChange={(v) => set('name', v)} placeholder="Your full name" />
-                    </motion.div>
-                    <motion.div variants={itemVariants}>
-                      <FieldLabel>Username *</FieldLabel>
-                      <TextInput required value={form.username} onChange={(v) => set('username', v.toLowerCase())} placeholder="choose_a_handle" />
-                    </motion.div>
-                  </div>
+            {/* ── Section 3: Social Media Links ─────────────────────────────── */}
+            <SectionCard
+              step={3}
+              title="Social Media Links"
+              subtitle={`Add at least ${SOCIAL_LINKS_GATE} active profiles to claim full credit.`}
+              weight={CRED_SECTIONS.socialLinks.weight}
+              percent={credibility.breakdown.socialLinks.ratio * 100}
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <SocialField icon={<Instagram size={16} />} label="Instagram" value={form.igUrl ?? ''} onChange={(v) => set('igUrl', v)} placeholder="instagram.com/username" />
+                <SocialField icon={<span className="text-[11px] font-black">TT</span>} label="TikTok" value={form.tiktokUrl ?? ''} onChange={(v) => set('tiktokUrl', v)} placeholder="tiktok.com/@username" />
+                <SocialField icon={<Twitter size={16} />} label="X / Twitter" value={form.xUrl ?? ''} onChange={(v) => set('xUrl', v)} placeholder="x.com/username" />
+                <SocialField icon={<Linkedin size={16} />} label="LinkedIn" value={form.linkedinUrl ?? ''} onChange={(v) => set('linkedinUrl', v)} placeholder="linkedin.com/in/username" />
+                <SocialField icon={<span className="text-[11px] font-black">R/</span>} label="Reddit" value={form.redditUrl ?? ''} onChange={(v) => set('redditUrl', v)} placeholder="reddit.com/u/username" />
+                <SocialField icon={<Youtube size={16} />} label="YouTube" value={form.ytUrl ?? ''} onChange={(v) => set('ytUrl', v)} placeholder="youtube.com/@channel" />
+                <SocialField icon={<Facebook size={16} />} label="Facebook" value={form.fbUrl ?? ''} onChange={(v) => set('fbUrl', v)} placeholder="facebook.com/username" />
+                <SocialField icon={<span className="text-[11px] font-black">SC</span>} label="Snapchat" value={form.snapchatUrl ?? ''} onChange={(v) => set('snapchatUrl', v)} placeholder="snapchat.com/add/username" />
+              </div>
+            </SectionCard>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <motion.div variants={itemVariants}>
-                      <FieldLabel>Date of Birth *</FieldLabel>
-                      <TextInput required type="date" value={form.dob} onChange={(v) => set('dob', v)} />
-                      {age !== null && <p className="text-xs font-medium text-primary mt-2 pl-2">Age: {age} years old</p>}
-                    </motion.div>
-                    <motion.div variants={itemVariants}>
-                      <FieldLabel>Phone Number *</FieldLabel>
-                      <TextInput required type="tel" value={form.phone} onChange={(v) => set('phone', v)} placeholder="+1 (555) 000-0000" />
-                    </motion.div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <motion.div variants={itemVariants}>
-                      <FieldLabel>City *</FieldLabel>
-                      <TextInput required value={form.city} onChange={(v) => set('city', v)} placeholder="e.g. New York" />
-                    </motion.div>
-                    <motion.div variants={itemVariants}>
-                      <FieldLabel>Country *</FieldLabel>
-                      <TextInput required value={form.country} onChange={(v) => set('country', v)} placeholder="e.g. United States" />
-                    </motion.div>
-                  </div>
+            {/* ── Section 4: Profile Extras ─────────────────────────────────── */}
+            <SectionCard
+              step={4}
+              title="Profile Extras"
+              subtitle="Picture · About · Quote — each adds 5%."
+              weight={CRED_SECTIONS.profileExtras.weight}
+              percent={credibility.breakdown.profileExtras.ratio * 100}
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-5">
+                {/* Profile picture */}
+                <div>
+                  <FieldLabel>Profile Picture</FieldLabel>
+                  <button
+                    type="button"
+                    onClick={() => photoInputRef.current?.click()}
+                    className={cn(
+                      'group relative h-36 w-36 rounded-2xl border-2 border-dashed bg-muted/30 transition-all',
+                      'flex items-center justify-center overflow-hidden',
+                      form.photoUrl ? 'border-primary/40' : 'border-border hover:border-primary/40'
+                    )}
+                  >
+                    {form.photoUrl ? (
+                      <>
+                        <img src={form.photoUrl} alt="Profile preview" className="h-full w-full object-cover" />
+                        <div className="absolute inset-0 hidden items-center justify-center bg-black/40 group-hover:flex">
+                          <Camera size={20} className="text-white" />
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                        <Upload size={20} />
+                        <span className="text-[10px] font-bold uppercase tracking-wider">Upload photo</span>
+                      </div>
+                    )}
+                  </button>
+                  <input
+                    ref={photoInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => handlePhotoUpload(e.target.files?.[0] ?? null)}
+                  />
+                  <p className="mt-1.5 text-[10px] text-muted-foreground">JPG / PNG · Max ~5MB</p>
                 </div>
 
-                <motion.button
-                  variants={itemVariants}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleNext}
-                  className="mt-10 w-full flex items-center justify-center gap-3 rounded-2xl bg-foreground text-background py-4 font-black text-lg hover:shadow-xl hover:shadow-foreground/20 transition-all"
-                >
-                  Continue <ArrowRight size={20} />
-                </motion.button>
-              </motion.div>
-            )}
-
-            {/* ── Step 2: Your Profile ──────────────────────────────────────── */}
-            {step === 2 && (
-              <motion.div key="step2" variants={stepContainerVariants} initial="enter" animate="center" exit="exit">
-                <motion.button 
-                  variants={itemVariants}
-                  onClick={() => { setStep(1); setError(''); }} 
-                  className="flex items-center gap-1.5 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors mb-6"
-                >
-                  <ArrowLeft size={16} /> Back to Basics
-                </motion.button>
-                
-                <motion.div variants={itemVariants} className="mb-8">
-                  <h2 className="text-2xl font-black tracking-tight mb-2">Define your expertise</h2>
-                  <p className="text-base text-muted-foreground">This directly impacts how your influence score is calculated.</p>
-                </motion.div>
-
-                {error && (
-                  <motion.p initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-sm font-medium text-red-500 bg-red-500/10 border border-red-500/20 rounded-xl p-4 mb-6">
-                    {error}
-                  </motion.p>
-                )}
-
-                <div className="space-y-8">
-                  <motion.div variants={itemVariants}>
-                    <FieldLabel>Primary Role *</FieldLabel>
-                    <SelectGrid options={ROLES} value={form.occupationRole} onChange={(v) => set('occupationRole', v)} />
-                  </motion.div>
-
-                  <motion.div variants={itemVariants}>
-                    <FieldLabel>Overall Network / Audience Size *</FieldLabel>
-                    <SelectGrid options={NETWORK_SIZES} value={form.networkSize} onChange={(v) => set('networkSize', v)} />
-                  </motion.div>
-
-                  <motion.div variants={itemVariants}>
-                    <FieldLabel>Highest Education Level *</FieldLabel>
-                    <SelectGrid options={EDUCATION_LEVELS} value={form.education} onChange={(v) => set('education', v)} />
-                  </motion.div>
-
-                  <motion.div variants={itemVariants}>
-                    <FieldLabel>Expertise in a Specialised Field? *</FieldLabel>
-                    <SelectGrid options={SPECIALIZED_FIELD} value={form.specializedField} onChange={(v) => set('specializedField', v)} />
-                  </motion.div>
-
-                  <motion.div variants={itemVariants}>
-                    <FieldLabel>Do you manage money, people, or systems? *</FieldLabel>
-                    <SelectGrid options={MANAGEMENT_LEVELS} value={form.managesMoneyPeopleSystem} onChange={(v) => set('managesMoneyPeopleSystem', v)} />
-                  </motion.div>
-
-                  <motion.div variants={itemVariants}>
-                    <FieldLabel>Any Significant Limitations? (Physical / Intellectual) *</FieldLabel>
-                    <SelectGrid options={LIMITATIONS} value={form.physicalIntellectualLimitations} onChange={(v) => set('physicalIntellectualLimitations', v)} />
-                  </motion.div>
+                <div className="space-y-4">
+                  <div>
+                    <FieldLabel>About You</FieldLabel>
+                    <textarea
+                      value={form.bio ?? ''}
+                      onChange={(e) => set('bio', e.target.value)}
+                      placeholder="Tell people about yourself — what you do, what you care about."
+                      rows={3}
+                      maxLength={280}
+                      className="w-full resize-none rounded-xl border border-border bg-card px-3.5 py-2.5 text-[13px] outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/15"
+                    />
+                    <p className="mt-1 text-[10px] text-muted-foreground tabular-nums">{(form.bio ?? '').length}/280</p>
+                  </div>
+                  <div>
+                    <FieldLabel><span className="inline-flex items-center gap-1.5"><QuoteIcon size={11} /> Your Quote</span></FieldLabel>
+                    <TextField
+                      value={form.quote ?? ''}
+                      onChange={(v) => set('quote', v)}
+                      placeholder="A line that represents you."
+                    />
+                  </div>
                 </div>
+              </div>
+            </SectionCard>
 
-                <motion.button
-                  variants={itemVariants}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleNext}
-                  className="mt-10 w-full flex items-center justify-center gap-3 rounded-2xl bg-foreground text-background py-4 font-black text-lg hover:shadow-xl hover:shadow-foreground/20 transition-all"
-                >
-                  Continue <ArrowRight size={20} />
-                </motion.button>
-              </motion.div>
-            )}
-
-            {/* ── Step 3: Your Presence ─────────────────────────────────────── */}
-            {step === 3 && (
-              <motion.div key="step3" variants={stepContainerVariants} initial="enter" animate="center" exit="exit">
-                <motion.button 
-                  variants={itemVariants}
-                  onClick={() => { setStep(2); setError(''); }} 
-                  className="flex items-center gap-1.5 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors mb-6"
-                >
-                  <ArrowLeft size={16} /> Back to Expertise
-                </motion.button>
-
-                <motion.div variants={itemVariants} className="mb-8">
-                  <h2 className="text-2xl font-black tracking-tight mb-2">Connect your presence</h2>
-                  <p className="text-base text-muted-foreground">Link your active profiles to build a comprehensive reputation.</p>
-                </motion.div>
-
-                {error && (
-                  <motion.p initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-sm font-medium text-red-500 bg-red-500/10 border border-red-500/20 rounded-xl p-4 mb-6">
-                    {error}
-                  </motion.p>
-                )}
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <motion.div variants={itemVariants}><UrlInput icon={<Instagram size={18} />} label="Instagram" value={form.igUrl} onChange={(v) => set('igUrl', v)} placeholder="instagram.com/username" /></motion.div>
-                  <motion.div variants={itemVariants}><UrlInput icon={<span className="text-sm font-black">TT</span>} label="TikTok" value={form.tiktokUrl} onChange={(v) => set('tiktokUrl', v)} placeholder="tiktok.com/@username" /></motion.div>
-                  <motion.div variants={itemVariants}><UrlInput icon={<Twitter size={18} />} label="X / Twitter" value={form.xUrl} onChange={(v) => set('xUrl', v)} placeholder="x.com/username" /></motion.div>
-                  <motion.div variants={itemVariants}><UrlInput icon={<Linkedin size={18} />} label="LinkedIn" value={form.linkedinUrl} onChange={(v) => set('linkedinUrl', v)} placeholder="linkedin.com/in/username" /></motion.div>
-                  <motion.div variants={itemVariants}><UrlInput icon={<span className="text-sm font-bold">R/</span>} label="Reddit" value={form.redditUrl} onChange={(v) => set('redditUrl', v)} placeholder="reddit.com/u/username" /></motion.div>
-                  <motion.div variants={itemVariants}><UrlInput icon={<Youtube size={18} />} label="YouTube" value={form.ytUrl} onChange={(v) => set('ytUrl', v)} placeholder="youtube.com/@channel" /></motion.div>
-                  <motion.div variants={itemVariants}><UrlInput icon={<Facebook size={18} />} label="Facebook" value={form.fbUrl} onChange={(v) => set('fbUrl', v)} placeholder="facebook.com/username" /></motion.div>
-                  <motion.div variants={itemVariants}><UrlInput icon={<span className="text-sm font-black">SC</span>} label="Snapchat" value={form.snapchatUrl} onChange={(v) => set('snapchatUrl', v)} placeholder="snapchat.com/add/username" /></motion.div>
+            {/* ── Section 5: Verification ───────────────────────────────────── */}
+            <SectionCard
+              step={5}
+              title="Verification"
+              subtitle="Verify your identity and unlock full trust."
+              weight={CRED_SECTIONS.verification.weight}
+              percent={credibility.breakdown.verification.ratio * 100}
+            >
+              <div className={cn(
+                'flex items-center justify-between gap-4 rounded-2xl border p-4',
+                form.trustBadge ? 'border-primary/30 bg-primary/5' : 'border-border bg-card'
+              )}>
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={cn(
+                    'flex h-11 w-11 shrink-0 items-center justify-center rounded-full',
+                    form.trustBadge ? 'bg-primary/15 text-primary' : 'bg-muted text-foreground'
+                  )}>
+                    <ShieldCheck size={22} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[14px] font-bold leading-tight">
+                      {form.trustBadge ? 'Trust Badge active' : 'Get Verified, Build Trust'}
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      {form.trustBadge
+                        ? 'You unlocked the full 20% verification weight.'
+                        : 'Purchase a Trust Badge for $2 to lift you to 100%.'}
+                    </p>
+                  </div>
                 </div>
+                {form.trustBadge ? (
+                  <span className="shrink-0 rounded-full bg-primary px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-primary-foreground">
+                    Verified
+                  </span>
+                ) : (
+                  <Link
+                    href="/profile/upgrade"
+                    className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-[12px] font-bold text-background transition-opacity hover:opacity-90"
+                  >
+                    Get Trust Badge · $2
+                  </Link>
+                )}
+              </div>
 
-                <motion.button
-                  variants={itemVariants}
-                  whileHover={!saving ? { scale: 1.02 } : {}}
-                  whileTap={!saving ? { scale: 0.98 } : {}}
-                  onClick={handleSubmit}
+              <p className="mt-4 flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                <Lock size={11} /> Your identity stays private. Verification is handled off-platform.
+              </p>
+            </SectionCard>
+
+            {/* ── Footer ────────────────────────────────────────────────────── */}
+            <div className="rounded-[20px] border border-border bg-card p-5">
+              <p className="text-[12px] text-muted-foreground mb-3">
+                Once all sections are complete, you&apos;ll be at <span className="font-bold text-foreground">80%</span>.
+                Add a Trust Badge to reach <span className="font-bold text-foreground">100% verified</span>.
+              </p>
+              <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-3">
+                <button
+                  type="button"
                   disabled={saving}
-                  className="mt-10 w-full flex items-center justify-center gap-3 rounded-2xl bg-primary text-primary-foreground py-4 font-black text-lg hover:shadow-xl hover:shadow-primary/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => handleSave({ markComplete: false })}
+                  className="rounded-full border border-border bg-background px-5 py-3 text-[13px] font-bold transition hover:bg-muted disabled:opacity-50"
+                >
+                  Save Draft
+                </button>
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => handleSave({ markComplete: true })}
+                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-[14px] font-black text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
                 >
                   {saving ? (
-                    <span className="flex items-center gap-3">
-                      <span className="w-5 h-5 rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground animate-spin" />
-                      Finalizing Ledger...
-                    </span>
+                    <><Loader2 size={16} className="animate-spin" /> Saving…</>
                   ) : (
-                    <>Complete Setup <Sparkles size={20} /></>
+                    <>Complete Profile <Sparkles size={14} /></>
                   )}
-                </motion.button>
-
-                <motion.p variants={itemVariants} className="text-center text-xs font-medium text-muted-foreground mt-4">
-                  These can be updated later from your profile settings.
-                </motion.p>
-              </motion.div>
-            )}
-
-          </AnimatePresence>
-        </motion.div>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </main>
   );

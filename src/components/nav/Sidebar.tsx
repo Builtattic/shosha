@@ -68,7 +68,6 @@ export function Sidebar() {
     { href: '/people', label: 'People', icon: Users },
     { href: '/bubbles', label: 'Bubbles', icon: CircleDot },
     { href: '/ranks', label: 'Ranks', icon: TrendingUp },
-    { href: '/about', label: 'About', icon: Info },
     { href: '/profile', label: 'Profile', icon: User },
     { href: '/bookmarks', label: 'Bookmarks', icon: Bookmark },
     { href: '/notifications', label: 'Notifications', icon: Bell },

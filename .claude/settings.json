@@ -39,7 +39,8 @@
       "Bash(Remove-Item \"src/app/sitemap.ts\")",
       "Bash(npx vercel *)",
       "Bash(pnpm --version)",
-      "Bash(pnpm install *)"
+      "Bash(pnpm install *)",
+      "Bash(echo \"EXITCODE=$?\")"
     ],
     "additionalDirectories": [
       "D:\\Shosha\\src\\app\\(app)\\account",
