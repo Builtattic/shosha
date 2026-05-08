@@ -77,7 +77,7 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
     setCursor(0);
     setHasMore(true);
     fetchMore(0, true);
-  }, [activeFilter]);
+  }, [activeFilter, fetchMore]);
 
   useEffect(() => { if (items.length <= 3 && hasMore && !loading) void fetchMore(cursor, false); }, [items.length, hasMore, loading, cursor, fetchMore]);
 

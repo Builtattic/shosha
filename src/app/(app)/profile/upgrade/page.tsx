@@ -60,7 +60,7 @@ export default function TrustUpgradePage() {
                 <User size={40} className="text-muted-foreground" />
               </div>
               <h2 className="text-[20px] font-bold mb-2">Take a Selfie</h2>
-              <p className="text-[13px] text-muted-foreground mb-8">We need to make sure you're a real person.</p>
+              <p className="text-[13px] text-muted-foreground mb-8">We need to make sure you&apos;re a real person.</p>
               <Button onClick={handleNext} className="w-full rounded-full py-6 font-bold text-[15px]">Open Camera</Button>
             </motion.div>
           )}
