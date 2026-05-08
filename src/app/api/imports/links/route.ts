@@ -16,9 +16,8 @@ export async function POST(request: Request) {
       return fail('bad-request', 'Please provide an array of valid group links.', 400);
     }
 
-    const batch = adminDb.batch();
-    const importsRef = adminDb.collection('imports');
-    const importedNodes = [];
+    const importsRef = adminDb().ref('imports');
+    const importedNodes: { id: string; platform: string; url: string }[] = [];
 
     for (const url of links) {
       if (typeof url !== 'string') continue;
@@ -29,9 +28,8 @@ export async function POST(request: Request) {
       else if (url.includes('discord.gg') || url.includes('discord.com')) platform = 'discord';
       else if (url.includes('facebook.com/groups')) platform = 'facebook';
 
-      const docRef = importsRef.doc();
+      const docRef = importsRef.push();
       const node = {
-        _id: docRef.id,
         userId: user._id,
         type: 'group_link',
         platform,
@@ -39,15 +37,14 @@ export async function POST(request: Request) {
         status: 'pending',
         createdAt: new Date().toISOString()
       };
-      
-      batch.set(docRef, node);
-      importedNodes.push(node);
+
+      await docRef.set(node);
+      importedNodes.push({ id: docRef.key!, platform, url });
     }
 
-    await batch.commit();
-
     return ok({ message: 'Links imported successfully.', count: importedNodes.length, importedNodes });
-  } catch (error: any) {
-    return fail('server-error', error.message || 'Failed to import links', 500);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to import links';
+    return fail('server-error', message, 500);
   }
 }

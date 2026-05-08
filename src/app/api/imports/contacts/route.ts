@@ -16,20 +16,14 @@ export async function POST(request: Request) {
       return fail('bad-request', 'Please provide an array of valid contacts.', 400);
     }
 
-    const batch = adminDb.batch();
-    const importsRef = adminDb.collection('imports');
-    const importedNodes = [];
+    const importsRef = adminDb().ref('imports');
+    let count = 0;
 
-    // Process in chunks to respect Firestore batch limits (500 operations)
-    const MAX_BATCH_SIZE = 400;
-    
-    for (let i = 0; i < Math.min(contacts.length, MAX_BATCH_SIZE); i++) {
-      const c = contacts[i];
+    // Process up to 400 contacts at once
+    for (const c of contacts.slice(0, 400)) {
       if (!c.name || (!c.phoneNumber && !c.email)) continue;
 
-      const docRef = importsRef.doc();
       const node = {
-        _id: docRef.id,
         userId: user._id,
         type: 'phone_contact',
         name: String(c.name).trim(),
@@ -38,17 +32,14 @@ export async function POST(request: Request) {
         status: 'pending',
         createdAt: new Date().toISOString()
       };
-      
-      batch.set(docRef, node);
-      importedNodes.push(node);
+
+      await importsRef.push().set(node);
+      count++;
     }
 
-    if (importedNodes.length > 0) {
-      await batch.commit();
-    }
-
-    return ok({ message: 'Contacts imported successfully.', count: importedNodes.length });
-  } catch (error: any) {
-    return fail('server-error', error.message || 'Failed to import contacts', 500);
+    return ok({ message: 'Contacts imported successfully.', count });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to import contacts';
+    return fail('server-error', message, 500);
   }
 }

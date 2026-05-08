@@ -4,8 +4,8 @@ import { adminDb } from '@/lib/firebase/admin';
 
 /**
  * FCM Token Registration
- * Receives the Firebase Cloud Messaging token from the client and saves it 
- * to the user's document to enable push notifications.
+ * Receives the Firebase Cloud Messaging token from the client and saves it
+ * to the user's node in RTDB to enable push notifications.
  */
 export async function POST(request: Request) {
   const user = await getCurrentUser();
@@ -17,17 +17,19 @@ export async function POST(request: Request) {
       return fail('bad-request', 'Please provide a valid FCM token.', 400);
     }
 
-    // Save token to user doc
-    const userRef = adminDb.collection('users').doc(user._id);
-    
-    // We store tokens in an array in case the user has multiple devices
-    await userRef.set({
-      fcmTokens: adminDb.FieldValue.arrayUnion(token)
-    }, { merge: true });
+    const userRef = adminDb().ref(`users/${user._id}`);
+
+    // Read existing tokens, merge the new one, deduplicate
+    const snap = await userRef.child('fcmTokens').once('value');
+    const existing: string[] = snap.val() || [];
+    if (!existing.includes(token)) {
+      await userRef.child('fcmTokens').set([...existing, token]);
+    }
 
     return ok({ message: 'Push notification token registered successfully.' });
-  } catch (error: any) {
-    return fail('server-error', error.message || 'Failed to register notification token', 500);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to register notification token';
+    return fail('server-error', message, 500);
   }
 }
 
@@ -41,14 +43,15 @@ export async function DELETE(request: Request) {
       return fail('bad-request', 'Please provide a valid FCM token.', 400);
     }
 
-    // Remove token from user doc
-    const userRef = adminDb.collection('users').doc(user._id);
-    await userRef.set({
-      fcmTokens: adminDb.FieldValue.arrayRemove(token)
-    }, { merge: true });
+    const userRef = adminDb().ref(`users/${user._id}`);
+    const snap = await userRef.child('fcmTokens').once('value');
+    const existing: string[] = snap.val() || [];
+    const updated = existing.filter((t) => t !== token);
+    await userRef.child('fcmTokens').set(updated);
 
     return ok({ message: 'Push notification token removed successfully.' });
-  } catch (error: any) {
-    return fail('server-error', error.message || 'Failed to remove notification token', 500);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to remove notification token';
+    return fail('server-error', message, 500);
   }
 }

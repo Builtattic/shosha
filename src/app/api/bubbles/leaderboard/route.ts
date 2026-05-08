@@ -15,19 +15,25 @@ export async function GET(request: Request) {
 
     const orderField = sortBy === 'members' ? 'memberCount' : 'score';
 
-    const snap = await adminDb.collection('bubbles')
-      .where('archived', '==', false)
-      .orderBy(orderField, 'desc')
-      .limit(limit)
-      .get();
+    const snap = await adminDb()
+      .ref('bubbles')
+      .orderByChild(orderField)
+      .limitToLast(limit)
+      .once('value');
 
-    const bubbles = snap.docs.map(doc => ({
-      _id: doc.id,
-      ...doc.data()
-    }));
+    const bubbles: Record<string, unknown>[] = [];
+    snap.forEach((child) => {
+      const val = child.val();
+      if (!val?.archived) {
+        bubbles.push({ _id: child.key, ...val });
+      }
+    });
+    // Reverse since RTDB returns ascending order
+    bubbles.reverse();
 
     return ok({ items: bubbles });
-  } catch (err: any) {
-    return fail('server-error', err.message || 'Failed to fetch bubble leaderboard', 500);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Failed to fetch bubble leaderboard';
+    return fail('server-error', message, 500);
   }
 }
