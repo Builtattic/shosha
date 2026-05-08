@@ -19,11 +19,11 @@ export function D3ProfileGauge({ score, minScore = -1000, maxScore = 1000, size 
     svg.selectAll('*').remove();
 
     const W = size;
-    const H = size * 0.65;
+    const H = size * 0.58;
     const cx = W / 2;
-    const cy = H * 0.85;
-    const arcWidth = size * 0.04;
-    const radius = W * 0.42;
+    const cy = H * 0.92;
+    const arcWidth = size * 0.05;
+    const radius = W * 0.46;
 
     svg.attr('viewBox', `0 0 ${W} ${H}`).attr('overflow', 'visible');
 
@@ -40,6 +40,7 @@ export function D3ProfileGauge({ score, minScore = -1000, maxScore = 1000, size 
     grad.append('stop').attr('offset', '100%').attr('stop-color', '#4ade80');
 
     // Background track (very faint, if any. The image just shows the solid color track)
+    // Use a true top semicircle (left -> top -> right).
     const startAngle = -Math.PI / 2;
     const endAngle = Math.PI / 2;
 
@@ -63,10 +64,10 @@ export function D3ProfileGauge({ score, minScore = -1000, maxScore = 1000, size 
 
     // Start circle at the beginning of the arc, then animate
     const pointer = g.append('circle')
-      .attr('r', arcWidth * 1.4)
+      .attr('r', Math.max(5, arcWidth * 0.42))
       .attr('fill', 'var(--background)')
       .attr('stroke', 'var(--foreground)')
-      .attr('stroke-width', 2.5)
+      .attr('stroke-width', 3)
       .attr('cx', Math.cos(startAngle - Math.PI / 2) * radius)
       .attr('cy', Math.sin(startAngle - Math.PI / 2) * radius);
 
@@ -85,7 +86,7 @@ export function D3ProfileGauge({ score, minScore = -1000, maxScore = 1000, size 
     // Labels
     g.append('text')
       .attr('x', -radius)
-      .attr('y', 20)
+      .attr('y', 24)
       .attr('text-anchor', 'middle')
       .attr('fill', 'var(--muted-foreground)')
       .attr('font-size', 10)
@@ -94,7 +95,7 @@ export function D3ProfileGauge({ score, minScore = -1000, maxScore = 1000, size 
 
     g.append('text')
       .attr('x', radius)
-      .attr('y', 20)
+      .attr('y', 24)
       .attr('text-anchor', 'middle')
       .attr('fill', 'var(--muted-foreground)')
       .attr('font-size', 10)

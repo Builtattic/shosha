@@ -7,7 +7,7 @@ import {
   CheckCircle2, Upload, TrendingUp, Shield,
   PieChart, Activity, Target, User, Users, ThumbsUp, ThumbsDown, Minus, ArrowRight,
   Briefcase, GraduationCap, FileText, Link2, Pencil, MapPin, ExternalLink,
-  AlertCircle, RefreshCw, Bell, Play, History, TrendingDown, Calendar, Eye, Link as LinkIcon
+  AlertCircle, Bell, Play, History, TrendingDown, Calendar, Eye, Link as LinkIcon
 } from 'lucide-react';
 import { useReportModal } from '@/components/report/ReportModalProvider';
 import Link from 'next/link';
@@ -83,25 +83,12 @@ export default function ProfilePage() {
   const reportModal = useReportModal();
   const [data, setData] = useState<{ user: any; claimedAccounts: any[]; recentEvents: any[] } | null>(null);
   const [loading, setLoading] = useState(true);
-  const [recalculating, setRecalculating] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'activity' | 'impact' | 'about'>('overview');
   const [shareOpen, setShareOpen] = useState(false);
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
   const [reportDetailOpen, setReportDetailOpen] = useState(false);
   const [ledgerRange, setLedgerRange] = useState<'weekly' | 'monthly' | 'max'>('max');
   const initialReplayDone = useRef(false);
-
-  async function recalculateScore() {
-    setRecalculating(true);
-    try {
-      await fetch('/api/me/score/replay', { method: 'POST' });
-      const res = await fetch('/api/me', { cache: 'no-store' });
-      const payload = res.ok ? await res.json() : null;
-      if (payload?.ok) setData(payload.data);
-    } finally {
-      setRecalculating(false);
-    }
-  }
 
   const loadProfile = useCallback(async () => {
     const res = await fetch('/api/me', { cache: 'no-store' });
@@ -368,9 +355,9 @@ export default function ProfilePage() {
 
         {/* Ledger Score Hero */}
         <div className="mt-8 relative flex flex-col items-center w-full">
-          <div className="w-full max-w-[340px] relative">
-            <D3ProfileGauge score={ledgerScore} minScore={-1000} maxScore={1000} size={340} />
-            <div className="absolute inset-0 flex flex-col items-center justify-end pb-4 sm:pb-6 pointer-events-none">
+          <div className="w-full max-w-[420px] relative">
+            <D3ProfileGauge score={ledgerScore} minScore={-1000} maxScore={1000} size={420} />
+            <div className="absolute inset-0 flex flex-col items-center justify-end pb-7 sm:pb-8 pointer-events-none">
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Shosha Score</p>
               <h2 className="mt-1 text-[40px] sm:text-[46px] font-black leading-none text-foreground tabular-nums">
                 {ledgerScore.toLocaleString()}
@@ -393,17 +380,7 @@ export default function ProfilePage() {
             </div>
           </div>
         </div>
-
-        <div className="mt-1 flex justify-center pb-4 border-b border-border">
-          <button
-            onClick={recalculateScore}
-            disabled={recalculating}
-            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1 text-[11px] font-semibold text-foreground shadow-sm transition-all hover:bg-muted disabled:opacity-60"
-          >
-            <RefreshCw size={11} strokeWidth={2.5} className={recalculating ? 'animate-spin' : ''} />
-            {recalculating ? 'Recalculating…' : 'Recalculate from history'}
-          </button>
-        </div>
+        <div className="mt-1 pb-4 border-b border-border" />
 
         {/* Stat Cards */}
         <div className="mt-6 grid grid-cols-4 gap-2">

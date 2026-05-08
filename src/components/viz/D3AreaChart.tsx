@@ -119,9 +119,13 @@ export function D3AreaChart({ data, height = 280, rangeMode = 'max' }: Props) {
 
     // Is dark mode?
     const isDark = document.documentElement.classList.contains('dark');
-    const lineColor = isDark ? '#a78bfa' : '#1a1a1a';
-    const gradTop = isDark ? 'rgba(167,139,250,0.15)' : 'rgba(26,26,26,0.08)';
-    const gradBot = isDark ? 'rgba(167,139,250,0)' : 'rgba(26,26,26,0)';
+    const trendDelta = sorted[sorted.length - 1].value - sorted[0].value;
+    const trendUp = trendDelta >= 0;
+    const lineColor = trendUp ? '#22c55e' : '#ef4444';
+    const gradTop = trendUp
+      ? (isDark ? 'rgba(34,197,94,0.22)' : 'rgba(34,197,94,0.14)')
+      : (isDark ? 'rgba(239,68,68,0.22)' : 'rgba(239,68,68,0.14)');
+    const gradBot = trendUp ? 'rgba(34,197,94,0)' : 'rgba(239,68,68,0)';
     const dotFill = bg;
     const dotStroke = lineColor;
 
@@ -131,7 +135,7 @@ export function D3AreaChart({ data, height = 280, rangeMode = 'max' }: Props) {
     const yTicks = niceSteps(vMin, vMax, 5);
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
-    ctx.font = '500 10px system-ui, sans-serif';
+    ctx.font = '600 11px system-ui, sans-serif';
     for (const v of yTicks) {
       const py = yOf(v);
       if (py < pad.top - 4 || py > pad.top + h + 4) continue;
@@ -215,7 +219,7 @@ export function D3AreaChart({ data, height = 280, rangeMode = 'max' }: Props) {
 
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    ctx.font = '500 10px system-ui, sans-serif';
+    ctx.font = '600 11px system-ui, sans-serif';
     ctx.fillStyle = mutedFg;
     for (const d of xDates) {
       const px = xOf(d);
