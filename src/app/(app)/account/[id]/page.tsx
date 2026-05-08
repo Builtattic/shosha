@@ -13,6 +13,9 @@ import {
   Minus,
   ChevronLeft,
   AlertCircle,
+  MapPin,
+  Image as ImageIcon,
+  ExternalLink,
 } from 'lucide-react';
 import Link from 'next/link';
 import { DossierActions } from '@/components/profile/DossierActions';
@@ -26,7 +29,7 @@ import { LiveAccountScorePanel } from '@/components/profile/LiveAccountScorePane
 import { ConnectionListModal } from '@/components/profile/ConnectionListModal';
 import { ScoreLedgerPanel } from '@/components/profile/ScoreLedgerPanel';
 import { ProfileImpactAnalytics } from '@/components/profile/ProfileImpactAnalytics';
-import { formatPlatform, cn, formatDate } from '@/lib/utils';
+import { formatPlatform, cn, formatRelativeTime } from '@/lib/utils';
 import { idSchema } from '@/lib/validators';
 import * as reportsRepo from '@/lib/repos/reports';
 import * as usersRepo from '@/lib/repos/users';
@@ -126,6 +129,31 @@ function normalizeExternalUrl(value?: string | null) {
   return /^https?:\/\//i.test(text) ? text : `https://${text}`;
 }
 
+function truncateText(value: string, limit = 60) {
+  const normalized = value.trim();
+  if (normalized.length <= limit) return normalized;
+  return `${normalized.slice(0, limit - 1).trimEnd()}…`;
+}
+
+function maskPhone(phone?: string, isOwnProfile = false) {
+  const text = cleanDisplayValue(phone);
+  if (!text) return '—';
+  if (isOwnProfile) return text;
+  const digits = text.replace(/\D/g, '');
+  if (digits.length < 4) return '••••';
+  return `••••••${digits.slice(-4)}`;
+}
+
+function compactUrlDisplay(url: string, max = 30) {
+  const stripped = url.replace(/^https?:\/\//, '');
+  if (stripped.length <= max) return stripped;
+  return `${stripped.slice(0, max - 1)}…`;
+}
+
+function filingThumbnailUrl(filing: any) {
+  return filing?.media?.thumbUrl || filing?.media?.url || filing?.evidenceSourceUrl || '';
+}
+
 function userSocialLinks(user: Awaited<ReturnType<typeof usersRepo.findById>>) {
   if (!user) return [];
   return USER_SOCIAL_LINKS
@@ -202,6 +230,7 @@ export default async function AccountPage({
   const filingsRaw = bundle.filingsRaw;
   const currentViewer = await getCurrentUserReadOnly().catch(() => null);
   const viewerIsAdmin = isAdmin(currentViewer);
+  const isOwnProfile = Boolean(currentViewer && linkedUser && currentViewer._id === linkedUser._id);
 
   const isViewerFollowing = linkedUser
     ? (linkedUser.followers ?? []).includes(currentViewer?._id ?? '')
@@ -272,7 +301,7 @@ export default async function AccountPage({
   const activeTab = searchParams.tab || 'overview';
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-background safe-bottom font-sans">
+    <main className="min-h-screen overflow-x-hidden bg-white dark:bg-zinc-950 safe-bottom font-sans">
       {/* Sticky header with back + share */}
       <header className="sticky top-0 z-30 border-b border-border/60 bg-background/85 backdrop-blur-xl pt-4">
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-2 px-3 pb-3 sm:px-4">
@@ -332,9 +361,9 @@ export default async function AccountPage({
 
       <div className="mx-auto max-w-2xl px-4 mt-16">
         {/* Profile Info Row */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end w-full min-w-0">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start w-full min-w-0">
           <div className="flex items-start gap-4 min-w-0 flex-1">
-            <div className="relative h-20 w-20 shrink-0 sm:h-24 sm:w-24">
+            <div className="relative h-16 w-16 shrink-0">
               {account.avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -347,13 +376,9 @@ export default async function AccountPage({
                   {account.displayName[0]?.toUpperCase() ?? '?'}
                 </div>
               )}
-              {account.verified && (
-                <div className="absolute bottom-0 right-0 rounded-full border-[3px] border-background bg-foreground text-background p-0.5">
-                  <CheckCircle2 size={14} fill="currentColor" />
-                </div>
-              )}
+              <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-background bg-green-500" />
             </div>
-            <div className="min-w-0 flex-1 pt-1">
+            <div className="min-w-0 flex-1 pt-0.5">
               <div className="flex items-center gap-1.5">
                 <h1 className="text-[20px] font-bold text-foreground leading-tight sm:text-[22px] whitespace-nowrap">
                   {account.displayName.replace(/^@/, '')}
@@ -362,15 +387,18 @@ export default async function AccountPage({
                   <CheckCircle2 size={16} fill="currentColor" className="text-foreground shrink-0" />
                 )}
               </div>
+              <p className="text-[12px] text-muted-foreground sm:text-[13px]">
+                @{account.username.replace(/^@/, '')}
+              </p>
               <p className="text-[12px] text-muted-foreground capitalize sm:text-[13px]">
                 {account.profileKind === 'public_figure'
                   ? 'Public Figure'
                   : displayedRole}
               </p>
               {displayedLocation && (
-                <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
-                  <Globe size={12} /> {displayedLocation}
-                </div>
+                <p className="mt-1 inline-flex items-center gap-1.5 text-[12px] text-muted-foreground">
+                  <MapPin size={12} /> {displayedLocation}
+                </p>
               )}
               {linkedUser && (
                 <ConnectionListModal
@@ -442,24 +470,9 @@ export default async function AccountPage({
           {/* OVERVIEW TAB */}
           {activeTab === 'overview' && (
             <>
-              {account.posts && account.posts.length > 0 && (
-                <div className="rounded-[24px] bg-background p-5 shadow-sm border border-border">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-[16px] font-bold text-foreground">Recent Posts</h3>
-                    <Link
-                      href="?tab=activity"
-                      className="text-[12px] font-bold text-muted-foreground hover:text-foreground flex items-center gap-1"
-                    >
-                      View all <ArrowRight size={14} />
-                    </Link>
-                  </div>
-                  <PostsFeed posts={account.posts.slice(0, 3)} />
-                </div>
-              )}
-
-              <div className="rounded-[24px] bg-background p-5 shadow-sm border border-border">
+              <div className="rounded-2xl bg-background p-4 border border-zinc-100 dark:border-zinc-800">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-[16px] font-bold text-foreground">Recent Filings</h3>
+                  <h3 className="text-[16px] font-bold text-foreground">Recent Activity</h3>
                   {filings.length > 0 && (
                     <Link
                       href="?tab=activity"
@@ -473,15 +486,17 @@ export default async function AccountPage({
                 {filings.length === 0 ? (
                   <div className="flex flex-col items-center gap-3 py-8 text-center">
                     <AlertCircle size={28} className="text-muted-foreground/40" />
-                    <p className="text-[13px] text-muted-foreground">No recent activity recorded.</p>
+                    <p className="text-[13px] text-muted-foreground">No activity yet.</p>
                     <p className="max-w-xs text-[12px] text-muted-foreground/70">
                       File the first report on this dossier to populate the ledger.
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-0">
                     {filings.slice(0, 4).map((filing: any) => {
                       const isPositive = filing.type === 'positive';
+                      const filingTitle = truncateText(filing.deed || filing.title || filing.description || 'Filing recorded', 60);
+                      const mediaUrl = filingThumbnailUrl(filing);
                       const score =
                         filing.adminDecision?.finalImpact ??
                         filing.aiVerdict?.proposedImpact ??
@@ -491,51 +506,49 @@ export default async function AccountPage({
                       return (
                         <div
                           key={filing._id}
-                          className="flex items-center gap-3 rounded-2xl border border-border p-3"
+                          className="flex items-center gap-3 py-3 first:pt-1 last:pb-1 border-b border-zinc-100 dark:border-zinc-800 last:border-b-0"
                         >
-                          <div
-                            className={cn(
-                              'flex h-9 w-9 shrink-0 items-center justify-center rounded-full',
-                              isPositive ? 'bg-primary/10 text-primary' : 'bg-destructive/10 text-destructive',
-                            )}
-                          >
-                            {isPositive ? (
-                              <Plus size={14} strokeWidth={3} />
+                          <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-border bg-muted">
+                            {mediaUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={mediaUrl} alt="" className="h-full w-full object-cover" />
                             ) : (
-                              <Minus size={14} strokeWidth={3} />
+                              <div className={cn(
+                                'flex h-full w-full items-center justify-center',
+                                isPositive ? 'text-primary' : 'text-destructive',
+                              )}>
+                                {isPositive ? <Plus size={14} strokeWidth={3} /> : <Minus size={14} strokeWidth={3} />}
+                              </div>
                             )}
+                            {!mediaUrl && <ImageIcon size={10} className="absolute right-1 top-1 text-muted-foreground/70" />}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h4 className="text-[13px] font-bold text-foreground line-clamp-2 leading-snug">
-                              {filing.deed || filing.description || 'Filing recorded'}
-                            </h4>
-
-                            <p className="mt-0.5 text-[11px] text-muted-foreground flex items-center gap-1.5">
-                              {filing.reporter && (
-                                <>
-                                  <Link
-                                    href={filing.reporter.username === 'anonymous' ? '#' : `/account/website_${filing.reporter.username.replace(/^@/, '')}`}
-                                    className={cn(
-                                      "font-bold text-foreground/70 hover:text-primary transition-colors",
-                                      filing.reporter.username === 'anonymous' && "pointer-events-none opacity-50"
-                                    )}
-                                  >
-                                    {filing.reporter.name || filing.reporter.username.replace(/^@/, '')}
-                                  </Link>
-                                  <span>•</span>
-                                </>
-                              )}
-                              <span>
-                                {filing.createdAt ? formatDate(filing.createdAt) : 'Recent'}
+                            <div className="flex items-start gap-2">
+                              <span
+                                className={cn(
+                                  'mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[20px] leading-none',
+                                  isPositive
+                                    ? 'bg-green-500/15 text-green-500'
+                                    : 'bg-red-500/15 text-red-500',
+                                )}
+                                aria-hidden="true"
+                              >
+                                {isPositive ? '+' : '−'}
                               </span>
+                              <h4 className="text-[15px] font-semibold text-foreground line-clamp-2 leading-snug">
+                                {filingTitle}
+                              </h4>
+                            </div>
+                            <p className="mt-1 text-[12px] text-muted-foreground">
+                              {filing.createdAt ? formatRelativeTime(new Date(filing.createdAt)) : 'Recent'}
                             </p>
                           </div>
                           <span
                             className={cn(
-                              'shrink-0 rounded-full px-2.5 py-1 text-[12px] font-bold tabular-nums',
+                              'shrink-0 rounded-xl px-3 py-1.5 text-[20px] leading-none font-semibold tabular-nums',
                               isPositive
-                                ? 'bg-primary/10 text-primary'
-                                : 'bg-destructive/10 text-destructive',
+                                ? 'bg-green-500/15 text-green-500'
+                                : 'bg-red-500/15 text-red-500',
                             )}
                           >
                             {score > 0 ? '+' : ''}
@@ -550,7 +563,7 @@ export default async function AccountPage({
 
               {/* Top-level stats summary */}
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                <div className="rounded-2xl border border-border bg-background p-4 shadow-sm">
+                <div className="rounded-2xl border border-zinc-100 bg-background p-4 dark:border-zinc-800">
                   <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
                     Filings
                   </p>
@@ -558,7 +571,7 @@ export default async function AccountPage({
                     {filings.length}
                   </p>
                 </div>
-                <div className="rounded-2xl border border-border bg-background p-4 shadow-sm">
+                <div className="rounded-2xl border border-zinc-100 bg-background p-4 dark:border-zinc-800">
                   <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
                     Positive impact
                   </p>
@@ -566,7 +579,7 @@ export default async function AccountPage({
                     +{formatImpact(totalPositiveImpact)}
                   </p>
                 </div>
-                <div className="rounded-2xl border border-border bg-background p-4 shadow-sm col-span-2 sm:col-span-1">
+                <div className="rounded-2xl border border-zinc-100 bg-background p-4 dark:border-zinc-800 col-span-2 sm:col-span-1">
                   <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
                     Negative impact
                   </p>
@@ -581,26 +594,9 @@ export default async function AccountPage({
           {/* ACTIVITY TAB */}
           {activeTab === 'activity' && (
             <>
-              <div className="rounded-[24px] bg-background p-5 shadow-sm border border-border">
-                <h3 className="mb-4 text-[16px] font-bold text-foreground">Captured Posts</h3>
-                <PostsFeed posts={account.posts ?? []} />
-              </div>
-              <div className="rounded-[24px] bg-background p-5 shadow-sm border border-border">
-                <h3 className="mb-4 text-[16px] font-bold text-foreground">
-                  Filings on Record
-                  <span className="ml-2 text-[12px] font-medium text-muted-foreground">
-                    ({filings.length})
-                  </span>
-                </h3>
-                <FilingsList filings={filings as any} />
-              </div>
-            </>
-          )}
-
-          {/* IMPACT TAB */}
-          {activeTab === 'impact' && (
-            <>
               <ProfileImpactAnalytics
+                showGraph
+                showImpactDetails={false}
                 history={history.map((entry: any) => ({
                   t: entry.t,
                   s: entry.s,
@@ -621,11 +617,65 @@ export default async function AccountPage({
                     category: filing.category || 'Uncategorized',
                     delta: score,
                     type: filing.type,
+                    status: filing.status,
                     createdAt: filing.createdAt,
+                    mediaUrl: filing.media?.url,
+                    thumbUrl: filing.media?.thumbUrl,
+                    evidenceSourceUrl: filing.evidenceSourceUrl,
                   };
                 })}
               />
-              <div className="rounded-[24px] bg-background p-5 shadow-sm border border-border">
+              <div className="rounded-2xl bg-background p-4 border border-zinc-100 dark:border-zinc-800">
+                <h3 className="mb-4 text-[16px] font-bold text-foreground">Captured Posts</h3>
+                <PostsFeed posts={account.posts ?? []} />
+              </div>
+              <div className="rounded-2xl bg-background p-4 border border-zinc-100 dark:border-zinc-800">
+                <h3 className="mb-4 text-[16px] font-bold text-foreground">
+                  Filings on Record
+                  <span className="ml-2 text-[12px] font-medium text-muted-foreground">
+                    ({filings.length})
+                  </span>
+                </h3>
+                <FilingsList filings={filings as any} />
+              </div>
+            </>
+          )}
+
+          {/* IMPACT TAB */}
+          {activeTab === 'impact' && (
+            <>
+              <ProfileImpactAnalytics
+                showGraph={false}
+                showImpactDetails
+                history={history.map((entry: any) => ({
+                  t: entry.t,
+                  s: entry.s,
+                  delta: entry.delta,
+                  category: entry.category,
+                  deed: entry.deed,
+                }))}
+                filings={filings.map((filing: any) => {
+                  const score =
+                    filing.adminDecision?.finalImpact ??
+                    filing.aiVerdict?.proposedImpact ??
+                    filing.reportScore ??
+                    filing.baseScore ??
+                    0;
+                  return {
+                    id: filing._id,
+                    title: filing.deed || filing.description || 'Filing recorded',
+                    category: filing.category || 'Uncategorized',
+                    delta: score,
+                    type: filing.type,
+                    status: filing.status,
+                    createdAt: filing.createdAt,
+                    mediaUrl: filing.media?.url,
+                    thumbUrl: filing.media?.thumbUrl,
+                    evidenceSourceUrl: filing.evidenceSourceUrl,
+                  };
+                })}
+              />
+              <div className="rounded-2xl bg-background p-4 border border-zinc-100 dark:border-zinc-800">
                 <h3 className="text-[16px] font-bold text-foreground">Score Breakdown</h3>
                 <p className="mt-1 text-[13px] text-muted-foreground mb-6">
                   Dimensions calculated from profile metrics.
@@ -639,7 +689,7 @@ export default async function AccountPage({
 
           {/* ABOUT TAB */}
           {activeTab === 'about' && (
-            <div className="rounded-[24px] bg-background p-5 shadow-sm border border-border">
+              <div className="rounded-2xl bg-background p-4 border border-zinc-100 dark:border-zinc-800">
               <h3 className="mb-4 text-[14px] font-bold uppercase tracking-wider text-muted-foreground">
                 Profile Overview
               </h3>
@@ -657,7 +707,7 @@ export default async function AccountPage({
               <div className="grid gap-3 text-[13px] text-foreground mt-6 break-words">
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-border pb-3 gap-1">
                   <span className="text-muted-foreground shrink-0">Primary Role</span>
-                  <span className="font-semibold sm:text-right capitalize">{overviewRole || 'Not provided'}</span>
+                  <span className="font-semibold sm:text-right capitalize">{overviewRole || '—'}</span>
                 </div>
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-border pb-3 gap-1">
                   <span className="text-muted-foreground shrink-0">Location</span>
@@ -689,7 +739,7 @@ export default async function AccountPage({
                 )}
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-border pb-3 gap-1">
                   <span className="text-muted-foreground shrink-0">Followers</span>
-                  <span className="font-semibold sm:text-right">{displayedFollowers || 'Not provided'}</span>
+                  <span className="font-semibold sm:text-right">{displayedFollowers || '—'}</span>
                 </div>
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-border pb-3 gap-1">
                   <span className="text-muted-foreground shrink-0">Platform</span>
@@ -710,6 +760,10 @@ export default async function AccountPage({
                     <span className="font-semibold sm:text-right">{websiteOverviewValue}</span>
                   )}
                 </div>
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-border pb-3 gap-1">
+                  <span className="text-muted-foreground shrink-0">Phone</span>
+                  <span className="font-semibold sm:text-right">{maskPhone(linkedUser?.phone || account.phone, isOwnProfile)}</span>
+                </div>
                 {socialLinks.length > 0 && (
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between pb-3 gap-1">
                     <span className="text-muted-foreground shrink-0">Linked Accounts</span>
@@ -722,7 +776,8 @@ export default async function AccountPage({
                           target="_blank"
                           rel="noreferrer"
                         >
-                          {formatPlatform(platform as any)}
+                          {formatPlatform(platform as any)} · {compactUrlDisplay(link!.url)}
+                          <ExternalLink size={11} />
                         </a>
                       ))}
                     </div>
