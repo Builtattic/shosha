@@ -1,6 +1,6 @@
 import { ok, fail } from '@/lib/api';
 import { getCurrentUser } from '@/lib/auth';
-import { adminDb } from '@/lib/firebase-admin';
+import { adminDb } from '@/lib/firebase/admin';
 
 /**
  * Third-Party Imports: Backend service for importing phone contacts.

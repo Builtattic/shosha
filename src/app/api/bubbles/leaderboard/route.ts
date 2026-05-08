@@ -1,5 +1,5 @@
 import { ok, fail } from '@/lib/api';
-import { adminDb } from '@/lib/firebase-admin';
+import { adminDb } from '@/lib/firebase/admin';
 
 export const dynamic = 'force-dynamic';
 
