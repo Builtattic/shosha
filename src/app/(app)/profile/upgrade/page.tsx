@@ -1,6 +1,6 @@
-'use client';
-
-import { motion } from 'framer-motion';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   ShieldCheck,
   ChevronLeft,
@@ -17,19 +17,87 @@ import {
   ZapOff,
   Star,
   Users,
-  Target
+  Target,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 
 export default function TrustUpgradePage() {
+  const router = useRouter();
+  const [step, setStep] = useState(0); // 0: initial, 1: selfie, 2: id, 3: loading, 4: success
+
+  const handleNext = () => setStep(s => s + 1);
+
+  const completeUpgrade = async () => {
+    setStep(3); // Loading
+    try {
+      const res = await fetch('/api/me/upgrade', { method: 'POST' });
+      if (res.ok) {
+        setStep(4); // Success
+        setTimeout(() => {
+          router.push('/profile');
+          router.refresh();
+        }, 2000);
+      } else {
+        setStep(0);
+      }
+    } catch {
+      setStep(0);
+    }
+  };
+
+  if (step > 0) {
+    return (
+      <main className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
+        <AnimatePresence mode="wait">
+          {step === 1 && (
+            <motion.div key="step1" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="w-full max-w-sm text-center">
+              <div className="mx-auto h-24 w-24 rounded-full bg-muted flex items-center justify-center mb-6">
+                <User size={40} className="text-muted-foreground" />
+              </div>
+              <h2 className="text-[20px] font-bold mb-2">Take a Selfie</h2>
+              <p className="text-[13px] text-muted-foreground mb-8">We need to make sure you're a real person.</p>
+              <Button onClick={handleNext} className="w-full rounded-full py-6 font-bold text-[15px]">Open Camera</Button>
+            </motion.div>
+          )}
+          {step === 2 && (
+            <motion.div key="step2" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="w-full max-w-sm text-center">
+              <div className="mx-auto h-24 w-24 rounded-full bg-muted flex items-center justify-center mb-6">
+                <Scan size={40} className="text-muted-foreground" />
+              </div>
+              <h2 className="text-[20px] font-bold mb-2">Upload Govt. ID</h2>
+              <p className="text-[13px] text-muted-foreground mb-8">Match your selfie with a valid government ID.</p>
+              <Button onClick={completeUpgrade} className="w-full rounded-full py-6 font-bold text-[15px]">Upload Document</Button>
+            </motion.div>
+          )}
+          {step === 3 && (
+            <motion.div key="step3" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center">
+              <Loader2 size={48} className="text-primary animate-spin mb-6" />
+              <h2 className="text-[20px] font-bold">Verifying Identity...</h2>
+            </motion.div>
+          )}
+          {step === 4 && (
+            <motion.div key="step4" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center text-center">
+              <div className="h-24 w-24 rounded-full bg-primary/20 flex items-center justify-center mb-6">
+                <ShieldCheck size={48} className="text-primary" />
+              </div>
+              <h2 className="text-[24px] font-bold mb-2">Trust Badge Earned!</h2>
+              <p className="text-[14px] text-muted-foreground">Your account has been upgraded.</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-background safe-bottom">
-      {/* Top Header */}
       <header className="flex items-center justify-between p-4 bg-background/80 backdrop-blur-md sticky top-0 z-50">
-        <button className="text-muted-foreground hover:text-foreground">
+        <Link href="/profile" className="text-muted-foreground hover:text-foreground">
           <ChevronLeft size={24} />
-        </button>
+        </Link>
         <div className="flex-1 px-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
@@ -44,9 +112,6 @@ export default function TrustUpgradePage() {
           <div className="relative">
             <Bell size={22} className="text-muted-foreground" />
             <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-destructive border border-background"></span>
-          </div>
-          <div className="h-8 w-8 rounded-full border border-border overflow-hidden">
-            <img src="https://images.unsplash.com/photo-1628157588553-5eeea00af15c?w=100&h=100&fit=crop" alt="Profile" className="h-full w-full object-cover" />
           </div>
         </div>
       </header>
@@ -67,7 +132,6 @@ export default function TrustUpgradePage() {
           </div>
         </div>
 
-        {/* 1. Daily Report Limit */}
         <section className="mb-8 space-y-4">
           <div className="flex items-center gap-2">
             <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-[12px] font-bold">1.</div>
@@ -105,7 +169,6 @@ export default function TrustUpgradePage() {
           </div>
         </section>
 
-        {/* 2. Selfie Verification */}
         <section className="mb-8 space-y-4">
           <div className="flex items-center gap-2">
             <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-[12px] font-bold">2.</div>
@@ -154,7 +217,6 @@ export default function TrustUpgradePage() {
           </div>
         </section>
 
-        {/* 3. Base Credibility Score */}
         <section className="mb-8 space-y-4">
           <div className="flex items-center gap-2">
             <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-[12px] font-bold">3.</div>
@@ -167,7 +229,6 @@ export default function TrustUpgradePage() {
               <div className="text-center">
                 <p className="text-[10px] uppercase font-bold text-muted-foreground mb-2">Current Score</p>
                 <div className="text-[24px] font-bold">80%</div>
-                {/* Simple CSS Gauge mockup */}
                 <div className="h-1 w-16 bg-muted rounded-full mt-2 overflow-hidden mx-auto">
                   <div className="h-full bg-orange-400 w-[80%]"></div>
                 </div>
@@ -188,7 +249,6 @@ export default function TrustUpgradePage() {
           </div>
         </section>
 
-        {/* Upgrade Card */}
         <div className="rounded-[24px] border border-border bg-card p-6 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="h-12 w-12 rounded-full bg-foreground text-background flex items-center justify-center">
@@ -203,7 +263,7 @@ export default function TrustUpgradePage() {
             <div className="text-[20px] font-bold">$1.99</div>
             <p className="text-[10px] text-muted-foreground">one time</p>
           </div>
-          <button className="bg-foreground text-background rounded-full px-6 py-3 text-[14px] font-bold ml-2">
+          <button onClick={handleNext} className="bg-foreground text-background rounded-full px-6 py-3 text-[14px] font-bold ml-2 transition hover:opacity-90">
             Upgrade Now
           </button>
         </div>

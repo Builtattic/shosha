@@ -8,6 +8,7 @@ coverage
 playwright-report
 test-results
 *.tsbuildinfo
+.next-dev*.log
 .emulator-data
 public/uploads/
 .env.*

@@ -139,6 +139,9 @@ export default function DashboardPage() {
   const [searchingAccounts, setSearchingAccounts] = useState(false);
   const [meData, setMeData] = useState<{ user: any; claimedAccounts: any[] } | null>(null);
   const [heroImgError, setHeroImgError] = useState(false);
+  
+  const [trendingPeople, setTrendingPeople] = useState<any[]>([]);
+  const [topStories, setTopStories] = useState<FeedReport[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -161,6 +164,17 @@ export default function DashboardPage() {
       .finally(() => {
         if (active) setLoading(false);
       });
+      
+    fetch('/api/people/trending')
+      .then(r => r.json())
+      .then(p => { if (active && p.ok) setTrendingPeople(p.data.items); })
+      .catch(() => undefined);
+      
+    fetch('/api/feed?filter=top')
+      .then(r => r.json())
+      .then(p => { if (active && p.ok) setTopStories(p.data.slice(0, 5)); })
+      .catch(() => undefined);
+
     return () => {
       active = false;
     };
@@ -531,7 +545,61 @@ export default function DashboardPage() {
           </div>
         </motion.section>
 
-        <section className="mt-6">
+        {/* ── Trending People Strip ── */}
+        {trendingPeople.length > 0 && (
+          <section className="mt-8">
+            <h2 className="mb-4 text-[16px] font-bold text-foreground">Trending People</h2>
+            <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
+              {trendingPeople.map((person) => (
+                <Link
+                  key={person.id}
+                  href={`/account/${person.id}`}
+                  className="flex-shrink-0 w-[140px] rounded-[20px] border border-border bg-card p-4 text-center transition-all hover:bg-muted"
+                >
+                  <div className="mx-auto mb-3 h-16 w-16 overflow-hidden rounded-full border border-border bg-muted">
+                    <img src={person.avatar} alt={person.name} className="h-full w-full object-cover" />
+                  </div>
+                  <h3 className="truncate text-[13px] font-bold text-foreground">{person.name}</h3>
+                  <p className="truncate text-[11px] text-muted-foreground">{person.handle}</p>
+                  <div className="mt-2 inline-block rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+                    {person.score.toLocaleString()} pts
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ── Global Top Stories Strip ── */}
+        {topStories.length > 0 && (
+          <section className="mt-6">
+            <h2 className="mb-4 text-[16px] font-bold text-foreground">Global Top Stories</h2>
+            <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
+              {topStories.map((story) => (
+                <div
+                  key={story._id}
+                  className="flex-shrink-0 w-[280px] rounded-[20px] border border-border bg-card p-4 transition-all hover:border-primary/30"
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <img src={story.account.avatarUrl || `https://api.dicebear.com/9.x/initials/svg?seed=${story.account.username}`} alt={story.account.displayName} className="h-6 w-6 rounded-full" />
+                    <span className="truncate text-[12px] font-bold">{story.account.displayName}</span>
+                  </div>
+                  <p className="line-clamp-2 text-[13px] text-muted-foreground leading-snug mb-3">
+                    {story.description}
+                  </p>
+                  <div className="flex items-center justify-between text-[11px] font-bold">
+                    <span className={story.type === 'positive' ? 'text-green-500' : 'text-red-500'}>
+                      {story.type === 'positive' ? '+' : ''}{story.adminDecision?.finalImpact ?? story.reportScore ?? story.baseScore ?? 0} pts
+                    </span>
+                    <span className="text-muted-foreground">{story.stats?.aligns ?? 0} aligns</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <section className="mt-8">
           <h2 className="mb-4 text-[20px] font-bold text-foreground">Feed</h2>
           <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
             {tabs.map((tab) => {

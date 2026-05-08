@@ -2,8 +2,20 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 // Public routes that don't require auth
-const publicPaths = ['/', '/sign-in', '/sign-up', '/about', '/ranks', '/impact', '/feed'];
+const publicPaths = ['/', '/sign-in', '/sign-up', '/about', '/ranks', '/impact', '/feed', '/leaderboard', '/how-it-works'];
 const publicApiPaths = ['/api/health', '/api/events', '/api/accounts', '/api/feed'];
+const protectedPathPrefixes = [
+  '/account',
+  '/admin',
+  '/bookmarks',
+  '/dashboard',
+  '/disputes',
+  '/notifications',
+  '/onboard',
+  '/profile',
+  '/search',
+  '/settings',
+];
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -20,6 +32,12 @@ export function middleware(req: NextRequest) {
 
   // Allow static files and Next.js internals
   if (pathname.startsWith('/_next') || pathname.includes('.')) {
+    return NextResponse.next();
+  }
+
+  const segmentCount = pathname.split('/').filter(Boolean).length;
+  const isProtectedPath = protectedPathPrefixes.some((p) => pathname === p || pathname.startsWith(p + '/'));
+  if (segmentCount === 1 && !isProtectedPath) {
     return NextResponse.next();
   }
 

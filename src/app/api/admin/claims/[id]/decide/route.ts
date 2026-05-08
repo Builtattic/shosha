@@ -24,15 +24,20 @@ export async function POST(request: Request, { params }: { params: { id: string 
     reviewedBy: user!._id
   });
 
+  const account = await accountsRepo.findById(claim.accountId);
+
   if (parsed.data.verdict === 'approved') {
-    await accountsRepo.update(claim.accountId, { claimed: true, claimedBy: claim.userId });
+    const patch: Partial<accountsRepo.AccountRecord> = { claimed: true, claimedBy: claim.userId };
+    if (account && account.profileKind === 'public_figure') {
+      patch.trustBadge = true;
+    }
+    await accountsRepo.update(claim.accountId, patch);
     await usersRepo.addClaimedAccount(claim.userId, claim.accountId);
   }
 
   await adminActionsRepo.create({ actor: user!, action: `claim.${parsed.data.verdict}`, entityType: 'claim', entityId: id.data, before: claim, after: updated });
 
   if (claim.userId) {
-    const account = await accountsRepo.findById(claim.accountId);
     const accountName = account?.displayName || account?.username || 'an account';
     const approved = parsed.data.verdict === 'approved';
     await notificationsRepo.create({

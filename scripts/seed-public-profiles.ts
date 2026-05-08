@@ -110,6 +110,30 @@ const PUBLIC_PROFILES = [
   ['SS00100', 'Kai Cenat'],
   ['SS00101', 'Adin Ross'],
   ['SS00102', 'Nessa Barrett'],
+  ['SS00104', 'Giorgia Meloni'],
+  ['SS00114', 'Apoorva Mukhija'],
+  ['SS00117', 'Kusha Kapila'],
+  ['SS00120', 'Yogi Adityanath'],
+  ['SS00123', 'Diljit Dosanjh'],
+  ['SS00125', 'Lando Norris'],
+  ['SS00131', 'Zayn Malik'],
+  ['SS00132', 'Billie Eilish'],
+  ['SS00135', 'Jungkook'],
+  ['SS00136', 'The Weeknd'],
+  ['SS00137', 'JD Vance'],
+  ['SS00138', 'Zohran Mamdani'],
+  ['SS00139', 'Megan Fox'],
+  ['SS00140', 'Timoth\u00e9e Chalamet'],
+  ['SS00141', 'D4vd'],
+  ['SS00142', 'Lewis Hamilton'],
+  ['SS00143', 'Max Verstappen'],
+  ['SS00144', 'Kendrick Lamar'],
+  ['SS00145', 'Pope Leo XIV'],
+  ['SS00146', 'Ranbir Kapoor'],
+  ['SS00147', 'Sydney Sweeney'],
+  ['SS00148', 'Zendaya'],
+  ['SS00149', 'Kim Jong Un'],
+  ['SS00150', 'Samay Raina'],
 ] as const;
 
 function slugify(name: string) {
@@ -133,12 +157,20 @@ async function main() {
   let skipped = 0;
 
   for (const [profileId, name] of PUBLIC_PROFILES) {
-    const existing = await accountsRepo.findById(profileId);
+    const nameKey = name.trim().toLowerCase();
     const username = slugify(name);
+    const derivedId = accountsRepo.deriveId('website', username);
+    const existingById = await accountsRepo.findById(profileId);
+    const idMatchesName = existingById?.displayName?.trim().toLowerCase() === nameKey;
+    const existingByName = idMatchesName ? null : await accountsRepo.findByDisplayName(name);
+    const existingBySlug = existingByName || idMatchesName ? null : await accountsRepo.findById(derivedId);
+    const existing = existingByName ?? (idMatchesName ? existingById : null) ?? existingBySlug;
+    const targetId = existing?._id ?? (existingById && !idMatchesName ? derivedId : profileId);
+    const profileIdIsAvailable = !existingById || existingById._id === targetId;
     const avatarUrl = `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(name)}`;
 
     if (!existing) {
-      await accountsRepo.createWithId(profileId, {
+      await accountsRepo.createWithId(targetId, {
         platform: 'website',
         username,
         displayName: name,
@@ -152,7 +184,7 @@ async function main() {
         posts: [],
         claimed: false,
         claimedBy: null,
-        profileId,
+        ...(profileIdIsAvailable ? { profileId } : {}),
         profileKind: 'public_figure',
         claimable: false,
         credibility: 80,
@@ -165,19 +197,21 @@ async function main() {
     }
 
     const patch: Partial<AccountRecord> = {};
-    if (!existing.profileId) patch.profileId = profileId;
+    if (!existing.profileId && profileIdIsAvailable) patch.profileId = profileId;
     if (!existing.profileKind) patch.profileKind = 'public_figure';
     if (existing.claimable !== false) patch.claimable = false;
     if (typeof existing.credibility !== 'number') patch.credibility = 80;
     if (!existing.enrichmentStatus) patch.enrichmentStatus = 'none';
     if (!existing.avatarUrl) patch.avatarUrl = avatarUrl;
+    if (existing.usernameLower !== username) patch.username = username;
+    if (existing._id === derivedId && existing.displayName?.trim().toLowerCase() !== nameKey) patch.displayName = name;
     if (!existing.followers) patch.followers = 'unknown';
     if (!existing.scoreHistory?.length) patch.scoreHistory = [{ t: new Date().toISOString(), s: existing.score ?? BASE_SCORE, cause: 'seed' }];
     if (!existing.breakdown) patch.breakdown = averageBreakdown();
     if (!existing.posts) patch.posts = [];
 
     if (Object.keys(patch).length) {
-      await accountsRepo.update(profileId, patch);
+      await accountsRepo.update(existing._id, patch);
       updated += 1;
     } else {
       skipped += 1;

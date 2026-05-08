@@ -26,10 +26,29 @@ export async function GET(request: Request) {
 
   const swipedIds = new Set(userSwipes.map((s) => s.accountId));
 
+  const filter = url.searchParams.get('filter') || 'All';
+
   // Filter out archived, already-swiped, and self
-  const eligible = accounts
-    .filter((a) => !a.archived && !swipedIds.has(a._id))
-    .slice(cursor, cursor + limit);
+  let eligible = accounts
+    .filter((a) => !a.archived && !swipedIds.has(a._id));
+
+  if (filter === 'Global' || filter === 'All') {
+    // No additional filtering
+  } else if (filter === '18-65+') {
+    // Example: just keeping all for now since age might not be robustly populated, 
+    // but typically we'd check account.age if it existed.
+    // For now we assume all adults.
+  } else if (filter === 'All Roles') {
+    // No op
+  } else if (filter === '10K-1M+') {
+    eligible = eligible.filter((a) => {
+      if (!a.followers) return false;
+      const f = parseInt(String(a.followers).replace(/[^0-9]/g, ''), 10);
+      return !isNaN(f) && f >= 10000;
+    });
+  }
+
+  eligible = eligible.slice(cursor, cursor + limit);
 
   const filings = await Promise.all(
     eligible.map((account) =>

@@ -54,18 +54,32 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
   const opposeSc = useTransform(sx, [-130, 0], [1.3, 1]);
   const nextX = useTransform(x, [-300, 0, 300], [10, 0, -10]);
 
-  const fetchMore = useCallback(async () => {
-    if (loading || !hasMore) return;
+  const fetchMore = useCallback(async (currentCursor: number, reset: boolean = false) => {
+    if (loading || (!hasMore && !reset)) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/people/deck?cursor=${cursor}`);
+      const res = await fetch(`/api/people/deck?cursor=${currentCursor}&filter=${encodeURIComponent(activeFilter)}`);
       const data = await res.json();
-      if (data.ok && data.items?.length) { setItems(p => [...p, ...data.items]); setCursor(data.nextCursor); setHasMore(data.hasMore); }
-      else setHasMore(false);
+      if (data.ok && data.items?.length) { 
+        setItems(p => reset ? data.items : [...p, ...data.items]); 
+        setCursor(data.nextCursor); 
+        setHasMore(data.hasMore); 
+      }
+      else {
+        if (reset) setItems([]);
+        setHasMore(false);
+      }
     } catch {} finally { setLoading(false); }
-  }, [cursor, hasMore, loading]);
+  }, [activeFilter, hasMore, loading]);
 
-  useEffect(() => { if (items.length <= 3 && hasMore && !loading) void fetchMore(); }, [items.length, hasMore, loading, fetchMore]);
+  useEffect(() => {
+    // When filter changes, reset the deck and fetch
+    setCursor(0);
+    setHasMore(true);
+    fetchMore(0, true);
+  }, [activeFilter]);
+
+  useEffect(() => { if (items.length <= 3 && hasMore && !loading) void fetchMore(cursor, false); }, [items.length, hasMore, loading, cursor, fetchMore]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

@@ -74,13 +74,32 @@ export async function POST(request: Request, { params }: { params: { id: string 
     return fail('unauthorized', 'Sign in to interact with this filing.', 401);
   }
 
-  if (parsed.data.action === 'align' || parsed.data.action === 'oppose') {
+    if (parsed.data.action === 'align' || parsed.data.action === 'oppose') {
     const result = await interactionsRepo.setVote(id.data, user._id, parsed.data.action);
     if (!result) return fail('not_found', 'No filing exists for that id.', 404);
     const settings = await siteSettingsRepo.get();
-    if (parsed.data.action === 'oppose' && result.stats?.opposes >= settings.disputeThreshold) {
+    
+    const stats = result.stats || { aligns: 0, opposes: 0 };
+    const totalImpressions = stats.aligns + stats.opposes;
+    const isCommunityDiscard = totalImpressions >= settings.disputeThreshold && stats.opposes >= (2 / 3) * totalImpressions;
+
+    if (isCommunityDiscard) {
       const report = await reportsRepo.findById(id.data);
-      if (report && report.disputeStatus !== 'open') {
+      if (report && report.status !== 'rejected') {
+        await reportsRepo.update(id.data, {
+          status: 'rejected',
+          adminDecision: {
+            adminId: 'system',
+            verdict: 'rejected',
+            finalImpact: 0,
+            note: 'Auto-discarded by community vote ratio',
+            decidedAt: new Date().toISOString()
+          }
+        });
+      }
+    } else if (parsed.data.action === 'oppose' && result.stats?.opposes >= settings.disputeThreshold) {
+      const report = await reportsRepo.findById(id.data);
+      if (report && report.disputeStatus !== 'open' && report.status !== 'rejected') {
         await reportsRepo.update(id.data, { disputeStatus: 'open' });
       }
     }

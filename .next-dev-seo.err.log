@@ -595,3 +595,4 @@ https://nextjs.org/docs/messages/module-not-found
 <w> [webpack.cache.PackFileCacheStrategy] Restoring pack from D:\Shosha\.next\cache\webpack\client-development.pack.gz failed: TypeError: Cannot read properties of undefined (reading 'hasStartTime')
 <w> [webpack.cache.PackFileCacheStrategy] Restoring pack from D:\Shosha\.next\cache\webpack\client-development.pack.gz failed: TypeError: Cannot read properties of undefined (reading 'hasStartTime')
 <w> [webpack.cache.PackFileCacheStrategy] Restoring pack from D:\Shosha\.next\cache\webpack\client-development.pack.gz failed: TypeError: Cannot read properties of undefined (reading 'hasStartTime')
+<w> [webpack.cache.PackFileCacheStrategy] Restoring pack from D:\Shosha\.next\cache\webpack\client-development.pack.gz failed: TypeError: Cannot read properties of undefined (reading 'hasStartTime')

@@ -33,7 +33,13 @@
       "Bash(Get-ChildItem -Path \"D:\\\\Shosha\" -Directory)",
       "Bash(Select-Object Name)",
       "Bash(cd /d \"d:\\\\Shosha\")",
-      "Bash(findstr /r \"object-fit\\\\|aspect-ratio\\\\|image-\\\\|media-\\\\|thumbnail\" src\\\\**\\\\*.tsx src\\\\**\\\\*.ts)"
+      "Bash(findstr /r \"object-fit\\\\|aspect-ratio\\\\|image-\\\\|media-\\\\|thumbnail\" src\\\\**\\\\*.tsx src\\\\**\\\\*.ts)",
+      "Bash(git commit -m 'Fix cold start: auto-reload after 5s on auth loading screen *)",
+      "Bash(Remove-Item \"src/app/robots.ts\")",
+      "Bash(Remove-Item \"src/app/sitemap.ts\")",
+      "Bash(npx vercel *)",
+      "Bash(pnpm --version)",
+      "Bash(pnpm install *)"
     ],
     "additionalDirectories": [
       "D:\\Shosha\\src\\app\\(app)\\account",

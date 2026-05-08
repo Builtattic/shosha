@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import type { Metadata } from 'next';
 import {
   CheckCircle2,
   Globe,
@@ -34,8 +35,41 @@ import * as usersRepo from '@/lib/repos/users';
 import { getCurrentUserReadOnly, isAdmin } from '@/lib/auth';
 import { hidesReporterOnPublicSurfaces } from '@/lib/reportPrivacy';
 import { canViewProfileField, restrictedLabel, visibilityFor } from '@/lib/profilePrivacy';
+import { profileDescription, profilePath, profileTitle, siteUrl } from '@/lib/seo';
 
 export const dynamic = 'force-dynamic';
+
+export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+  const id = idSchema.safeParse(params.id);
+  if (!id.success) return { title: 'Profile not found | Shosha', robots: { index: false, follow: false } };
+
+  const account = await accountsRepo.findById(id.data);
+  if (!account) return { title: 'Profile not found | Shosha', robots: { index: false, follow: false } };
+
+  const path = profilePath(account) || `/account/${account._id}`;
+  const canonicalUrl = `${siteUrl()}${path}`;
+  const title = profileTitle(account);
+  const description = profileDescription(account);
+
+  return {
+    title,
+    description,
+    alternates: { canonical: canonicalUrl },
+    openGraph: {
+      title,
+      description,
+      url: canonicalUrl,
+      type: 'profile',
+      images: account.avatarUrl ? [{ url: account.avatarUrl, alt: account.displayName }] : undefined,
+    },
+    twitter: {
+      card: account.avatarUrl ? 'summary_large_image' : 'summary',
+      title,
+      description,
+      images: account.avatarUrl ? [account.avatarUrl] : undefined,
+    },
+  };
+}
 
 const TABS = [
   { id: 'overview', label: 'Overview', Icon: PieChart },
