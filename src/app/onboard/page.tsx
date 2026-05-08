@@ -11,6 +11,7 @@ import {
   AlertCircle, Lock,
 } from 'lucide-react';
 import { calcCredibility, CRED_SECTIONS, SOCIAL_LINKS_GATE, type CredibilityInput } from '@/lib/credibility';
+import { ClaimProfileSearchModal } from '@/components/profile/ClaimProfileSearchModal';
 import { cn } from '@/lib/utils';
 
 // ── Option maps ────────────────────────────────────────────────────────────────
@@ -326,6 +327,7 @@ export default function OnboardPage() {
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [claimSearchOpen, setClaimSearchOpen] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -750,6 +752,23 @@ export default function OnboardPage() {
               <p className="mt-4 flex items-center gap-1.5 text-[10px] text-muted-foreground">
                 <Lock size={11} /> Your identity stays private. Verification is handled off-platform.
               </p>
+
+              {/* Alternate path — claim a profile someone else made of you */}
+              <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-dashed border-border bg-muted/20 p-3">
+                <div className="min-w-0">
+                  <p className="text-[12px] font-bold leading-tight">Already on Shosha?</p>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">
+                    If someone made a profile of you, claim it instead of starting fresh.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setClaimSearchOpen(true)}
+                  className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3.5 py-1.5 text-[11px] font-bold transition hover:bg-muted"
+                >
+                  Claim Profile
+                </button>
+              </div>
             </SectionCard>
 
             {/* ── Footer ────────────────────────────────────────────────────── */}
@@ -784,6 +803,11 @@ export default function OnboardPage() {
           </div>
         </div>
       </div>
+
+      <ClaimProfileSearchModal
+        open={claimSearchOpen}
+        onClose={() => setClaimSearchOpen(false)}
+      />
     </main>
   );
 }

@@ -22,6 +22,7 @@ import { ProfileScoreRadar } from '@/components/viz/ProfileScoreRadar';
 import { ShareCardModal } from '@/components/profile/ShareCardModal';
 import { PostDetailModal } from '@/components/feed/PostDetailModal';
 import { ConnectionListModal } from '@/components/profile/ConnectionListModal';
+import { ClaimProfileSearchModal } from '@/components/profile/ClaimProfileSearchModal';
 
 
 const EDU_LABELS: Record<string, string> = {
@@ -85,6 +86,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'activity' | 'impact' | 'about'>('overview');
   const [shareOpen, setShareOpen] = useState(false);
+  const [claimSearchOpen, setClaimSearchOpen] = useState(false);
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
   const [reportDetailOpen, setReportDetailOpen] = useState(false);
   const [ledgerRange, setLedgerRange] = useState<'weekly' | 'monthly' | 'max'>('max');
@@ -304,6 +306,27 @@ export default function ProfilePage() {
             </Link>
           </div>
         )}
+
+        {/* Claim Existing Profile entry — for users where someone else already made a profile of them */}
+        <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-border bg-background p-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Shield size={16} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[13px] font-bold leading-tight">Claim an Existing Profile</p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                Search a made profile of you and verify ownership.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setClaimSearchOpen(true)}
+            className="shrink-0 rounded-full border border-border bg-background px-4 py-1.5 text-[12px] font-bold transition hover:bg-muted"
+          >
+            Claim
+          </button>
+        </div>
 
         {/* Profile Info */}
         <div className="mt-4 flex items-start justify-between gap-4">
@@ -912,6 +935,10 @@ export default function ProfilePage() {
         open={reportDetailOpen}
         reportId={selectedReportId}
         onClose={() => setReportDetailOpen(false)}
+      />
+      <ClaimProfileSearchModal
+        open={claimSearchOpen}
+        onClose={() => setClaimSearchOpen(false)}
       />
     </main>
   );

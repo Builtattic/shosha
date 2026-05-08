@@ -40,7 +40,8 @@
       "Bash(npx vercel *)",
       "Bash(pnpm --version)",
       "Bash(pnpm install *)",
-      "Bash(echo \"EXITCODE=$?\")"
+      "Bash(echo \"EXITCODE=$?\")",
+      "Bash(git ls-tree *)"
     ],
     "additionalDirectories": [
       "D:\\Shosha\\src\\app\\(app)\\account",
