@@ -534,11 +534,12 @@ export function FeedItem({
           className={cn(
             'flex flex-1 items-center justify-center gap-2 rounded-2xl py-3.5 text-[15px] font-black transition-colors duration-200 border disabled:opacity-60',
             viewerState.vote === 'align'
-              ? 'bg-primary text-background border-primary shadow-md'
-              : 'bg-primary/10 text-primary hover:bg-primary/15 border-primary/20'
+              ? 'bg-emerald-100 text-emerald-700 border-emerald-200 shadow-sm'
+              : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200'
           )}
         >
           <Plus size={18} strokeWidth={3.2} />
+          <span>Align</span>
           <span className="tabular-nums">{compact(localStats.aligns)}</span>
         </motion.button>
         <motion.button
@@ -550,11 +551,12 @@ export function FeedItem({
           className={cn(
             'flex flex-1 items-center justify-center gap-2 rounded-2xl py-3.5 text-[15px] font-black transition-colors duration-200 border disabled:opacity-60',
             viewerState.vote === 'oppose'
-              ? 'bg-destructive text-background border-destructive shadow-md'
-              : 'bg-destructive/10 text-destructive hover:bg-destructive/15 border-destructive/20'
+              ? 'bg-rose-100 text-rose-600 border-rose-200 shadow-sm'
+              : 'bg-rose-50 text-rose-600 hover:bg-rose-100 border-rose-200'
           )}
         >
           <Minus size={18} strokeWidth={3.2} />
+          <span>Oppose</span>
           <span className="tabular-nums">{compact(localStats.opposes)}</span>
         </motion.button>
       </div>
