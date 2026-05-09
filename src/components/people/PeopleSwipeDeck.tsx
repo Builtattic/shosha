@@ -161,7 +161,7 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
         <header className="mb-4 shrink-0 flex w-full items-start justify-between">
           <div>
             <h1 className="text-[24px] lg:text-[28px] font-black tracking-tight" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>
-              Sho<span className="text-muted-foreground">sha</span>
+              Sho<span className="text-muted-foreground">शा</span>
             </h1>
             <p className="text-[13px] font-bold text-foreground">Discover &amp; Rate</p>
             <p className="text-[10px] text-muted-foreground/70">Swipe to align or oppose impact.</p>
