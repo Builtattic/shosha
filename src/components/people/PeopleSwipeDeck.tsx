@@ -62,13 +62,19 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
     try {
       const res = await fetch(`/api/people/deck?cursor=${currentCursor}&filter=${encodeURIComponent(filterVal)}`);
       const data = await res.json();
-      if (data.ok && data.items?.length) { 
-        setItems(p => reset ? data.items : [...p, ...data.items]); 
-        setCursor(data.nextCursor); 
-        setHasMore(data.hasMore); 
-        fetchState.current.hasMore = data.hasMore;
+      const payload = data.ok ? data.data : undefined;
+      if (payload?.items?.length) {
+        setItems((p) => (reset ? payload.items : [...p, ...payload.items]));
+        setCursor(payload.nextCursor);
+        setHasMore(payload.hasMore);
+        fetchState.current.hasMore = payload.hasMore;
+      } else if (reset) {
+        if (data.ok && payload && Array.isArray(payload.items) && payload.items.length === 0) {
+          setItems([]);
+        }
+        setHasMore(false);
+        fetchState.current.hasMore = false;
       } else {
-        if (reset) setItems([]);
         setHasMore(false);
         fetchState.current.hasMore = false;
       }
