@@ -70,10 +70,11 @@ export function PeoplePanel({ initialItems }: { initialItems: PeopleDeckItem[] }
     try {
       const res = await fetch(`/api/people/deck?cursor=${cursor}`);
       const data = await res.json();
-      if (data.ok && data.items?.length) {
-        setItems((prev) => [...prev, ...data.items]);
-        setCursor(data.nextCursor);
-        setHasMore(data.hasMore);
+      const payload = data.ok ? data.data : undefined;
+      if (payload?.items?.length) {
+        setItems((prev) => [...prev, ...payload.items]);
+        setCursor(payload.nextCursor);
+        setHasMore(payload.hasMore);
       } else {
         setHasMore(false);
       }

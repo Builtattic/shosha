@@ -164,21 +164,26 @@ export function BubbleDetail({ bubble, currentUser, members, requests: initialRe
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20 safe-bottom">
+    <div className="min-h-screen overflow-x-hidden bg-background pb-20 safe-bottom">
       {/* Header / Cover */}
       <header className="relative">
-        <div className="h-[210px] w-full bg-muted md:h-[320px]">
+        <div className="relative h-[210px] w-full overflow-hidden bg-muted md:h-[320px]">
           {bubble.coverImageUrl ? (
-            <img src={bubble.coverImageUrl} alt={`${bubble.name} cover`} className="h-full w-full object-cover" />
+            <img
+              src={bubble.coverImageUrl}
+              alt={`${bubble.name} cover`}
+              className="pointer-events-none absolute inset-0 block h-full w-full object-cover object-center"
+              sizes="100vw"
+            />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_15%_10%,rgba(249,115,22,0.28),transparent_32%),radial-gradient(circle_at_85%_20%,rgba(59,130,246,0.18),transparent_30%),linear-gradient(135deg,var(--muted),var(--card))]">
+            <div className="absolute inset-0 flex items-center justify-center bg-[radial-gradient(circle_at_15%_10%,rgba(249,115,22,0.28),transparent_32%),radial-gradient(circle_at_85%_20%,rgba(59,130,246,0.18),transparent_30%),linear-gradient(135deg,var(--muted),var(--card))]">
               <Users size={54} className="text-muted-foreground/25" />
             </div>
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-black/20" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-black/20" />
         </div>
-        
-        <div className="absolute top-0 flex w-full items-center justify-between px-4 py-4 md:px-8">
+
+        <div className="absolute top-0 z-10 flex w-full items-center justify-between px-4 py-4 md:px-8">
           <button 
             onClick={() => window.history.back()}
             className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-foreground shadow-sm backdrop-blur-md transition-all duration-200 hover:bg-white active:scale-95"
@@ -202,10 +207,10 @@ export function BubbleDetail({ bubble, currentUser, members, requests: initialRe
         </div>
 
         {/* Bubble Info Card */}
-        <div className="mx-auto max-w-md px-3 md:max-w-5xl md:px-8">
-          <div className="relative -mt-9 overflow-hidden rounded-[22px] border border-border bg-card p-4 shadow-xl shadow-black/10 md:-mt-16 md:rounded-[26px] md:p-6">
-            <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-              <div className="flex gap-4 md:gap-6">
+        <div className="mx-auto w-full max-w-md px-3 md:max-w-5xl md:px-8">
+          <div className="relative -mt-9 overflow-x-clip rounded-[22px] border border-border bg-card p-4 shadow-xl shadow-black/10 md:-mt-16 md:rounded-[26px] md:p-6">
+            <div className="flex min-w-0 flex-col gap-5 md:flex-row md:items-end md:justify-between">
+              <div className="flex min-w-0 flex-1 gap-4 md:gap-6">
                 <div className="relative -mt-16 shrink-0 md:-mt-20">
                   <div className="h-24 w-24 overflow-hidden rounded-[18px] border-4 border-card bg-background shadow-xl md:h-32 md:w-32 md:rounded-[24px]">
                     {bubble.imageUrl ? (
@@ -218,9 +223,9 @@ export function BubbleDetail({ bubble, currentUser, members, requests: initialRe
                   </div>
                 </div>
 
-                <div className="min-w-0 space-y-1 pt-1">
-                  <div className="flex items-center gap-2">
-                    <h1 className="truncate text-[24px] font-black leading-tight tracking-tight text-foreground md:text-[34px]">{bubble.name}</h1>
+                <div className="min-w-0 flex-1 space-y-1 pt-1">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <h1 className="min-w-0 flex-1 truncate text-[24px] font-black leading-tight tracking-tight text-foreground md:text-[34px]">{bubble.name}</h1>
                     <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary md:h-6 md:w-6">
                       <ShieldCheck size={16} strokeWidth={3} />
                     </div>
@@ -229,7 +234,7 @@ export function BubbleDetail({ bubble, currentUser, members, requests: initialRe
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex shrink-0 items-center gap-3">
                 {!isMember && (
                   <button 
                     onClick={handleJoin}
@@ -249,33 +254,33 @@ export function BubbleDetail({ bubble, currentUser, members, requests: initialRe
               </div>
             </div>
 
-            <div className="mt-5 grid grid-cols-2 gap-3 border-y border-border/50 py-4 md:grid-cols-4 md:gap-5 md:py-5">
-              <div className="space-y-1.5 border-r border-border/50 pr-3">
+            <div className="mt-5 grid min-w-0 grid-cols-2 gap-3 border-y border-border/50 py-4 md:grid-cols-4 md:gap-5 md:py-5">
+              <div className="min-w-0 space-y-1.5 border-r border-border/50 pr-3">
                 <p className="text-[10px] font-black tracking-wider text-muted-foreground">Created by</p>
-                <div className="flex items-center gap-2">
+                <div className="flex min-w-0 items-center gap-2">
                   <div className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-[10px] font-bold text-primary">
                     {bubble.creatorAvatar ? (
                       <img src={bubble.creatorAvatar} alt={bubble.creatorName} className="h-full w-full object-cover" />
                     ) : initials(bubble.creatorName)}
                   </div>
-                  <span className="truncate text-[13px] font-bold">{bubble.creatorName}</span>
+                  <span className="min-w-0 truncate text-[13px] font-bold">{bubble.creatorName}</span>
                 </div>
               </div>
-              <div className="space-y-1.5 md:border-r md:border-border/50 md:pr-3">
+              <div className="min-w-0 space-y-1.5 md:border-r md:border-border/50 md:pr-3">
                 <p className="text-[10px] font-black tracking-wider text-muted-foreground">Created on</p>
-                <div className="flex items-center gap-2">
-                  <Calendar size={14} className="text-muted-foreground" />
-                  <span className="text-[13px] font-bold">{formatDate(bubble.createdAt)}</span>
+                <div className="flex min-w-0 items-center gap-2">
+                  <Calendar size={14} className="shrink-0 text-muted-foreground" />
+                  <span className="min-w-0 truncate text-[13px] font-bold">{formatDate(bubble.createdAt)}</span>
                 </div>
               </div>
-              <div className="space-y-1.5 border-r border-border/50 pr-3">
+              <div className="min-w-0 space-y-1.5 border-r border-border/50 pr-3">
                 <p className="text-[10px] font-black tracking-wider text-muted-foreground">Members</p>
-                <div className="flex items-center gap-2">
-                  <Users size={14} className="text-muted-foreground" />
+                <div className="flex min-w-0 items-center gap-2">
+                  <Users size={14} className="shrink-0 text-muted-foreground" />
                   <span className="text-[13px] font-bold">{bubble.memberCount.toLocaleString()}</span>
                 </div>
               </div>
-              <div className="space-y-1.5">
+              <div className="min-w-0 space-y-1.5">
                 <p className="text-[10px] font-black tracking-wider text-muted-foreground">Type</p>
                 <div className="flex items-center gap-2">
                   <div className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] font-black text-primary">
@@ -285,7 +290,7 @@ export function BubbleDetail({ bubble, currentUser, members, requests: initialRe
               </div>
             </div>
 
-            <div className="mt-4">
+            <div className="mt-4 min-w-0">
               <p className={cn(
                 "text-[13px] leading-relaxed text-muted-foreground transition-all md:text-[15px]",
                 !showFullDesc && "line-clamp-2"
@@ -303,7 +308,7 @@ export function BubbleDetail({ bubble, currentUser, members, requests: initialRe
         </div>
       </header>
 
-      <main className="mx-auto mt-5 max-w-md px-3 md:mt-8 md:max-w-5xl md:px-8">
+      <main className="mx-auto mt-5 w-full max-w-md px-3 md:mt-8 md:max-w-5xl md:px-8">
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 lg:gap-8">
           {/* Left Column: Leaderboard */}
           <div className="lg:col-span-1 space-y-6">
@@ -315,11 +320,11 @@ export function BubbleDetail({ bubble, currentUser, members, requests: initialRe
               <button className="text-[12px] font-black text-primary hover:underline">View All</button>
             </div>
 
-            <div className="overflow-hidden rounded-[16px] border border-border bg-card shadow-sm">
-              <div className="grid grid-cols-[48px_72px_1fr_42px] items-center border-b bg-muted/30 px-4 py-3 text-[10px] font-black text-muted-foreground">
+            <div className="min-w-0 overflow-hidden rounded-[16px] border border-border bg-card shadow-sm">
+              <div className="grid grid-cols-[2.75rem_4rem_minmax(0,1fr)_2.5rem] items-center gap-x-2 border-b bg-muted/30 px-3 py-3 text-[10px] font-black text-muted-foreground sm:grid-cols-[3rem_4.5rem_minmax(0,1fr)_2.75rem] sm:px-4">
                 <span>Rank</span>
                 <span>Score</span>
-                <span>Profile</span>
+                <span className="min-w-0">Profile</span>
                 <span className="text-right">Move</span>
               </div>
               <div className="divide-y divide-border/50">
@@ -327,7 +332,7 @@ export function BubbleDetail({ bubble, currentUser, members, requests: initialRe
                   const rank = i + 1;
                   const trend = typeof m.previousRank === 'number' ? m.previousRank - rank : 0;
                   return (
-                    <div key={m.userId} className="grid grid-cols-[48px_72px_1fr_42px] items-center px-4 py-3 transition-colors duration-200 hover:bg-muted/20">
+                    <div key={m.userId} className="grid grid-cols-[2.75rem_4rem_minmax(0,1fr)_2.5rem] items-center gap-x-2 px-3 py-3 transition-colors duration-200 hover:bg-muted/20 sm:grid-cols-[3rem_4.5rem_minmax(0,1fr)_2.75rem] sm:px-4">
                       <div className="flex items-center justify-center">
                         {rank <= 3 ? (
                           <div className={cn(
@@ -345,14 +350,14 @@ export function BubbleDetail({ bubble, currentUser, members, requests: initialRe
                       <div className="text-[13px] font-black tabular-nums text-foreground">
                         {m.score.toLocaleString()}
                       </div>
-                      <div className="flex min-w-0 items-center gap-3">
-                        <div className="h-9 w-9 rounded-full bg-muted overflow-hidden border-2 border-border/50 shadow-inner">
+                      <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+                        <div className="h-9 w-9 shrink-0 rounded-full bg-muted overflow-hidden border-2 border-border/50 shadow-inner">
                           <img src={m.avatar} alt={m.name} className="h-full w-full object-cover" />
                         </div>
-                        <div className="min-w-0">
-                          <p className="truncate text-[14px] font-black flex items-center gap-1">
-                            {m.name}
-                            {m.verified && <ShieldCheck size={12} className="text-primary" />}
+                        <div className="min-w-0 flex-1">
+                          <p className="flex min-w-0 items-center gap-1 text-[14px] font-black">
+                            <span className="min-w-0 truncate">{m.name}</span>
+                            {m.verified && <ShieldCheck size={12} className="shrink-0 text-primary" />}
                           </p>
                         </div>
                       </div>
