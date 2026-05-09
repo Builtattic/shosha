@@ -27,7 +27,7 @@ export async function generateMetadata({
   params: { id: string };
 }): Promise<Metadata> {
   const resolved = await resolveAccount(params.id);
-  if (!resolved) return { title: 'Profile Not Found | Shosha' };
+  if (!resolved) return { title: 'Profile Not Found | Shoशा' };
 
   const { account } = resolved;
   const slug = account.slug ?? profileSlug(account.username || account.displayName);

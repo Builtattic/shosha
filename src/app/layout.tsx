@@ -9,11 +9,9 @@ export const metadata: Metadata = {
   // relative URLs in OG images and canonical tags
   metadataBase: new URL('https://www.noshosha.com'),
  
-  // default title — shown on pages with no generateMetadata
-  // template — profile pages render as "Elon Musk — Shosha Score: 847 | Shosha"
   title: {
-    default: 'Shosha: The Reputation Ledger',
-    template: '%s | Shosha',
+    default: 'Shoशा: The Reputation Ledger',
+    template: '%s | Shoशा',
   },
  
   description:
@@ -27,7 +25,7 @@ export const metadata: Metadata = {
  
   // default OG — shown when a page has no specific OG image
   openGraph: {
-    siteName: 'Shosha',
+    siteName: 'Shoशा',
     type: 'website',
     locale: 'en_US',
     images: ['/icon-512.png'], // add a 1200x630 default image to /public

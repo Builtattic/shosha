@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: SlugPageProps): Promise<Metad
   const account = await accountForSlug(params.slug);
   if (!account) {
     return {
-      title: 'Profile not found | Shosha',
+      title: 'Profile not found | Shoशा',
       robots: { index: false, follow: false },
     };
   }
