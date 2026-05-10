@@ -452,6 +452,7 @@ export default async function AccountPage({
             <Link
               key={tabId}
               href={`?tab=${tabId}`}
+              scroll={false}
               className={cn(
                 'flex flex-1 flex-col items-center gap-1.5 px-3 py-3 border-b-2 transition-colors',
                 activeTab === tabId
@@ -476,6 +477,7 @@ export default async function AccountPage({
                   {filings.length > 0 && (
                     <Link
                       href="?tab=activity"
+                      scroll={false}
                       className="text-[12px] font-bold text-muted-foreground hover:text-foreground flex items-center gap-1"
                     >
                       View all <ArrowRight size={14} />
