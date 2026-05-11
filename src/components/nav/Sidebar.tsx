@@ -64,7 +64,6 @@ export function Sidebar() {
     { href: '/dashboard', label: 'Home', icon: Home },
     { href: '/feed', label: 'Feed', icon: Newspaper },
     { href: '/search', label: 'Search', icon: Search },
-    { href: '/impact', label: 'Impact', icon: Target },
     { href: '/people', label: 'People', icon: Users },
     { href: '/bubbles', label: 'Bubbles', icon: CircleDot },
     { href: '/ranks', label: 'Ranks', icon: TrendingUp },

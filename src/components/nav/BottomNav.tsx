@@ -16,7 +16,6 @@ type BottomNavItem = {
 
 const items: BottomNavItem[] = [
   { href: '/feed', label: 'Feed', icon: Home },
-  { href: '/impact', label: 'Impact', icon: BarChart3 },
   { href: '/people', label: 'People', icon: Users },
   { href: '/bubbles', label: 'Bubbles', icon: Share2 },
   { href: '/profile', label: 'Profile', icon: User, matchPaths: ['/profile', '/account'] },
