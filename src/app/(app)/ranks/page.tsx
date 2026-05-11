@@ -48,23 +48,34 @@ export default async function RanksPage({ searchParams }: { searchParams?: { sco
   const scoped = all.filter((account) => matchesScope(account, scope));
   const active = scoped.filter((account) => !account.archived);
   const archived = scoped.filter((account) => account.archived);
-  const top = [...active].sort((a, b) => b.score - a.score).slice(0, 50);
-  const bottom = [...active].sort((a, b) => a.score - b.score).slice(0, 50);
+  const topByScore = [...active].sort((a, b) => b.score - a.score).slice(0, 50);
+  const bottomByScore = [...active].sort((a, b) => a.score - b.score).slice(0, 50);
+  const activeRows = active.map(toRow);
 
-  const topGainers = top
-    .map(toRow)
+  const topByScoreRows = topByScore.map(toRow);
+  const topGainers = activeRows
     .filter((row) => row.change > 0)
     .sort((a, b) => b.change - a.change)
     .slice(0, 10);
 
-  // Fallback: if nothing has weekly history yet, show top by score so the page isn't empty.
-  const gainers = topGainers.length ? topGainers : top.map(toRow).slice(0, 10);
+  // Keep "On Fire" populated: weekly gainers first, then highest-score profiles.
+  const gainers = [
+    ...topGainers,
+    ...topByScoreRows.filter((row) => !topGainers.some((gainer) => gainer.id === row.id)),
+  ].slice(0, 10);
 
-  const underFire = bottom
+  const biggestWeeklyLosses = activeRows
+    .filter((row) => row.change < 0)
+    .sort((a, b) => a.change - b.change)
+    .slice(0, 10);
+
+  // Fallback: no weekly losses yet, keep legacy "below baseline" behavior.
+  const underFireByScore = bottomByScore
     .map(toRow)
     .filter((row) => row.score < BASE_SCORE)
     .sort((a, b) => a.score - b.score)
     .slice(0, 10);
+  const underFire = biggestWeeklyLosses.length ? biggestWeeklyLosses : underFireByScore;
 
   return (
     <main className="min-h-screen bg-background p-4 safe-bottom">

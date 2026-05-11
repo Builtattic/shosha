@@ -242,7 +242,19 @@ export default async function AccountPage({
   const linkedUserRole = userRoleLabel(linkedUser);
   const linkedUserLocation = userLocationLabel(linkedUser);
   const linkedUserWebsiteUrl = normalizeExternalUrl(linkedUser?.websiteUrl);
-  const overviewRole = linkedUserRole || humanize(account.role);
+  const accountOverviewRole =
+    humanize(account.role) ||
+    humanize(account.profileKind) ||
+    humanize(account.profileUserType);
+  const accountOverviewLocation =
+    cleanDisplayValue(account.cityCountry) ||
+    cleanDisplayValue(account.region);
+  const accountWebsiteUrl =
+    normalizeExternalUrl(account.sourceUrl) ||
+    Object.values(account.socialLinks ?? {}).find((link) => normalizeExternalUrl(link?.url))?.url ||
+    '';
+
+  const overviewRole = linkedUserRole || accountOverviewRole;
   const displayedRole = overviewRole || `${formatPlatform(account.platform)} dossier`;
   const displayedFollowers = linkedUser
     ? String((linkedUser.followers ?? []).length)
@@ -255,13 +267,13 @@ export default async function AccountPage({
   const locationOverviewValue = linkedUser
     ? linkedUserLocation
       ? canSeeLinkedLocation ? linkedUserLocation : restrictedLabel(visibilityFor(linkedUser, 'location'))
-      : 'Not provided'
-    : cleanDisplayValue(account.region) || 'Not provided';
+      : accountOverviewLocation || 'Not provided'
+    : accountOverviewLocation || 'Not provided';
   const websiteOverviewValue = linkedUser
     ? linkedUserWebsiteUrl
       ? canSeeLinkedWebsite ? linkedUserWebsiteUrl : restrictedLabel(visibilityFor(linkedUser, 'website'))
-      : 'Not provided'
-    : normalizeExternalUrl(account.sourceUrl) || 'Not provided';
+      : accountWebsiteUrl || 'Not provided'
+    : accountWebsiteUrl || 'Not provided';
 
   const reporterMap = new Map<string, ReporterSummary>(
     bundle.reporters.map((reporter) => [reporter._id, reporter])
