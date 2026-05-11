@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Flame, CloudLightning, Archive, ChevronDown, CheckCircle2, TrendingUp, TrendingDown, Globe, Flag, MapPin } from 'lucide-react';
+import { Flame, CloudLightning, Archive, ChevronDown, CheckCircle2, TrendingUp, TrendingDown, Minus, Globe, Flag, MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { EmptyState } from '@/components/ui/EmptyState';
 
@@ -79,7 +79,7 @@ function RankItem({ row, rank, isNegative = false, index = 0 }: { row: RankRow; 
             row.change < 0 ? 'text-destructive' : row.change > 0 ? 'text-primary' : 'text-muted-foreground'
           )}
         >
-          {row.change < 0 ? <TrendingDown size={12} /> : <TrendingUp size={12} />}
+          {row.change < 0 ? <TrendingDown size={12} /> : row.change > 0 ? <TrendingUp size={12} /> : <Minus size={12} />}
           {row.change > 0 ? '+' : ''}
           {row.change.toLocaleString()}
           <span className="text-muted-foreground/60 font-medium">(wk)</span>

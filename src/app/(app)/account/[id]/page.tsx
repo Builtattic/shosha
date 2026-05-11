@@ -242,7 +242,23 @@ export default async function AccountPage({
   const linkedUserRole = userRoleLabel(linkedUser);
   const linkedUserLocation = userLocationLabel(linkedUser);
   const linkedUserWebsiteUrl = normalizeExternalUrl(linkedUser?.websiteUrl);
-  const overviewRole = linkedUserRole || humanize(account.role);
+  const accountOverviewRole =
+    humanize(account.role) ||
+    humanize(account.profileKind) ||
+    humanize(account.profileUserType);
+  /** Prefer workbook `cityCountry` (city & country line); fall back to macro `region` when empty. */
+  const accountOverviewLocation = (() => {
+    const cityCountry = cleanDisplayValue(account.cityCountry);
+    let region = cleanDisplayValue(account.region);
+    if (region && region.toLowerCase() === 'global') region = '';
+    return cityCountry || region || '';
+  })();
+  const accountWebsiteUrl =
+    normalizeExternalUrl(account.sourceUrl) ||
+    Object.values(account.socialLinks ?? {}).find((link) => normalizeExternalUrl(link?.url))?.url ||
+    '';
+
+  const overviewRole = linkedUserRole || accountOverviewRole;
   const displayedRole = overviewRole || `${formatPlatform(account.platform)} dossier`;
   const displayedFollowers = linkedUser
     ? String((linkedUser.followers ?? []).length)
@@ -251,17 +267,28 @@ export default async function AccountPage({
     ? linkedUserLocation
     : linkedUser
       ? ''
-      : cleanDisplayValue(account.region);
-  const locationOverviewValue = linkedUser
+      : accountOverviewLocation;
+
+  /** About tab: `cityCountry` only; linked user city when shared. */
+  const cityCountryOverviewValue = linkedUser
     ? linkedUserLocation
-      ? canSeeLinkedLocation ? linkedUserLocation : restrictedLabel(visibilityFor(linkedUser, 'location'))
-      : 'Not provided'
-    : cleanDisplayValue(account.region) || 'Not provided';
+      ? canSeeLinkedLocation
+        ? linkedUserLocation
+        : restrictedLabel(visibilityFor(linkedUser, 'location'))
+      : cleanDisplayValue(account.cityCountry) || '—'
+    : cleanDisplayValue(account.cityCountry) || '—';
+
+  /** Macro region (e.g. USA & Canada), excluding placeholder Global. */
+  const macroRegionOverviewValue = (() => {
+    let r = cleanDisplayValue(account.region);
+    if (r && r.toLowerCase() === 'global') r = '';
+    return r;
+  })();
   const websiteOverviewValue = linkedUser
     ? linkedUserWebsiteUrl
       ? canSeeLinkedWebsite ? linkedUserWebsiteUrl : restrictedLabel(visibilityFor(linkedUser, 'website'))
-      : 'Not provided'
-    : normalizeExternalUrl(account.sourceUrl) || 'Not provided';
+      : accountWebsiteUrl || 'Not provided'
+    : accountWebsiteUrl || 'Not provided';
 
   const reporterMap = new Map<string, ReporterSummary>(
     bundle.reporters.map((reporter) => [reporter._id, reporter])
@@ -712,9 +739,15 @@ export default async function AccountPage({
                   <span className="font-semibold sm:text-right capitalize">{overviewRole || '—'}</span>
                 </div>
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-border pb-3 gap-1">
-                  <span className="text-muted-foreground shrink-0">Location</span>
-                  <span className="font-semibold sm:text-right">{locationOverviewValue}</span>
+                  <span className="text-muted-foreground shrink-0">City & country</span>
+                  <span className="font-semibold sm:text-right">{cityCountryOverviewValue}</span>
                 </div>
+                {macroRegionOverviewValue && (
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-border pb-3 gap-1">
+                    <span className="text-muted-foreground shrink-0">Region</span>
+                    <span className="font-semibold sm:text-right">{macroRegionOverviewValue}</span>
+                  </div>
+                )}
                 {account.educationWorkbook && (
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-border pb-3 gap-1">
                     <span className="text-muted-foreground shrink-0">Education</span>
@@ -743,6 +776,12 @@ export default async function AccountPage({
                   <span className="text-muted-foreground shrink-0">Followers</span>
                   <span className="font-semibold sm:text-right">{displayedFollowers || '—'}</span>
                 </div>
+                {cleanDisplayValue(account.username) && (
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-border pb-3 gap-1">
+                    <span className="text-muted-foreground shrink-0">Username</span>
+                    <span className="font-semibold sm:text-right font-mono text-[12px]">{cleanDisplayValue(account.username)}</span>
+                  </div>
+                )}
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-border pb-3 gap-1">
                   <span className="text-muted-foreground shrink-0">Platform</span>
                   <span className="font-semibold sm:text-right">{formatPlatform(account.platform)}</span>
