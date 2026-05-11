@@ -164,14 +164,22 @@ export async function voteJoinRequest(input: {
 export async function findJoinRequest(id: string): Promise<BubbleJoinRequestRecord | null> {
   const snap = await db().ref(`bubbleJoinRequests/${id}`).once('value');
   if (!snap.exists()) return null;
-  return withId<BubbleJoinRequestRecord>(snap.key!, snap.val());
+  const val = snap.val();
+  // RTDB drops empty arrays — normalise to avoid downstream crashes
+  val.approvals = val.approvals ?? [];
+  val.rejections = val.rejections ?? [];
+  return withId<BubbleJoinRequestRecord>(snap.key!, val);
 }
 
 export async function listJoinRequests(bubbleId: string): Promise<BubbleJoinRequestRecord[]> {
   const snap = await db().ref('bubbleJoinRequests').orderByChild('bubbleId').equalTo(bubbleId).once('value');
   const out: BubbleJoinRequestRecord[] = [];
   snap.forEach((child) => {
-    out.push(withId<BubbleJoinRequestRecord>(child.key!, child.val()));
+    const val = child.val();
+    // RTDB drops empty arrays — normalise
+    val.approvals = val.approvals ?? [];
+    val.rejections = val.rejections ?? [];
+    out.push(withId<BubbleJoinRequestRecord>(child.key!, val));
   });
   return out.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }

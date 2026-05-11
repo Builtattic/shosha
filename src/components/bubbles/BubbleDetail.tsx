@@ -117,10 +117,10 @@ export function BubbleDetail({ bubble, currentUser, members, requests: initialRe
       const payload = await res.json();
       if (!payload.ok) throw new Error(payload.error?.message ?? 'Vote failed');
       
-      // Update local state
+      // Update local state — RTDB may drop empty arrays, so default to []
       setRequests(prev => prev.map(r => 
         r.userId === targetUserId 
-          ? { ...r, approvals: payload.data.approvals.length, rejections: payload.data.rejections.length }
+          ? { ...r, approvals: (payload.data.approvals ?? []).length, rejections: (payload.data.rejections ?? []).length }
           : r
       ));
       toast.push(`Vote recorded: ${vote}`);
