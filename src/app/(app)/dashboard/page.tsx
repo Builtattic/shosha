@@ -333,7 +333,7 @@ export default function DashboardPage() {
                   <Bell size={22} />
                 </button>
                 {unreadCount > 0 && (
-                  <span className="absolute right-0.5 top-0 flex h-4 min-w-4 items-center justify-center rounded-full border border-background bg-destructive px-1 text-[9px] font-bold text-background">
+                  <span className="pointer-events-none absolute right-0.5 top-0 flex h-4 min-w-4 items-center justify-center rounded-full border border-background bg-destructive px-1 text-[9px] font-bold text-background">
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 )}
