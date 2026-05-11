@@ -246,9 +246,13 @@ export default async function AccountPage({
     humanize(account.role) ||
     humanize(account.profileKind) ||
     humanize(account.profileUserType);
-  const accountOverviewLocation =
-    cleanDisplayValue(account.cityCountry) ||
-    cleanDisplayValue(account.region);
+  /** Prefer workbook `cityCountry` (city & country line); fall back to macro `region` when empty. */
+  const accountOverviewLocation = (() => {
+    const cityCountry = cleanDisplayValue(account.cityCountry);
+    let region = cleanDisplayValue(account.region);
+    if (region && region.toLowerCase() === 'global') region = '';
+    return cityCountry || region || '';
+  })();
   const accountWebsiteUrl =
     normalizeExternalUrl(account.sourceUrl) ||
     Object.values(account.socialLinks ?? {}).find((link) => normalizeExternalUrl(link?.url))?.url ||
@@ -263,12 +267,23 @@ export default async function AccountPage({
     ? linkedUserLocation
     : linkedUser
       ? ''
-      : cleanDisplayValue(account.region);
-  const locationOverviewValue = linkedUser
+      : accountOverviewLocation;
+
+  /** About tab: `cityCountry` only; linked user city when shared. */
+  const cityCountryOverviewValue = linkedUser
     ? linkedUserLocation
-      ? canSeeLinkedLocation ? linkedUserLocation : restrictedLabel(visibilityFor(linkedUser, 'location'))
-      : accountOverviewLocation || 'Not provided'
-    : accountOverviewLocation || 'Not provided';
+      ? canSeeLinkedLocation
+        ? linkedUserLocation
+        : restrictedLabel(visibilityFor(linkedUser, 'location'))
+      : cleanDisplayValue(account.cityCountry) || '—'
+    : cleanDisplayValue(account.cityCountry) || '—';
+
+  /** Macro region (e.g. USA & Canada), excluding placeholder Global. */
+  const macroRegionOverviewValue = (() => {
+    let r = cleanDisplayValue(account.region);
+    if (r && r.toLowerCase() === 'global') r = '';
+    return r;
+  })();
   const websiteOverviewValue = linkedUser
     ? linkedUserWebsiteUrl
       ? canSeeLinkedWebsite ? linkedUserWebsiteUrl : restrictedLabel(visibilityFor(linkedUser, 'website'))
@@ -724,9 +739,15 @@ export default async function AccountPage({
                   <span className="font-semibold sm:text-right capitalize">{overviewRole || '—'}</span>
                 </div>
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-border pb-3 gap-1">
-                  <span className="text-muted-foreground shrink-0">Location</span>
-                  <span className="font-semibold sm:text-right">{locationOverviewValue}</span>
+                  <span className="text-muted-foreground shrink-0">City & country</span>
+                  <span className="font-semibold sm:text-right">{cityCountryOverviewValue}</span>
                 </div>
+                {macroRegionOverviewValue && (
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-border pb-3 gap-1">
+                    <span className="text-muted-foreground shrink-0">Region</span>
+                    <span className="font-semibold sm:text-right">{macroRegionOverviewValue}</span>
+                  </div>
+                )}
                 {account.educationWorkbook && (
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-border pb-3 gap-1">
                     <span className="text-muted-foreground shrink-0">Education</span>
@@ -755,6 +776,12 @@ export default async function AccountPage({
                   <span className="text-muted-foreground shrink-0">Followers</span>
                   <span className="font-semibold sm:text-right">{displayedFollowers || '—'}</span>
                 </div>
+                {cleanDisplayValue(account.username) && (
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-border pb-3 gap-1">
+                    <span className="text-muted-foreground shrink-0">Username</span>
+                    <span className="font-semibold sm:text-right font-mono text-[12px]">{cleanDisplayValue(account.username)}</span>
+                  </div>
+                )}
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-border pb-3 gap-1">
                   <span className="text-muted-foreground shrink-0">Platform</span>
                   <span className="font-semibold sm:text-right">{formatPlatform(account.platform)}</span>

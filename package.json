@@ -22,7 +22,8 @@
     "enrich:public-profiles": "tsx scripts/enrich-public-profiles.ts",
     "import:workbook": "tsx scripts/import-shosha-workbook.ts",
     "replay:scores": "tsx scripts/replay-sheet-scores.ts",
-    "verify:firebase-env": "tsx scripts/verify-firebase-env.ts"
+    "verify:firebase-env": "tsx scripts/verify-firebase-env.ts",
+    "repair:account-locations": "tsx scripts/repair-account-locations.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.12.0",
