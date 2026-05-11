@@ -7,7 +7,7 @@
  * Live:    pnpm exec tsx scripts/repair-account-locations.ts --no-dry-run
  */
 import { loadEnvConfig } from '@next/env';
-import { cert, getApps, initializeApp } from 'firebase-admin/app';
+import { cert, getApps, initializeApp, deleteApp } from 'firebase-admin/app';
 import { getDatabase } from 'firebase-admin/database';
 
 loadEnvConfig(process.cwd());
@@ -142,7 +142,7 @@ async function main() {
   console.log(`  Cleared placeholder Global region: ${clearedGlobal}`);
   console.log(`  Patched website locations from SS: ${patchedWebsite}`);
 
-  await Promise.all(getApps().map((app) => app.delete().catch(() => undefined)));
+  await Promise.all(getApps().map((app) => deleteApp(app).catch(() => undefined)));
 }
 
 main().catch((err) => {
