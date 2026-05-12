@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import {
   motion,
   AnimatePresence,
@@ -419,9 +419,17 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
   const fetchState = useRef({ loading: false, hasMore: true });
 
   const normalizedQuery = query.trim().toLowerCase();
-  const visibleItems = normalizedQuery
-    ? items.filter((item) => item.name.toLowerCase().includes(normalizedQuery) || item.handle.toLowerCase().includes(normalizedQuery))
-    : items;
+  const visibleItems = useMemo(
+    () =>
+      normalizedQuery
+        ? items.filter(
+            (item) =>
+              item.name.toLowerCase().includes(normalizedQuery) ||
+              item.handle.toLowerCase().includes(normalizedQuery),
+          )
+        : items,
+    [items, normalizedQuery],
+  );
   const current = visibleItems[0];
   const x = useMotionValue(0), y = useMotionValue(0);
   const rotate = useTransform(x, [-260, 0, 260], [-8, 0, 8]);
@@ -516,15 +524,23 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
   async function handleShare(card: PeopleDeckItem) {
     const url = `${window.location.origin}/account/${card.id}`;
     const text = `Check out ${card.name}'s reputation on Shosha — score: ${card.score ?? '?'}`;
-    try {
-      if (navigator.share) {
+    if (navigator.share) {
+      try {
         await navigator.share({ title: card.name, text, url });
         return;
+      } catch (error) {
+        // User dismissed the native share sheet — not an error worth surfacing.
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+        console.error('Share failed', error);
+        // Fall through to clipboard.
       }
+    }
+    try {
       await navigator.clipboard.writeText(`${text}\n${url}`);
       toast.push('Link copied to clipboard');
     } catch (error) {
-      console.log('Share failed', error);
+      console.error('Clipboard write failed', error);
+      toast.push('Could not share link');
     }
   }
 
@@ -731,6 +747,9 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
               <p className="mt-3 flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground/55">
                 <Lock size={11} />
                 This action is public and the user will be notified.
+              </p>
+              <p className="mt-2 hidden text-center text-[10px] text-muted-foreground/40 lg:block">
+                ← → arrow keys to rate · ↑ open profile
               </p>
             </motion.div>
           )}

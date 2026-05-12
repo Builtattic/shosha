@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn, formatDate, formatRelativeTime } from '@/lib/utils';
-import { calcProfileScores, calcShoshaScore, BASE_SCORE, calcProfileCredibility } from '@/lib/scoring';
+import { calcProfileScores, calcShoshaScore, BASE_SCORE } from '@/lib/scoring';
 import { D3ProfileGauge } from '@/components/viz/D3ProfileGauge';
 import { D3DonutChart } from '@/components/viz/D3DonutChart';
 import { D3AreaChart } from '@/components/viz/D3AreaChart';
@@ -72,17 +72,6 @@ function normalizeExternalUrl(value?: string | null) {
   const text = String(value ?? '').trim();
   if (!text) return '';
   return /^https?:\/\//i.test(text) ? text : `https://${text}`;
-}
-
-/** Same live account selection as GET /api/me (for client-side profileCredibility fallback). */
-function pickLiveScoreAccount(claimed: any[] | undefined, userId: string | undefined) {
-  if (!claimed?.length || !userId) return null;
-  return (
-    claimed.find((a) => a?.platform === 'website' && a?.claimedBy === userId) ??
-    claimed.find((a) => a?.claimedBy === userId) ??
-    claimed[0] ??
-    null
-  );
 }
 
 function safeCategoryEventLabel(category: unknown): string | null {
@@ -155,35 +144,10 @@ export default function ProfilePage() {
   }
 
   const appUser = data?.user ?? null;
-  const liveScoreAccountForCred = pickLiveScoreAccount(data?.claimedAccounts, appUser?._id);
-  // Reputation credibility (calcProfileCredibility); distinct from persisted completion-based `credibility` on the user doc.
-  const profileCredibilityDisplay = (() => {
-    if (!appUser) return 0;
-    if (typeof appUser.profileCredibility === 'number') {
-      return Math.round(appUser.profileCredibility);
-    }
-    if (liveScoreAccountForCred) {
-      const a = liveScoreAccountForCred;
-      return Math.round(
-        calcProfileCredibility({
-          baseCredibility: Math.min(a.profileCompletion ?? 80, 80),
-          trustBadgeBonus: (a.trustBadge ?? appUser.trustBadge) ? 20 : 0,
-          opposedPosts: a.opposedPosts ?? 0,
-          disputeLosses: a.disputesLost ?? 0,
-          aiFlaggedPosts: a.aiFlaggedPosts ?? 0,
-        }).updatedCredibility
-      );
-    }
-    return Math.round(
-      calcProfileCredibility({
-        baseCredibility: 80,
-        trustBadgeBonus: appUser.trustBadge ? 20 : 0,
-        opposedPosts: 0,
-        disputeLosses: 0,
-        aiFlaggedPosts: 0,
-      }).updatedCredibility
-    );
-  })();
+  // Reputation credibility comes from GET /api/me (calcProfileCredibility on the server).
+  const profileCredibilityDisplay = typeof appUser?.profileCredibility === 'number'
+    ? Math.round(appUser.profileCredibility)
+    : 0;
   const scores = appUser ? calcProfileScores(appUser) : [];
   const contextPercent = calcShoshaScore(scores); // 0–100 composite of profile multipliers
   const trustBadge = Boolean(appUser?.trustBadge);
