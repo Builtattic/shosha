@@ -123,6 +123,8 @@ export type AppUser = {
   trustBadge?: boolean;
   trustBadgeAt?: string;
   credibility?: number;
+  /** Reputation credibility from calcProfileCredibility (GET /api/me); distinct from completion-based `credibility`. */
+  profileCredibility?: number;
   followers?: string[];
   following?: string[];
 

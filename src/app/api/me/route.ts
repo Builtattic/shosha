@@ -5,7 +5,29 @@ import * as reportsRepo from '@/lib/repos/reports';
 import * as usersRepo from '@/lib/repos/users';
 import { normalizeProfileVisibility } from '@/lib/profilePrivacy';
 import { calcCredibility } from '@/lib/credibility';
+import { calcProfileCredibility } from '@/lib/scoring';
 import { NextRequest, NextResponse } from 'next/server';
+import type { AccountRecord } from '@/lib/repos/accounts';
+import type { AppUser } from '@/lib/repos/users';
+
+function reputationCredibility(user: AppUser, account: AccountRecord | null): number {
+  if (account) {
+    return calcProfileCredibility({
+      baseCredibility: Math.min(account.profileCompletion ?? 80, 80),
+      trustBadgeBonus: (account.trustBadge ?? user.trustBadge) ? 20 : 0,
+      opposedPosts: account.opposedPosts ?? 0,
+      disputeLosses: account.disputesLost ?? 0,
+      aiFlaggedPosts: account.aiFlaggedPosts ?? 0,
+    }).updatedCredibility;
+  }
+  return calcProfileCredibility({
+    baseCredibility: 80,
+    trustBadgeBonus: user.trustBadge ? 20 : 0,
+    opposedPosts: 0,
+    disputeLosses: 0,
+    aiFlaggedPosts: 0,
+  }).updatedCredibility;
+}
 
 export async function GET() {
   try {
@@ -30,11 +52,14 @@ export async function GET() {
         }
       : user;
 
+    const profileCredibility = reputationCredibility(user, liveScoreAccount);
+
     // Map reports into the shape the profile UI expects (eventType, description, timestamp, status).
     const recentEvents = myReports.map((report) => ({
       _id: report._id,
       id: report._id,
       eventType: report.type,
+      type: report.type,
       category: report.category ?? null,
       deed: report.deed ?? null,
       cause: (report as { cause?: string | null }).cause ?? null,
@@ -44,11 +69,12 @@ export async function GET() {
       timestamp: report.createdAt ?? new Date().toISOString(),
       status: report.status,
       aiVerdict: report.aiVerdict,
-      adminDecision: report.adminDecision
+      adminDecision: report.adminDecision,
+      impact: typeof report.reportScore === 'number' ? report.reportScore : undefined,
     }));
 
     return ok({
-      user: liveUser,
+      user: { ...liveUser, profileCredibility },
       claimedAccounts,
       recentEvents
     });

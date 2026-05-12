@@ -7,13 +7,11 @@ import {
   CheckCircle2, Upload, TrendingUp, Shield,
   PieChart, Activity, Target, User, Users, ThumbsUp, ThumbsDown, Minus, ArrowRight,
   Briefcase, GraduationCap, FileText, Link2, Pencil, MapPin, ExternalLink,
-  AlertCircle, Bell, Play, History, TrendingDown, Calendar, Eye, Link as LinkIcon
+  AlertCircle, Play, History, TrendingDown, Calendar, Eye, Link as LinkIcon
 } from 'lucide-react';
-import { useReportModal } from '@/components/report/ReportModalProvider';
 import Link from 'next/link';
 import { cn, formatDate, formatRelativeTime } from '@/lib/utils';
-import { calcProfileScores, calcShoshaScore, BASE_SCORE } from '@/lib/scoring';
-import { calcCredibility } from '@/lib/credibility';
+import { calcProfileScores, calcShoshaScore, BASE_SCORE, calcProfileCredibility } from '@/lib/scoring';
 import { D3ProfileGauge } from '@/components/viz/D3ProfileGauge';
 import { D3DonutChart } from '@/components/viz/D3DonutChart';
 import { D3AreaChart } from '@/components/viz/D3AreaChart';
@@ -21,8 +19,6 @@ import { D3ActivityBar } from '@/components/viz/D3ActivityBar';
 import { ProfileScoreRadar } from '@/components/viz/ProfileScoreRadar';
 import { ShareCardModal } from '@/components/profile/ShareCardModal';
 import { PostDetailModal } from '@/components/feed/PostDetailModal';
-import { ConnectionListModal } from '@/components/profile/ConnectionListModal';
-import { ClaimProfileSearchModal } from '@/components/profile/ClaimProfileSearchModal';
 
 
 const EDU_LABELS: Record<string, string> = {
@@ -78,15 +74,38 @@ function normalizeExternalUrl(value?: string | null) {
   return /^https?:\/\//i.test(text) ? text : `https://${text}`;
 }
 
+/** Same live account selection as GET /api/me (for client-side profileCredibility fallback). */
+function pickLiveScoreAccount(claimed: any[] | undefined, userId: string | undefined) {
+  if (!claimed?.length || !userId) return null;
+  return (
+    claimed.find((a) => a?.platform === 'website' && a?.claimedBy === userId) ??
+    claimed.find((a) => a?.claimedBy === userId) ??
+    claimed[0] ??
+    null
+  );
+}
+
+function safeCategoryEventLabel(category: unknown): string | null {
+  if (typeof category !== 'string') return null;
+  const t = category.trim();
+  if (!t || t.toLowerCase() === 'undefined') return null;
+  return `${t} event`;
+}
+
+function reportTypeLabel(event: { eventType?: string; type?: string }): string | null {
+  const t = event.eventType ?? event.type;
+  if (t === 'positive') return 'Positive report';
+  if (t === 'negative') return 'Negative report';
+  return null;
+}
+
 export default function ProfilePage() {
   const { user: firebaseUser, loading: authLoading } = useAuth();
   const router = useRouter();
-  const reportModal = useReportModal();
   const [data, setData] = useState<{ user: any; claimedAccounts: any[]; recentEvents: any[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'activity' | 'impact' | 'about'>('overview');
   const [shareOpen, setShareOpen] = useState(false);
-  const [claimSearchOpen, setClaimSearchOpen] = useState(false);
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
   const [reportDetailOpen, setReportDetailOpen] = useState(false);
   const [ledgerRange, setLedgerRange] = useState<'weekly' | 'monthly' | 'max'>('max');
@@ -136,13 +155,37 @@ export default function ProfilePage() {
   }
 
   const appUser = data?.user ?? null;
+  const liveScoreAccountForCred = pickLiveScoreAccount(data?.claimedAccounts, appUser?._id);
+  // Reputation credibility (calcProfileCredibility); distinct from persisted completion-based `credibility` on the user doc.
+  const profileCredibilityDisplay = (() => {
+    if (!appUser) return 0;
+    if (typeof appUser.profileCredibility === 'number') {
+      return Math.round(appUser.profileCredibility);
+    }
+    if (liveScoreAccountForCred) {
+      const a = liveScoreAccountForCred;
+      return Math.round(
+        calcProfileCredibility({
+          baseCredibility: Math.min(a.profileCompletion ?? 80, 80),
+          trustBadgeBonus: (a.trustBadge ?? appUser.trustBadge) ? 20 : 0,
+          opposedPosts: a.opposedPosts ?? 0,
+          disputeLosses: a.disputesLost ?? 0,
+          aiFlaggedPosts: a.aiFlaggedPosts ?? 0,
+        }).updatedCredibility
+      );
+    }
+    return Math.round(
+      calcProfileCredibility({
+        baseCredibility: 80,
+        trustBadgeBonus: appUser.trustBadge ? 20 : 0,
+        opposedPosts: 0,
+        disputeLosses: 0,
+        aiFlaggedPosts: 0,
+      }).updatedCredibility
+    );
+  })();
   const scores = appUser ? calcProfileScores(appUser) : [];
   const contextPercent = calcShoshaScore(scores); // 0–100 composite of profile multipliers
-  // Credibility = completion + verification (max 80% from completion alone, +20% with Trust Badge).
-  // Falls back to the live recompute when the persisted value isn't available.
-  const credibility = appUser
-    ? (typeof appUser.credibility === 'number' ? appUser.credibility : calcCredibility(appUser).total)
-    : 0;
   const trustBadge = Boolean(appUser?.trustBadge);
   const ledgerScore = typeof appUser?.score === 'number' ? appUser.score : BASE_SCORE;
   const ledgerHistory: any[] = appUser?.scoreHistory ?? [];
@@ -307,26 +350,7 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* Claim Existing Profile entry — for users where someone else already made a profile of them */}
-        <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-border bg-background p-4">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <Shield size={16} />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[13px] font-bold leading-tight">Claim an Existing Profile</p>
-              <p className="mt-0.5 text-[11px] text-muted-foreground">
-                Search a made profile of you and verify ownership.
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => setClaimSearchOpen(true)}
-            className="shrink-0 rounded-full border border-border bg-background px-4 py-1.5 text-[12px] font-bold transition hover:bg-muted"
-          >
-            Claim
-          </button>
-        </div>
+        {/* /profile is always the signed-in user's own profile — no "claim" CTA here. */}
 
         {/* Profile Info */}
         <div className="mt-4 flex items-start justify-between gap-4">
@@ -370,8 +394,13 @@ export default function ProfilePage() {
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2 mt-2">
-            <button className="flex items-center justify-center gap-1.5 rounded-full border border-border bg-background px-4 py-1.5 text-[12px] font-semibold text-foreground shadow-sm hover:bg-muted transition-all">
-              Following <Bell size={12} />
+            <button
+              type="button"
+              onClick={() => router.push('/profile/edit')}
+              className="flex items-center justify-center gap-1.5 rounded-full border border-border bg-background px-4 py-1.5 text-[12px] font-semibold text-foreground shadow-sm hover:bg-muted transition-all"
+            >
+              <Pencil size={12} strokeWidth={2.5} />
+              Edit Profile
             </button>
           </div>
         </div>
@@ -443,7 +472,7 @@ export default function ProfilePage() {
               <Shield size={18} strokeWidth={2.5} />
             </div>
             <p className="mt-1.5 text-[15px] sm:text-[17px] font-bold text-foreground tabular-nums">
-              {credibility || '0'}%
+              {profileCredibilityDisplay}%
             </p>
             <p className="mt-0.5 text-[9px] sm:text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Credibility</p>
           </div>
@@ -515,24 +544,30 @@ export default function ProfilePage() {
                           </div>
                           <div className="flex flex-col gap-1">
                             <span className="text-[14px] font-bold text-foreground line-clamp-2">
-                              {event.cause
-                                || event.deed
-                                || (event.category ? `${event.category} event` : null)
-                                || event.eventType
-                                || (event.description?.trim() ?? '').slice(0, 60)
-                                || 'Report'}
+                              {(typeof event.deed === 'string' ? event.deed.trim() : '') ||
+                                (typeof event.cause === 'string' ? event.cause.trim() : '') ||
+                                safeCategoryEventLabel(event.category) ||
+                                reportTypeLabel(event) ||
+                                (typeof event.description === 'string' ? event.description.trim().slice(0, 60) : '') ||
+                                'Report filed'}
                             </span>
                             <span className="text-[12px] text-muted-foreground">
                               {event.timestamp ? formatRelativeTime(new Date(event.timestamp)) : ''}
                             </span>
                           </div>
                         </div>
-                        <div className={cn(
-                          "shrink-0 rounded-full px-3 py-1.5 text-[13px] font-bold shadow-sm",
-                          event.impact > 0 ? "bg-green-50 text-green-600" : event.impact < 0 ? "bg-red-50 text-red-600" : "bg-muted text-muted-foreground"
-                        )}>
-                          {event.impact > 0 ? '+' : ''}{event.impact}
-                        </div>
+                        {typeof event.impact === 'number' ? (
+                          <div className={cn(
+                            'shrink-0 rounded-full px-3 py-1.5 text-[13px] font-bold shadow-sm tabular-nums',
+                            event.impact > 0 ? 'bg-green-50 text-green-600' : event.impact < 0 ? 'bg-red-50 text-red-600' : 'bg-muted text-muted-foreground'
+                          )}>
+                            {event.impact > 0 ? '+' : ''}{event.impact}
+                          </div>
+                        ) : (
+                          <div className="shrink-0 rounded-full px-3 py-1.5 text-[13px] font-bold shadow-sm bg-muted text-muted-foreground tabular-nums">
+                            —
+                          </div>
+                        )}
                       </button>
                     ))}
                   </div>
@@ -940,7 +975,7 @@ export default function ProfilePage() {
         username={username}
         avatarUrl={avatarUrl}
         ledgerScore={ledgerScore}
-        credibility={credibility}
+        credibility={profileCredibilityDisplay}
         weeklyDelta={weeklyDelta}
         totalImpact={positiveDeltaWeek > 0 ? `+${positiveDeltaWeek}` : String(positiveDeltaWeek)}
         followers={appUser?.networkSize ? (NETWORK_LABELS[appUser.networkSize] || appUser.networkSize) : '—'}
@@ -968,10 +1003,6 @@ export default function ProfilePage() {
           setReportDetailOpen(false);
           setSelectedReportId(null);
         }}
-      />
-      <ClaimProfileSearchModal
-        open={claimSearchOpen}
-        onClose={() => setClaimSearchOpen(false)}
       />
     </main>
   );
