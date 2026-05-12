@@ -33,7 +33,11 @@ export async function GET() {
     // Map reports into the shape the profile UI expects (eventType, description, timestamp, status).
     const recentEvents = myReports.map((report) => ({
       _id: report._id,
+      id: report._id,
       eventType: report.type,
+      category: report.category ?? null,
+      deed: report.deed ?? null,
+      cause: (report as { cause?: string | null }).cause ?? null,
       description: report.description,
       subjectId: report.accountId,
       reportId: report._id,

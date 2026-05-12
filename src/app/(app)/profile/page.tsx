@@ -477,21 +477,51 @@ export default function ProfilePage() {
               <div className="rounded-[24px] bg-background p-5 shadow-sm border border-border">
                 <div className="flex items-center justify-between mb-5">
                   <h3 className="text-[16px] font-bold text-foreground">Recent Activity</h3>
-                  <span className="text-[12px] text-muted-foreground cursor-pointer hover:text-foreground">View all &rarr;</span>
+                  {recentEvents.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => changeTabWithoutJump('activity')}
+                      className="text-[12px] text-muted-foreground hover:text-foreground"
+                    >
+                      View all &rarr;
+                    </button>
+                  ) : (
+                    <span className="text-[12px] text-muted-foreground">View all &rarr;</span>
+                  )}
                 </div>
                 {recentEvents.length > 0 ? (
                   <div className="space-y-3">
                     {recentEvents.map(event => (
-                      <div key={event.id} className="flex items-center justify-between rounded-[16px] bg-muted/30 p-4 border border-border/50 hover:bg-muted/50 transition-colors">
+                      <button
+                        key={event._id}
+                        type="button"
+                        onClick={() => {
+                          const id = event.reportId ?? event._id;
+                          if (!id) return;
+                          setSelectedReportId(id);
+                          setReportDetailOpen(true);
+                        }}
+                        className={cn(
+                          'flex w-full items-center justify-between rounded-[16px] bg-muted/30 p-4 border border-border/50',
+                          'text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                        )}
+                      >
                         <div className="flex items-center gap-4">
                           <div className="relative h-[60px] w-[60px] shrink-0 overflow-hidden rounded-[12px] bg-muted border border-border/50 shadow-sm">
-                            <img src={`https://picsum.photos/seed/${event.id}/120/120`} alt="" className="h-full w-full object-cover" />
+                            <img src={`https://picsum.photos/seed/${event._id}/120/120`} alt="" className="h-full w-full object-cover" />
                             <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-[1px]">
                               <Play size={20} className="text-white fill-white" />
                             </div>
                           </div>
                           <div className="flex flex-col gap-1">
-                            <span className="text-[14px] font-bold text-foreground line-clamp-2">{event.cause || `${event.category} event`}</span>
+                            <span className="text-[14px] font-bold text-foreground line-clamp-2">
+                              {event.cause
+                                || event.deed
+                                || (event.category ? `${event.category} event` : null)
+                                || event.eventType
+                                || (event.description?.trim() ?? '').slice(0, 60)
+                                || 'Report'}
+                            </span>
                             <span className="text-[12px] text-muted-foreground">
                               {event.timestamp ? formatRelativeTime(new Date(event.timestamp)) : ''}
                             </span>
@@ -503,7 +533,7 @@ export default function ProfilePage() {
                         )}>
                           {event.impact > 0 ? '+' : ''}{event.impact}
                         </div>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 ) : (
@@ -934,7 +964,10 @@ export default function ProfilePage() {
       <PostDetailModal
         open={reportDetailOpen}
         reportId={selectedReportId}
-        onClose={() => setReportDetailOpen(false)}
+        onClose={() => {
+          setReportDetailOpen(false);
+          setSelectedReportId(null);
+        }}
       />
       <ClaimProfileSearchModal
         open={claimSearchOpen}
