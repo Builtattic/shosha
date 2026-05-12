@@ -71,7 +71,7 @@ export function AdminAppShell({ user, children }: { user: AdminShellUser; childr
   return (
     <>
       {/* Mobile header */}
-      <header className="sticky top-0 z-20 flex min-h-[3.5rem] w-full min-w-0 items-center gap-3 border-b border-white/5 bg-background/90 px-3 py-3 backdrop-blur-xl lg:hidden">
+      <header className="sticky top-0 z-20 flex min-h-[3.5rem] w-full min-w-0 items-center gap-3 border-b border-border bg-background px-3 py-3 lg:hidden">
         <button
           type="button"
           aria-expanded={drawerOpen}
@@ -93,7 +93,7 @@ export function AdminAppShell({ user, children }: { user: AdminShellUser; childr
       </header>
 
       {/* Desktop header */}
-      <div className="sticky top-0 z-20 hidden min-w-0 w-full border-b border-white/5 bg-background/60 px-4 py-6 backdrop-blur-xl lg:block lg:px-12">
+      <div className="sticky top-0 z-20 hidden min-w-0 w-full border-b border-border bg-background px-4 py-6 lg:block lg:px-12">
         <div className="mx-auto flex max-w-[1400px] min-w-0 flex-col gap-6 md:flex-row md:flex-wrap md:items-center md:justify-between">
           <div className="flex min-w-0 items-center gap-5">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-inner shadow-primary/5">

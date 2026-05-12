@@ -308,7 +308,7 @@ export default function DashboardPage() {
 
   return (
     <main className="min-h-screen overflow-x-clip bg-background safe-bottom">
-      <header className="sticky top-0 z-50 bg-background/80 p-4 backdrop-blur-xl">
+      <header className="sticky top-0 z-50 bg-background p-4">
         <div className="mx-auto max-w-2xl">
           <div className="flex items-center justify-between gap-3">
             <div className="font-serif text-[28px] font-black text-foreground">

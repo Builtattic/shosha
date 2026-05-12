@@ -80,7 +80,7 @@ export function Sidebar() {
   ];
 
   return (
-    <aside className="fixed bottom-0 left-0 top-0 z-40 hidden w-64 border-r border-border bg-background/95 backdrop-blur-xl lg:flex lg:flex-col">
+    <aside className="fixed bottom-0 left-0 top-0 z-40 hidden w-64 border-r border-border bg-background lg:flex lg:flex-col">
       <div className="flex h-16 shrink-0 items-center justify-between border-b border-border px-6">
         <Link href="/dashboard" className="group inline-flex items-baseline gap-1 font-serif text-[24px] font-black text-foreground">
           <span className="transition-transform duration-300 group-hover:-translate-y-0.5">Sho</span>

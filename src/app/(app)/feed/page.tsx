@@ -71,7 +71,7 @@ function FeedContent() {
 
   return (
     <main className="min-h-screen bg-background safe-bottom">
-      <header className="sticky top-0 z-50 bg-background/80 p-4 backdrop-blur-xl">
+      <header className="sticky top-0 z-50 bg-background p-4">
         <div className="mx-auto flex max-w-2xl items-center justify-between">
           <div className="font-serif text-[28px] font-black text-foreground">
             Sho<span className="font-normal italic text-muted-foreground">शा</span>

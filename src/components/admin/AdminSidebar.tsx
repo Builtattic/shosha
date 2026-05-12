@@ -10,7 +10,7 @@ export function AdminSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="fixed left-64 top-0 bottom-0 z-30 hidden w-56 flex-col border-r border-border bg-background/95 backdrop-blur-xl lg:flex">
+    <aside className="fixed left-64 top-0 bottom-0 z-30 hidden w-56 flex-col border-r border-border bg-background lg:flex">
       <div className="flex h-16 shrink-0 items-center gap-3 border-b border-border px-5">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
           <ShieldCheck size={15} />

@@ -278,7 +278,7 @@ export default function ProfilePage() {
   return (
     <main className="min-h-screen bg-background safe-bottom font-sans">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/80 px-4 py-4 backdrop-blur-xl">
+      <header className="sticky top-0 z-50 bg-background px-4 py-4">
         <div className="mx-auto flex max-w-2xl items-center justify-between">
           <div className="font-serif text-[26px] font-black tracking-tight text-foreground">
             Sho<span className="font-normal italic text-muted-foreground">शा</span>

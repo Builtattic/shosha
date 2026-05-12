@@ -37,7 +37,7 @@ export function BottomNav() {
   if (hideOnAdmin) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/40 bg-background/85 backdrop-blur-xl lg:hidden shadow-[0_-4px_24px_-8px_rgba(0,0,0,0.1)]">
+    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background lg:hidden shadow-[0_-4px_24px_-8px_rgba(0,0,0,0.1)]">
       <div className="mx-auto flex h-[calc(4.5rem+env(safe-area-inset-bottom))] max-w-md items-stretch px-1 pb-[env(safe-area-inset-bottom)]">
         <nav className="flex h-full w-full items-stretch justify-between">
           {items.map((item) => (

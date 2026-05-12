@@ -145,7 +145,7 @@ export default function SearchPage() {
 
   return (
     <main className="min-h-screen bg-background safe-bottom">
-      <header className="sticky top-0 z-50 bg-background/80 p-4 backdrop-blur-xl border-b border-border">
+      <header className="sticky top-0 z-50 bg-background p-4 border-b border-border">
         <div className="mx-auto max-w-2xl">
           <div className="flex items-center gap-3 mb-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
