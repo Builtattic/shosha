@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { D3AreaChart } from '@/components/viz/D3AreaChart';
 import { D3ActivityBar } from '@/components/viz/D3ActivityBar';
+import { SwipeScoreBreakdownCard, type SwipeAggregate } from '@/components/profile/SwipeScoreBreakdownCard';
 import { Briefcase, Globe2, Info, Minus, ShieldAlert, ThumbsDown, ThumbsUp, TrendingUp, UsersRound } from 'lucide-react';
 import { cn, formatDate } from '@/lib/utils';
 
@@ -124,11 +125,15 @@ export function ProfileImpactAnalytics({
   filings,
   showGraph = true,
   showImpactDetails = true,
+  swipeAggregate,
+  totalScore,
 }: {
   history: HistoryPoint[];
   filings: FilingPoint[];
   showGraph?: boolean;
   showImpactDetails?: boolean;
+  swipeAggregate?: SwipeAggregate;
+  totalScore?: number;
 }) {
   const [range, setRange] = useState<Range>('1W');
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
@@ -261,6 +266,13 @@ export function ProfileImpactAnalytics({
         )}
       </section>
       )}
+
+      {showGraph &&
+        swipeAggregate &&
+        (swipeAggregate.aligns > 0 || swipeAggregate.opposes > 0) &&
+        typeof totalScore === 'number' && (
+          <SwipeScoreBreakdownCard swipeAggregate={swipeAggregate} totalScore={totalScore} />
+        )}
 
       {showGraph && (
       <section className="rounded-2xl bg-background p-5 border border-zinc-100 dark:border-zinc-800">

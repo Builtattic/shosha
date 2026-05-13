@@ -2,6 +2,7 @@ import { ok } from '@/lib/api';
 import { getCurrentUser, getCurrentUserReadOnly } from '@/lib/auth';
 import * as accountsRepo from '@/lib/repos/accounts';
 import * as reportsRepo from '@/lib/repos/reports';
+import { getAccountSwipeScore } from '@/lib/repos/swipeRecords';
 import * as usersRepo from '@/lib/repos/users';
 import { normalizeProfileVisibility } from '@/lib/profilePrivacy';
 import { calcCredibility } from '@/lib/credibility';
@@ -32,7 +33,14 @@ function reputationCredibility(user: AppUser, account: AccountRecord | null): nu
 export async function GET() {
   try {
     const user = await getCurrentUserReadOnly();
-    if (!user) return ok({ user: null, claimedAccounts: [], recentEvents: [] });
+    if (!user) {
+      return ok({
+        user: null,
+        claimedAccounts: [],
+        recentEvents: [],
+        swipeAggregate: { score: 0, aligns: 0, opposes: 0 },
+      });
+    }
 
     const [claimedAccountsRaw, myReports] = await Promise.all([
       Promise.all((user.claimedAccounts ?? []).slice(0, 10).map((id) => accountsRepo.findById(id))).catch(() => []),
@@ -53,6 +61,14 @@ export async function GET() {
       : user;
 
     const profileCredibility = reputationCredibility(user, liveScoreAccount);
+
+    const swipeAggregate = liveScoreAccount
+      ? await getAccountSwipeScore(liveScoreAccount._id).catch(() => ({
+          score: 0,
+          aligns: 0,
+          opposes: 0,
+        }))
+      : { score: 0, aligns: 0, opposes: 0 };
 
     // Map reports into the shape the profile UI expects (eventType, description, timestamp, status).
     const recentEvents = myReports.map((report) => ({
@@ -76,11 +92,17 @@ export async function GET() {
     return ok({
       user: { ...liveUser, profileCredibility },
       claimedAccounts,
-      recentEvents
+      recentEvents,
+      swipeAggregate,
     });
   } catch (err) {
     console.error('[GET /api/me]', err);
-    return ok({ user: null, claimedAccounts: [], recentEvents: [] });
+    return ok({
+      user: null,
+      claimedAccounts: [],
+      recentEvents: [],
+      swipeAggregate: { score: 0, aligns: 0, opposes: 0 },
+    });
   }
 }
 

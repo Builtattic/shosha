@@ -36,6 +36,8 @@ export type PeopleDeckItem = {
   role: string; region: string; score: number; followers: string; verified: boolean;
   profileKind?: string; bio?: string; categories?: string[];
   topReports: Array<{ title: string; delta: number; type: string }>;
+  followUserId?: string | null;
+  weekDelta?: number | null;
 };
 
 function compact(v: number) {
@@ -49,15 +51,40 @@ function compactFollowers(raw: string | number | undefined): string {
   return isNaN(n) ? String(raw) : compact(n);
 }
 
-const SWIPE_DISTANCE = 118;
+/** px — horizontal travel to commit a swipe */
+const OFFSET_THRESHOLD = 118;
 /** px — minimum horizontal travel before a velocity-only flick counts */
 const FLICK_MIN_OFFSET = 42;
 /** Framer reports velocity in px/s for drag end; keep high to avoid touch noise */
-const FLICK_VELOCITY = 620;
+const VELOCITY_THRESHOLD = 620;
 const FILTERS = [
   { label: 'Global', icon: <Globe size={12} /> }, { label: '18-65+' },
   { label: 'All Roles' }, { label: '10K-1M+' }, { label: 'All' },
 ];
+
+/** Map filter chip → deck API query params (structured; no legacy `filter` param). */
+function filterToParams(chip: string): URLSearchParams {
+  const p = new URLSearchParams();
+  if (chip === 'All' || chip === 'Global' || chip === 'All Roles') return p;
+  if (chip === '18-65+') {
+    p.set('ageBand', '18-65');
+    return p;
+  }
+  if (chip === '10K-1M+') {
+    p.set('reach', '10K-1M+');
+    return p;
+  }
+  return p;
+}
+
+function buildDeckUrl(cursor: number, chip: string): string {
+  const q = new URLSearchParams();
+  q.set('cursor', String(cursor));
+  filterToParams(chip).forEach((v, k) => {
+    q.set(k, v);
+  });
+  return `/api/people/deck?${q.toString()}`;
+}
 
 type SwipeCardProps = {
   item: PeopleDeckItem;
@@ -196,14 +223,14 @@ function SwipeCard(props: SwipeCardProps) {
 
       <motion.div
         style={{ opacity: bindInteractive ? alignOp : 0 }}
-        className="pointer-events-none absolute left-5 top-12 z-50 -rotate-[20deg] rounded-2xl border-[3px] border-emerald-400 bg-emerald-400/10 px-5 py-2 backdrop-blur-sm"
+        className="pointer-events-none absolute right-5 top-12 z-50 rotate-[20deg] rounded-2xl border-[3px] border-emerald-400 bg-emerald-400/10 px-5 py-2 backdrop-blur-sm"
         aria-hidden
       >
         <span className="text-[26px] font-black tracking-widest text-emerald-400 drop-shadow sm:text-[28px]">ALIGN</span>
       </motion.div>
       <motion.div
         style={{ opacity: bindInteractive ? opposeOp : 0 }}
-        className="pointer-events-none absolute right-5 top-12 z-50 rotate-[20deg] rounded-2xl border-[3px] border-red-400 bg-red-400/10 px-5 py-2 backdrop-blur-sm"
+        className="pointer-events-none absolute left-5 top-12 z-50 -rotate-[20deg] rounded-2xl border-[3px] border-red-400 bg-red-400/10 px-5 py-2 backdrop-blur-sm"
         aria-hidden
       >
         <span className="text-[26px] font-black tracking-widest text-red-400 drop-shadow sm:text-[28px]">OPPOSE</span>
@@ -333,11 +360,22 @@ function SwipeCard(props: SwipeCardProps) {
             <span className="text-white/40">Followers</span>
           </span>
           <span className="text-white/20">|</span>
-          <span className="flex items-center gap-1.5">
+          <span className="flex flex-wrap items-center gap-1.5">
             <TrendingUp size={14} className="text-emerald-400" />
             <span className="font-black">
               Impact Score {item.score != null ? compact(item.score) : '—'}
             </span>
+            {item.weekDelta != null && (
+              <span
+                className={cn(
+                  'text-[11px] font-bold',
+                  item.weekDelta >= 0 ? 'text-emerald-400' : 'text-red-400',
+                )}
+              >
+                {item.weekDelta >= 0 ? '+' : ''}
+                {Math.round(item.weekDelta)} this week
+              </span>
+            )}
           </span>
         </div>
 
@@ -361,8 +399,9 @@ function SwipeCard(props: SwipeCardProps) {
 
         {item.bio ? (
           <p className="line-clamp-2 text-[13px] leading-relaxed text-white/65">{item.bio}</p>
-        ) : item.topReports.length > 0 ? (
-          <div className="space-y-1.5">
+        ) : null}
+        {item.topReports.length > 0 ? (
+          <div className={cn('space-y-1.5', item.bio ? 'mt-2' : '')}>
             {item.topReports.slice(0, 2).map((r, i) => (
               <div
                 key={i}
@@ -373,7 +412,7 @@ function SwipeCard(props: SwipeCardProps) {
                 ) : (
                   <TrendingDown size={11} className="shrink-0 text-red-400" />
                 )}
-                <p className="line-clamp-1 flex-1 text-[11px] font-medium text-white/85">{r.title}</p>
+                <p className="line-clamp-2 flex-1 text-[11px] font-medium text-white/85">{r.title}</p>
                 <span
                   className={cn(
                     'shrink-0 text-[11px] font-black',
@@ -416,17 +455,34 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
   const [hasMore, setHasMore] = useState(true);
   const [showUpHint, setShowUpHint] = useState(false);
   const [query, setQuery] = useState('');
+  const [swipeFeedback, setSwipeFeedback] = useState<{ text: string; className: string } | null>(null);
   const fetchState = useRef({ loading: false, hasMore: true });
+
+  const showSwipeFeedback = useCallback((dir: 'align' | 'oppose') => {
+    setSwipeFeedback(
+      dir === 'align'
+        ? { text: '+5 Reputation', className: 'text-emerald-600 dark:text-emerald-400' }
+        : { text: '−5 Reputation', className: 'text-red-600 dark:text-red-400' },
+    );
+    window.setTimeout(() => setSwipeFeedback(null), 1800);
+  }, []);
 
   const normalizedQuery = query.trim().toLowerCase();
   const visibleItems = useMemo(
     () =>
       normalizedQuery
-        ? items.filter(
-            (item) =>
-              item.name.toLowerCase().includes(normalizedQuery) ||
-              item.handle.toLowerCase().includes(normalizedQuery),
-          )
+        ? items.filter((item) => {
+            const n = item.name.toLowerCase();
+            const h = item.handle.toLowerCase();
+            const pk = item.profileKind ? String(item.profileKind).toLowerCase() : '';
+            const role = item.role ? item.role.toLowerCase() : '';
+            return (
+              n.includes(normalizedQuery) ||
+              h.includes(normalizedQuery) ||
+              pk.includes(normalizedQuery) ||
+              role.includes(normalizedQuery)
+            );
+          })
         : items,
     [items, normalizedQuery],
   );
@@ -442,12 +498,12 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
   const opposeSc = useTransform(sx, [-130, 0], [1.25, 1]);
   const nextX = useTransform(x, [-300, 0, 300], [10, 0, -10]);
 
-  const fetchMore = useCallback(async (currentCursor: number, filterVal: string, reset: boolean = false) => {
+  const fetchMore = useCallback(async (currentCursor: number, chip: string, reset: boolean = false) => {
     if (fetchState.current.loading || (!fetchState.current.hasMore && !reset)) return;
     fetchState.current.loading = true;
     setLoading(true);
     try {
-      const res = await fetch(`/api/people/deck?cursor=${currentCursor}&filter=${encodeURIComponent(filterVal)}`);
+      const res = await fetch(buildDeckUrl(currentCursor, chip));
       const data = await res.json();
       const payload = data.ok ? data.data : undefined;
       if (payload?.items?.length) {
@@ -502,24 +558,44 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
     y.set(0);
   }, [current?.id, x, y]);
 
-  const handleSwipe = useCallback((dir: 'align' | 'oppose') => {
-    if (!current) return;
-    setExitX(dir === 'align' ? 800 : -800); 
-    setExitY(-50);
-    const ratedId = current.id;
-    
-    // Update items immediately to let AnimatePresence handle the unmount animation smoothly
-    setItems((p) => p.filter((item) => item.id !== ratedId));
-    x.set(0); 
-    y.set(0);
+  const handleSwipe = useCallback(
+    (dir: 'align' | 'oppose') => {
+      if (!current) return;
+      const rated = current;
+      const ratedId = rated.id;
+      const followId = rated.followUserId;
 
-    fetch(`/api/accounts/${ratedId}/swipe`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ direction: dir }) })
-      .then(r => r.json()).then(p => { 
-        if (!p.ok) throw new Error(p.error?.message ?? 'Failed'); 
-        toast.push(dir === 'align' ? '✓ Aligned! +5 to their score.' : '✗ Opposed. -5 from their score.'); 
+      setExitX(dir === 'align' ? 800 : -800);
+      setExitY(-50);
+
+      setItems((p) => p.filter((item) => item.id !== ratedId));
+      x.set(0);
+      y.set(0);
+
+      void fetch(`/api/accounts/${ratedId}/swipe`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ direction: dir }),
       })
-      .catch(err => toast.push(err instanceof Error ? err.message : 'Failed'));
-  }, [current, toast, x, y]);
+        .then((r) => r.json())
+        .then(async (p) => {
+          if (!p.ok) throw new Error(p.error?.message ?? 'Failed');
+          showSwipeFeedback(dir);
+          if (dir === 'align' && followId) {
+            try {
+              await fetch(`/api/users/${followId}/follow`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+              });
+            } catch (e) {
+              console.error('Follow failed:', e);
+            }
+          }
+        })
+        .catch((err) => toast.push(err instanceof Error ? err.message : 'Failed'));
+    },
+    [current, toast, x, y, showSwipeFeedback],
+  );
 
   async function handleShare(card: PeopleDeckItem) {
     const url = `${window.location.origin}/account/${card.id}`;
@@ -553,29 +629,26 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
     const absX = Math.abs(dx);
     const absY = Math.abs(dy);
 
-    // Prefer the axis the user actually moved on (reduces accidental swipes while scrolling / tapping)
     const horizontalDominant = absX >= absY * 0.88;
     const verticalDominant = absY > absX * 1.12;
 
-    const committedRight =
-      dx > SWIPE_DISTANCE || (dx > FLICK_MIN_OFFSET && vx > FLICK_VELOCITY);
-    const committedLeft =
-      dx < -SWIPE_DISTANCE || (dx < -FLICK_MIN_OFFSET && vx < -FLICK_VELOCITY);
-    const committedUp =
-      dy < -SWIPE_DISTANCE || (dy < -48 && vy < -FLICK_VELOCITY);
+    const swipedRight =
+      dx > OFFSET_THRESHOLD || (dx > FLICK_MIN_OFFSET && vx > VELOCITY_THRESHOLD);
+    const swipedLeft =
+      dx < -OFFSET_THRESHOLD || (dx < -FLICK_MIN_OFFSET && vx < -VELOCITY_THRESHOLD);
+    const swipedUp =
+      dy < -OFFSET_THRESHOLD || (dy < -48 && vy < -VELOCITY_THRESHOLD);
 
-    if (horizontalDominant && committedRight) {
+    if (horizontalDominant && swipedRight) {
       handleSwipe('align');
       return;
     }
-    if (horizontalDominant && committedLeft) {
+    if (horizontalDominant && swipedLeft) {
       handleSwipe('oppose');
       return;
     }
-    if (verticalDominant && committedUp) {
+    if (verticalDominant && swipedUp) {
       if (current) router.push(`/account/${current.id}`);
-      animate(x, 0, { type: 'spring', stiffness: 500, damping: 30 });
-      animate(y, 0, { type: 'spring', stiffness: 500, damping: 30 });
       return;
     }
 
@@ -614,10 +687,21 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
         {/* Filters */}
         <div className="mb-4 shrink-0 flex w-full gap-2 overflow-x-auto pb-1 no-scrollbar">
           {FILTERS.map(({ label, icon }) => (
-            <button key={label} onClick={() => setActiveFilter(label)} className={cn(
+            <button
+              key={label}
+              type="button"
+              onClick={() => {
+                setActiveFilter(label);
+                setQuery('');
+              }}
+              className={cn(
               'shrink-0 flex items-center gap-1.5 rounded-full border px-4 py-2 text-[12px] font-bold transition-all duration-300',
               activeFilter === label ? 'border-foreground bg-foreground text-background scale-[1.04] shadow-md' : 'border-border bg-card text-muted-foreground hover:bg-muted'
-            )}>{icon}{label}</button>
+            )}
+            >
+              {icon}
+              {label}
+            </button>
           ))}
         </div>
 
@@ -755,6 +839,24 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
           )}
         </div>
       </div>
+
+      <AnimatePresence>
+        {swipeFeedback && (
+          <motion.div
+            key="swipe-feedback"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className={cn(
+              'fixed top-1/3 left-1/2 z-[100] -translate-x-1/2 rounded-full border border-border bg-background px-5 py-2 text-sm font-bold shadow-lg',
+              swipeFeedback.className,
+            )}
+          >
+            {swipeFeedback.text}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </main>
   );
 }

@@ -18,6 +18,7 @@ import { D3AreaChart } from '@/components/viz/D3AreaChart';
 import { D3ActivityBar } from '@/components/viz/D3ActivityBar';
 import { ProfileScoreRadar } from '@/components/viz/ProfileScoreRadar';
 import { ShareCardModal } from '@/components/profile/ShareCardModal';
+import { SwipeScoreBreakdownCard } from '@/components/profile/SwipeScoreBreakdownCard';
 import { PostDetailModal } from '@/components/feed/PostDetailModal';
 
 
@@ -91,7 +92,12 @@ function reportTypeLabel(event: { eventType?: string; type?: string }): string |
 export default function ProfilePage() {
   const { user: firebaseUser, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [data, setData] = useState<{ user: any; claimedAccounts: any[]; recentEvents: any[] } | null>(null);
+  const [data, setData] = useState<{
+    user: any;
+    claimedAccounts: any[];
+    recentEvents: any[];
+    swipeAggregate?: { score: number; aligns: number; opposes: number };
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'activity' | 'impact' | 'about'>('overview');
   const [shareOpen, setShareOpen] = useState(false);
@@ -143,6 +149,7 @@ export default function ProfilePage() {
     );
   }
 
+  const { swipeAggregate = { score: 0, aligns: 0, opposes: 0 } } = data ?? {};
   const appUser = data?.user ?? null;
   // Reputation credibility comes from GET /api/me (calcProfileCredibility on the server).
   const profileCredibilityDisplay = typeof appUser?.profileCredibility === 'number'
@@ -586,6 +593,10 @@ export default function ProfilePage() {
                   </div>
                 )}
               </div>
+
+              {(swipeAggregate.aligns > 0 || swipeAggregate.opposes > 0) && (
+                <SwipeScoreBreakdownCard swipeAggregate={swipeAggregate} totalScore={ledgerScore} />
+              )}
 
               {/* Breakdown */}
               <div className="rounded-[24px] bg-background p-5 shadow-sm border border-border">

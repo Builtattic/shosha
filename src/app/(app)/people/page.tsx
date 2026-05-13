@@ -55,11 +55,13 @@ export default async function PeoplePage() {
     role: account.role || account.profileKind || 'Public Figure',
     region: account.region || account.cityCountry || 'Global',
     score: account.displayScore ?? account.score ?? BASE_SCORE,
+    weekDelta: account.windowScores?.w1Delta,
     followers: account.followers || '0',
     verified: Boolean(account.verified),
     profileKind: account.profileKind,
     bio: account.bio && account.bio !== 'Platform User' ? account.bio : undefined,
     categories: deriveCategories(account),
+    followUserId: account.claimedBy ?? undefined,
     topReports: filings[index]
       .map((report) => ({
         title: report.deed || report.description || 'Report recorded',

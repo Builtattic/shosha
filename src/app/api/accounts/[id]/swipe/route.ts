@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { fail, ok } from '@/lib/api';
 import { getCurrentUser } from '@/lib/auth';
 import { idSchema } from '@/lib/validators';
+import { setScore } from '@/lib/repos/accounts';
 import * as accountsRepo from '@/lib/repos/accounts';
 import * as swipeRecordsRepo from '@/lib/repos/swipeRecords';
 import * as usersRepo from '@/lib/repos/users';
@@ -47,5 +48,12 @@ export async function POST(request: Request, { params }: { params: { id: string 
   }
 
   const aggregate = await swipeRecordsRepo.getAccountSwipeScore(account._id);
-  return ok({ record, aggregate, following });
+  // Apply net swipe score to the account immediately (spec: ±5 per swipe, real-time)
+  const baseScore = typeof account.score === 'number' ? account.score : 1000;
+  const previousSwipeTotal = account.swipeScore ?? 0;
+  const newSwipeTotal = aggregate.score;
+  const updatedScore = Math.round((baseScore - previousSwipeTotal + newSwipeTotal) * 10) / 10;
+  await setScore(account._id, updatedScore);
+  await accountsRepo.update(account._id, { swipeScore: newSwipeTotal });
+  return ok({ record, aggregate, following, score: updatedScore });
 }

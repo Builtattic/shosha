@@ -9,6 +9,129 @@ function reportDelta(report: reportsRepo.ReportRecord) {
   return report.adminDecision?.finalImpact ?? report.reportScore ?? report.baseScore ?? 0;
 }
 
+/** Reach chip label → exact `account.reach` values seen in Firebase */
+const REACH_BUCKETS: Record<string, string[]> = {
+  '10K-1M+': ['10K-1M', '1M-10M', '10M-100M', '100M+'],
+  '1M+': ['1M-10M', '10M-100M', '100M+'],
+  '10M+': ['10M-100M', '100M+'],
+  '100M+': ['100M+'],
+};
+
+function deriveCategories(account: accountsRepo.AccountRecord): string[] {
+  const cats: string[] = [];
+  if (account.role && account.role !== 'Platform User') cats.push(account.role);
+  if (account.specializedFieldWorkbook) {
+    cats.push(...account.specializedFieldWorkbook.split(/[,/]/).map((s) => s.trim()).filter(Boolean));
+  }
+  if (account.educationWorkbook) cats.push(account.educationWorkbook.trim());
+  if (account.managementWorkbook && account.managementWorkbook !== 'No') {
+    cats.push(account.managementWorkbook.trim());
+  }
+  return [...new Set(cats)].slice(0, 6);
+}
+
+function ageFromDob(dob: string | undefined): number | null {
+  if (!dob) return null;
+  const d = new Date(dob);
+  if (Number.isNaN(d.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - d.getFullYear();
+  const m = today.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < d.getDate())) age -= 1;
+  return age;
+}
+
+function accountAge(a: accountsRepo.AccountRecord): number | null {
+  if (typeof a.age === 'number' && !Number.isNaN(a.age)) return a.age;
+  return ageFromDob(a.dob);
+}
+
+function roleProfileText(a: accountsRepo.AccountRecord): string {
+  return `${a.role ?? ''} ${String(a.profileKind ?? '')}`.toLowerCase();
+}
+
+function applyDeckFilters(
+  eligible: accountsRepo.AccountRecord[],
+  opts: {
+    region: string | null;
+    role: string | null;
+    reach: string | null;
+    ageBand: string | null;
+    legacyFilter: string | null;
+  },
+): accountsRepo.AccountRecord[] {
+  let out = eligible;
+
+  const region = opts.region;
+  if (region && region !== 'Global') {
+    const r = region.toLowerCase();
+    out = out.filter((a) => {
+      const reg = (a.region || '').toLowerCase();
+      const city = (a.cityCountry || '').toLowerCase();
+      return reg.includes(r) || city.includes(r);
+    });
+  }
+
+  const role = opts.role;
+  if (role && role !== 'All Roles') {
+    const q = role.toLowerCase();
+    out = out.filter((a) => roleProfileText(a).includes(q));
+  }
+
+  const reach = opts.reach;
+  if (reach && reach !== 'All') {
+    const allowed = REACH_BUCKETS[reach];
+    if (allowed) {
+      const set = new Set(allowed);
+      out = out.filter((a) => {
+        const v = (a.reach || '').trim();
+        if (v && set.has(v)) return true;
+        // Fallback when `reach` string missing: approximate 10K-1M+ via followers
+        if (reach === '10K-1M+' && !v) {
+          if (!a.followers) return false;
+          const f = parseInt(String(a.followers).replace(/[^0-9]/g, ''), 10);
+          return !Number.isNaN(f) && f >= 10_000;
+        }
+        return false;
+      });
+    }
+  }
+
+  if (opts.ageBand === '18-65') {
+    out = out.filter((a) => {
+      const ag = accountAge(a);
+      if (ag === null) return true;
+      return ag >= 18 && ag <= 65;
+    });
+  }
+
+  // Legacy single `filter` param (backward compatible)
+  const f = opts.legacyFilter;
+  if (f && f !== 'Global' && f !== 'All') {
+    if (f === '18-65+') {
+      out = out.filter((a) => {
+        const ag = accountAge(a);
+        if (ag === null) return true;
+        return ag >= 18 && ag <= 65;
+      });
+    } else if (f === 'All Roles') {
+      // no-op
+    } else if (f === '10K-1M+') {
+      const allowed = REACH_BUCKETS['10K-1M+'] ?? [];
+      const set = new Set(allowed);
+      out = out.filter((a) => {
+        const v = (a.reach || '').trim();
+        if (v && set.has(v)) return true;
+        if (!a.followers) return false;
+        const n = parseInt(String(a.followers).replace(/[^0-9]/g, ''), 10);
+        return !Number.isNaN(n) && n >= 10_000;
+      });
+    }
+  }
+
+  return out;
+}
+
 export async function GET(request: Request) {
   const user = await getCurrentUser();
   if (!user) return fail('unauthorized', 'Sign in to browse people.', 401);
@@ -17,34 +140,42 @@ export async function GET(request: Request) {
   const cursor = parseInt(url.searchParams.get('cursor') ?? '0', 10);
   const limit = 8;
 
-  // Fetch accounts and user's existing swipes in parallel
+  const SWIPE_COOLDOWN_DAYS = 7;
+
   const [accounts, userSwipes] = await Promise.all([
     accountsRepo.listTop(60).catch(() => []),
-    // Get the set of account IDs this user has already swiped on
     swipeRecordsRepo.listForUser(user._id).catch(() => [] as swipeRecordsRepo.SwipeRecord[]),
   ]);
 
-  const swipedIds = new Set(userSwipes.map((s) => s.accountId));
+  // Only exclude profiles swiped within the cooldown window
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - SWIPE_COOLDOWN_DAYS);
+  const cutoffISO = cutoff.toISOString();
 
-  const filter = url.searchParams.get('filter') || 'All';
+  const recentlySwipedIds = new Set(
+    userSwipes
+      .filter((s) => s.updatedAt > cutoffISO)
+      .map((s) => s.accountId),
+  );
 
-  // Filter out archived, already-swiped, and self
-  let eligible = accounts
-    .filter((a) => !a.archived && !swipedIds.has(a._id));
+  let eligible = accounts.filter((a) => !a.archived && !recentlySwipedIds.has(a._id));
 
-  if (filter === 'Global' || filter === 'All') {
-    // No additional filtering
-  } else if (filter === '18-65+') {
-    // Example: just keeping all for now since age might not be robustly populated, 
-    // but typically we'd check account.age if it existed.
-    // For now we assume all adults.
-  } else if (filter === 'All Roles') {
-    // No op
-  } else if (filter === '10K-1M+') {
-    eligible = eligible.filter((a) => {
-      if (!a.followers) return false;
-      const f = parseInt(String(a.followers).replace(/[^0-9]/g, ''), 10);
-      return !isNaN(f) && f >= 10000;
+  const region = url.searchParams.get('region');
+  const role = url.searchParams.get('role');
+  const reach = url.searchParams.get('reach');
+  const ageBand = url.searchParams.get('ageBand');
+  const legacyFilter = url.searchParams.get('filter');
+
+  const hasStructured = Boolean(region || role || reach || ageBand);
+  if (hasStructured) {
+    eligible = applyDeckFilters(eligible, { region, role, reach, ageBand, legacyFilter: null });
+  } else if (legacyFilter) {
+    eligible = applyDeckFilters(eligible, {
+      region: null,
+      role: null,
+      reach: null,
+      ageBand: null,
+      legacyFilter,
     });
   }
 
@@ -52,8 +183,8 @@ export async function GET(request: Request) {
 
   const filings = await Promise.all(
     eligible.map((account) =>
-      reportsRepo.listForAccount(account._id, ['approved', 'ai_reviewed'], 8).catch(() => [])
-    )
+      reportsRepo.listForAccount(account._id, ['approved', 'ai_reviewed'], 8).catch(() => []),
+    ),
   );
 
   const items = eligible.map((account, i) => ({
@@ -65,10 +196,15 @@ export async function GET(request: Request) {
       `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(account.displayName || account.username)}`,
     platform: account.platform,
     role: account.role || account.profileKind || 'Public Profile',
+    profileKind: account.profileKind,
     region: account.region || account.cityCountry || 'Global',
     score: account.displayScore ?? account.score ?? BASE_SCORE,
+    weekDelta: account.windowScores?.w1Delta ?? undefined,
     followers: account.followers || '0',
     verified: Boolean(account.verified),
+    bio: account.bio && account.bio !== 'Platform User' ? account.bio : undefined,
+    categories: deriveCategories(account),
+    followUserId: account.claimedBy ?? undefined,
     topReports: filings[i]
       .map((r) => ({
         title: r.deed || r.description || 'Report recorded',
