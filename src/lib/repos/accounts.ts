@@ -53,6 +53,8 @@ export type AccountRecord = {
   verified: boolean;
   followers: string;
   score: number;
+  /** Running net total of all swipe deltas for this account. */
+  swipeScore?: number;
   scoreHistory: ScoreHistoryPoint[];
   breakdown: Breakdown;
   posts: SocialPostRecord[];

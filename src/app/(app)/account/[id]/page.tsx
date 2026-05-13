@@ -43,6 +43,7 @@ import {
   type ReporterSummary
 } from '@/lib/profileData';
 import * as accountsRepo from '@/lib/repos/accounts';
+import { getAccountSwipeScore } from '@/lib/repos/swipeRecords';
 
 export const dynamic = 'force-dynamic';
 
@@ -309,6 +310,13 @@ export default async function AccountPage({
     totalNegativeImpact,
     profileCredibility
   } = bundle.metrics;
+
+  const swipeAggregate = await getAccountSwipeScore(account._id).catch(() => ({
+    score: 0,
+    aligns: 0,
+    opposes: 0,
+  }));
+  const dossierTotalScore = account.score ?? 1000;
 
   function formatImpact(value: number) {
     if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
@@ -626,6 +634,8 @@ export default async function AccountPage({
               <ProfileImpactAnalytics
                 showGraph
                 showImpactDetails={false}
+                swipeAggregate={swipeAggregate}
+                totalScore={dossierTotalScore}
                 history={history.map((entry: any) => ({
                   t: entry.t,
                   s: entry.s,
@@ -676,6 +686,8 @@ export default async function AccountPage({
               <ProfileImpactAnalytics
                 showGraph={false}
                 showImpactDetails
+                swipeAggregate={swipeAggregate}
+                totalScore={dossierTotalScore}
                 history={history.map((entry: any) => ({
                   t: entry.t,
                   s: entry.s,
