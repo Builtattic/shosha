@@ -46,10 +46,6 @@ function accountAge(a: accountsRepo.AccountRecord): number | null {
   return ageFromDob(a.dob);
 }
 
-function roleProfileText(a: accountsRepo.AccountRecord): string {
-  return `${a.role ?? ''} ${String(a.profileKind ?? '')}`.toLowerCase();
-}
-
 function applyDeckFilters(
   eligible: accountsRepo.AccountRecord[],
   opts: {
@@ -57,6 +53,7 @@ function applyDeckFilters(
     role: string | null;
     reach: string | null;
     ageBand: string | null;
+    scoreFilter: string | null;
     legacyFilter: string | null;
   },
 ): accountsRepo.AccountRecord[] {
@@ -75,7 +72,11 @@ function applyDeckFilters(
   const role = opts.role;
   if (role && role !== 'All Roles') {
     const q = role.toLowerCase();
-    out = out.filter((a) => roleProfileText(a).includes(q));
+    out = out.filter((a) => {
+      const pk = (a.profileKind ?? '').toLowerCase();
+      const r = (a.role ?? '').toLowerCase();
+      return pk.includes(q) || r.includes(q);
+    });
   }
 
   const reach = opts.reach;
@@ -103,6 +104,14 @@ function applyDeckFilters(
       if (ag === null) return true;
       return ag >= 18 && ag <= 65;
     });
+  }
+
+  const scoreFilter = opts.scoreFilter;
+  if (scoreFilter === 'trending') {
+    out = out.filter((a) => (a.score ?? 1000) > 1000);
+  }
+  if (scoreFilter === 'underfire') {
+    out = out.filter((a) => (a.score ?? 1000) < 1000);
   }
 
   // Legacy single `filter` param (backward compatible)
@@ -164,17 +173,26 @@ export async function GET(request: Request) {
   const role = url.searchParams.get('role');
   const reach = url.searchParams.get('reach');
   const ageBand = url.searchParams.get('ageBand');
+  const scoreFilter = url.searchParams.get('scoreFilter');
   const legacyFilter = url.searchParams.get('filter');
 
-  const hasStructured = Boolean(region || role || reach || ageBand);
+  const hasStructured = Boolean(region || role || reach || ageBand || scoreFilter);
   if (hasStructured) {
-    eligible = applyDeckFilters(eligible, { region, role, reach, ageBand, legacyFilter: null });
+    eligible = applyDeckFilters(eligible, {
+      region,
+      role,
+      reach,
+      ageBand,
+      scoreFilter,
+      legacyFilter: null,
+    });
   } else if (legacyFilter) {
     eligible = applyDeckFilters(eligible, {
       region: null,
       role: null,
       reach: null,
       ageBand: null,
+      scoreFilter: null,
       legacyFilter,
     });
   }

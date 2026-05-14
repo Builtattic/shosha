@@ -79,6 +79,12 @@
       ".indexOn": ["reportId"]
     },
 
+    "swipeRecords": {
+      ".read": false,
+      ".write": false,
+      ".indexOn": ["userId", "accountId"]
+    },
+
     "siteSettings": {
       ".read": "auth != null",
       ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'super_admin')"
