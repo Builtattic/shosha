@@ -32,19 +32,34 @@ export async function POST(request: Request, { params }: { params: { id: string 
   });
 
   let following = false;
-  if (parsed.data.direction === 'align' && account.claimedBy && account.claimedBy !== user._id) {
-    const target = await usersRepo.findById(account.claimedBy);
-    if (target) {
-      const myFollowing = user.following ?? [];
-      const theirFollowers = target.followers ?? [];
-      if (!myFollowing.includes(target._id)) {
-        await usersRepo.update(user._id, { following: [...myFollowing, target._id] });
-      }
-      if (!theirFollowers.includes(user._id)) {
-        await usersRepo.update(target._id, { followers: [...theirFollowers, user._id] });
-      }
-      following = true;
+
+  if (parsed.data.direction === 'align') {
+    const currentFollowingAccounts = user.followingAccounts ?? [];
+    if (!currentFollowingAccounts.includes(account._id)) {
+      await usersRepo.update(user._id, {
+        followingAccounts: [...currentFollowingAccounts, account._id],
+      });
     }
+
+    if (account.claimedBy && account.claimedBy !== user._id) {
+      const target = await usersRepo.findById(account.claimedBy);
+      if (target) {
+        const myFollowing = user.following ?? [];
+        const theirFollowers = target.followers ?? [];
+        if (!myFollowing.includes(target._id)) {
+          await usersRepo.update(user._id, {
+            following: [...myFollowing, target._id],
+          });
+        }
+        if (!theirFollowers.includes(user._id)) {
+          await usersRepo.update(target._id, {
+            followers: [...theirFollowers, user._id],
+          });
+        }
+      }
+    }
+
+    following = true;
   }
 
   const aggregate = await swipeRecordsRepo.getAccountSwipeScore(account._id);

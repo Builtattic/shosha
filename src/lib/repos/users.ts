@@ -127,6 +127,8 @@ export type AppUser = {
   profileCredibility?: number;
   followers?: string[];
   following?: string[];
+  /** Account dossier ids the user follows (claimed or unclaimed). */
+  followingAccounts?: string[];
 
   // Populated at request time from the Firebase ID token, never persisted.
   emailVerified?: boolean;

@@ -645,7 +645,6 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
       if (!current) return;
       const rated = current;
       const ratedId = rated.id;
-      const followId = rated.followUserId;
 
       setExitX(dir === 'align' ? 800 : -800);
       setExitY(-50);
@@ -660,19 +659,9 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
         body: JSON.stringify({ direction: dir }),
       })
         .then((r) => r.json())
-        .then(async (p) => {
+        .then((p) => {
           if (!p.ok) throw new Error(p.error?.message ?? 'Failed');
           showSwipeFeedback(dir);
-          if (dir === 'align' && followId) {
-            try {
-              await fetch(`/api/users/${followId}/follow`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-              });
-            } catch (e) {
-              console.error('Follow failed:', e);
-            }
-          }
         })
         .catch((err) => toast.push(err instanceof Error ? err.message : 'Failed'));
     },
