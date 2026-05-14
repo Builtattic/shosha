@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState, useRef } from 'react';
 import {
   motion,
   AnimatePresence,
@@ -14,6 +14,8 @@ import {
 } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import {
+  ChevronLeft,
+  ChevronRight,
   ChevronUp,
   Globe,
   Loader2,
@@ -57,33 +59,76 @@ const OFFSET_THRESHOLD = 118;
 const FLICK_MIN_OFFSET = 42;
 /** Framer reports velocity in px/s for drag end; keep high to avoid touch noise */
 const VELOCITY_THRESHOLD = 620;
-const FILTERS = [
-  { label: 'Global', icon: <Globe size={12} /> }, { label: '18-65+' },
-  { label: 'All Roles' }, { label: '10K-1M+' }, { label: 'All' },
-];
 
-/** Map filter chip → deck API query params (structured; no legacy `filter` param). */
-function filterToParams(chip: string): URLSearchParams {
-  const p = new URLSearchParams();
-  if (chip === 'All' || chip === 'Global' || chip === 'All Roles') return p;
-  if (chip === '18-65+') {
-    p.set('ageBand', '18-65');
-    return p;
+const FILTER_CHIPS = [
+  { label: 'All', params: {} },
+  { label: 'Public Figures', params: { role: 'Public Figure' } },
+  { label: 'Founders', params: { role: 'Founder' } },
+  { label: 'Trending', params: { scoreFilter: 'trending' } },
+  { label: 'Under Fire', params: { scoreFilter: 'underfire' } },
+  { label: 'Global', params: { region: 'Global' } },
+  { label: '10K-1M+', params: { reach: '10K-1M+' } },
+  { label: '18-65+', params: { ageBand: '18-65' } },
+] as const;
+
+function getParamsForLabel(label: string): Record<string, string> {
+  const chip = FILTER_CHIPS.find((c) => c.label === label);
+  if (!chip) return {};
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(chip.params)) {
+    out[k] = String(v);
   }
-  if (chip === '10K-1M+') {
-    p.set('reach', '10K-1M+');
-    return p;
-  }
-  return p;
+  return out;
 }
 
-function buildDeckUrl(cursor: number, chip: string): string {
-  const q = new URLSearchParams();
-  q.set('cursor', String(cursor));
-  filterToParams(chip).forEach((v, k) => {
-    q.set(k, v);
-  });
-  return `/api/people/deck?${q.toString()}`;
+function buildDeckUrl(params: Record<string, string>, cursor: number): string {
+  const base = `/api/people/deck?cursor=${cursor}`;
+  const qs = Object.entries(params)
+    .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
+    .join('&');
+  return qs ? `${base}&${qs}` : base;
+}
+
+const EMPTY_STATE_COPY: Record<string, { title: string; body: string }> = {
+  All: { title: 'All caught up!', body: 'New profiles will appear as dossiers are created.' },
+  'Public Figures': {
+    title: 'No public figures yet',
+    body: "Public figure profiles will appear here as they're added.",
+  },
+  Founders: { title: 'No founders yet', body: "Founder profiles will appear here as they're added." },
+  Trending: {
+    title: 'No one trending up',
+    body: 'Profiles gaining reputation this week will appear here.',
+  },
+  'Under Fire': {
+    title: 'No one under fire',
+    body: 'Profiles losing reputation this week will appear here.',
+  },
+  Global: { title: 'No global profiles', body: 'Try switching to All to see everyone.' },
+  '10K-1M+': {
+    title: 'No profiles in range',
+    body: 'Not enough reach data yet — try All to see everyone.',
+  },
+  '18-65+': {
+    title: 'No profiles in range',
+    body: 'Age data is sparse — try All to see everyone.',
+  },
+};
+
+function chipIcon(label: (typeof FILTER_CHIPS)[number]['label']) {
+  switch (label) {
+    case 'Global':
+      return <Globe size={12} />;
+    case 'Trending':
+      return <TrendingUp size={12} />;
+    case 'Under Fire':
+      return <TrendingDown size={12} />;
+    case 'Public Figures':
+    case 'Founders':
+      return <Users size={12} />;
+    default:
+      return null;
+  }
 }
 
 type SwipeCardProps = {
@@ -447,7 +492,7 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
   const router = useRouter();
   const toast = useToast();
   const [items, setItems] = useState(initialItems);
-  const [activeFilter, setActiveFilter] = useState('Global');
+  const [activeFilter, setActiveFilter] = useState<string>('All');
   const [exitX, setExitX] = useState(0);
   const [exitY, setExitY] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -457,6 +502,21 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
   const [query, setQuery] = useState('');
   const [swipeFeedback, setSwipeFeedback] = useState<{ text: string; className: string } | null>(null);
   const fetchState = useRef({ loading: false, hasMore: true });
+  const chipScrollRef = useRef<HTMLDivElement>(null);
+  const [chipScroll, setChipScroll] = useState({ canScroll: false, left: false, right: false });
+
+  const syncChipScroll = useCallback(() => {
+    const el = chipScrollRef.current;
+    if (!el) return;
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    const max = scrollWidth - clientWidth;
+    const canScroll = max > 2;
+    setChipScroll({
+      canScroll,
+      left: canScroll && scrollLeft > 2,
+      right: canScroll && scrollLeft < max - 2,
+    });
+  }, []);
 
   const showSwipeFeedback = useCallback((dir: 'align' | 'oppose') => {
     setSwipeFeedback(
@@ -503,7 +563,7 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
     fetchState.current.loading = true;
     setLoading(true);
     try {
-      const res = await fetch(buildDeckUrl(currentCursor, chip));
+      const res = await fetch(buildDeckUrl(getParamsForLabel(chip), currentCursor));
       const data = await res.json();
       const payload = data.ok ? data.data : undefined;
       if (payload?.items?.length) {
@@ -558,12 +618,33 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
     y.set(0);
   }, [current?.id, x, y]);
 
+  /** Filter chip strip: horizontal scroll metrics for chevrons + ResizeObserver after layout. */
+  useLayoutEffect(() => {
+    syncChipScroll();
+  }, [syncChipScroll, activeFilter]);
+
+  useEffect(() => {
+    const el = chipScrollRef.current;
+    const bump = () => {
+      requestAnimationFrame(() => syncChipScroll());
+    };
+    bump();
+    window.addEventListener('resize', bump, { passive: true });
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(bump) : null;
+    if (el && ro) ro.observe(el);
+    el?.addEventListener('scroll', bump, { passive: true });
+    return () => {
+      window.removeEventListener('resize', bump);
+      el?.removeEventListener('scroll', bump);
+      ro?.disconnect();
+    };
+  }, [syncChipScroll, activeFilter, loading]);
+
   const handleSwipe = useCallback(
     (dir: 'align' | 'oppose') => {
       if (!current) return;
       const rated = current;
       const ratedId = rated.id;
-      const followId = rated.followUserId;
 
       setExitX(dir === 'align' ? 800 : -800);
       setExitY(-50);
@@ -578,19 +659,9 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
         body: JSON.stringify({ direction: dir }),
       })
         .then((r) => r.json())
-        .then(async (p) => {
+        .then((p) => {
           if (!p.ok) throw new Error(p.error?.message ?? 'Failed');
           showSwipeFeedback(dir);
-          if (dir === 'align' && followId) {
-            try {
-              await fetch(`/api/users/${followId}/follow`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-              });
-            } catch (e) {
-              console.error('Follow failed:', e);
-            }
-          }
         })
         .catch((err) => toast.push(err instanceof Error ? err.message : 'Failed'));
     },
@@ -656,70 +727,131 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
     animate(y, 0, { type: 'spring', stiffness: 400, damping: 30 });
   }
 
-  if (!current && !loading && items.length === 0) return (
-    <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 text-center">
-      <motion.div initial={{ opacity: 0, scale: 0.88 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: 'spring', stiffness: 300, damping: 25 }} className="rounded-[32px] border border-border bg-card p-12 shadow-2xl">
-        <div className="mb-5 flex h-20 w-20 mx-auto items-center justify-center rounded-full bg-muted text-4xl">👥</div>
-        <h2 className="text-[24px] font-black">All caught up!</h2>
-        <p className="mt-2 text-[13px] text-muted-foreground">New profiles will appear here as dossiers are created.</p>
-      </motion.div>
-    </div>
-  );
-
-  return (
-    <main className="flex h-[100dvh] min-h-0 flex-col overflow-x-hidden overflow-y-hidden bg-background lg:h-screen lg:overflow-visible">
-      <div className="mx-auto flex min-h-0 w-full max-w-[520px] flex-1 flex-col items-center px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-4 lg:h-full lg:min-h-0 lg:pb-8 lg:pt-8">
-
-        {/* Header */}
-        <header className="mb-4 shrink-0 flex w-full items-start justify-between">
-          <div>
-            <h1 className="text-[24px] lg:text-[28px] font-black tracking-tight" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>
-              Sho<span className="text-muted-foreground">शा</span>
-            </h1>
-            <p className="text-[13px] font-bold text-foreground">Discover &amp; Rate</p>
-            <p className="text-[10px] text-muted-foreground/70">Swipe to align or oppose impact.</p>
-          </div>
-          <div className="flex items-center gap-2 pt-1">
-            {loading && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
-          </div>
-        </header>
-
-        {/* Filters */}
-        <div className="mb-4 shrink-0 flex w-full gap-2 overflow-x-auto pb-1 no-scrollbar">
-          {FILTERS.map(({ label, icon }) => (
+  if (!current && !loading && items.length === 0) {
+    const emptyState = EMPTY_STATE_COPY[activeFilter] ?? EMPTY_STATE_COPY.All;
+    return (
+      <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 text-center">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.88 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+          className="rounded-[32px] border border-border bg-card p-12 shadow-2xl"
+        >
+          <div className="mb-5 mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-muted text-4xl">👥</div>
+          <h2 className="text-[24px] font-black">{emptyState.title}</h2>
+          <p className="text-muted-foreground mt-2 text-center text-sm">{emptyState.body}</p>
+          {activeFilter !== 'All' && (
             <button
-              key={label}
               type="button"
               onClick={() => {
-                setActiveFilter(label);
+                setActiveFilter('All');
                 setQuery('');
               }}
-              className={cn(
-              'shrink-0 flex items-center gap-1.5 rounded-full border px-4 py-2 text-[12px] font-bold transition-all duration-300',
-              activeFilter === label ? 'border-foreground bg-foreground text-background scale-[1.04] shadow-md' : 'border-border bg-card text-muted-foreground hover:bg-muted'
-            )}
+              className="text-foreground hover:bg-muted mt-4 rounded-full border border-border px-5 py-2 text-sm font-medium transition-colors"
             >
-              {icon}
-              {label}
+              Show all profiles
             </button>
-          ))}
-        </div>
+          )}
+        </motion.div>
+      </div>
+    );
+  }
 
-        <div className="w-full max-w-sm shrink-0 px-4 pb-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Search people..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="w-full rounded-full border border-border bg-muted/50 py-2 pl-9 pr-4 text-sm placeholder:text-muted-foreground focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
-            />
+  return (
+    <main className="flex h-[100dvh] min-h-0 w-full min-w-0 flex-col overflow-x-hidden overflow-y-hidden bg-background lg:h-screen lg:overflow-visible">
+      <div className="mx-auto flex min-h-0 w-full min-w-0 max-w-[520px] flex-1 flex-col px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-4 lg:h-full lg:min-h-0 lg:pb-8 lg:pt-8">
+
+        {/* Top chrome above the deck: z-30 + bg so dragged cards (transform y) stay underneath and do not cover filters/search. */}
+        <div className="relative z-30 w-full min-w-0 shrink-0 bg-background pb-1">
+          <header className="mb-4 flex w-full items-start justify-between">
+            <div>
+              <h1 className="text-[24px] lg:text-[28px] font-black tracking-tight" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>
+                Sho<span className="text-muted-foreground">शा</span>
+              </h1>
+              <p className="text-[13px] font-bold text-foreground">Discover &amp; Rate</p>
+              <p className="text-[10px] text-muted-foreground/70">Swipe to align or oppose impact.</p>
+            </div>
+            <div className="flex items-center gap-2 pt-1">
+              {loading && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
+            </div>
+          </header>
+
+          {/* Horizontal chips: flex-1 scroller (min-w-0) + optional chevrons; thin scrollbar; touch-pan-x for trackpads/phones. */}
+          <div className="relative mb-4 flex min-w-0 w-full max-w-full items-stretch gap-1">
+            {chipScroll.canScroll && (
+              <button
+                type="button"
+                aria-label="Scroll filters left"
+                disabled={!chipScroll.left}
+                onClick={() => chipScrollRef.current?.scrollBy({ left: -160, behavior: 'smooth' })}
+                className={cn(
+                  'flex h-10 w-8 shrink-0 items-center justify-center self-center rounded-full border border-border bg-card text-foreground shadow-sm transition-colors',
+                  chipScroll.left ? 'opacity-100 hover:bg-muted' : 'pointer-events-none opacity-30',
+                )}
+              >
+                <ChevronLeft size={18} strokeWidth={2.5} />
+              </button>
+            )}
+            <div
+              ref={chipScrollRef}
+              onScroll={syncChipScroll}
+              className={cn(
+                'flex min-h-10 min-w-0 flex-1 flex-nowrap gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain py-2 scroll-smooth touch-pan-x',
+                '[scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border',
+              )}
+            >
+              {FILTER_CHIPS.map(({ label }) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => {
+                    setActiveFilter(label);
+                    setQuery('');
+                  }}
+                  className={cn(
+                    'flex shrink-0 items-center gap-1.5 self-center rounded-full border px-4 py-2 text-[12px] font-bold transition-all duration-300',
+                    activeFilter === label
+                      ? 'scale-[1.04] border-foreground bg-foreground text-background shadow-md'
+                      : 'border-border bg-card text-muted-foreground hover:bg-muted',
+                  )}
+                >
+                  {chipIcon(label)}
+                  {label}
+                </button>
+              ))}
+            </div>
+            {chipScroll.canScroll && (
+              <button
+                type="button"
+                aria-label="Scroll filters right"
+                disabled={!chipScroll.right}
+                onClick={() => chipScrollRef.current?.scrollBy({ left: 160, behavior: 'smooth' })}
+                className={cn(
+                  'flex h-10 w-8 shrink-0 items-center justify-center self-center rounded-full border border-border bg-card text-foreground shadow-sm transition-colors',
+                  chipScroll.right ? 'opacity-100 hover:bg-muted' : 'pointer-events-none opacity-30',
+                )}
+              >
+                <ChevronRight size={18} strokeWidth={2.5} />
+              </button>
+            )}
+          </div>
+
+          <div className="mx-auto w-full max-w-sm shrink-0 pb-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search people..."
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="w-full rounded-full border border-border bg-muted/50 py-2 pl-9 pr-4 text-sm placeholder:text-muted-foreground focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
           </div>
         </div>
 
-        {/* Card stack + desktop flank CTAs (main layout) */}
-        <div className="relative min-h-0 w-full flex-1 overflow-visible pb-3">
+        {/* Card stack — z-0 so top chrome always wins when geometry overlaps during drag. */}
+        <div className="relative z-0 min-h-0 w-full flex-1 overflow-visible pb-3">
           <div className="relative flex h-full min-h-0 w-full items-center justify-center gap-0 px-1 py-2 sm:px-2 lg:gap-4">
             {current && (
               <motion.div

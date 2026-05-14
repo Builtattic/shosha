@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   CheckCircle2, Upload, TrendingUp, Shield,
-  PieChart, Activity, Target, User, Users, ThumbsUp, ThumbsDown, Minus, ArrowRight,
+  PieChart, Activity, Target, User, Users, UserRound, ThumbsUp, ThumbsDown, Minus, ArrowRight,
   Briefcase, GraduationCap, FileText, Link2, Pencil, MapPin, ExternalLink,
   AlertCircle, Play, History, TrendingDown, Calendar, Eye, Link as LinkIcon
 } from 'lucide-react';
@@ -18,6 +18,7 @@ import { D3AreaChart } from '@/components/viz/D3AreaChart';
 import { D3ActivityBar } from '@/components/viz/D3ActivityBar';
 import { ProfileScoreRadar } from '@/components/viz/ProfileScoreRadar';
 import { ShareCardModal } from '@/components/profile/ShareCardModal';
+import { ConnectionListModal, type ConnectionListModalRef } from '@/components/profile/ConnectionListModal';
 import { SwipeScoreBreakdownCard } from '@/components/profile/SwipeScoreBreakdownCard';
 import { PostDetailModal } from '@/components/feed/PostDetailModal';
 
@@ -105,6 +106,7 @@ export default function ProfilePage() {
   const [reportDetailOpen, setReportDetailOpen] = useState(false);
   const [ledgerRange, setLedgerRange] = useState<'weekly' | 'monthly' | 'max'>('max');
   const initialReplayDone = useRef(false);
+  const connectionListModalRef = useRef<ConnectionListModalRef>(null);
 
   const loadProfile = useCallback(async () => {
     const res = await fetch('/api/me', { cache: 'no-store' });
@@ -185,6 +187,9 @@ export default function ProfilePage() {
   }
 
   const followersCountStr = formatNumberShort((appUser?.followers ?? []).length);
+  const followingCountTotal =
+    (appUser?.following ?? []).length + (appUser?.followingAccounts ?? []).length;
+  const followingCountStr = formatNumberShort(followingCountTotal);
 
   const displayName = (appUser?.name || firebaseUser?.displayName || firebaseUser?.email?.split('@')[0] || 'Unknown User').replace(/^@/, '');
   const username = appUser?.username || 'user';
@@ -376,6 +381,16 @@ export default function ProfilePage() {
           </div>
         </div>
 
+        {appUser?._id && (
+          <ConnectionListModal
+            ref={connectionListModalRef}
+            targetUserId={appUser._id}
+            followingCount={followingCountTotal}
+            followersCount={(appUser.followers ?? []).length}
+            showInlineTriggers={false}
+          />
+        )}
+
         {/* Ledger Score Hero */}
         <div className="mt-8 relative flex flex-col items-center w-full">
           <div className="w-full max-w-[420px] relative">
@@ -406,9 +421,9 @@ export default function ProfilePage() {
         <div className="mt-1 pb-4 border-b border-border" />
 
         {/* Stat Cards */}
-        <div className="mt-6 grid grid-cols-4 gap-2">
+        <div className="mt-6 grid grid-cols-2 gap-2 min-[400px]:grid-cols-3 lg:grid-cols-5">
           {/* Card 1 */}
-          <div className="rounded-2xl border border-border bg-background py-3 px-1 text-center shadow-sm flex flex-col items-center justify-center">
+          <div className="min-w-0 rounded-2xl border border-border bg-background py-3 px-1 text-center shadow-sm flex flex-col items-center justify-center">
             <div className={cn("mx-auto flex items-center justify-center", weeklyDelta >= 0 ? "text-green-500" : "text-red-500")}>
               {weeklyDelta >= 0 ? <TrendingUp size={18} strokeWidth={2.5} /> : <ThumbsDown size={18} strokeWidth={2.5} />}
             </div>
@@ -418,7 +433,7 @@ export default function ProfilePage() {
             <p className="mt-0.5 text-[9px] sm:text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">This Week</p>
           </div>
           {/* Card 2 */}
-          <div className="rounded-2xl border border-border bg-background py-3 px-1 text-center shadow-sm flex flex-col items-center justify-center">
+          <div className="min-w-0 rounded-2xl border border-border bg-background py-3 px-1 text-center shadow-sm flex flex-col items-center justify-center">
             <div className="mx-auto flex items-center justify-center text-red-500">
               <Target size={18} strokeWidth={2.5} />
             </div>
@@ -427,8 +442,30 @@ export default function ProfilePage() {
             </p>
             <p className="mt-0.5 text-[9px] sm:text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Total Impact</p>
           </div>
-          {/* Card 3 */}
-          <div className="rounded-2xl border border-border bg-background py-3 px-1 text-center shadow-sm flex flex-col items-center justify-center">
+          {/* Card 3 — Following */}
+          <button
+            type="button"
+            disabled={!appUser?._id}
+            onClick={() => connectionListModalRef.current?.open('following')}
+            aria-label="View accounts you follow"
+            className="min-w-0 w-full cursor-pointer rounded-2xl border border-border bg-background py-3 px-1 text-center shadow-sm flex flex-col items-center justify-center transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50"
+          >
+            <div className="mx-auto flex items-center justify-center text-foreground">
+              <UserRound size={18} strokeWidth={2.5} />
+            </div>
+            <p className="mt-1.5 text-[15px] sm:text-[17px] font-bold text-foreground tabular-nums">
+              {followingCountStr}
+            </p>
+            <p className="mt-0.5 text-[9px] sm:text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Following</p>
+          </button>
+          {/* Card 4 — Followers */}
+          <button
+            type="button"
+            disabled={!appUser?._id}
+            onClick={() => connectionListModalRef.current?.open('followers')}
+            aria-label="View your followers"
+            className="min-w-0 w-full cursor-pointer rounded-2xl border border-border bg-background py-3 px-1 text-center shadow-sm flex flex-col items-center justify-center transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50"
+          >
             <div className="mx-auto flex items-center justify-center text-foreground">
               <Users size={18} strokeWidth={2.5} />
             </div>
@@ -436,9 +473,9 @@ export default function ProfilePage() {
               {followersCountStr}
             </p>
             <p className="mt-0.5 text-[9px] sm:text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Followers</p>
-          </div>
-          {/* Card 4 */}
-          <div className="rounded-2xl border border-border bg-background py-3 px-1 text-center shadow-sm flex flex-col items-center justify-center">
+          </button>
+          {/* Card 5 */}
+          <div className="min-w-0 rounded-2xl border border-border bg-background py-3 px-1 text-center shadow-sm flex flex-col items-center justify-center">
             <div className="mx-auto flex items-center justify-center text-foreground">
               <Shield size={18} strokeWidth={2.5} />
             </div>

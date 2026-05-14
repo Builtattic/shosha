@@ -438,7 +438,9 @@ export default async function AccountPage({
               {linkedUser && (
                 <ConnectionListModal
                   targetUserId={linkedUser._id}
-                  followingCount={(linkedUser.following ?? []).length}
+                  followingCount={
+                    (linkedUser.following ?? []).length + (linkedUser.followingAccounts ?? []).length
+                  }
                   followersCount={(linkedUser.followers ?? []).length}
                   className="mt-2"
                 />
