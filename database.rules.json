@@ -14,7 +14,7 @@
     "accounts": {
       ".read": "auth != null",
       ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'super_admin')",
-      ".indexOn": ["score", "usernameLower", "displayNameLower", "claimedBy"]
+      ".indexOn": ["score", "usernameLower", "displayNameLower", "claimedBy", "slug"]
     },
 
     "reports": {
