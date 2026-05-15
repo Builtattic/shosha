@@ -26,7 +26,6 @@ import { ScoreRadar } from '@/components/viz/ScoreRadar';
 import { SimilarProfiles } from '@/components/profile/SimilarProfiles';
 import { AccountShareButton } from '@/components/profile/AccountShareButton';
 import { LiveAccountScorePanel } from '@/components/profile/LiveAccountScorePanel';
-import { ConnectionListModal } from '@/components/profile/ConnectionListModal';
 import { ScoreLedgerPanel } from '@/components/profile/ScoreLedgerPanel';
 import { ProfileImpactAnalytics } from '@/components/profile/ProfileImpactAnalytics';
 import { formatPlatform, cn, formatRelativeTime } from '@/lib/utils';
@@ -435,16 +434,6 @@ export default async function AccountPage({
                   <MapPin size={12} /> {displayedLocation}
                 </p>
               )}
-              {linkedUser && (
-                <ConnectionListModal
-                  targetUserId={linkedUser._id}
-                  followingCount={
-                    (linkedUser.following ?? []).length + (linkedUser.followingAccounts ?? []).length
-                  }
-                  followersCount={(linkedUser.followers ?? []).length}
-                  className="mt-2"
-                />
-              )}
             </div>
           </div>
 
@@ -473,6 +462,16 @@ export default async function AccountPage({
             credibility: profileCredibility,
             createdAt: account.createdAt,
           }}
+          linkedUserConnections={
+            linkedUser
+              ? {
+                  userId: linkedUser._id,
+                  followingCount:
+                    (linkedUser.following ?? []).length + (linkedUser.followingAccounts ?? []).length,
+                  followersCount: (linkedUser.followers ?? []).length,
+                }
+              : undefined
+          }
         />
 
         {windowScores && (
