@@ -66,17 +66,6 @@ export async function GET(req: NextRequest) {
           overflow: 'hidden',
         }}
       >
-        {/* ── Background grid pattern ── */}
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            backgroundImage:
-              'linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)',
-            backgroundSize: '60px 60px',
-          }}
-        />
-
         {/* ── Glow behind score ── */}
         <div
           style={{

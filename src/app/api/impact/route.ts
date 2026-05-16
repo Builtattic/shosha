@@ -1,58 +1,116 @@
 import { ok } from '@/lib/api';
 import { cached } from '@/lib/cache';
+import { hidesReporterOnPublicSurfaces, redactPublicReporter } from '@/lib/reportPrivacy';
+import * as accountsRepo from '@/lib/repos/accounts';
+import type { ReportRecord } from '@/lib/repos/reports';
 import * as reportsRepo from '@/lib/repos/reports';
+import * as siteSettingsRepo from '@/lib/repos/siteSettings';
+import * as usersRepo from '@/lib/repos/users';
 
-const CATEGORY_COLORS: Record<string, string> = {
-  authenticity: '#7eb89a',
-  engagement: '#60a5fa',
-  community: '#a78bfa',
-  content: '#fb923c',
-  impact: '#f472b6',
-  harassment: '#f87171',
-  misinformation: '#facc15',
-  philanthropy: '#34d399',
-  professionalism: '#38bdf8',
-  controversy: '#fb7185'
+const TWENTY_FOUR_H_MS = 24 * 60 * 60 * 1000;
+
+type ReportStats = NonNullable<ReportRecord['stats']>;
+
+function engagementTotal(stats?: ReportStats) {
+  return (stats?.aligns ?? 0) + (stats?.opposes ?? 0) + (stats?.comments ?? 0) + (stats?.shares ?? 0);
+}
+
+function createdTime(report: { createdAt?: string }) {
+  const time = report.createdAt ? new Date(report.createdAt).getTime() : 0;
+  return Number.isFinite(time) ? time : 0;
+}
+
+function isWithin24h(createdAt?: string) {
+  if (!createdAt) return false;
+  const time = new Date(createdAt).getTime();
+  return Number.isFinite(time) && Date.now() - time <= TWENTY_FOUR_H_MS;
+}
+
+type EnrichedReport = ReportRecord & {
+  account: {
+    _id: string;
+    displayName: string;
+    username: string;
+    avatarUrl?: string;
+    platform?: string;
+    verified?: boolean;
+  };
+  reporter?: {
+    _id: string;
+    username: string;
+    name?: string;
+    photoUrl?: string;
+    role?: string;
+  } | null;
 };
 
+async function loadEnrichedReports(): Promise<EnrichedReport[]> {
+  const settings = await siteSettingsRepo.get();
+  const reports = await reportsRepo.listPublicFeed(500, siteSettingsRepo.publicFeedStatuses(settings));
+  const accountIds = Array.from(new Set(reports.map((report) => report.accountId)));
+  const reporterIds = Array.from(
+    new Set(
+      reports
+        .filter((report) => !hidesReporterOnPublicSurfaces(report))
+        .map((report) => report.reporterId)
+        .filter(Boolean),
+    ),
+  ) as string[];
+
+  const [accounts, reporters] = await Promise.all([
+    Promise.all(accountIds.map((id) => accountsRepo.findById(id))),
+    Promise.all(reporterIds.map((id) => usersRepo.findById(id))),
+  ]);
+
+  const accountMap = new Map(accounts.filter(Boolean).map((account) => [account!._id, account!]));
+  const reporterMap = new Map(reporters.filter(Boolean).map((reporter) => [reporter!._id, reporter!]));
+
+  return reports
+    .map((report) => {
+      const account = accountMap.get(report.accountId);
+      if (!account) return null;
+
+      const enriched = {
+        ...report,
+        account: {
+          _id: account._id,
+          displayName: account.displayName,
+          username: account.username,
+          avatarUrl: account.avatarUrl,
+          platform: account.platform,
+          verified: account.verified,
+        },
+        reporter:
+          !hidesReporterOnPublicSurfaces(report) && report.reporterId
+            ? reporterMap.get(report.reporterId) ?? null
+            : null,
+      } as EnrichedReport;
+
+      return redactPublicReporter(enriched);
+    })
+    .filter((report): report is EnrichedReport => report !== null);
+}
+
+function pickTopStories(reports: EnrichedReport[]): EnrichedReport[] {
+  const byEngagement = (a: EnrichedReport, b: EnrichedReport) =>
+    engagementTotal(b.stats) - engagementTotal(a.stats) || createdTime(b) - createdTime(a);
+
+  const last24h = reports.filter((report) => isWithin24h(report.createdAt)).sort(byEngagement);
+  const older = reports.filter((report) => !isWithin24h(report.createdAt)).sort(byEngagement);
+  const merged = [...last24h, ...older];
+  return merged.slice(0, 10);
+}
+
+function pickRecentReports(reports: EnrichedReport[]): EnrichedReport[] {
+  return [...reports].sort((a, b) => createdTime(b) - createdTime(a)).slice(0, 10);
+}
+
 export async function GET() {
-  const data = await cached('shosha:v1:impact', 45, async () => {
-    const reports = await reportsRepo.listAll(500).catch(() => []);
-
-    let positive = 0;
-    let negative = 0;
-    let flagged = 0;
-    const categoryCounts = new Map<string, number>();
-
-    for (const report of reports) {
-      if (report.type === 'positive') positive += 1;
-      else if (report.type === 'negative') negative += 1;
-      if (report.status === 'flagged') flagged += 1;
-      const tags = report.aiVerdict?.categoryTags ?? [];
-      for (const tag of tags) {
-        const key = String(tag).toLowerCase().trim();
-        if (!key) continue;
-        categoryCounts.set(key, (categoryCounts.get(key) ?? 0) + 1);
-      }
-    }
-
-    const totalCategoryHits = Array.from(categoryCounts.values()).reduce((sum, n) => sum + n, 0);
-    const categories = Array.from(categoryCounts.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 6)
-      .map(([label, value]) => ({
-        label,
-        value,
-        percentage: totalCategoryHits ? Math.round((value / totalCategoryHits) * 100) : 0,
-        color: CATEGORY_COLORS[label] ?? '#94a3b8'
-      }));
-
+  const data = await cached('shosha:v1:impact:explore', 60, async () => {
+    const reports = await loadEnrichedReports();
     return {
-      totalReports: reports.length,
-      positiveReports: positive,
-      negativeReports: negative,
-      flaggedReports: flagged,
-      categories
+      topStories: pickTopStories(reports),
+      recentReports: pickRecentReports(reports),
     };
   });
 

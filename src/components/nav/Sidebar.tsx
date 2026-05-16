@@ -63,6 +63,7 @@ export function Sidebar() {
   const items = [
     { href: '/dashboard', label: 'Home', icon: Home },
     { href: '/feed', label: 'Feed', icon: Newspaper },
+    { href: '/impact', label: 'Impact', icon: Target },
     { href: '/search', label: 'Search', icon: Search },
     { href: '/people', label: 'People', icon: Users },
     { href: '/bubbles', label: 'Bubbles', icon: CircleDot },
@@ -87,9 +88,16 @@ export function Sidebar() {
           <span className="font-normal italic text-muted-foreground transition-colors group-hover:text-foreground">शा</span>
         </Link>
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card text-muted-foreground">
+          <Link
+            href="/impact"
+            aria-label="Trending impact"
+            className={cn(
+              'flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
+              pathname === '/impact' && 'border-primary/40 bg-primary/10 text-primary',
+            )}
+          >
             <Activity size={14} />
-          </div>
+          </Link>
           <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-card text-muted-foreground [&>button]:flex [&>button]:h-full [&>button]:w-full [&>button]:items-center [&>button]:justify-center [&>button]:rounded-full [&>button]:p-0">
             <ThemeToggle />
           </div>
