@@ -995,18 +995,28 @@ export default function ProfilePage() {
         location={[appUser?.city, appUser?.country].filter(Boolean).join(', ') || undefined}
         isVerified={Boolean(appUser?.onboardingComplete)}
         platform={appUser?.platform || 'website'}
-        multipliers={{
-          massiveAction: appUser?.massiveAction,
-          people: appUser?.peopleMultiplier,
-          reach: appUser?.reachMultiplier,
-          impact: appUser?.impactMultiplier,
-          credibility: appUser?.credibilityMultiplier,
-          momentum: appUser?.momentumMultiplier,
-          innovation: appUser?.innovationMultiplier,
-          community: appUser?.communityMultiplier,
-          resource: appUser?.resourceMultiplier,
-          legacy: appUser?.legacyMultiplier,
-        }}
+        oppositions={swipeAggregate.opposes}
+        aligns={swipeAggregate.aligns}
+        socialRegion={[appUser?.city, appUser?.country].filter(Boolean).join(', ') || undefined}
+        socialRole={appUser?.occupationRole ? (ROLE_LABELS[appUser.occupationRole] ?? appUser.occupationRole) : undefined}
+        socialReach={appUser?.networkSize ? (NETWORK_LABELS[appUser.networkSize] ?? appUser.networkSize) : undefined}
+        socialEducation={appUser?.education ? (EDU_LABELS[appUser.education] ?? appUser.education) : undefined}
+        socialSpecializedField={
+          appUser?.specializedField === 'no' ? 'None' :
+          appUser?.specializedField === 'some_experience' ? 'Some Experience' :
+          appUser?.specializedField === 'professional' ? 'Professional' :
+          appUser?.specializedField === 'expert' ? 'Expert' :
+          undefined
+        }
+        socialManagement={appUser?.managesMoneyPeopleSystem ? (MGMT_LABELS[appUser.managesMoneyPeopleSystem] ?? appUser.managesMoneyPeopleSystem) : undefined}
+        socialTitle={appUser?.occupationRole ? (ROLE_LABELS[appUser.occupationRole] ?? appUser.occupationRole) : undefined}
+        socialLimitations={
+          appUser?.physicalIntellectualLimitations === 'yes' ? 'Has Disability' :
+          appUser?.physicalIntellectualLimitations === 'no' ? 'No Disability / No Limitations' :
+          appUser?.physicalIntellectualLimitations === 'prefer_not_to_say' ? 'Prefers Not to Say' :
+          undefined
+        }
+        dimensions={scores}
       />
       <PostDetailModal
         open={reportDetailOpen}

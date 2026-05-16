@@ -43,6 +43,43 @@ import {
 } from '@/lib/profileData';
 import * as accountsRepo from '@/lib/repos/accounts';
 import { getAccountSwipeScore } from '@/lib/repos/swipeRecords';
+import { calcProfileScores } from '@/lib/scoring';
+
+const ROLE_LABELS_MAP: Record<string, string> = {
+  student: 'Student',
+  unemployed: 'Unemployed',
+  individual_contributor: 'Individual Contributor',
+  manager: 'Manager',
+  founder_business_owner: 'Founder / Business Owner',
+  public_figure_influencer: 'Public Figure / Influencer',
+  government_political: 'Government / Political',
+};
+
+const EDU_LABELS_MAP: Record<string, string> = {
+  no_formal: 'No Formal Education',
+  school: 'School',
+  undergraduate: 'Undergraduate',
+  postgraduate: 'Postgraduate',
+  doctorate_specialized: 'Doctorate / Specialized',
+};
+
+const MGMT_LABELS_MAP: Record<string, string> = {
+  none: 'No management',
+  small_team_limited_control: 'Small team',
+  moderate_responsibility: 'Moderate responsibility',
+  large_team_major_decisions: 'Large team',
+  organizational_institutional: 'Organizational / Institutional',
+};
+
+const NETWORK_LABELS_MAP: Record<string, string> = {
+  none: 'No online network',
+  '<1k': '< 1K followers',
+  '1k-10k': '1K–10K followers',
+  '10k-100k': '10K–100K followers',
+  '100k-1m': '100K–1M followers',
+  '1m-100m': '1M–100M followers',
+  '100m+': '100M+ followers',
+};
 
 export const dynamic = 'force-dynamic';
 
@@ -368,18 +405,41 @@ export default async function AccountPage({
                 location: displayedLocation,
                 isVerified: account.verified,
                 platform: account.platform,
-                multipliers: {
-                  massiveAction: linkedUser?.massiveAction,
-                  people: linkedUser?.peopleMultiplier,
-                  reach: linkedUser?.reachMultiplier,
-                  impact: linkedUser?.impactMultiplier,
-                  credibility: linkedUser?.credibilityMultiplier,
-                  momentum: linkedUser?.momentumMultiplier,
-                  innovation: linkedUser?.innovationMultiplier,
-                  community: linkedUser?.communityMultiplier,
-                  resource: linkedUser?.resourceMultiplier,
-                  legacy: linkedUser?.legacyMultiplier,
-                },
+                oppositions: swipeAggregate.opposes,
+                aligns: swipeAggregate.aligns,
+                socialRegion: (() => {
+                  const city = linkedUser ? cleanDisplayValue(linkedUser.city) : '';
+                  const country = linkedUser ? cleanDisplayValue(linkedUser.country) : cleanDisplayValue(account.region);
+                  if (city && country) return `${city}, ${country}`;
+                  return city || country || undefined;
+                })(),
+                socialRole: linkedUser?.occupationRole
+                  ? (ROLE_LABELS_MAP[linkedUser.occupationRole] ?? humanize(linkedUser.occupationRole))
+                  : undefined,
+                socialReach: linkedUser?.networkSize
+                  ? (NETWORK_LABELS_MAP[linkedUser.networkSize] ?? linkedUser.networkSize)
+                  : undefined,
+                socialEducation: linkedUser?.education
+                  ? (EDU_LABELS_MAP[linkedUser.education] ?? humanize(linkedUser.education))
+                  : undefined,
+                socialSpecializedField:
+                  linkedUser?.specializedField === 'no' ? 'None' :
+                  linkedUser?.specializedField === 'some_experience' ? 'Some Experience' :
+                  linkedUser?.specializedField === 'professional' ? 'Professional' :
+                  linkedUser?.specializedField === 'expert' ? 'Expert' :
+                  undefined,
+                socialManagement: linkedUser?.managesMoneyPeopleSystem
+                  ? (MGMT_LABELS_MAP[linkedUser.managesMoneyPeopleSystem] ?? humanize(linkedUser.managesMoneyPeopleSystem))
+                  : undefined,
+                socialTitle: linkedUser?.occupationRole
+                  ? (ROLE_LABELS_MAP[linkedUser.occupationRole] ?? humanize(linkedUser.occupationRole))
+                  : undefined,
+                socialLimitations:
+                  linkedUser?.physicalIntellectualLimitations === 'yes' ? 'Has Disability' :
+                  linkedUser?.physicalIntellectualLimitations === 'no' ? 'No Disability / No Limitations' :
+                  linkedUser?.physicalIntellectualLimitations === 'prefer_not_to_say' ? 'Prefers Not to Say' :
+                  undefined,
+                dimensions: linkedUser ? calcProfileScores(linkedUser) : undefined,
               }}
             />
             <button
