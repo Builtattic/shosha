@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Search, Bell, Plus, ChevronRight, CheckCircle2, X } from 'lucide-react';
 import { FeedItem, type FeedItemProps } from '@/components/feed/FeedItem';
+import { PostDetailModal } from '@/components/feed/PostDetailModal';
+import { FollowButton } from '@/components/profile/FollowButton';
 import { D3ScoreGauge } from '@/components/viz/D3ScoreGauge';
 import { cn } from '@/lib/utils';
 import { useReportModal } from '@/components/report/ReportModalProvider';
@@ -68,6 +70,15 @@ type AccountCandidate = {
   verified?: boolean;
   confidence: number;
   reason: string;
+};
+
+type TrendingPerson = {
+  id: string;
+  name: string;
+  handle: string;
+  avatar: string;
+  score: number;
+  followUserId?: string | null;
 };
 
 const tabs: Array<{ label: string; value: FeedFilter }> = [
@@ -140,8 +151,10 @@ export default function DashboardPage() {
   const [meData, setMeData] = useState<{ user: any; claimedAccounts: any[] } | null>(null);
   const [heroImgError, setHeroImgError] = useState(false);
   
-  const [trendingPeople, setTrendingPeople] = useState<any[]>([]);
+  const [trendingPeople, setTrendingPeople] = useState<TrendingPerson[]>([]);
   const [topStories, setTopStories] = useState<FeedReport[]>([]);
+  const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null);
+  const [storyDetailOpen, setStoryDetailOpen] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -166,8 +179,25 @@ export default function DashboardPage() {
       });
       
     fetch('/api/people/trending')
-      .then(r => r.json())
-      .then(p => { if (active && p.ok) setTrendingPeople(p.data.items); })
+      .then((r) => r.json())
+      .then(async (p) => {
+        if (!active || !p.ok) return;
+        const items: TrendingPerson[] = p.data.items ?? [];
+        const enriched = await Promise.all(
+          items.map(async (person) => {
+            try {
+              const res = await fetch(`/api/accounts/${person.id}`, { cache: 'no-store' });
+              const payload = await res.json();
+              const followUserId =
+                payload.ok && payload.data?.claimedBy ? payload.data.claimedBy : null;
+              return { ...person, followUserId };
+            } catch {
+              return { ...person, followUserId: null };
+            }
+          })
+        );
+        if (active) setTrendingPeople(enriched);
+      })
       .catch(() => undefined);
       
     fetch('/api/feed?filter=top')
@@ -549,7 +579,7 @@ export default function DashboardPage() {
         {trendingPeople.length > 0 && (
           <section className="mt-8">
             <h2 className="mb-4 text-[16px] font-bold text-foreground">Trending People</h2>
-            <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
+            <div className="horizontal-strip-scroll flex gap-4 scroll-smooth pb-4">
               {trendingPeople.map((person) => (
                 <Link
                   key={person.id}
@@ -560,10 +590,24 @@ export default function DashboardPage() {
                     <img src={person.avatar} alt={person.name} className="h-full w-full object-cover" />
                   </div>
                   <h3 className="truncate text-[13px] font-bold text-foreground">{person.name}</h3>
-                  <p className="truncate text-[11px] text-muted-foreground">{person.handle}</p>
+                  <p className="truncate text-[11px] text-muted-foreground">@{person.handle}</p>
                   <div className="mt-2 inline-block rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
                     {person.score.toLocaleString()} pts
                   </div>
+                  {person.followUserId &&
+                    person.followUserId !== meData?.user?._id && (
+                      <div
+                        className="mt-3"
+                        onClick={(e) => e.preventDefault()}
+                      >
+                        <FollowButton
+                          targetUserId={person.followUserId}
+                          initialFollowing={
+                            meData?.user?.following?.includes(person.followUserId) ?? false
+                          }
+                        />
+                      </div>
+                    )}
                 </Link>
               ))}
             </div>
@@ -574,11 +618,16 @@ export default function DashboardPage() {
         {topStories.length > 0 && (
           <section className="mt-6">
             <h2 className="mb-4 text-[16px] font-bold text-foreground">Global Top Stories</h2>
-            <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
+            <div className="horizontal-strip-scroll flex gap-4 scroll-smooth pb-4">
               {topStories.map((story) => (
-                <div
+                <button
                   key={story._id}
-                  className="flex-shrink-0 w-[280px] rounded-[20px] border border-border bg-card p-4 transition-all hover:border-primary/30"
+                  type="button"
+                  onClick={() => {
+                    setSelectedStoryId(story._id);
+                    setStoryDetailOpen(true);
+                  }}
+                  className="flex-shrink-0 w-[280px] rounded-[20px] border border-border bg-card p-4 transition-all hover:border-primary/30 text-left"
                 >
                   <div className="flex items-start gap-2.5 mb-3">
                     <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full border border-border bg-muted">
@@ -591,7 +640,11 @@ export default function DashboardPage() {
                     <div className="flex flex-col min-w-0">
                       <div className="text-[13px] font-bold text-foreground truncate">
                         {story.reporter ? (
-                          <Link href={`/account/website_${story.reporter.username.replace(/^@/, '')}`} className="hover:underline">
+                          <Link
+                            href={`/account/website_${story.reporter.username.replace(/^@/, '')}`}
+                            className="hover:underline"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             @{story.reporter.username.replace(/^@/, '')}
                           </Link>
                         ) : (
@@ -600,18 +653,20 @@ export default function DashboardPage() {
                       </div>
                       <div className="text-[11px] text-muted-foreground truncate">
                         reported{' '}
-                        <Link href={`/account/${story.account._id}`} className="font-semibold text-foreground hover:underline">
+                        <Link
+                          href={`/account/${story.account._id}`}
+                          className="font-semibold text-foreground hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           {story.account.displayName}
                         </Link>
                       </div>
                     </div>
                   </div>
 
-                  <Link href={`/post/${story._id}`} className="block group">
-                    <p className="line-clamp-2 text-[14px] text-foreground leading-snug mb-4 group-hover:text-primary transition-colors">
-                      {story.description}
-                    </p>
-                  </Link>
+                  <p className="line-clamp-2 text-[14px] text-foreground leading-snug mb-4">
+                    {story.description}
+                  </p>
 
                   <div className="flex items-center justify-between text-[11px] font-bold border-t border-border pt-3">
                     <span className={story.type === 'positive' ? 'text-green-500' : 'text-red-500'}>
@@ -619,10 +674,21 @@ export default function DashboardPage() {
                     </span>
                     <span className="text-muted-foreground font-normal">{timestamp(story.createdAt)}</span>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </section>
+        )}
+
+        {selectedStoryId && (
+          <PostDetailModal
+            reportId={selectedStoryId}
+            open={storyDetailOpen}
+            onClose={() => {
+              setStoryDetailOpen(false);
+              setSelectedStoryId(null);
+            }}
+          />
         )}
 
         <section className="mt-8">

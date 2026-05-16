@@ -109,6 +109,37 @@ select {
   scrollbar-width: none;
 }
 
+/* Horizontal carousels: touch scroll on mobile, visible scrollbar on md+ */
+.horizontal-strip-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.horizontal-strip-scroll::-webkit-scrollbar {
+  display: none;
+}
+@media (min-width: 768px) {
+  .horizontal-strip-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  .horizontal-strip-scroll::-webkit-scrollbar {
+    display: block;
+    height: 8px;
+  }
+  .horizontal-strip-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .horizontal-strip-scroll::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 9999px;
+  }
+  .horizontal-strip-scroll::-webkit-scrollbar-thumb:hover {
+    background: var(--muted-foreground);
+  }
+}
+
 /* Smooth focus rings for keyboard users only */
 :focus-visible {
   outline: 2px solid #1a1a1a;
