@@ -1,6 +1,6 @@
 # Shosha . Claude Code Build Prompt
 
-Paste this entire document into Claude Code as your initial prompt. It is a full specification. Work through it in the phased order at the bottom.
+P   aste this entire document into Claude Code as your initial prompt. It is a full specification. Work through it in the phased order at the bottom.
 
 ---
 
