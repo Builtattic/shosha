@@ -580,18 +580,44 @@ export default function DashboardPage() {
                   key={story._id}
                   className="flex-shrink-0 w-[280px] rounded-[20px] border border-border bg-card p-4 transition-all hover:border-primary/30"
                 >
-                  <div className="flex items-center gap-2 mb-2">
-                    <img src={story.account.avatarUrl || `https://api.dicebear.com/9.x/initials/svg?seed=${story.account.username}`} alt={story.account.displayName} className="h-6 w-6 rounded-full" />
-                    <span className="truncate text-[12px] font-bold">{story.account.displayName}</span>
+                  <div className="flex items-start gap-2.5 mb-3">
+                    <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full border border-border bg-muted">
+                      <img 
+                        src={story.reporter?.photoUrl || `https://api.dicebear.com/9.x/initials/svg?seed=anonymous`} 
+                        alt="avatar" 
+                        className="h-full w-full object-cover" 
+                      />
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <div className="text-[13px] font-bold text-foreground truncate">
+                        {story.reporter ? (
+                          <Link href={`/account/website_${story.reporter.username.replace(/^@/, '')}`} className="hover:underline">
+                            @{story.reporter.username.replace(/^@/, '')}
+                          </Link>
+                        ) : (
+                          'Anonymous'
+                        )}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground truncate">
+                        reported{' '}
+                        <Link href={`/account/${story.account._id}`} className="font-semibold text-foreground hover:underline">
+                          {story.account.displayName}
+                        </Link>
+                      </div>
+                    </div>
                   </div>
-                  <p className="line-clamp-2 text-[13px] text-muted-foreground leading-snug mb-3">
-                    {story.description}
-                  </p>
-                  <div className="flex items-center justify-between text-[11px] font-bold">
+
+                  <Link href={`/post/${story._id}`} className="block group">
+                    <p className="line-clamp-2 text-[14px] text-foreground leading-snug mb-4 group-hover:text-primary transition-colors">
+                      {story.description}
+                    </p>
+                  </Link>
+
+                  <div className="flex items-center justify-between text-[11px] font-bold border-t border-border pt-3">
                     <span className={story.type === 'positive' ? 'text-green-500' : 'text-red-500'}>
-                      {story.type === 'positive' ? '+' : ''}{story.adminDecision?.finalImpact ?? story.reportScore ?? story.baseScore ?? 0} pts
+                      Impact: {story.type === 'positive' ? '+' : ''}{story.adminDecision?.finalImpact ?? story.reportScore ?? story.baseScore ?? 0}
                     </span>
-                    <span className="text-muted-foreground">{story.stats?.aligns ?? 0} aligns</span>
+                    <span className="text-muted-foreground font-normal">{timestamp(story.createdAt)}</span>
                   </div>
                 </div>
               ))}
