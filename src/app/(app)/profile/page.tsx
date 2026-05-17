@@ -394,7 +394,7 @@ export default function ProfilePage() {
         {/* Ledger Score Hero */}
         <div className="mt-8 relative flex flex-col items-center w-full">
           <div className="w-full max-w-[420px] relative">
-            <D3ProfileGauge score={ledgerScore} minScore={-1000} maxScore={1000} size={420} />
+            <D3ProfileGauge score={ledgerScore} minScore={-99000} maxScore={101000} size={420} />
             <div className="absolute inset-0 flex flex-col items-center justify-end pb-7 sm:pb-8 pointer-events-none">
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Shosha Score</p>
               <h2 className="mt-1 text-[40px] sm:text-[46px] font-black leading-none text-foreground tabular-nums">

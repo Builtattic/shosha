@@ -17,8 +17,8 @@ interface ScoreGaugeProps {
 
 export function ScoreGauge({
   score,
-  min = 0,
-  max = 2000,
+  min = -99000,
+  max = 101000,
   trending = 'up',
   change = '+0',
   credibility = 80,

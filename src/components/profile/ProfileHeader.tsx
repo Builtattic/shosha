@@ -93,8 +93,8 @@ export function ProfileHeader({ user, score, stats, activeTab, onTabChange }: Pr
       <div className="mt-6 flex justify-center">
         <ScoreGauge 
           score={score} 
-          min={0} 
-          max={100000} 
+          min={-99000} 
+          max={101000} 
           className="w-full max-w-[400px]" 
         />
       </div>

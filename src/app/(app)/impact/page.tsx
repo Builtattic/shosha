@@ -322,7 +322,7 @@ export default function ImpactPage() {
                   </Link>
                 </div>
                 <div className="flex shrink-0 justify-center sm:justify-end">
-                  <D3ProfileGauge score={ledgerScore} size={200} minScore={-1000} maxScore={2000} />
+                  <D3ProfileGauge score={ledgerScore} size={200} minScore={-99000} maxScore={101000} />
                 </div>
               </div>
             )}

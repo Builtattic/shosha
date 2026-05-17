@@ -5,12 +5,12 @@ import { useEffect, useRef } from 'react';
 
 interface Props {
   score: number; // e.g. 842
-  minScore?: number; // e.g. -1000
-  maxScore?: number; // e.g. 1000
+  minScore?: number; // e.g. -99000
+  maxScore?: number; // e.g. 101000
   size?: number;
 }
 
-export function D3ProfileGauge({ score, minScore = -1000, maxScore = 1000, size = 320 }: Props) {
+export function D3ProfileGauge({ score, minScore = -99000, maxScore = 101000, size = 320 }: Props) {
   const ref = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
