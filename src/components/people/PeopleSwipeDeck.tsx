@@ -500,7 +500,11 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
   const [hasMore, setHasMore] = useState(true);
   const [showUpHint, setShowUpHint] = useState(false);
   const [query, setQuery] = useState('');
-  const [swipeFeedback, setSwipeFeedback] = useState<{ text: string; className: string } | null>(null);
+  const [swipeFeedback, setSwipeFeedback] = useState<{
+    primary: string;
+    secondary: string;
+    className: string;
+  } | null>(null);
   const fetchState = useRef({ loading: false, hasMore: true });
   const chipScrollRef = useRef<HTMLDivElement>(null);
   const [chipScroll, setChipScroll] = useState({ canScroll: false, left: false, right: false });
@@ -518,12 +522,22 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
     });
   }, []);
 
-  const showSwipeFeedback = useCallback((dir: 'align' | 'oppose') => {
-    setSwipeFeedback(
-      dir === 'align'
-        ? { text: '+5 Reputation', className: 'text-emerald-600 dark:text-emerald-400' }
-        : { text: '−5 Reputation', className: 'text-red-600 dark:text-red-400' },
-    );
+  const showSwipeFeedback = useCallback((dir: 'align' | 'oppose', updatedScore?: number | null) => {
+    const secondary =
+      updatedScore != null
+        ? `Score now ${updatedScore.toLocaleString()} pts`
+        : dir === 'align'
+          ? 'Reputation increased'
+          : 'Reputation decreased';
+
+    setSwipeFeedback({
+      primary: dir === 'align' ? '+ Aligned' : '− Opposed',
+      secondary,
+      className:
+        dir === 'align'
+          ? 'text-emerald-600 dark:text-emerald-400'
+          : 'text-red-600 dark:text-red-400',
+    });
     window.setTimeout(() => setSwipeFeedback(null), 1800);
   }, []);
 
@@ -659,9 +673,10 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
         body: JSON.stringify({ direction: dir }),
       })
         .then((r) => r.json())
-        .then((p) => {
-          if (!p.ok) throw new Error(p.error?.message ?? 'Failed');
-          showSwipeFeedback(dir);
+        .then((data) => {
+          if (!data.ok) throw new Error(data.error?.message ?? 'Failed');
+          const updatedScore = data?.data?.score ?? null;
+          showSwipeFeedback(dir, updatedScore);
         })
         .catch((err) => toast.push(err instanceof Error ? err.message : 'Failed'));
     },
@@ -985,7 +1000,10 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
               swipeFeedback.className,
             )}
           >
-            {swipeFeedback.text}
+            <div className="flex flex-col items-center text-center">
+              <span>{swipeFeedback.primary}</span>
+              <span className="text-xs font-medium opacity-90">{swipeFeedback.secondary}</span>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

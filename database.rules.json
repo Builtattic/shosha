@@ -79,6 +79,18 @@
       ".indexOn": ["reportId"]
     },
 
+    "bubbles": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      ".indexOn": ["createdAt", "createdBy"]
+    },
+
+    "bubbleMembers": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      ".indexOn": ["bubbleId", "userId"]
+    },
+
     "swipeRecords": {
       ".read": false,
       ".write": false,
