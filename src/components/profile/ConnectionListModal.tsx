@@ -2,7 +2,7 @@
 
 import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import Link from 'next/link';
-import { X, Users, UserRound } from 'lucide-react';
+import { X, Users, UserRound, UserCheck } from 'lucide-react';
 import { FollowButton } from '@/components/profile/FollowButton';
 import { cn } from '@/lib/utils';
 
@@ -201,6 +201,15 @@ export const ConnectionListModal = forwardRef<ConnectionListModalRef, Connection
                             </p>
                           </div>
                         </Link>
+                        {!item.isSelf && item.isAccountDossier && (
+                          <span
+                            aria-disabled="true"
+                            className="flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-4 py-1.5 text-[13px] font-bold text-foreground"
+                          >
+                            <UserCheck size={14} />
+                            Following
+                          </span>
+                        )}
                         {!item.isSelf && !item.isAccountDossier && (
                           <FollowButton targetUserId={item._id} initialFollowing={item.isFollowing} />
                         )}
