@@ -78,6 +78,7 @@ type TrendingPerson = {
   handle: string;
   avatar: string;
   score: number;
+  claimedBy?: string | null;
   followUserId?: string | null;
 };
 
@@ -180,22 +181,13 @@ export default function DashboardPage() {
       
     fetch('/api/people/trending')
       .then((r) => r.json())
-      .then(async (p) => {
+      .then((p) => {
         if (!active || !p.ok) return;
         const items: TrendingPerson[] = p.data.items ?? [];
-        const enriched = await Promise.all(
-          items.map(async (person) => {
-            try {
-              const res = await fetch(`/api/accounts/${person.id}`, { cache: 'no-store' });
-              const payload = await res.json();
-              const followUserId =
-                payload.ok && payload.data?.claimedBy ? payload.data.claimedBy : null;
-              return { ...person, followUserId };
-            } catch {
-              return { ...person, followUserId: null };
-            }
-          })
-        );
+        const enriched = items.map((person) => ({
+          ...person,
+          followUserId: person.claimedBy ?? null,
+        }));
         if (active) setTrendingPeople(enriched);
       })
       .catch(() => undefined);

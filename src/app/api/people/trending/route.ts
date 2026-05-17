@@ -21,6 +21,7 @@ export async function GET() {
       role: account.role || account.profileKind || 'Public Profile',
       score: account.displayScore ?? account.score ?? BASE_SCORE,
       verified: Boolean(account.verified),
+      claimedBy: account.claimedBy ?? null,
     }));
 
     return { items };
