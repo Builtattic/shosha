@@ -161,6 +161,7 @@ export default function ProfilePage() {
   const contextPercent = calcShoshaScore(scores); // 0–100 composite of profile multipliers
   const trustBadge = Boolean(appUser?.trustBadge);
   const ledgerScore = typeof appUser?.score === 'number' ? appUser.score : BASE_SCORE;
+  const gaugeDisplayScore = Math.max(-1000, Math.min(1000, ledgerScore));
   const ledgerHistory: any[] = appUser?.scoreHistory ?? [];
 
   // Weekly Δ: sum of deltas in the last 7 days
@@ -394,12 +395,15 @@ export default function ProfilePage() {
         {/* Ledger Score Hero */}
         <div className="mt-8 relative flex flex-col items-center w-full">
           <div className="w-full max-w-[420px] relative">
-            <D3ProfileGauge score={ledgerScore} minScore={-1000} maxScore={1000} size={420} />
+            <D3ProfileGauge score={ledgerScore} minScore={-99000} maxScore={101000} size={420} />
             <div className="absolute inset-0 flex flex-col items-center justify-end pb-7 sm:pb-8 pointer-events-none">
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Shosha Score</p>
               <h2 className="mt-1 text-[40px] sm:text-[46px] font-black leading-none text-foreground tabular-nums">
-                {ledgerScore.toLocaleString()}
+                {gaugeDisplayScore.toLocaleString()}
               </h2>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Lifetime: {ledgerScore.toLocaleString()} pts
+              </p>
               <div className="mt-2 flex items-center justify-center gap-2">
                 <span
                   className={cn(
@@ -552,8 +556,14 @@ export default function ProfilePage() {
                           </div>
                           <div className="flex flex-col gap-1">
                             <span className="text-[14px] font-bold text-foreground line-clamp-2">
-                              {(typeof event.deed === 'string' ? event.deed.trim() : '') ||
-                                (typeof event.cause === 'string' ? event.cause.trim() : '') ||
+                              {(typeof event.deed === 'string' && event.deed.trim() &&
+                                event.deed.trim().toLowerCase() !== 'undefined' &&
+                                event.deed.trim().toLowerCase() !== 'null'
+                                  ? event.deed.trim() : '') ||
+                                (typeof event.cause === 'string' && event.cause.trim() &&
+                                  event.cause.trim().toLowerCase() !== 'undefined' &&
+                                  event.cause.trim().toLowerCase() !== 'null'
+                                  ? event.cause.trim() : '') ||
                                 safeCategoryEventLabel(event.category) ||
                                 reportTypeLabel(event) ||
                                 (typeof event.description === 'string' ? event.description.trim().slice(0, 60) : '') ||
@@ -946,7 +956,7 @@ export default function ProfilePage() {
                     {socialLinks.map(link => (
                       <a
                         key={link.label}
-                        href={link.url}
+                        href={normalizeExternalUrl(link.url)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center justify-between rounded-xl border border-border p-3 hover:bg-muted transition-colors"

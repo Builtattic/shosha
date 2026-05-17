@@ -148,7 +148,7 @@ export function LiveAccountScorePanel({
 
         <div className="mt-8 relative flex w-full flex-col items-center">
           <div className="relative w-full max-w-[420px]">
-            <D3ProfileGauge score={score} minScore={-1000} maxScore={1000} size={420} />
+            <D3ProfileGauge score={score} minScore={-99000} maxScore={101000} size={420} />
             <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-end pb-7 sm:pb-8">
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Shosha Score</p>
               <h2 className="mt-1 text-[40px] font-black leading-none text-foreground tabular-nums sm:text-[46px]">
@@ -272,7 +272,7 @@ export function LiveAccountScorePanel({
     <>
       <div className="mt-8 mb-5 flex justify-center">
         <div className="relative w-full max-w-[420px]">
-          <D3ProfileGauge score={score} minScore={-1000} maxScore={1000} size={420} />
+          <D3ProfileGauge score={score} minScore={-99000} maxScore={101000} size={420} />
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-end pb-8">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">SHOSHA SCORE</p>
             <p className="mt-1 text-5xl font-bold leading-none text-foreground tabular-nums">{score.toLocaleString()}</p>

@@ -9,6 +9,7 @@ import {
   Youtube, 
   Instagram, 
   Globe,
+  Linkedin,
   Star,
   Users,
   Shield,
@@ -70,6 +71,11 @@ export default function EditProfilePage() {
     ytUrl: '',
     igUrl: '',
     xUrl: '',
+    linkedinUrl: '',
+    tiktokUrl: '',
+    redditUrl: '',
+    fbUrl: '',
+    snapchatUrl: '',
     websiteUrl: '',
     photoUrl: '',
     profileFieldVisibility: defaultProfileVisibility,
@@ -110,6 +116,11 @@ export default function EditProfilePage() {
             ytUrl: u.ytUrl || '',
             igUrl: u.igUrl || '',
             xUrl: u.xUrl || '',
+            linkedinUrl: u.linkedinUrl || '',
+            tiktokUrl: u.tiktokUrl || '',
+            redditUrl: u.redditUrl || '',
+            fbUrl: u.fbUrl || '',
+            snapchatUrl: u.snapchatUrl || '',
             websiteUrl: u.websiteUrl || '',
             profileFieldVisibility: normalizeProfileVisibility(u.profileFieldVisibility),
             photoUrl: (u.photoUrl && u.photoUrl !== 'null' && u.photoUrl !== 'undefined') 
@@ -136,7 +147,9 @@ export default function EditProfilePage() {
     }));
   };
 
-  const pasteIntoField = async (key: 'ytUrl' | 'igUrl' | 'xUrl' | 'websiteUrl') => {
+  const pasteIntoField = async (
+    key: 'ytUrl' | 'igUrl' | 'xUrl' | 'linkedinUrl' | 'tiktokUrl' | 'redditUrl' | 'fbUrl' | 'snapchatUrl' | 'websiteUrl',
+  ) => {
     setError('');
     try {
       const text = await navigator.clipboard.readText();
@@ -514,6 +527,81 @@ export default function EditProfilePage() {
               placeholder="x.com/username"
             />
             <button type="button" onClick={() => pasteIntoField('xUrl')} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground transition hover:text-foreground" aria-label="Paste X link">
+              <ClipboardPaste size={15} />
+            </button>
+          </div>
+          <div className="flex items-center gap-3 p-3 border border-border rounded-xl bg-card">
+            <Linkedin className="text-blue-600 flex-shrink-0" size={18} />
+            <input
+              type="url"
+              inputMode="url"
+              autoComplete="url"
+              value={form.linkedinUrl}
+              onChange={(e) => updateField('linkedinUrl', e.target.value)}
+              className={linkInputClass}
+              placeholder="https://linkedin.com/in/username"
+            />
+            <button type="button" onClick={() => pasteIntoField('linkedinUrl')} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground transition hover:text-foreground" aria-label="Paste LinkedIn link">
+              <ClipboardPaste size={15} />
+            </button>
+          </div>
+          <div className="flex items-center gap-3 p-3 border border-border rounded-xl bg-card">
+            <Globe className="text-muted-foreground flex-shrink-0" size={18} />
+            <input
+              type="url"
+              inputMode="url"
+              autoComplete="url"
+              value={form.tiktokUrl}
+              onChange={(e) => updateField('tiktokUrl', e.target.value)}
+              className={linkInputClass}
+              placeholder="https://tiktok.com/@username"
+            />
+            <button type="button" onClick={() => pasteIntoField('tiktokUrl')} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground transition hover:text-foreground" aria-label="Paste TikTok link">
+              <ClipboardPaste size={15} />
+            </button>
+          </div>
+          <div className="flex items-center gap-3 p-3 border border-border rounded-xl bg-card">
+            <Globe className="text-muted-foreground flex-shrink-0" size={18} />
+            <input
+              type="url"
+              inputMode="url"
+              autoComplete="url"
+              value={form.redditUrl}
+              onChange={(e) => updateField('redditUrl', e.target.value)}
+              className={linkInputClass}
+              placeholder="https://reddit.com/u/username"
+            />
+            <button type="button" onClick={() => pasteIntoField('redditUrl')} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground transition hover:text-foreground" aria-label="Paste Reddit link">
+              <ClipboardPaste size={15} />
+            </button>
+          </div>
+          <div className="flex items-center gap-3 p-3 border border-border rounded-xl bg-card">
+            <Globe className="text-muted-foreground flex-shrink-0" size={18} />
+            <input
+              type="url"
+              inputMode="url"
+              autoComplete="url"
+              value={form.fbUrl}
+              onChange={(e) => updateField('fbUrl', e.target.value)}
+              className={linkInputClass}
+              placeholder="https://facebook.com/username"
+            />
+            <button type="button" onClick={() => pasteIntoField('fbUrl')} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground transition hover:text-foreground" aria-label="Paste Facebook link">
+              <ClipboardPaste size={15} />
+            </button>
+          </div>
+          <div className="flex items-center gap-3 p-3 border border-border rounded-xl bg-card">
+            <Globe className="text-muted-foreground flex-shrink-0" size={18} />
+            <input
+              type="url"
+              inputMode="url"
+              autoComplete="url"
+              value={form.snapchatUrl}
+              onChange={(e) => updateField('snapchatUrl', e.target.value)}
+              className={linkInputClass}
+              placeholder="https://snapchat.com/add/username"
+            />
+            <button type="button" onClick={() => pasteIntoField('snapchatUrl')} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground transition hover:text-foreground" aria-label="Paste Snapchat link">
               <ClipboardPaste size={15} />
             </button>
           </div>
