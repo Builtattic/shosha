@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ChevronRight, TrendingUp } from 'lucide-react';
+import { PostDetailModal } from '@/components/feed/PostDetailModal';
 import { D3ProfileGauge } from '@/components/viz/D3ProfileGauge';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -113,14 +114,26 @@ function TypeBadge({ type }: { type: 'positive' | 'negative' }) {
   );
 }
 
-function StoryRow({ report, compact: compactRow }: { report: ImpactReport; compact?: boolean }) {
+function StoryRow({
+  report,
+  compact: compactRow,
+  onClick,
+}: {
+  report: ImpactReport;
+  compact?: boolean;
+  onClick?: () => void;
+}) {
   const stats = report.stats ?? { aligns: 0, opposes: 0, comments: 0, shares: 0 };
+  const Wrapper = onClick ? 'button' : 'article';
 
   return (
-    <article
+    <Wrapper
+      type={onClick ? 'button' : undefined}
+      onClick={onClick}
       className={cn(
         'flex gap-3 rounded-[20px] border border-border bg-card p-4 transition-colors hover:border-primary/30',
         compactRow && 'p-3',
+        onClick && 'w-full cursor-pointer text-left',
       )}
     >
       {report.media?.url && report.media.type === 'image' ? (
@@ -156,7 +169,7 @@ function StoryRow({ report, compact: compactRow }: { report: ImpactReport; compa
           <span>{compact(stats.shares)} shares</span>
         </div>
       </div>
-    </article>
+    </Wrapper>
   );
 }
 
@@ -181,6 +194,13 @@ export default function ImpactPage() {
   const [risingMakers, setRisingMakers] = useState<RisingMaker[]>([]);
   const [loadingExplore, setLoadingExplore] = useState(true);
   const [loadingMe, setLoadingMe] = useState(false);
+  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+
+  const openReportDetail = useCallback((reportId: string) => {
+    setSelectedReportId(reportId);
+    setDetailOpen(true);
+  }, []);
 
   const loadMe = useCallback(async () => {
     if (!firebaseUser) {
@@ -355,7 +375,7 @@ export default function ImpactPage() {
             <ul className="space-y-3">
               {topStories.map((report) => (
                 <li key={report._id}>
-                  <StoryRow report={report} />
+                  <StoryRow report={report} onClick={() => openReportDetail(report._id)} />
                 </li>
               ))}
             </ul>
@@ -409,13 +429,24 @@ export default function ImpactPage() {
             <ul className="space-y-2">
               {recentReports.map((report) => (
                 <li key={report._id}>
-                  <StoryRow report={report} compact />
+                  <StoryRow report={report} compact onClick={() => openReportDetail(report._id)} />
                 </li>
               ))}
             </ul>
           )}
         </section>
       </div>
+
+      {selectedReportId && (
+        <PostDetailModal
+          reportId={selectedReportId}
+          open={detailOpen}
+          onClose={() => {
+            setDetailOpen(false);
+            setSelectedReportId(null);
+          }}
+        />
+      )}
     </main>
   );
 }
