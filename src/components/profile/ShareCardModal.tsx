@@ -31,8 +31,10 @@ export function ShareCardModal({ open, onClose, ...cardProps }: Props) {
     try {
       const [canvas, { jsPDF }] = await Promise.all([getCanvas(), import('jspdf')]);
       const imgData = canvas.toDataURL('image/png');
-      const W = 640 * 0.2646; // px → mm
-      const H = 853 * 0.2646;
+      // Match the locked 600x600 ProfileShareCard surface so the exported PDF
+      // mirrors the on-screen 1:1 reputation card.
+      const W = 600 * 0.2646; // px → mm
+      const H = 600 * 0.2646;
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [W, H] });
       pdf.addImage(imgData, 'PNG', 0, 0, W, H);
       pdf.save(`shosha_${cardProps.username}.pdf`);

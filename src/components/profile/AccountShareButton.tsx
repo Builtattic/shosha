@@ -36,14 +36,16 @@ export function AccountShareButton({ displayName, username, cardData }: AccountS
       const node = cardRef.current;
       if (!node) throw new Error('Card element not found');
 
+      // Match the locked 600x600 ProfileShareCard surface so both /profile
+      // and /account export the same 1:1 reputation card without padding.
       const canvas = await html2canvas(node, {
         scale: 2,
         useCORS: true,
         allowTaint: false,
         backgroundColor: '#ffffff',
         logging: false,
-        width: 640,
-        height: 900,
+        width: 600,
+        height: 600,
       });
 
       const dataUrl = canvas.toDataURL('image/png');

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Flame, Minus, Shield, Target, ThumbsDown, TrendingDown, TrendingUp, UserRound, Users } from 'lucide-react';
+import { Flame, Minus, Shield, Target, ThumbsDown, TrendingDown, TrendingUp, Users } from 'lucide-react';
 import { D3ProfileGauge } from '@/components/viz/D3ProfileGauge';
 import { BASE_SCORE } from '@/lib/scoring';
 import { cn } from '@/lib/utils';
@@ -128,9 +128,6 @@ export function LiveAccountScorePanel({
   const credibilityDisplay = Math.round(credibility);
   const score = snapshot.score ?? BASE_SCORE;
 
-  const followingCountStr = linkedUserConnections
-    ? formatNumberShort(linkedUserConnections.followingCount)
-    : '';
   const followersCountStr = linkedUserConnections
     ? formatNumberShort(linkedUserConnections.followersCount)
     : '';
@@ -184,7 +181,7 @@ export function LiveAccountScorePanel({
         </div>
         <div className="mt-1 border-b border-border pb-4" />
 
-        <div className="mt-6 grid grid-cols-2 gap-2 min-[400px]:grid-cols-3 lg:grid-cols-5">
+        <div className="mt-6 grid grid-cols-2 gap-2 lg:grid-cols-4">
           <div className="flex min-w-0 flex-col items-center justify-center rounded-2xl border border-border bg-background px-1 py-3 text-center shadow-sm">
             <div
               className={cn(
@@ -223,21 +220,6 @@ export function LiveAccountScorePanel({
               Total Impact
             </p>
           </div>
-
-          <button
-            type="button"
-            onClick={() => connectionListModalRef.current?.open('following')}
-            aria-label="View accounts this user follows"
-            className="flex min-w-0 w-full cursor-pointer flex-col items-center justify-center rounded-2xl border border-border bg-background px-1 py-3 text-center shadow-sm transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          >
-            <div className="mx-auto flex items-center justify-center text-foreground">
-              <UserRound size={18} strokeWidth={2.5} />
-            </div>
-            <p className="mt-1.5 text-[15px] font-bold text-foreground tabular-nums sm:text-[17px]">{followingCountStr}</p>
-            <p className="mt-0.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground sm:text-[10px]">
-              Following
-            </p>
-          </button>
 
           <button
             type="button"

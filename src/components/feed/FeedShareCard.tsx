@@ -57,23 +57,27 @@ export const FeedShareCard = forwardRef<HTMLDivElement, FeedShareCardProps>(
         ref={ref}
         style={{
           width: 600,
-          background: C.surface, // light grey background around card
-          padding: 32,
+          // Branded gradient border ring — shared with ProfileShareCard so all
+          // Shosha shareable artifacts read as a single visual family,
+          // independent of report polarity.
+          padding: 3,
+          background: 'linear-gradient(135deg, #4ade80 0%, #f43f5e 100%)',
+          borderRadius: 28,
           fontFamily: FONT,
           display: 'flex',
           flexDirection: 'column',
-          alignItems: 'center',
+          alignItems: 'stretch',
           justifyContent: 'center',
+          boxShadow: '0 20px 50px rgba(0,0,0,0.08)',
         }}
       >
         <div
           style={{
             width: '100%',
             background: C.bg,
-            borderRadius: 24,
+            borderRadius: 25,
             border: `1px solid ${C.border}`,
             overflow: 'hidden',
-            boxShadow: '0 10px 30px rgba(0,0,0,0.05)',
             display: 'flex',
             flexDirection: 'column',
           }}

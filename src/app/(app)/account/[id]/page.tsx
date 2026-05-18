@@ -15,7 +15,6 @@ import {
   AlertCircle,
   MapPin,
   Image as ImageIcon,
-  ExternalLink,
 } from 'lucide-react';
 import Link from 'next/link';
 import { DossierActions } from '@/components/profile/DossierActions';
@@ -179,12 +178,6 @@ function maskPhone(phone?: string, isOwnProfile = false) {
   const digits = text.replace(/\D/g, '');
   if (digits.length < 4) return '••••';
   return `••••••${digits.slice(-4)}`;
-}
-
-function compactUrlDisplay(url: string, max = 30) {
-  const stripped = url.replace(/^https?:\/\//, '');
-  if (stripped.length <= max) return stripped;
-  return `${stripped.slice(0, max - 1)}…`;
 }
 
 function filingThumbnailUrl(filing: any) {
@@ -569,7 +562,7 @@ export default async function AccountPage({
             <>
               <div className="rounded-2xl bg-background p-4 border border-zinc-100 dark:border-zinc-800">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-[16px] font-bold text-foreground">Recent Activity</h3>
+                  <h3 className="text-[16px] font-bold text-foreground">Recent Posts</h3>
                   {filings.length > 0 && (
                     <Link
                       href="?tab=activity"
@@ -845,53 +838,46 @@ export default async function AccountPage({
                     <span className="font-semibold sm:text-right capitalize">{account.reach.replace(/_/g, ' ')}</span>
                   </div>
                 )}
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-border pb-3 gap-1">
-                  <span className="text-muted-foreground shrink-0">Followers</span>
-                  <span className="font-semibold sm:text-right">{displayedFollowers || '—'}</span>
-                </div>
-                {cleanDisplayValue(account.username) && (
+                {websiteOverviewValue && websiteOverviewValue !== 'Not provided' && (
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-border pb-3 gap-1">
-                    <span className="text-muted-foreground shrink-0">Username</span>
-                    <span className="font-semibold sm:text-right font-mono text-[12px]">{cleanDisplayValue(account.username)}</span>
+                    <span className="text-muted-foreground shrink-0">Website</span>
+                    {websiteOverviewValue.startsWith('http') ? (
+                      <a
+                        href={websiteOverviewValue}
+                        className="font-semibold sm:text-right hover:text-primary transition-colors break-all"
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {websiteOverviewValue.replace(/^https?:\/\//, '')}
+                      </a>
+                    ) : (
+                      <span className="font-semibold sm:text-right">{websiteOverviewValue}</span>
+                    )}
                   </div>
                 )}
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-border pb-3 gap-1">
-                  <span className="text-muted-foreground shrink-0">Platform</span>
-                  <span className="font-semibold sm:text-right">{formatPlatform(account.platform)}</span>
-                </div>
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-border pb-3 gap-1">
-                  <span className="text-muted-foreground shrink-0">Platform Website</span>
-                  {websiteOverviewValue.startsWith('http') ? (
-                    <a
-                      href={websiteOverviewValue}
-                      className="font-semibold sm:text-right hover:text-primary transition-colors break-all"
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {websiteOverviewValue.replace(/^https?:\/\//, '')}
-                    </a>
-                  ) : (
-                    <span className="font-semibold sm:text-right">{websiteOverviewValue}</span>
-                  )}
-                </div>
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-border pb-3 gap-1">
-                  <span className="text-muted-foreground shrink-0">Phone</span>
-                  <span className="font-semibold sm:text-right">{maskPhone(linkedUser?.phone || account.phone, isOwnProfile)}</span>
-                </div>
+                {(linkedUser?.phone || account.phone) && (
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-border pb-3 gap-1">
+                    <span className="text-muted-foreground shrink-0">Phone</span>
+                    <span className="font-semibold sm:text-right">{maskPhone(linkedUser?.phone || account.phone, isOwnProfile)}</span>
+                  </div>
+                )}
                 {socialLinks.length > 0 && (
-                  <div className="flex flex-col sm:flex-row sm:items-start justify-between pb-3 gap-1">
-                    <span className="text-muted-foreground shrink-0">Linked Accounts</span>
-                    <div className="flex flex-col sm:items-end gap-1.5 font-semibold">
+                  <div className="pt-2">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3">Official Links</p>
+                    <div className="flex flex-wrap items-center gap-2">
                       {socialLinks.map(([platform, link]) => (
                         <a
                           key={platform}
-                          href={link!.url}
-                          className="hover:text-primary transition-colors flex items-center gap-1 break-all"
+                          href={normalizeExternalUrl(link!.url) || link!.url}
                           target="_blank"
                           rel="noreferrer"
+                          aria-label={`${formatPlatform(platform as any)} profile`}
+                          title={formatPlatform(platform as any)}
+                          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background text-foreground transition-all hover:bg-muted hover:scale-105 active:scale-95"
                         >
-                          {formatPlatform(platform as any)} · {compactUrlDisplay(link!.url)}
-                          <ExternalLink size={11} />
+                          <span className="text-[13px] font-black">
+                            {platform === 'x' ? '𝕏' : (platform as string).charAt(0).toUpperCase()}
+                          </span>
                         </a>
                       ))}
                     </div>

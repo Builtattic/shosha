@@ -110,9 +110,13 @@ export function ReportModal({
   const [description, setDescription] = useState('');
   const [feelings, setFeelings] = useState('');
   const [evidenceSourceUrl, setEvidenceSourceUrl] = useState('');
-  const [aiConsent, setAiConsent] = useState(false);
+  const [aiConsent, setAiConsent] = useState(true);
   const [publicAnonymous, setPublicAnonymous] = useState(!user);
   const [taggedPerson, setTaggedPerson] = useState('');
+  const [tagSuggestions, setTagSuggestions] = useState<AccountCandidate[]>([]);
+  const [searchingTags, setSearchingTags] = useState(false);
+  const [showTagSuggestions, setShowTagSuggestions] = useState(false);
+  const [tagPickedId, setTagPickedId] = useState<string | null>(null);
   const [links, setLinks] = useState<Array<{ url: string; title: string }>>([]);
   const [targetPlatform, setTargetPlatform] = useState<Platform>('instagram');
   const [targetHandle, setTargetHandle] = useState('');
@@ -172,9 +176,12 @@ export function ReportModal({
     setDescription('');
     setFeelings('');
     setEvidenceSourceUrl('');
-    setAiConsent(false);
+    setAiConsent(true);
     setPublicAnonymous(!user);
     setTaggedPerson('');
+    setTagSuggestions([]);
+    setShowTagSuggestions(false);
+    setTagPickedId(null);
     setLinks([]);
     setTargetPlatform('instagram');
     setTargetHandle('');
@@ -272,18 +279,80 @@ export function ReportModal({
     setLinks((prev) => prev.map((l, i) => (i === index ? { ...l, [field]: value } : l)));
   }
 
+  // Initialize category/deed when impact type changes. Reset only when the
+  // current category is invalid for the new type — preserving the user's
+  // selection prevents the dropdown lock that prompted issue #78.
   useEffect(() => {
     if (!type) {
       setCategory('');
       setDeed('');
       return;
     }
-    const first = SHEET_SCORING_INDEX.find((row) => row.type === type);
-    if (first && (!selectedScoringRow || selectedScoringRow.type !== type)) {
-      setCategory(first.category);
-      setDeed(first.deed);
+    const validForType = SHEET_SCORING_INDEX.some((row) => row.type === type && row.category === category);
+    if (!validForType) {
+      const first = SHEET_SCORING_INDEX.find((row) => row.type === type);
+      if (first) {
+        setCategory(first.category);
+        setDeed(first.deed);
+      }
     }
-  }, [selectedScoringRow, type]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [type]);
+
+  // When the user picks a new category, auto-select the first valid deed in
+  // that category so submission stays valid without locking the dropdown.
+  useEffect(() => {
+    if (!category) return;
+    const validDeed = deedOptions.find((row) => row.category === category && row.deed === deed);
+    if (validDeed) return;
+    const firstInCategory = deedOptions.find((row) => row.category === category);
+    if (firstInCategory) setDeed(firstInCategory.deed);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [category, deedOptions]);
+
+  // Debounced search for the "Tag People Involved" field — pulls existing
+  // Shosha profiles so reporters don't fragment reputation by re-typing names.
+  useEffect(() => {
+    if (!open) return;
+    const query = taggedPerson.trim();
+    if (query.length < 2 || tagPickedId) {
+      setTagSuggestions([]);
+      return;
+    }
+    const timer = window.setTimeout(async () => {
+      setSearchingTags(true);
+      try {
+        const response = await fetch(`/api/accounts/search?q=${encodeURIComponent(query)}&discover=0`);
+        const payload = await readApiPayload<{ candidates?: AccountCandidate[]; accounts?: AccountRecord[] }>(
+          response,
+          'Search failed.'
+        );
+        if (!payload.ok || !payload.data) {
+          setTagSuggestions([]);
+          return;
+        }
+        const rtdb = (payload.data.accounts ?? []).map((acc: AccountRecord) => ({
+          platform: acc.platform,
+          username: acc.username,
+          displayName: acc.displayName,
+          bio: acc.bio,
+          avatarUrl: acc.avatarUrl,
+          followers: acc.followers,
+          verified: acc.verified,
+          sourceUrl: acc.socialLinks?.[acc.platform]?.url ?? '',
+          confidence: 1,
+          reason: 'In directory',
+          existingAccountId: acc._id,
+        })) as AccountCandidate[];
+        setTagSuggestions([...rtdb, ...(payload.data.candidates ?? [])].slice(0, 6));
+      } catch {
+        setTagSuggestions([]);
+      } finally {
+        setSearchingTags(false);
+      }
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [open, taggedPerson, tagPickedId]);
 
   useEffect(() => {
     if (description.length < 20) return;
@@ -1075,10 +1144,63 @@ export function ReportModal({
                   <input
                     type="text"
                     value={taggedPerson}
-                    onChange={(e) => setTaggedPerson(e.target.value)}
+                    onChange={(e) => {
+                      setTaggedPerson(e.target.value);
+                      setTagPickedId(null);
+                      setShowTagSuggestions(true);
+                    }}
+                    onFocus={() => setShowTagSuggestions(true)}
+                    onBlur={() => window.setTimeout(() => setShowTagSuggestions(false), 150)}
                     placeholder="Tag people involved"
-                    className="w-full rounded-full border border-border bg-card py-3.5 pl-12 pr-4 text-[14px] focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm"
+                    className="w-full rounded-full border border-border bg-card py-3.5 pl-12 pr-10 text-[14px] focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm"
                   />
+                  {searchingTags && (
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                    </div>
+                  )}
+                  {showTagSuggestions && tagSuggestions.length > 0 && !tagPickedId && (
+                    <div className="absolute left-0 right-0 top-full z-20 mt-2 max-h-72 overflow-auto rounded-2xl border border-border bg-card shadow-xl">
+                      {tagSuggestions.map((candidate) => (
+                        <button
+                          key={`${candidate.existingAccountId ?? ''}:${candidate.platform}:${candidate.username}`}
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => {
+                            const handle = candidate.username.replace(/^@/, '');
+                            setTaggedPerson(`@${handle}`);
+                            setTagPickedId(candidate.existingAccountId ?? `${candidate.platform}:${handle}`);
+                            setShowTagSuggestions(false);
+                            setTagSuggestions([]);
+                          }}
+                          className="flex w-full items-center gap-3 border-b border-border/50 px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-muted/50"
+                        >
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-[11px] font-black">
+                            {candidate.avatarUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={candidate.avatarUrl} alt="" className="h-full w-full object-cover" />
+                            ) : (
+                              candidate.displayName.charAt(0).toUpperCase()
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-[13px] font-bold flex items-center gap-1.5">
+                              {candidate.displayName}
+                              {candidate.verified && <ShieldCheck size={12} className="text-primary shrink-0" />}
+                            </p>
+                            <p className="truncate text-[11px] text-muted-foreground">
+                              {candidate.platform === 'x' ? 'X' : candidate.platform} / @{candidate.username}
+                            </p>
+                          </div>
+                          {candidate.existingAccountId && (
+                            <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-primary">
+                              On Shosha
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="relative group">

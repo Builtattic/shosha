@@ -70,24 +70,28 @@ export async function GET() {
         }))
       : { score: 0, aligns: 0, opposes: 0 };
 
-    // Map reports into the shape the profile UI expects (eventType, description, timestamp, status).
-    const recentEvents = myReports.map((report) => ({
-      _id: report._id,
-      id: report._id,
-      eventType: report.type,
-      type: report.type,
-      category: report.category ?? null,
-      deed: report.deed ?? null,
-      cause: (report as { cause?: string | null }).cause ?? null,
-      description: report.description,
-      subjectId: report.accountId,
-      reportId: report._id,
-      timestamp: report.createdAt ?? new Date().toISOString(),
-      status: report.status,
-      aiVerdict: report.aiVerdict,
-      adminDecision: report.adminDecision,
-      impact: typeof report.reportScore === 'number' ? report.reportScore : undefined,
-    }));
+    // Map reports into the shape the profile UI expects.
+    // Anonymous reports are excluded from the public-facing Recent Posts feed.
+    const recentEvents = myReports
+      .filter((report) => report.publicAnonymous !== true)
+      .map((report) => ({
+        _id: report._id,
+        id: report._id,
+        eventType: report.type,
+        type: report.type,
+        category: report.category ?? null,
+        deed: report.deed ?? null,
+        cause: (report as { cause?: string | null }).cause ?? null,
+        description: report.description,
+        subjectId: report.accountId,
+        reportId: report._id,
+        timestamp: report.createdAt ?? new Date().toISOString(),
+        status: report.status,
+        aiVerdict: report.aiVerdict,
+        adminDecision: report.adminDecision,
+        impact: typeof report.reportScore === 'number' ? report.reportScore : undefined,
+        media: report.media ?? null,
+      }));
 
     return ok({
       user: { ...liveUser, profileCredibility },

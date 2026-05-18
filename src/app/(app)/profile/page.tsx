@@ -190,7 +190,6 @@ export default function ProfilePage() {
   const followersCountStr = formatNumberShort((appUser?.followers ?? []).length);
   const followingCountTotal =
     (appUser?.following ?? []).length + (appUser?.followingAccounts ?? []).length;
-  const followingCountStr = formatNumberShort(followingCountTotal);
 
   const displayName = (appUser?.name || firebaseUser?.displayName || firebaseUser?.email?.split('@')[0] || 'Unknown User').replace(/^@/, '');
   const username = appUser?.username || 'user';
@@ -424,9 +423,9 @@ export default function ProfilePage() {
         </div>
         <div className="mt-1 pb-4 border-b border-border" />
 
-        {/* Stat Cards */}
-        <div className="mt-6 grid grid-cols-2 gap-2 min-[400px]:grid-cols-3 lg:grid-cols-5">
-          {/* Card 1 */}
+        {/* Stat Cards — 4 cards: This Week, Total Impact, Followers, Credibility */}
+        <div className="mt-6 grid grid-cols-2 gap-2 lg:grid-cols-4">
+          {/* Card 1 — This Week */}
           <div className="min-w-0 rounded-2xl border border-border bg-background py-3 px-1 text-center shadow-sm flex flex-col items-center justify-center">
             <div className={cn("mx-auto flex items-center justify-center", weeklyDelta >= 0 ? "text-green-500" : "text-red-500")}>
               {weeklyDelta >= 0 ? <TrendingUp size={18} strokeWidth={2.5} /> : <ThumbsDown size={18} strokeWidth={2.5} />}
@@ -436,7 +435,7 @@ export default function ProfilePage() {
             </p>
             <p className="mt-0.5 text-[9px] sm:text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">This Week</p>
           </div>
-          {/* Card 2 */}
+          {/* Card 2 — Total Impact */}
           <div className="min-w-0 rounded-2xl border border-border bg-background py-3 px-1 text-center shadow-sm flex flex-col items-center justify-center">
             <div className="mx-auto flex items-center justify-center text-red-500">
               <Target size={18} strokeWidth={2.5} />
@@ -446,23 +445,7 @@ export default function ProfilePage() {
             </p>
             <p className="mt-0.5 text-[9px] sm:text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Total Impact</p>
           </div>
-          {/* Card 3 — Following */}
-          <button
-            type="button"
-            disabled={!appUser?._id}
-            onClick={() => connectionListModalRef.current?.open('following')}
-            aria-label="View accounts you follow"
-            className="min-w-0 w-full cursor-pointer rounded-2xl border border-border bg-background py-3 px-1 text-center shadow-sm flex flex-col items-center justify-center transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50"
-          >
-            <div className="mx-auto flex items-center justify-center text-foreground">
-              <UserRound size={18} strokeWidth={2.5} />
-            </div>
-            <p className="mt-1.5 text-[15px] sm:text-[17px] font-bold text-foreground tabular-nums">
-              {followingCountStr}
-            </p>
-            <p className="mt-0.5 text-[9px] sm:text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Following</p>
-          </button>
-          {/* Card 4 — Followers */}
+          {/* Card 3 — Followers (click → modal with Followers/Following tabs) */}
           <button
             type="button"
             disabled={!appUser?._id}
@@ -478,7 +461,7 @@ export default function ProfilePage() {
             </p>
             <p className="mt-0.5 text-[9px] sm:text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Followers</p>
           </button>
-          {/* Card 5 */}
+          {/* Card 4 — Credibility */}
           <div className="min-w-0 rounded-2xl border border-border bg-background py-3 px-1 text-center shadow-sm flex flex-col items-center justify-center">
             <div className="mx-auto flex items-center justify-center text-foreground">
               <Shield size={18} strokeWidth={2.5} />
@@ -517,7 +500,7 @@ export default function ProfilePage() {
             <div className="space-y-4">
               <div className="rounded-[24px] bg-background p-5 shadow-sm border border-border">
                 <div className="flex items-center justify-between mb-5">
-                  <h3 className="text-[16px] font-bold text-foreground">Recent Activity</h3>
+                  <h3 className="text-[16px] font-bold text-foreground">Recent Posts</h3>
                   {recentEvents.length > 0 ? (
                     <button
                       type="button"
@@ -532,67 +515,79 @@ export default function ProfilePage() {
                 </div>
                 {recentEvents.length > 0 ? (
                   <div className="space-y-3">
-                    {recentEvents.map(event => (
-                      <button
-                        key={event._id}
-                        type="button"
-                        onClick={() => {
-                          const id = event.reportId ?? event._id;
-                          if (!id) return;
-                          setSelectedReportId(id);
-                          setReportDetailOpen(true);
-                        }}
-                        className={cn(
-                          'flex w-full items-center justify-between rounded-[16px] bg-muted/30 p-4 border border-border/50',
-                          'text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                        )}
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className="relative h-[60px] w-[60px] shrink-0 overflow-hidden rounded-[12px] bg-muted border border-border/50 shadow-sm">
-                            <img src={`https://picsum.photos/seed/${event._id}/120/120`} alt="" className="h-full w-full object-cover" />
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-[1px]">
-                              <Play size={20} className="text-white fill-white" />
+                    {recentEvents.map(event => {
+                      const impact = typeof event.impact === 'number' ? event.impact : null;
+                      const isPositive = (event.eventType ?? event.type) === 'positive' || (impact !== null && impact > 0);
+                      const isNegative = (event.eventType ?? event.type) === 'negative' || (impact !== null && impact < 0);
+                      const mediaUrl = event.media?.thumbUrl || event.media?.url;
+                      const title =
+                        (typeof event.deed === 'string' && event.deed.trim() && event.deed.trim().toLowerCase() !== 'undefined' && event.deed.trim().toLowerCase() !== 'null' ? event.deed.trim() : '') ||
+                        (typeof event.cause === 'string' && event.cause.trim() && event.cause.trim().toLowerCase() !== 'undefined' && event.cause.trim().toLowerCase() !== 'null' ? event.cause.trim() : '') ||
+                        safeCategoryEventLabel(event.category) ||
+                        reportTypeLabel(event) ||
+                        (typeof event.description === 'string' ? event.description.trim().slice(0, 60) : '') ||
+                        'Report filed';
+                      return (
+                        <button
+                          key={event._id}
+                          type="button"
+                          onClick={() => {
+                            const id = event.reportId ?? event._id;
+                            if (!id) return;
+                            setSelectedReportId(id);
+                            setReportDetailOpen(true);
+                          }}
+                          className={cn(
+                            'flex w-full items-center justify-between gap-3 rounded-[16px] bg-muted/30 p-4 border border-border/50',
+                            'text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                          )}
+                        >
+                          <div className="flex items-center gap-4 min-w-0 flex-1">
+                            <div className="relative h-[60px] w-[60px] shrink-0 overflow-hidden rounded-[12px] bg-muted border border-border/50 shadow-sm">
+                              {mediaUrl ? (
+                                <img src={mediaUrl} alt="" className="h-full w-full object-cover" />
+                              ) : (
+                                <div className={cn(
+                                  'flex h-full w-full items-center justify-center',
+                                  isPositive ? 'bg-green-50 text-green-600' : isNegative ? 'bg-red-50 text-red-600' : 'bg-muted text-muted-foreground',
+                                )}>
+                                  {isPositive ? <ThumbsUp size={22} strokeWidth={2.5} /> : isNegative ? <ThumbsDown size={22} strokeWidth={2.5} /> : <Minus size={22} strokeWidth={2.5} />}
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex flex-col gap-1 min-w-0">
+                              <span className="text-[14px] font-bold text-foreground line-clamp-2">{title}</span>
+                              <span className={cn(
+                                'inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider',
+                                isPositive ? 'text-green-600' : isNegative ? 'text-red-600' : 'text-muted-foreground',
+                              )}>
+                                {isPositive ? '+ Positive Impact' : isNegative ? '− Negative Impact' : 'Neutral'}
+                              </span>
+                              <span className="text-[12px] text-muted-foreground">
+                                {event.timestamp ? formatRelativeTime(new Date(event.timestamp)) : ''}
+                              </span>
                             </div>
                           </div>
-                          <div className="flex flex-col gap-1">
-                            <span className="text-[14px] font-bold text-foreground line-clamp-2">
-                              {(typeof event.deed === 'string' && event.deed.trim() &&
-                                event.deed.trim().toLowerCase() !== 'undefined' &&
-                                event.deed.trim().toLowerCase() !== 'null'
-                                  ? event.deed.trim() : '') ||
-                                (typeof event.cause === 'string' && event.cause.trim() &&
-                                  event.cause.trim().toLowerCase() !== 'undefined' &&
-                                  event.cause.trim().toLowerCase() !== 'null'
-                                  ? event.cause.trim() : '') ||
-                                safeCategoryEventLabel(event.category) ||
-                                reportTypeLabel(event) ||
-                                (typeof event.description === 'string' ? event.description.trim().slice(0, 60) : '') ||
-                                'Report filed'}
-                            </span>
-                            <span className="text-[12px] text-muted-foreground">
-                              {event.timestamp ? formatRelativeTime(new Date(event.timestamp)) : ''}
-                            </span>
-                          </div>
-                        </div>
-                        {typeof event.impact === 'number' ? (
-                          <div className={cn(
-                            'shrink-0 rounded-full px-3 py-1.5 text-[13px] font-bold shadow-sm tabular-nums',
-                            event.impact > 0 ? 'bg-green-50 text-green-600' : event.impact < 0 ? 'bg-red-50 text-red-600' : 'bg-muted text-muted-foreground'
-                          )}>
-                            {event.impact > 0 ? '+' : ''}{event.impact}
-                          </div>
-                        ) : (
-                          <div className="shrink-0 rounded-full px-3 py-1.5 text-[13px] font-bold shadow-sm bg-muted text-muted-foreground tabular-nums">
-                            —
-                          </div>
-                        )}
-                      </button>
-                    ))}
+                          {impact !== null ? (
+                            <div className={cn(
+                              'shrink-0 rounded-full px-3 py-1.5 text-[15px] font-black shadow-sm tabular-nums',
+                              impact > 0 ? 'bg-green-50 text-green-600' : impact < 0 ? 'bg-red-50 text-red-600' : 'bg-muted text-muted-foreground',
+                            )}>
+                              {impact > 0 ? '+' : ''}{Math.round(impact)}
+                            </div>
+                          ) : (
+                            <div className="shrink-0 rounded-full px-3 py-1.5 text-[13px] font-bold shadow-sm bg-muted text-muted-foreground tabular-nums">
+                              —
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="py-8 flex flex-col items-center gap-3 text-center">
                     <History size={28} className="text-muted-foreground opacity-30" />
-                    <p className="text-[13px] text-muted-foreground">No recent events recorded.</p>
+                    <p className="text-[13px] text-muted-foreground">No recent posts.</p>
                   </div>
                 )}
               </div>
@@ -946,26 +941,26 @@ export default function ProfilePage() {
                 </div>
               )}
 
-              {/* Social Links */}
+              {/* Official Links — icon-only horizontal row */}
               {socialLinks.length > 0 && (
                 <div className="rounded-[24px] bg-background p-5 shadow-sm border border-border">
                   <h3 className="mb-4 text-[14px] font-bold uppercase tracking-wider text-muted-foreground">
-                    Social Links
+                    Official Links
                   </h3>
-                  <div className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     {socialLinks.map(link => (
                       <a
                         key={link.label}
                         href={normalizeExternalUrl(link.url)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center justify-between rounded-xl border border-border p-3 hover:bg-muted transition-colors"
+                        title={link.label}
+                        aria-label={link.label}
+                        className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background text-foreground transition-all hover:bg-muted hover:scale-105 active:scale-95"
                       >
-                        <span className="text-[13px] font-semibold text-foreground">{link.label}</span>
-                        <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
-                          <span className="max-w-[160px] truncate">{link.url}</span>
-                          <ExternalLink size={12} className="shrink-0" />
-                        </div>
+                        <span className="text-[14px] font-black">
+                          {link.label === 'X / Twitter' ? '𝕏' : link.label.charAt(0)}
+                        </span>
                       </a>
                     ))}
                   </div>
