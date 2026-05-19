@@ -14,7 +14,7 @@ import type { AppUser } from '@/lib/repos/users';
 function reputationCredibility(user: AppUser, account: AccountRecord | null): number {
   if (account) {
     return calcProfileCredibility({
-      baseCredibility: Math.min(account.profileCompletion ?? 80, 80),
+      baseCredibility: 80,
       trustBadgeBonus: (account.trustBadge ?? user.trustBadge) ? 20 : 0,
       opposedPosts: account.opposedPosts ?? 0,
       disputeLosses: account.disputesLost ?? 0,

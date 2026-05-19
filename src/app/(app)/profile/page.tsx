@@ -185,15 +185,9 @@ export default function ProfilePage() {
     .filter(h => h.t && new Date(h.t).getTime() >= weekAgo)
     .reduce((sum, h) => sum + (h.delta ?? 0), 0);
   const weeklyDelta = Number(weeklyDeltaRaw.toFixed(2));
-  const positiveDeltaWeek = ledgerHistory
-    .filter(h => h.t && new Date(h.t).getTime() >= weekAgo && h.delta > 0)
-    .reduce((sum, h) => sum + h.delta, 0);
-  const negativeDeltaWeek = ledgerHistory
-    .filter(h => h.t && new Date(h.t).getTime() >= weekAgo && h.delta < 0)
-    .reduce((sum, h) => sum + Math.abs(h.delta), 0);
 
   const totalPositiveImpact = ledgerHistory
-    .filter(h => h.delta > 0)
+    .filter(h => typeof h.delta === 'number' && h.delta > 0)
     .reduce((sum, h) => sum + h.delta, 0);
 
   function formatNumberShort(num: number) {
@@ -430,7 +424,7 @@ export default function ProfilePage() {
             <p className={cn("mt-1.5 text-[15px] sm:text-[17px] font-bold tabular-nums", weeklyDelta >= 0 ? "text-green-500" : "text-red-500")}>
               {weeklyDelta > 0 ? '+' : ''}{weeklyDelta}
             </p>
-            <p className="mt-0.5 text-[9px] sm:text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">This Week</p>
+            <p title="Net score impact from the last 7 days (positive + negative)" className="mt-0.5 text-[9px] sm:text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">This Week</p>
           </div>
           {/* Card 2 — Total Impact */}
           <div className="min-w-0 rounded-2xl border border-border bg-background py-3 px-1 text-center shadow-sm flex flex-col items-center justify-center">
@@ -440,7 +434,7 @@ export default function ProfilePage() {
             <p className="mt-1.5 text-[15px] sm:text-[17px] font-bold text-foreground tabular-nums">
               {formatNumberShort(totalPositiveImpact)}
             </p>
-            <p className="mt-0.5 text-[9px] sm:text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Total Impact</p>
+            <p title="Sum of all lifetime positive impact from reports" className="mt-0.5 text-[9px] sm:text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Total Impact</p>
           </div>
           {/* Card 3 — Followers (click → modal with Followers/Following tabs) */}
           <button
@@ -456,7 +450,7 @@ export default function ProfilePage() {
             <p className="mt-1.5 text-[15px] sm:text-[17px] font-bold text-foreground tabular-nums">
               {followersCountStr}
             </p>
-            <p className="mt-0.5 text-[9px] sm:text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Followers</p>
+            <p title="Number of followers on ShoSha" className="mt-0.5 text-[9px] sm:text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Followers</p>
           </button>
           {/* Card 4 — Credibility */}
           <div className="min-w-0 rounded-2xl border border-border bg-background py-3 px-1 text-center shadow-sm flex flex-col items-center justify-center">
@@ -466,7 +460,7 @@ export default function ProfilePage() {
             <p className="mt-1.5 text-[15px] sm:text-[17px] font-bold text-foreground tabular-nums">
               {profileCredibilityDisplay}%
             </p>
-            <p className="mt-0.5 text-[9px] sm:text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Credibility</p>
+            <p title="Profile trustworthiness based on completion and reporting reliability. Max 100." className="mt-0.5 text-[9px] sm:text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Credibility</p>
           </div>
         </div>
 
@@ -880,7 +874,7 @@ export default function ProfilePage() {
         ledgerScore={ledgerScore}
         credibility={profileCredibilityDisplay}
         weeklyDelta={weeklyDelta}
-        totalImpact={positiveDeltaWeek > 0 ? `+${positiveDeltaWeek}` : String(positiveDeltaWeek)}
+        totalImpact={formatNumberShort(totalPositiveImpact)}
         followers={appUser?.networkSize ? (NETWORK_LABELS[appUser.networkSize] || appUser.networkSize) : '—'}
         role={appUser?.occupationRole ? (ROLE_LABELS[appUser.occupationRole] ?? appUser.occupationRole) : undefined}
         location={[appUser?.city, appUser?.country].filter(Boolean).join(', ') || undefined}
