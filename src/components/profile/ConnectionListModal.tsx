@@ -50,6 +50,30 @@ export const ConnectionListModal = forwardRef<ConnectionListModalRef, Connection
     const [users, setUsers] = useState<ConnectionUser[]>([]);
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(false);
+    const [unfollowingId, setUnfollowingId] = useState<string | null>(null);
+
+    async function unfollowDossier(accountId: string) {
+      const prevUsers = users;
+      const prevTotal = total;
+      setUnfollowingId(accountId);
+      setUsers((list) => list.filter((u) => u._id !== accountId));
+      setTotal((n) => Math.max(0, n - 1));
+      try {
+        const res = await fetch(
+          `/api/accounts/${encodeURIComponent(accountId)}/dossier-unfollow`,
+          { method: 'DELETE' },
+        );
+        if (!res.ok) {
+          setUsers(prevUsers);
+          setTotal(prevTotal);
+        }
+      } catch {
+        setUsers(prevUsers);
+        setTotal(prevTotal);
+      } finally {
+        setUnfollowingId(null);
+      }
+    }
 
     function show(type: ConnectionType) {
       setActiveType(type);
@@ -202,13 +226,15 @@ export const ConnectionListModal = forwardRef<ConnectionListModalRef, Connection
                           </div>
                         </Link>
                         {!item.isSelf && item.isAccountDossier && (
-                          <span
-                            aria-disabled="true"
-                            className="flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-4 py-1.5 text-[13px] font-bold text-foreground"
+                          <button
+                            type="button"
+                            onClick={() => unfollowDossier(item._id)}
+                            disabled={unfollowingId === item._id}
+                            className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-border bg-card px-4 py-1.5 text-[13px] font-bold text-foreground transition-colors hover:bg-muted disabled:opacity-50"
                           >
                             <UserCheck size={14} />
                             Following
-                          </span>
+                          </button>
                         )}
                         {!item.isSelf && !item.isAccountDossier && (
                           <FollowButton targetUserId={item._id} initialFollowing={item.isFollowing} />

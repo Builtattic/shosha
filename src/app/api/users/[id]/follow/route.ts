@@ -1,5 +1,6 @@
 import { ok, fail } from '@/lib/api';
 import { getCurrentUser } from '@/lib/auth';
+import * as accountsRepo from '@/lib/repos/accounts';
 import * as usersRepo from '@/lib/repos/users';
 
 export async function POST(_req: Request, { params }: { params: { id: string } }) {
@@ -40,6 +41,22 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
   await usersRepo.update(targetId, {
     followers: (target.followers ?? []).filter((id) => id !== user._id)
   });
+
+  const followingAccounts = user.followingAccounts ?? [];
+  // TODO: replace with findByIds batch when available
+  const sample = followingAccounts.slice(0, 20);
+  const resolved = await Promise.all(
+    sample.map((id) => accountsRepo.findById(id).catch(() => null)),
+  );
+  const toRemove = resolved
+    .filter((a): a is NonNullable<typeof a> => !!a && a.claimedBy === targetId)
+    .map((a) => a._id);
+
+  if (toRemove.length > 0) {
+    await usersRepo.update(user._id, {
+      followingAccounts: followingAccounts.filter((id) => !toRemove.includes(id)),
+    });
+  }
 
   return ok({ following: false });
 }

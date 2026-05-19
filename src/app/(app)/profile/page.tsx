@@ -13,8 +13,8 @@ import Link from 'next/link';
 import { cn, formatDate, formatRelativeTime } from '@/lib/utils';
 import { calcProfileScores, calcShoshaScore, BASE_SCORE } from '@/lib/scoring';
 import { D3ProfileGauge } from '@/components/viz/D3ProfileGauge';
-import { D3DonutChart } from '@/components/viz/D3DonutChart';
 import { D3AreaChart } from '@/components/viz/D3AreaChart';
+import { ProfileImpactAnalytics } from '@/components/profile/ProfileImpactAnalytics';
 import { D3ActivityBar } from '@/components/viz/D3ActivityBar';
 import { ProfileScoreRadar } from '@/components/viz/ProfileScoreRadar';
 import { ShareCardModal } from '@/components/profile/ShareCardModal';
@@ -99,6 +99,10 @@ export default function ProfilePage() {
     recentEvents: any[];
     swipeAggregate?: { score: number; aligns: number; opposes: number };
   } | null>(null);
+  const [filingsData, setFilingsData] = useState<{
+    filings: any[];
+    history: any[];
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'activity' | 'impact' | 'about'>('overview');
   const [shareOpen, setShareOpen] = useState(false);
@@ -106,12 +110,19 @@ export default function ProfilePage() {
   const [reportDetailOpen, setReportDetailOpen] = useState(false);
   const [ledgerRange, setLedgerRange] = useState<'weekly' | 'monthly' | 'max'>('max');
   const initialReplayDone = useRef(false);
+  const initialFilingsDone = useRef(false);
   const connectionListModalRef = useRef<ConnectionListModalRef>(null);
 
   const loadProfile = useCallback(async () => {
     const res = await fetch('/api/me', { cache: 'no-store' });
     const payload = res.ok ? await res.json() : null;
     if (payload?.ok) setData(payload.data);
+  }, []);
+
+  const loadFilings = useCallback(async () => {
+    const res = await fetch('/api/me/filings', { cache: 'no-store' });
+    const payload = res.ok ? await res.json() : null;
+    if (payload?.ok) setFilingsData(payload.data);
   }, []);
 
   useEffect(() => {
@@ -123,6 +134,10 @@ export default function ProfilePage() {
           await fetch('/api/me/score/replay', { method: 'POST' }).catch(() => null);
         }
         await loadProfile();
+        if (!initialFilingsDone.current) {
+          initialFilingsDone.current = true;
+          await loadFilings();
+        }
       } finally {
         if (active) setLoading(false);
       }
@@ -141,7 +156,7 @@ export default function ProfilePage() {
       window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
-  }, [loadProfile]);
+  }, [loadProfile, loadFilings]);
 
   if (authLoading || loading) {
     return (
@@ -170,15 +185,9 @@ export default function ProfilePage() {
     .filter(h => h.t && new Date(h.t).getTime() >= weekAgo)
     .reduce((sum, h) => sum + (h.delta ?? 0), 0);
   const weeklyDelta = Number(weeklyDeltaRaw.toFixed(2));
-  const positiveDeltaWeek = ledgerHistory
-    .filter(h => h.t && new Date(h.t).getTime() >= weekAgo && h.delta > 0)
-    .reduce((sum, h) => sum + h.delta, 0);
-  const negativeDeltaWeek = ledgerHistory
-    .filter(h => h.t && new Date(h.t).getTime() >= weekAgo && h.delta < 0)
-    .reduce((sum, h) => sum + Math.abs(h.delta), 0);
 
   const totalPositiveImpact = ledgerHistory
-    .filter(h => h.delta > 0)
+    .filter(h => typeof h.delta === 'number' && h.delta > 0)
     .reduce((sum, h) => sum + h.delta, 0);
 
   function formatNumberShort(num: number) {
@@ -199,9 +208,12 @@ export default function ProfilePage() {
     : `https://api.dicebear.com/9.x/initials/svg?seed=${displayName}&backgroundColor=1a1a1a&textColor=ffffff`;
 
   const recentEvents: any[] = data?.recentEvents ?? [];
-  const positiveEvents = recentEvents.filter(e => (e.eventType ?? e.type) === 'positive');
-  const negativeEvents = recentEvents.filter(e => (e.eventType ?? e.type) === 'negative');
-  const neutralEvents = recentEvents.filter(e => !['positive', 'negative'].includes(e.eventType ?? e.type ?? ''));
+  const filingsAbout = filingsData?.filings ?? [];
+  const filingsPositiveCount = filingsAbout.filter((f) => f.type === 'positive').length;
+  const filingsNegativeCount = filingsAbout.filter((f) => f.type === 'negative').length;
+  const filingsNeutralCount = filingsAbout.filter(
+    (f) => !['positive', 'negative'].includes(f.type ?? ''),
+  ).length;
 
   // Cumulative ledger timeline built from actual ledger history (Score₀ = 1000)
   const sortedLedger = [...ledgerHistory]
@@ -259,27 +271,6 @@ export default function ProfilePage() {
     { id: 'impact', label: 'Impact', Icon: Target },
     { id: 'about', label: 'About', Icon: User },
   ] as const;
-
-  // Derived data for Impact tab
-  const impactMap = new Map<string, number>();
-  ledgerHistory.forEach(entry => {
-    if (entry.category && entry.delta !== undefined) {
-      const cat = entry.category.split('|')[0].trim();
-      impactMap.set(cat, (impactMap.get(cat) || 0) + entry.delta);
-    }
-  });
-  
-  const categoryImpacts = Array.from(impactMap.entries())
-    .map(([label, value]) => ({ label, value }))
-    .sort((a, b) => Math.abs(b.value) - Math.abs(a.value));
-
-  const impactColors = ['#10B981', '#3B82F6', '#8B5CF6', '#F59E0B', '#EF4444', '#EC4899', '#14B8A6'];
-  
-  const chartData = categoryImpacts.map((cat, i) => ({
-    label: cat.label,
-    value: Math.abs(cat.value),
-    color: impactColors[i % impactColors.length]
-  }));
 
   function changeTabWithoutJump(id: typeof tabs[number]['id']) {
     const scrollY = window.scrollY;
@@ -433,7 +424,7 @@ export default function ProfilePage() {
             <p className={cn("mt-1.5 text-[15px] sm:text-[17px] font-bold tabular-nums", weeklyDelta >= 0 ? "text-green-500" : "text-red-500")}>
               {weeklyDelta > 0 ? '+' : ''}{weeklyDelta}
             </p>
-            <p className="mt-0.5 text-[9px] sm:text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">This Week</p>
+            <p title="Net score impact from the last 7 days (positive + negative)" className="mt-0.5 text-[9px] sm:text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">This Week</p>
           </div>
           {/* Card 2 — Total Impact */}
           <div className="min-w-0 rounded-2xl border border-border bg-background py-3 px-1 text-center shadow-sm flex flex-col items-center justify-center">
@@ -443,7 +434,7 @@ export default function ProfilePage() {
             <p className="mt-1.5 text-[15px] sm:text-[17px] font-bold text-foreground tabular-nums">
               {formatNumberShort(totalPositiveImpact)}
             </p>
-            <p className="mt-0.5 text-[9px] sm:text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Total Impact</p>
+            <p title="Sum of all lifetime positive impact from reports" className="mt-0.5 text-[9px] sm:text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Total Impact</p>
           </div>
           {/* Card 3 — Followers (click → modal with Followers/Following tabs) */}
           <button
@@ -459,7 +450,7 @@ export default function ProfilePage() {
             <p className="mt-1.5 text-[15px] sm:text-[17px] font-bold text-foreground tabular-nums">
               {followersCountStr}
             </p>
-            <p className="mt-0.5 text-[9px] sm:text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Followers</p>
+            <p title="Number of followers on ShoSha" className="mt-0.5 text-[9px] sm:text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Followers</p>
           </button>
           {/* Card 4 — Credibility */}
           <div className="min-w-0 rounded-2xl border border-border bg-background py-3 px-1 text-center shadow-sm flex flex-col items-center justify-center">
@@ -469,7 +460,7 @@ export default function ProfilePage() {
             <p className="mt-1.5 text-[15px] sm:text-[17px] font-bold text-foreground tabular-nums">
               {profileCredibilityDisplay}%
             </p>
-            <p className="mt-0.5 text-[9px] sm:text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Credibility</p>
+            <p title="Profile trustworthiness based on completion and reporting reliability. Max 100." className="mt-0.5 text-[9px] sm:text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Credibility</p>
           </div>
         </div>
 
@@ -645,33 +636,33 @@ export default function ProfilePage() {
                 <h3 className="mb-4 text-[16px] font-bold text-foreground flex items-center gap-1.5">
                   Activity Breakdown <AlertCircle size={14} className="text-muted-foreground" />
                 </h3>
-                {recentEvents.length > 0 ? (
+                {filingsAbout.length > 0 ? (
                   <>
                     <D3ActivityBar
-                      positive={positiveEvents.length}
-                      negative={negativeEvents.length}
-                      neutral={neutralEvents.length}
+                      positive={filingsPositiveCount}
+                      negative={filingsNegativeCount}
+                      neutral={filingsNeutralCount}
                       height={8}
                     />
                     <div className="mt-5 grid grid-cols-3 gap-2 divide-x divide-border text-center">
                       <div className="flex flex-col items-center gap-1">
                         <div className="flex items-center gap-1 text-green-500">
                           <ThumbsUp size={14} strokeWidth={2.5} />
-                          <div className="text-[14px] font-bold text-foreground">{positiveEvents.length}</div>
+                          <div className="text-[14px] font-bold text-foreground">{filingsPositiveCount}</div>
                         </div>
                         <div className="text-[11px] text-muted-foreground">Positive</div>
                       </div>
                       <div className="flex flex-col items-center gap-1">
                         <div className="flex items-center gap-1 text-red-500">
                           <ThumbsDown size={14} strokeWidth={2.5} />
-                          <div className="text-[14px] font-bold text-foreground">{negativeEvents.length}</div>
+                          <div className="text-[14px] font-bold text-foreground">{filingsNegativeCount}</div>
                         </div>
                         <div className="text-[11px] text-muted-foreground">Negative</div>
                       </div>
                       <div className="flex flex-col items-center gap-1">
                         <div className="flex items-center gap-1 text-muted-foreground">
                           <Minus size={14} strokeWidth={2.5} />
-                          <div className="text-[14px] font-bold text-foreground">{neutralEvents.length}</div>
+                          <div className="text-[14px] font-bold text-foreground">{filingsNeutralCount}</div>
                         </div>
                         <div className="text-[11px] text-muted-foreground">Neutral</div>
                       </div>
@@ -689,133 +680,22 @@ export default function ProfilePage() {
 
           {/* ── IMPACT ── */}
           {activeTab === 'impact' && (
-            <div className="space-y-4">
-              {/* Impact Overview List */}
-              <div className="rounded-[24px] bg-background p-5 shadow-sm border border-border">
-                <h3 className="mb-5 text-[16px] font-bold text-foreground">Impact Overview</h3>
-                {categoryImpacts.length > 0 ? (
-                  <div className="space-y-3">
-                    {categoryImpacts.map((cat, i) => (
-                      <div key={i} className="flex items-center justify-between border-b border-border/40 pb-3 last:border-0 last:pb-0">
-                        <div className="flex items-center gap-2 text-[14px] font-semibold text-foreground">
-                          <div className="h-2 w-2 rounded-full" style={{ backgroundColor: impactColors[i % impactColors.length] }} />
-                          {cat.label}
-                        </div>
-                        <div className={cn(
-                          "text-[14px] font-bold",
-                          cat.value > 0 ? "text-green-500" : cat.value < 0 ? "text-red-500" : "text-muted-foreground"
-                        )}>
-                          {cat.value > 0 ? '+' : ''}{cat.value}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="py-8 flex flex-col items-center gap-3 text-center">
-                    <PieChart size={28} className="text-muted-foreground opacity-30" />
-                    <p className="text-[13px] text-muted-foreground">No impact categories to show yet.</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Impact Categories Chart */}
-              <div className="rounded-[24px] bg-background p-5 shadow-sm border border-border">
-                <h3 className="mb-6 text-[16px] font-bold text-foreground">Impact Categories</h3>
-                {chartData.length > 0 ? (
-                  <div className="flex flex-col items-center justify-center">
-                    <div className="relative">
-                      <D3DonutChart data={chartData} width={240} height={240} innerRadius={80} />
-                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <div className="text-center">
-                          <div className="text-[28px] font-black text-foreground leading-none">{chartData.length}</div>
-                          <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mt-1">Categories</div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-8 flex flex-wrap justify-center gap-4">
-                      {chartData.map((d, i) => (
-                        <div key={i} className="flex items-center gap-1.5 text-[12px] font-bold text-foreground">
-                          <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: d.color }} />
-                          {d.label}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="py-12 flex flex-col items-center gap-3 text-center">
-                    <Activity size={28} className="text-muted-foreground opacity-30" />
-                    <p className="text-[13px] text-muted-foreground">Chart will generate once you have impact entries.</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Top Impactful Actions */}
-              <div className="rounded-[24px] bg-background p-5 shadow-sm border border-border">
-                <div className="flex items-center justify-between mb-5">
-                  <h3 className="text-[16px] font-bold text-foreground">Top Impactful Actions</h3>
-                </div>
-                {ledgerHistory.length > 0 ? (
-                  <div className="space-y-3">
-                    {[...ledgerHistory]
-                      .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
-                      .slice(0, 5)
-                      .map((entry, i) => (
-                        <div key={i} className="flex items-start gap-3 rounded-xl border border-border p-3 transition-colors hover:bg-muted/40">
-                          <div
-                            className={cn(
-                              'flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
-                              entry.delta > 0
-                                ? 'bg-green-50 text-green-600'
-                                : entry.delta < 0
-                                ? 'bg-red-50 text-red-600'
-                                : 'bg-muted text-muted-foreground'
-                            )}
-                          >
-                            {entry.delta > 0 ? (
-                              <ThumbsUp size={14} strokeWidth={2.5} />
-                            ) : entry.delta < 0 ? (
-                              <ThumbsDown size={14} strokeWidth={2.5} />
-                            ) : (
-                              <Minus size={14} strokeWidth={2.5} />
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h4 className="text-[13px] font-bold leading-tight text-foreground line-clamp-2">
-                              {entry.cause || 'Adjudicated Event'}
-                            </h4>
-                            {entry.category && (
-                              <p className="mt-0.5 text-[11px] text-muted-foreground">
-                                {entry.category.split('|')[0].trim()}
-                              </p>
-                            )}
-                            <p className="mt-1 text-[11px] text-muted-foreground">
-                              {entry.t ? formatDate(entry.t) : ''}
-                            </p>
-                          </div>
-                          <div
-                            className={cn(
-                              'shrink-0 rounded-lg px-2.5 py-1 text-[12px] font-bold',
-                              entry.delta > 0
-                                ? 'bg-green-50 text-green-600'
-                                : entry.delta < 0
-                                ? 'bg-red-50 text-red-600'
-                                : 'bg-muted text-muted-foreground'
-                            )}
-                          >
-                            {entry.delta > 0 ? '+' : ''}{entry.delta}
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                ) : (
-                  <div className="py-8 flex flex-col items-center gap-3 text-center">
-                    <Target size={28} className="text-muted-foreground opacity-30" />
-                    <p className="text-[13px] text-muted-foreground">No impactful actions yet.</p>
-                  </div>
-                )}
-              </div>
-            </div>
+            <ProfileImpactAnalytics
+              showGraph={false}
+              showImpactDetails
+              swipeAggregate={swipeAggregate}
+              totalScore={ledgerScore}
+              history={(filingsData?.history ?? []).map((entry: any) => ({
+                t: entry.t,
+                s: entry.s,
+                delta: entry.delta,
+                category: entry.category,
+                deed: entry.deed,
+              }))}
+              filings={filingsData?.filings ?? []}
+            />
           )}
+
 
           {/* ── ABOUT ── */}
           {activeTab === 'about' && (
@@ -994,7 +874,7 @@ export default function ProfilePage() {
         ledgerScore={ledgerScore}
         credibility={profileCredibilityDisplay}
         weeklyDelta={weeklyDelta}
-        totalImpact={positiveDeltaWeek > 0 ? `+${positiveDeltaWeek}` : String(positiveDeltaWeek)}
+        totalImpact={formatNumberShort(totalPositiveImpact)}
         followers={appUser?.networkSize ? (NETWORK_LABELS[appUser.networkSize] || appUser.networkSize) : '—'}
         role={appUser?.occupationRole ? (ROLE_LABELS[appUser.occupationRole] ?? appUser.occupationRole) : undefined}
         location={[appUser?.city, appUser?.country].filter(Boolean).join(', ') || undefined}
