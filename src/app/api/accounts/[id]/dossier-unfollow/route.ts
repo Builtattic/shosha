@@ -14,6 +14,11 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
   const account = await accountsRepo.findById(id.data);
   if (!account) return fail('not_found', 'No dossier exists for that id.', 404);
 
+  const followingAccounts = user.followingAccounts ?? [];
+  if (!followingAccounts.includes(account._id)) {
+    return fail('not_following', 'You are not following this account.', 400);
+  }
+
   const accountIds = user.followingAccounts ?? [];
   await usersRepo.update(user._id, {
     followingAccounts: accountIds.filter((entryId) => entryId !== account._id),

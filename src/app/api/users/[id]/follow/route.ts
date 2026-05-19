@@ -42,20 +42,20 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
     followers: (target.followers ?? []).filter((id) => id !== user._id)
   });
 
-  const accountIds = user.followingAccounts ?? [];
-  if (accountIds.length > 0) {
-    const accounts = await Promise.all(accountIds.map((id) => accountsRepo.findById(id)));
-    const idsToRemove = new Set(
-      accounts
-        .map((account, index) => (account?.claimedBy === targetId ? accountIds[index] : null))
-        .filter((id): id is string => id !== null),
-    );
-    if (idsToRemove.size > 0) {
-      const nextFollowingAccounts = accountIds.filter((id) => !idsToRemove.has(id));
-      if (nextFollowingAccounts.length !== accountIds.length) {
-        await usersRepo.update(user._id, { followingAccounts: nextFollowingAccounts });
-      }
-    }
+  const followingAccounts = user.followingAccounts ?? [];
+  // TODO: replace with findByIds batch when available
+  const sample = followingAccounts.slice(0, 20);
+  const resolved = await Promise.all(
+    sample.map((id) => accountsRepo.findById(id).catch(() => null)),
+  );
+  const toRemove = resolved
+    .filter((a): a is NonNullable<typeof a> => !!a && a.claimedBy === targetId)
+    .map((a) => a._id);
+
+  if (toRemove.length > 0) {
+    await usersRepo.update(user._id, {
+      followingAccounts: followingAccounts.filter((id) => !toRemove.includes(id)),
+    });
   }
 
   return ok({ following: false });
