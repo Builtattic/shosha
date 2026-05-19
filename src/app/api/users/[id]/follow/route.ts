@@ -1,5 +1,6 @@
 import { ok, fail } from '@/lib/api';
 import { getCurrentUser } from '@/lib/auth';
+import * as accountsRepo from '@/lib/repos/accounts';
 import * as usersRepo from '@/lib/repos/users';
 
 export async function POST(_req: Request, { params }: { params: { id: string } }) {
@@ -40,6 +41,22 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
   await usersRepo.update(targetId, {
     followers: (target.followers ?? []).filter((id) => id !== user._id)
   });
+
+  const accountIds = user.followingAccounts ?? [];
+  if (accountIds.length > 0) {
+    const accounts = await Promise.all(accountIds.map((id) => accountsRepo.findById(id)));
+    const idsToRemove = new Set(
+      accounts
+        .map((account, index) => (account?.claimedBy === targetId ? accountIds[index] : null))
+        .filter((id): id is string => id !== null),
+    );
+    if (idsToRemove.size > 0) {
+      const nextFollowingAccounts = accountIds.filter((id) => !idsToRemove.has(id));
+      if (nextFollowingAccounts.length !== accountIds.length) {
+        await usersRepo.update(user._id, { followingAccounts: nextFollowingAccounts });
+      }
+    }
+  }
 
   return ok({ following: false });
 }
