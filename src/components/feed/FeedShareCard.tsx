@@ -41,8 +41,7 @@ function platformGlyph(platform?: string) {
   return '🌐';
 }
 
-function canUseLocalAvatar(url?: string) {
-  if (!url || url === 'null' || url === 'undefined') return false;
+function isSameOriginUrl(url: string) {
   if (url.startsWith('/')) return true;
   if (typeof window === 'undefined') return false;
   try {
@@ -50,6 +49,15 @@ function canUseLocalAvatar(url?: string) {
   } catch {
     return false;
   }
+}
+
+// Resolve an avatar URL for html2canvas: same-origin URLs render directly,
+// third-party URLs (dicebear, Firebase, CDNs) are routed through the proxy
+// so the capture stays CORS-safe instead of falling back to initials.
+function resolveAvatarSrc(url?: string): string | null {
+  if (!url || url === 'null' || url === 'undefined') return null;
+  if (isSameOriginUrl(url)) return url;
+  return `/api/proxy-image?url=${encodeURIComponent(url)}`;
 }
 
 function StatModule({
@@ -124,7 +132,9 @@ export const FeedShareCard = forwardRef<HTMLDivElement, FeedShareCardProps>(
     const weekBoost = Math.max(0, roundedDelta);
     const showCredibility = typeof credibility === 'number';
     const showFollowers = Boolean(user.followers && user.followers.trim());
-    const localAvatar = canUseLocalAvatar(user.avatar) ? user.avatar : null;
+    const avatarSrc = resolveAvatarSrc(user.avatar);
+    const avatarCrossOrigin: 'anonymous' | undefined =
+      avatarSrc && !isSameOriginUrl(avatarSrc) ? 'anonymous' : undefined;
     const initials = user.name?.charAt(0).toUpperCase() || '?';
     const avatarBg = avatarColors[(user.name?.charCodeAt(0) || 0) % avatarColors.length];
     const rightRailWidth = 168;
@@ -198,11 +208,12 @@ export const FeedShareCard = forwardRef<HTMLDivElement, FeedShareCardProps>(
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: '1px solid #f3f4f6' }}>
             <div style={{ position: 'relative', width: 36, height: 36, flexShrink: 0 }}>
-              {localAvatar ? (
+              {avatarSrc ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={localAvatar}
+                  src={avatarSrc}
                   alt={user.name}
+                  crossOrigin={avatarCrossOrigin}
                   style={{
                     width: 36,
                     height: 36,
