@@ -62,6 +62,7 @@ export interface FeedItemProps {
     isVerified: boolean;
     platform?: string;
     accountId?: string;
+    followers?: string;
   };
   timestamp: string;
   type: 'positive' | 'negative';
@@ -87,6 +88,7 @@ export interface FeedItemProps {
     shares: number;
   };
   delta: number;
+  credibility?: number;
   viewer?: {
     vote: 'align' | 'oppose' | null;
     bookmarked: boolean;
@@ -106,6 +108,7 @@ export function FeedItem({
   timestamp,
   type,
   title,
+  description,
   location,
   media,
   category,
@@ -116,6 +119,7 @@ export function FeedItem({
   links,
   stats,
   delta,
+  credibility,
   viewer,
   reporter,
   canRequestModeration
@@ -710,8 +714,10 @@ export function FeedItem({
               timestamp={timestamp}
               type={type}
               title={title}
+              description={description}
               location={location}
               media={media}
+              links={links}
               category={category}
               deed={deed}
               disputeStatus={disputeStatus}
@@ -721,6 +727,7 @@ export function FeedItem({
               viewer={viewerState}
               reporter={reporter}
               delta={delta}
+              credibility={credibility}
             />
           </div>,
           document.body
