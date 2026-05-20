@@ -25,6 +25,8 @@ export type FeedReport = {
     avatarUrl?: string;
     verified?: boolean;
     platform?: string;
+    followers?: string;
+    credibility?: number;
   };
   reporter?: {
     username: string;
@@ -52,7 +54,8 @@ export function toFeedItem(report: FeedReport): FeedItemProps {
       avatar: report.account.avatarUrl ?? '',
       isVerified: Boolean(report.account.verified),
       platform: report.account.platform,
-      accountId: report.account._id
+      accountId: report.account._id,
+      followers: report.account.followers
     },
     reporter: report.reporter ? {
       name: report.reporter.name || report.reporter.username.replace(/^@/, ''),
@@ -73,6 +76,7 @@ export function toFeedItem(report: FeedReport): FeedItemProps {
     links: report.links,
     stats: report.stats ?? { aligns: 0, opposes: 0, comments: 0, shares: 0 },
     delta: report.adminDecision?.finalImpact ?? report.aiVerdict?.proposedImpact ?? 0,
+    credibility: report.account.credibility,
     viewer: report.viewer,
     canRequestModeration: report.canRequestModeration
   };
