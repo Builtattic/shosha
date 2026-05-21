@@ -195,10 +195,12 @@ export function FeedItem({
       const blob = await (await fetch(previewUrl)).blob();
       const file = new File([blob], `shosha_${id}.png`, { type: 'image/png' });
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        const subjectName = user.name || 'Someone';
+        const reportDeed = deed || category || title || 'a report';
         await navigator.share({
-          files: [file],
-          title: title,
-          text: `Check out this report on Shosha: ${title}`,
+          title: `Report on Shosha: ${subjectName}`,
+          text: `Report on Shosha: ${subjectName} · ${reportDeed}`,
+          url: `https://www.noshosha.com/post/${id}`,
         });
         return;
       }
