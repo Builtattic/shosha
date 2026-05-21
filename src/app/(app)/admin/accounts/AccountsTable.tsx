@@ -309,6 +309,7 @@ export function AccountsTable({ initialAccounts }: { initialAccounts: AccountRec
           verified: editAccount.verified,
           claimed: editAccount.claimed,
           claimedBy: editAccount.claimedBy,
+          archived: editAccount.archived ?? false,
           score: Number(editAccount.score),
           credibility: Number(editAccount.credibility),
           profileCompletion: Number(editAccount.profileCompletion ?? editAccount.credibility ?? 50),
@@ -473,8 +474,9 @@ export function AccountsTable({ initialAccounts }: { initialAccounts: AccountRec
         </div>
       </div>
 
+      <div className="min-w-0 max-h-[min(70vh,calc(100dvh-12rem))] overflow-auto overscroll-contain border-t border-white/5">
       {/* Mobile compact list */}
-      <div className="divide-y divide-white/5 border-t border-white/5 md:hidden">
+      <div className="divide-y divide-white/5 md:hidden">
         {filtered.map((account) => {
           const reach = account.followers ? parseInt(account.followers, 10) : NaN;
           const reachLabel = Number.isFinite(reach) ? reach.toLocaleString() : '—';
@@ -491,7 +493,14 @@ export function AccountsTable({ initialAccounts }: { initialAccounts: AccountRec
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-black text-foreground">{account.displayName}</p>
+                  <p className="flex min-w-0 items-center gap-1.5 truncate text-sm font-black text-foreground">
+                    <span className="truncate">{account.displayName}</span>
+                    {account.archived && (
+                      <span className="shrink-0 rounded-lg border border-white/5 bg-secondary px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+                        LEGEND
+                      </span>
+                    )}
+                  </p>
                   <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
                     <span className="inline-flex items-center gap-1 font-bold capitalize">
                       <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-white/5 bg-black/20 text-[10px]">
@@ -545,9 +554,9 @@ export function AccountsTable({ initialAccounts }: { initialAccounts: AccountRec
       </div>
 
       {/* Table Section (desktop) */}
-      <div className="hidden min-w-0 overflow-x-auto md:block">
+      <div className="hidden md:block">
         <table className="w-full min-w-[900px] border-collapse">
-          <thead>
+          <thead className="sticky top-0 z-10 bg-card">
             <tr className="border-b border-white/5">
               <th className="text-left px-8 py-5">
                 <button onClick={() => toggleSort('displayName')} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors">
@@ -602,6 +611,11 @@ export function AccountsTable({ initialAccounts }: { initialAccounts: AccountRec
                         <Link href={`/account/${account._id}`} className="block group/link">
                           <span className="text-sm font-black text-foreground group-hover/link:text-primary transition-colors flex items-center gap-1.5">
                             {account.displayName}
+                            {account.archived && (
+                              <span className="rounded-lg border border-white/5 bg-secondary px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+                                LEGEND
+                              </span>
+                            )}
                             <ExternalLink size={12} className="opacity-0 group-hover/link:opacity-100 transition-opacity" />
                           </span>
                         </Link>
@@ -708,6 +722,7 @@ export function AccountsTable({ initialAccounts }: { initialAccounts: AccountRec
             )}
           </tbody>
         </table>
+      </div>
       </div>
 
       {/* Mobile action sheet for row menu */}
@@ -893,6 +908,15 @@ export function AccountsTable({ initialAccounts }: { initialAccounts: AccountRec
                   <label className="flex items-center gap-3 p-4 rounded-2xl bg-white/5 border border-white/5 cursor-pointer hover:bg-white/[0.08] transition-colors">
                     <input type="checkbox" checked={editAccount.claimed} onChange={(e) => setEditAccount({ ...editAccount, claimed: e.target.checked, claimedBy: e.target.checked ? editAccount.claimedBy : null })} className="h-5 w-5 rounded-lg border-white/10 bg-black/20 text-primary focus:ring-primary/20 transition-all" />
                     <span className="text-xs font-black uppercase tracking-widest">Claimed Status</span>
+                  </label>
+                  <label className="flex items-start gap-3 p-4 rounded-2xl bg-white/5 border border-white/5 cursor-pointer hover:bg-white/[0.08] transition-colors sm:col-span-2">
+                    <input type="checkbox" checked={editAccount.archived ?? false} onChange={(e) => setEditAccount({ ...editAccount, archived: e.target.checked })} className="mt-0.5 h-5 w-5 shrink-0 rounded-lg border-white/10 bg-black/20 text-primary focus:ring-primary/20 transition-all" />
+                    <span>
+                      <span className="block text-xs font-black uppercase tracking-widest">Archived (Legend)</span>
+                      <span className="mt-1 block text-[11px] font-medium normal-case tracking-normal text-muted-foreground">
+                        Archived accounts appear in the Legends tab on /ranks
+                      </span>
+                    </span>
                   </label>
                 </div>
 
