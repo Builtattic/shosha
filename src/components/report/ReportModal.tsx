@@ -110,6 +110,7 @@ export function ReportModal({
   const [description, setDescription] = useState('');
   const [feelings, setFeelings] = useState('');
   const [evidenceSourceUrl, setEvidenceSourceUrl] = useState('');
+  const [isIRL, setIsIRL] = useState(false);
   const [aiConsent, setAiConsent] = useState(true);
   const [publicAnonymous, setPublicAnonymous] = useState(!user);
   const [taggedPerson, setTaggedPerson] = useState('');
@@ -176,6 +177,7 @@ export function ReportModal({
     setDescription('');
     setFeelings('');
     setEvidenceSourceUrl('');
+    setIsIRL(false);
     setAiConsent(true);
     setPublicAnonymous(!user);
     setTaggedPerson('');
@@ -497,17 +499,19 @@ export function ReportModal({
       return;
     }
 
-    if (!evidenceSourceUrl.trim()) {
-      showSubmitError('Add a source URL for the proof before submitting.');
-      return;
-    }
+    if (!isIRL) {
+      if (!evidenceSourceUrl.trim()) {
+        showSubmitError('Add a source URL for the proof before submitting.');
+        return;
+      }
 
-    try {
-      normalizeUrl(evidenceSourceUrl);
-      new URL(normalizeUrl(evidenceSourceUrl));
-    } catch {
-      showSubmitError('Enter a valid source URL for the proof.');
-      return;
+      try {
+        normalizeUrl(evidenceSourceUrl);
+        new URL(normalizeUrl(evidenceSourceUrl));
+      } catch {
+        showSubmitError('Enter a valid source URL for the proof.');
+        return;
+      }
     }
 
     if (!aiConsent) {
@@ -556,7 +560,7 @@ export function ReportModal({
           media: { url: media.url, thumbUrl: media.thumbUrl, type: media.type, bytes: media.bytes },
           location: location || undefined,
           tags: taggedPerson ? [taggedPerson] : [],
-          evidenceSourceUrl: normalizeUrl(evidenceSourceUrl),
+          ...(isIRL ? {} : { evidenceSourceUrl: normalizeUrl(evidenceSourceUrl) }),
           links: links
             .filter((l) => l.url.trim() !== '')
             .map((l) => ({
@@ -1123,10 +1127,40 @@ export function ReportModal({
             <div>
               <h3 className="text-[14px] font-bold mb-3 flex items-center justify-between gap-2 sm:text-[16px] sm:mb-4">
                 <span className="truncate">Source & Details</span>
-                <span className="shrink-0 text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full uppercase tracking-wider sm:text-[11px]">Source Required</span>
+                {!isIRL ? (
+                  <span className="shrink-0 text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full uppercase tracking-wider sm:text-[11px]">Source Required</span>
+                ) : (
+                  <span className="shrink-0 text-[10px] font-bold text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full uppercase tracking-wider sm:text-[11px]">IRL INCIDENT</span>
+                )}
               </h3>
 
               <div className="space-y-3 sm:space-y-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <button
+                    type="button"
+                    onClick={() => { setIsIRL(false); setEvidenceSourceUrl(''); }}
+                    className={`px-4 py-1.5 rounded-full text-[13px] font-semibold border transition-all ${
+                      !isIRL
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-card text-muted-foreground border-border'
+                    }`}
+                  >
+                    🌐 Online
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setIsIRL(true); setEvidenceSourceUrl(''); }}
+                    className={`px-4 py-1.5 rounded-full text-[13px] font-semibold border transition-all ${
+                      isIRL
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-card text-muted-foreground border-border'
+                    }`}
+                  >
+                    📍 IRL
+                  </button>
+                </div>
+
+                {!isIRL && (
                 <div className="space-y-2">
                   <label className="text-[13px] font-bold block ml-1 uppercase tracking-wider text-muted-foreground">Proof Source URL</label>
                   <p className="text-[11px] text-muted-foreground ml-1">Original article, post, or video behind this proof.</p>
@@ -1138,6 +1172,7 @@ export function ReportModal({
                     className="w-full rounded-[18px] border border-border bg-card p-4 text-[14px] focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                   />
                 </div>
+                )}
 
                 <div className="relative group">
                   <UserRound className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={16} />
@@ -1227,10 +1262,10 @@ export function ReportModal({
             <button
               type="button"
               onClick={submit}
-              disabled={submitting || uploading || !type || !selectedScoringRow || description.length < 10 || !media || !evidenceSourceUrl.trim() || (!accountId && !targetHandle.trim())}
+              disabled={submitting || uploading || !type || !selectedScoringRow || description.length < 10 || !media || (!isIRL && !evidenceSourceUrl.trim()) || (!accountId && !targetHandle.trim())}
               className={cn(
                 "w-full rounded-full py-5 text-[16px] font-black transition-all active:scale-[0.98] shadow-xl sm:text-[17px]",
-                (submitting || uploading || !type || !selectedScoringRow || description.length < 10 || !media || !evidenceSourceUrl.trim() || (!accountId && !targetHandle.trim()))
+                (submitting || uploading || !type || !selectedScoringRow || description.length < 10 || !media || (!isIRL && !evidenceSourceUrl.trim()) || (!accountId && !targetHandle.trim()))
                   ? "bg-muted text-muted-foreground cursor-not-allowed opacity-70 shadow-none"
                   : "bg-foreground text-background hover:bg-foreground/90 hover:shadow-2xl"
               )}
