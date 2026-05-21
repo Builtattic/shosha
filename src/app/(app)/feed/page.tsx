@@ -156,10 +156,16 @@ function FeedContent() {
             </>
           )}
           {!loading && visibleFeed.map((item) => (
-            <div key={item._id} onClick={() => {
-              setSelectedReportId(item._id);
-              setDetailOpen(true);
-            }} className="cursor-pointer">
+            <div
+              key={item._id}
+              onClick={(e) => {
+                const target = e.target as HTMLElement;
+                if (target.closest('button, a, input, textarea')) return;
+                setSelectedReportId(item._id);
+                setDetailOpen(true);
+              }}
+              className="cursor-pointer"
+            >
               <FeedItem {...toFeedItem(item)} />
             </div>
           ))}
