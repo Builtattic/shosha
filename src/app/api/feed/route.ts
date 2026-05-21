@@ -296,6 +296,15 @@ export async function GET(request: Request) {
     feed = feed.filter((report) => report.account?.platform === 'instagram');
   }
 
+  if (filter === 'top') {
+    feed = feed.filter((report) => {
+      const s = report.stats;
+      const totalEngagement =
+        (s?.aligns ?? 0) + (s?.opposes ?? 0) + (s?.comments ?? 0);
+      return totalEngagement >= 1;
+    });
+  }
+
   feed = feed
     .filter((report) => !report.account?.platform || settings.enabledPlatforms.includes(report.account.platform))
     .sort((a, b) =>
