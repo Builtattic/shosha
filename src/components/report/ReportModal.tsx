@@ -146,6 +146,13 @@ export function ReportModal({
   const [additionalSocialLinks, setAdditionalSocialLinks] = useState<AdditionalSocialLinkRow[]>([]);
   const [extraLinkPlatform, setExtraLinkPlatform] = useState<Platform>('instagram');
   const [extraLinkUrl, setExtraLinkUrl] = useState('');
+  const [cameraModalOpen, setCameraModalOpen] = useState(false);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [cameraFacing, setCameraFacing] = useState<'environment' | 'user'>('environment');
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
 
   const deedOptions = useMemo(
     () => SHEET_SCORING_INDEX.filter((row) => !type || row.type === type),
@@ -170,6 +177,7 @@ export function ReportModal({
   }, [newProfileName]);
 
   function reset() {
+    stopCamera();
     setStep(1);
     setType(null);
     setCategory('');
@@ -430,6 +438,80 @@ export function ReportModal({
       if (cameraInputRef.current) cameraInputRef.current.value = '';
     }
   }
+
+  const stopCamera = () => {
+    const stream = cameraStreamRef.current ?? cameraStream;
+    stream?.getTracks().forEach((t) => t.stop());
+    cameraStreamRef.current = null;
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setCameraStream(null);
+    setCameraModalOpen(false);
+    setCameraError(null);
+  };
+
+  const startCamera = async (facing: 'environment' | 'user' = 'environment') => {
+    setCameraError(null);
+    setCameraFacing(facing);
+    const existing = cameraStreamRef.current ?? cameraStream;
+    existing?.getTracks().forEach((t) => t.stop());
+    cameraStreamRef.current = null;
+    setCameraStream(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: facing },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+        audio: false,
+      });
+      cameraStreamRef.current = stream;
+      setCameraStream(stream);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('NotAllowed') || msg.includes('Permission')) {
+        stopCamera();
+        window.setTimeout(() => cameraInputRef.current?.click(), 100);
+      } else if (msg.includes('NotFound') || msg.includes('DevicesNotFound')) {
+        setCameraError('No camera found on this device.');
+      } else {
+        setCameraError('Could not access camera: ' + msg);
+      }
+    }
+  };
+
+  const capturePhoto = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    canvas.width = video.videoWidth || 1280;
+    canvas.height = video.videoHeight || 720;
+    canvas.getContext('2d')?.drawImage(video, 0, 0);
+    canvas.toBlob(async (blob) => {
+      if (!blob) return;
+      stopCamera();
+      const file = new File([blob], `camera-${Date.now()}.jpg`, {
+        type: 'image/jpeg',
+      });
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      const fakeEvent = {
+        target: { files: dt.files },
+      } as unknown as React.ChangeEvent<HTMLInputElement>;
+      await handleFile(fakeEvent);
+    }, 'image/jpeg', 0.92);
+  };
+
+  useEffect(() => {
+    if (!cameraStream || !videoRef.current) return;
+    videoRef.current.srcObject = cameraStream;
+    void videoRef.current.play();
+    return () => {
+      videoRef.current?.pause();
+    };
+  }, [cameraStream, cameraModalOpen]);
 
   async function ensureAccount() {
     if (accountId) return accountId;
@@ -1014,7 +1096,18 @@ export function ReportModal({
                   </button>
                   <button
                     type="button"
-                    onClick={() => cameraInputRef.current?.click()}
+                    onClick={async () => {
+                      if (
+                        typeof navigator !== 'undefined' &&
+                        navigator.mediaDevices &&
+                        typeof navigator.mediaDevices.getUserMedia === 'function'
+                      ) {
+                        setCameraModalOpen(true);
+                        await startCamera('environment');
+                      } else {
+                        cameraInputRef.current?.click();
+                      }
+                    }}
                     disabled={uploading}
                     className="group flex flex-col items-center justify-center rounded-[24px] border-2 border-dashed border-border bg-card/50 p-6 transition-all hover:border-primary/50 hover:bg-primary/5 active:scale-[0.98]"
                   >
@@ -1041,6 +1134,90 @@ export function ReportModal({
                   <div className="absolute bottom-3 left-3 rounded-full bg-black/60 px-3 py-1 text-[10px] font-bold text-white backdrop-blur flex items-center gap-1.5">
                     <ShieldCheck size={12} className="text-emerald-400" />
                     Verified Evidence
+                  </div>
+                </div>
+              )}
+              {cameraModalOpen && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 p-4">
+                  <div className="relative w-full max-w-md rounded-[24px] overflow-hidden bg-black flex flex-col">
+                    <div className="flex items-center justify-between px-4 py-3 bg-black/60 backdrop-blur-sm">
+                      <span className="text-white text-[14px] font-bold">Take Photo</span>
+                      <button
+                        type="button"
+                        onClick={stopCamera}
+                        className="text-white/70 hover:text-white text-[13px] font-semibold px-3 py-1 rounded-full bg-white/10"
+                      >
+                        ✕ Cancel
+                      </button>
+                    </div>
+
+                    {cameraError ? (
+                      <div className="flex flex-col items-center justify-center p-8 text-white gap-4 min-h-[240px]">
+                        <p className="text-[13px] text-center text-white/80">{cameraError}</p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            stopCamera();
+                            window.setTimeout(() => cameraInputRef.current?.click(), 100);
+                          }}
+                          className="px-6 py-2 rounded-full bg-white text-black text-[13px] font-bold"
+                        >
+                          Open Gallery Instead
+                        </button>
+                        <button
+                          type="button"
+                          onClick={stopCamera}
+                          className="px-6 py-2 rounded-full bg-white/10 text-white text-[13px] font-semibold"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <video
+                          ref={videoRef}
+                          autoPlay
+                          playsInline
+                          muted
+                          className="w-full aspect-video object-cover bg-black"
+                        />
+                        <canvas ref={canvasRef} className="hidden" />
+
+                        <div className="flex items-center justify-between px-6 py-4 bg-black gap-3">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              startCamera(cameraFacing === 'environment' ? 'user' : 'environment')
+                            }
+                            className="p-3 rounded-full bg-white/10 text-white text-[18px]"
+                            title="Flip camera"
+                          >
+                            🔄
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={capturePhoto}
+                            disabled={!cameraStream}
+                            className="flex-1 py-3 rounded-full bg-white text-black text-[14px] font-bold disabled:opacity-40 transition-opacity"
+                          >
+                            📸 Capture
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              stopCamera();
+                              window.setTimeout(() => fileInputRef.current?.click(), 100);
+                            }}
+                            className="p-3 rounded-full bg-white/10 text-white text-[18px]"
+                            title="Upload from gallery"
+                          >
+                            🖼️
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               )}
