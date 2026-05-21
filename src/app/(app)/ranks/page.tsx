@@ -1,4 +1,7 @@
+import { getCurrentUser } from '@/lib/auth';
 import * as accountsRepo from '@/lib/repos/accounts';
+import type { AppUser } from '@/lib/repos/users';
+import { resolveRankScope } from '@/lib/rankScope';
 import { BASE_SCORE } from '@/lib/scoring';
 import { RanksTabs, type RankRow } from './RanksTabs';
 
@@ -30,22 +33,55 @@ function toRow(account: Awaited<ReturnType<typeof accountsRepo.listTop>>[number]
   };
 }
 
-function matchesScope(account: accountsRepo.AccountRecord, scope: string) {
+function normalizeLoc(value?: string) {
+  return (value ?? '').trim().toLowerCase();
+}
+
+function parseAccountLocation(account: accountsRepo.AccountRecord): { city?: string; country?: string } {
+  const cc = (account.cityCountry ?? '').trim();
+  if (cc) {
+    const parts = cc.split(',').map((part) => part.trim()).filter(Boolean);
+    if (parts.length >= 2) {
+      return { city: parts[0], country: parts[parts.length - 1] };
+    }
+    if (parts.length === 1) {
+      const region = (account.region ?? '').trim();
+      return region ? { country: region } : { country: parts[0] };
+    }
+  }
+  const region = (account.region ?? '').trim();
+  return region ? { country: region } : {};
+}
+
+function matchesScope(account: accountsRepo.AccountRecord, scope: string, viewer: AppUser | null) {
   if (scope === 'global') return true;
-  if (account.regionScope === scope) return true;
-  const region = `${account.region ?? ''} ${account.cityCountry ?? ''}`.toLowerCase();
-  if (scope === 'national') return Boolean(region);
-  if (scope === 'regional') return /(asia|europe|africa|america|middle east|gcc)/i.test(region);
-  if (scope === 'local') return Boolean(account.cityCountry);
-  return true;
+
+  const viewerCountry = normalizeLoc(viewer?.country);
+  const viewerCity = normalizeLoc(viewer?.city);
+  const accountLoc = parseAccountLocation(account);
+  const accountCountry = normalizeLoc(accountLoc.country);
+  const accountCity = normalizeLoc(accountLoc.city);
+
+  switch (scope) {
+    case 'national':
+    case 'regional':
+      return Boolean(viewerCountry) && accountCountry === viewerCountry;
+    case 'local':
+      return (
+        Boolean(viewerCountry && viewerCity) &&
+        accountCountry === viewerCountry &&
+        accountCity === viewerCity
+      );
+    default:
+      return true;
+  }
 }
 
 export default async function RanksPage({ searchParams }: { searchParams?: { scope?: string } }) {
-  const scope = ['global', 'regional', 'national', 'local'].includes(searchParams?.scope ?? '')
-    ? searchParams!.scope!
-    : 'global';
+  const scope = resolveRankScope(searchParams?.scope);
+  const viewer = await getCurrentUser();
   const all = await accountsRepo.listEvery().catch(() => []);
-  const scoped = all.filter((account) => matchesScope(account, scope));
+  const scoped = all.filter((account) => matchesScope(account, scope, viewer));
   const active = scoped.filter((account) => !account.archived);
   const archived = scoped.filter((account) => account.archived);
   const topByScore = [...active].sort((a, b) => b.score - a.score).slice(0, 50);

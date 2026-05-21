@@ -72,6 +72,7 @@ export type ReportRecord = {
   aiUndertaking?: boolean;
   contentSafety?: ReportContentSafety;
   evidenceSourceUrl?: string;
+  isIRL?: boolean;
   links?: Array<{ url: string; title?: string }>;
   disputeStatus?: 'none' | 'open' | 'resolved';
   status: ReportStatus;

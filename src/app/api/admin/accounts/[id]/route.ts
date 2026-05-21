@@ -16,6 +16,7 @@ const updateAccountSchema = z.object({
   followers: z.string().max(24).optional(),
   claimed: z.boolean().optional(),
   claimedBy: z.string().nullable().optional(),
+  archived: z.boolean().optional(),
   profileId: z.string().min(1).max(40).optional(),
   profileKind: z.enum(['standard', 'public_figure']).optional(),
   claimable: z.boolean().optional(),

@@ -51,6 +51,10 @@ type AccountCandidate = {
 
 type AdditionalSocialLinkRow = { platform: Platform; url: string };
 
+const CAMERA_IDEAL_WIDTH = 1280;
+const CAMERA_IDEAL_HEIGHT = 720;
+const CAMERA_JPEG_QUALITY = 0.92;
+
 type ApiPayload<T = unknown> = {
   ok?: boolean;
   data?: T;
@@ -110,6 +114,7 @@ export function ReportModal({
   const [description, setDescription] = useState('');
   const [feelings, setFeelings] = useState('');
   const [evidenceSourceUrl, setEvidenceSourceUrl] = useState('');
+  const [isIRL, setIsIRL] = useState(false);
   const [aiConsent, setAiConsent] = useState(true);
   const [publicAnonymous, setPublicAnonymous] = useState(!user);
   const [taggedPerson, setTaggedPerson] = useState('');
@@ -145,6 +150,14 @@ export function ReportModal({
   const [additionalSocialLinks, setAdditionalSocialLinks] = useState<AdditionalSocialLinkRow[]>([]);
   const [extraLinkPlatform, setExtraLinkPlatform] = useState<Platform>('instagram');
   const [extraLinkUrl, setExtraLinkUrl] = useState('');
+  const [cameraModalOpen, setCameraModalOpen] = useState(false);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [cameraFacing, setCameraFacing] = useState<'environment' | 'user'>('environment');
+  const [capturing, setCapturing] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
 
   const deedOptions = useMemo(
     () => SHEET_SCORING_INDEX.filter((row) => !type || row.type === type),
@@ -169,6 +182,7 @@ export function ReportModal({
   }, [newProfileName]);
 
   function reset() {
+    stopCamera();
     setStep(1);
     setType(null);
     setCategory('');
@@ -176,6 +190,7 @@ export function ReportModal({
     setDescription('');
     setFeelings('');
     setEvidenceSourceUrl('');
+    setIsIRL(false);
     setAiConsent(true);
     setPublicAnonymous(!user);
     setTaggedPerson('');
@@ -429,6 +444,85 @@ export function ReportModal({
     }
   }
 
+  const stopCamera = () => {
+    const stream = cameraStreamRef.current ?? cameraStream;
+    stream?.getTracks().forEach((t) => t.stop());
+    cameraStreamRef.current = null;
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setCameraStream(null);
+    setCameraModalOpen(false);
+    setCameraError(null);
+  };
+
+  const startCamera = async (facing: 'environment' | 'user' = 'environment') => {
+    setCameraError(null);
+    setCameraFacing(facing);
+    const existing = cameraStreamRef.current ?? cameraStream;
+    existing?.getTracks().forEach((t) => t.stop());
+    cameraStreamRef.current = null;
+    setCameraStream(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: facing },
+          width: { ideal: CAMERA_IDEAL_WIDTH },
+          height: { ideal: CAMERA_IDEAL_HEIGHT },
+        },
+        audio: false,
+      });
+      cameraStreamRef.current = stream;
+      setCameraStream(stream);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('NotAllowed') || msg.includes('Permission')) {
+        stopCamera();
+        window.setTimeout(() => cameraInputRef.current?.click(), 100);
+      } else if (msg.includes('NotFound') || msg.includes('DevicesNotFound')) {
+        setCameraError('No camera found on this device.');
+      } else {
+        setCameraError('Could not access camera: ' + msg);
+      }
+    }
+  };
+
+  const capturePhoto = () => {
+    if (!videoRef.current || !canvasRef.current || capturing) return;
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    canvas.width = video.videoWidth || CAMERA_IDEAL_WIDTH;
+    canvas.height = video.videoHeight || CAMERA_IDEAL_HEIGHT;
+    canvas.getContext('2d')?.drawImage(video, 0, 0);
+    setCapturing(true);
+    canvas.toBlob(async (blob) => {
+      try {
+        if (!blob) return;
+        stopCamera();
+        const file = new File([blob], `camera-${Date.now()}.jpg`, {
+          type: 'image/jpeg',
+        });
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        const fakeEvent = {
+          target: { files: dt.files },
+        } as unknown as React.ChangeEvent<HTMLInputElement>;
+        await handleFile(fakeEvent);
+      } finally {
+        setCapturing(false);
+      }
+    }, 'image/jpeg', CAMERA_JPEG_QUALITY);
+  };
+
+  useEffect(() => {
+    if (!cameraStream || !videoRef.current) return;
+    videoRef.current.srcObject = cameraStream;
+    void videoRef.current.play();
+    return () => {
+      videoRef.current?.pause();
+    };
+  }, [cameraStream, cameraModalOpen]);
+
   async function ensureAccount() {
     if (accountId) return accountId;
     if (resolvedAccountId) {
@@ -497,17 +591,19 @@ export function ReportModal({
       return;
     }
 
-    if (!evidenceSourceUrl.trim()) {
-      showSubmitError('Add a source URL for the proof before submitting.');
-      return;
-    }
+    if (!isIRL) {
+      if (!evidenceSourceUrl.trim()) {
+        showSubmitError('Add a source URL for the proof before submitting.');
+        return;
+      }
 
-    try {
-      normalizeUrl(evidenceSourceUrl);
-      new URL(normalizeUrl(evidenceSourceUrl));
-    } catch {
-      showSubmitError('Enter a valid source URL for the proof.');
-      return;
+      try {
+        normalizeUrl(evidenceSourceUrl);
+        new URL(normalizeUrl(evidenceSourceUrl));
+      } catch {
+        showSubmitError('Enter a valid source URL for the proof.');
+        return;
+      }
     }
 
     if (!aiConsent) {
@@ -556,7 +652,8 @@ export function ReportModal({
           media: { url: media.url, thumbUrl: media.thumbUrl, type: media.type, bytes: media.bytes },
           location: location || undefined,
           tags: taggedPerson ? [taggedPerson] : [],
-          evidenceSourceUrl: normalizeUrl(evidenceSourceUrl),
+          isIRL,
+          ...(isIRL ? {} : { evidenceSourceUrl: normalizeUrl(evidenceSourceUrl) }),
           links: links
             .filter((l) => l.url.trim() !== '')
             .map((l) => ({
@@ -1010,7 +1107,18 @@ export function ReportModal({
                   </button>
                   <button
                     type="button"
-                    onClick={() => cameraInputRef.current?.click()}
+                    onClick={async () => {
+                      if (
+                        typeof navigator !== 'undefined' &&
+                        navigator.mediaDevices &&
+                        typeof navigator.mediaDevices.getUserMedia === 'function'
+                      ) {
+                        setCameraModalOpen(true);
+                        await startCamera('environment');
+                      } else {
+                        cameraInputRef.current?.click();
+                      }
+                    }}
                     disabled={uploading}
                     className="group flex flex-col items-center justify-center rounded-[24px] border-2 border-dashed border-border bg-card/50 p-6 transition-all hover:border-primary/50 hover:bg-primary/5 active:scale-[0.98]"
                   >
@@ -1037,6 +1145,90 @@ export function ReportModal({
                   <div className="absolute bottom-3 left-3 rounded-full bg-black/60 px-3 py-1 text-[10px] font-bold text-white backdrop-blur flex items-center gap-1.5">
                     <ShieldCheck size={12} className="text-emerald-400" />
                     Verified Evidence
+                  </div>
+                </div>
+              )}
+              {cameraModalOpen && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 p-4">
+                  <div className="relative w-full max-w-md rounded-[24px] overflow-hidden bg-black flex flex-col">
+                    <div className="flex items-center justify-between px-4 py-3 bg-black/60 backdrop-blur-sm">
+                      <span className="text-white text-[14px] font-bold">Take Photo</span>
+                      <button
+                        type="button"
+                        onClick={stopCamera}
+                        className="text-white/70 hover:text-white text-[13px] font-semibold px-3 py-1 rounded-full bg-white/10"
+                      >
+                        ✕ Cancel
+                      </button>
+                    </div>
+
+                    {cameraError ? (
+                      <div className="flex flex-col items-center justify-center p-8 text-white gap-4 min-h-[240px]">
+                        <p className="text-[13px] text-center text-white/80">{cameraError}</p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            stopCamera();
+                            window.setTimeout(() => cameraInputRef.current?.click(), 100);
+                          }}
+                          className="px-6 py-2 rounded-full bg-white text-black text-[13px] font-bold"
+                        >
+                          Open Gallery Instead
+                        </button>
+                        <button
+                          type="button"
+                          onClick={stopCamera}
+                          className="px-6 py-2 rounded-full bg-white/10 text-white text-[13px] font-semibold"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <video
+                          ref={videoRef}
+                          autoPlay
+                          playsInline
+                          muted
+                          className="w-full aspect-video object-cover bg-black"
+                        />
+                        <canvas ref={canvasRef} className="hidden" />
+
+                        <div className="flex items-center justify-between px-6 py-4 bg-black gap-3">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              startCamera(cameraFacing === 'environment' ? 'user' : 'environment')
+                            }
+                            className="p-3 rounded-full bg-white/10 text-white text-[18px]"
+                            title="Flip camera"
+                          >
+                            🔄
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={capturePhoto}
+                            disabled={!cameraStream || capturing || uploading}
+                            className="flex-1 py-3 rounded-full bg-white text-black text-[14px] font-bold disabled:opacity-40 transition-opacity"
+                          >
+                            {capturing ? 'Processing…' : '📸 Capture'}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              stopCamera();
+                              window.setTimeout(() => fileInputRef.current?.click(), 100);
+                            }}
+                            className="p-3 rounded-full bg-white/10 text-white text-[18px]"
+                            title="Upload from gallery"
+                          >
+                            🖼️
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               )}
@@ -1123,10 +1315,40 @@ export function ReportModal({
             <div>
               <h3 className="text-[14px] font-bold mb-3 flex items-center justify-between gap-2 sm:text-[16px] sm:mb-4">
                 <span className="truncate">Source & Details</span>
-                <span className="shrink-0 text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full uppercase tracking-wider sm:text-[11px]">Source Required</span>
+                {!isIRL ? (
+                  <span className="shrink-0 text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full uppercase tracking-wider sm:text-[11px]">Source Required</span>
+                ) : (
+                  <span className="shrink-0 text-[10px] font-bold text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full uppercase tracking-wider sm:text-[11px]">IRL INCIDENT</span>
+                )}
               </h3>
 
               <div className="space-y-3 sm:space-y-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <button
+                    type="button"
+                    onClick={() => { setIsIRL(false); setEvidenceSourceUrl(''); }}
+                    className={`px-4 py-1.5 rounded-full text-[13px] font-semibold border transition-all ${
+                      !isIRL
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-card text-muted-foreground border-border'
+                    }`}
+                  >
+                    🌐 Online
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setIsIRL(true); setEvidenceSourceUrl(''); }}
+                    className={`px-4 py-1.5 rounded-full text-[13px] font-semibold border transition-all ${
+                      isIRL
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-card text-muted-foreground border-border'
+                    }`}
+                  >
+                    📍 IRL
+                  </button>
+                </div>
+
+                {!isIRL && (
                 <div className="space-y-2">
                   <label className="text-[13px] font-bold block ml-1 uppercase tracking-wider text-muted-foreground">Proof Source URL</label>
                   <p className="text-[11px] text-muted-foreground ml-1">Original article, post, or video behind this proof.</p>
@@ -1138,6 +1360,7 @@ export function ReportModal({
                     className="w-full rounded-[18px] border border-border bg-card p-4 text-[14px] focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                   />
                 </div>
+                )}
 
                 <div className="relative group">
                   <UserRound className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={16} />
@@ -1227,10 +1450,10 @@ export function ReportModal({
             <button
               type="button"
               onClick={submit}
-              disabled={submitting || uploading || !type || !selectedScoringRow || description.length < 10 || !media || !evidenceSourceUrl.trim() || (!accountId && !targetHandle.trim())}
+              disabled={submitting || uploading || !type || !selectedScoringRow || description.length < 10 || !media || (!isIRL && !evidenceSourceUrl.trim()) || (!accountId && !targetHandle.trim())}
               className={cn(
                 "w-full rounded-full py-5 text-[16px] font-black transition-all active:scale-[0.98] shadow-xl sm:text-[17px]",
-                (submitting || uploading || !type || !selectedScoringRow || description.length < 10 || !media || !evidenceSourceUrl.trim() || (!accountId && !targetHandle.trim()))
+                (submitting || uploading || !type || !selectedScoringRow || description.length < 10 || !media || (!isIRL && !evidenceSourceUrl.trim()) || (!accountId && !targetHandle.trim()))
                   ? "bg-muted text-muted-foreground cursor-not-allowed opacity-70 shadow-none"
                   : "bg-foreground text-background hover:bg-foreground/90 hover:shadow-2xl"
               )}

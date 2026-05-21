@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 // Public routes that don't require auth
-const publicPaths = ['/', '/sign-in', '/sign-up', '/ranks', '/impact', '/feed', '/leaderboard', '/how-it-works'];
+const publicPaths = ['/', '/sign-in', '/sign-up', '/ranks', '/impact', '/feed', '/post', '/leaderboard', '/how-it-works'];
 const publicApiPaths = ['/api/health', '/api/events', '/api/accounts', '/api/feed', '/api/impact', '/api/og'];
 const protectedPathPrefixes = [
   '/account',
@@ -17,6 +17,32 @@ const protectedPathPrefixes = [
   '/settings',
 ];
 
+const REPORTS_API_RESERVED = new Set(['queue']);
+
+/** Read-only report endpoints + anonymous filing; not the whole /api/reports tree. */
+function isPublicReportsApi(req: NextRequest): boolean {
+  const { pathname } = req.nextUrl;
+  const method = req.method;
+  const segments = pathname.split('/').filter(Boolean);
+
+  if (segments[0] !== 'api' || segments[1] !== 'reports') return false;
+
+  if (segments.length === 2 && method === 'POST') {
+    return true;
+  }
+
+  if (segments.length === 3 && method === 'GET' && !REPORTS_API_RESERVED.has(segments[2])) {
+    return true;
+  }
+
+  if (segments.length === 4 && method === 'GET') {
+    const sub = segments[3];
+    return sub === 'interactions' || sub === 'comments';
+  }
+
+  return false;
+}
+
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
@@ -27,6 +53,10 @@ export function middleware(req: NextRequest) {
 
   // Allow public API paths
   if (publicApiPaths.some(p => pathname === p || pathname.startsWith(p + '/'))) {
+    return NextResponse.next();
+  }
+
+  if (isPublicReportsApi(req)) {
     return NextResponse.next();
   }
 

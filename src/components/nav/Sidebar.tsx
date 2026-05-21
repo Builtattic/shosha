@@ -2,25 +2,26 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Home, Target, TrendingUp, Info, User, ShieldAlert, Settings, Globe, ChevronDown, ShieldCheck, Newspaper, HelpCircle, Bookmark, Bell, Search, PlusCircle, Activity, Users, CircleDot } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useReportModal } from '@/components/report/ReportModalProvider';
+import { RANK_SCOPE_OPTIONS, resolveRankScope, type RankScopeValue } from '@/lib/rankScope';
 
 type LiveStats = { eventsToday: number; avgWeeklyDelta: number };
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { open: openReportModal } = useReportModal();
-  const [scope, setScope] = useState('Global');
   const [scopeOpen, setScopeOpen] = useState(false);
   const [stats, setStats] = useState<LiveStats | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
-  useEffect(() => {
-    setScope(window.localStorage.getItem('shosha:scope') ?? 'Global');
-  }, []);
+  const activeScope = pathname === '/ranks' ? resolveRankScope(searchParams.get('scope')) : 'global';
+  const scopeLabel = RANK_SCOPE_OPTIONS.find((opt) => opt.value === activeScope)?.label ?? 'Global';
 
   useEffect(() => {
     let cancelled = false;
@@ -53,11 +54,9 @@ export function Sidebar() {
       .catch(() => {});
   }, []);
 
-  function chooseScope(value: string) {
-    setScope(value);
+  function chooseScope(value: RankScopeValue) {
     setScopeOpen(false);
-    window.localStorage.setItem('shosha:scope', value);
-    window.dispatchEvent(new CustomEvent('shosha:scope-change', { detail: value }));
+    router.push(`/ranks?scope=${value}`);
   }
 
   const items = [
@@ -216,22 +215,24 @@ export function Sidebar() {
           className="flex w-full items-center justify-center gap-2 rounded-full border border-border bg-card py-3 text-[12px] font-bold transition-all hover:border-foreground/20 hover:bg-muted"
         >
           <Globe size={14} />
-          <span className="max-w-28 truncate">{scope}</span>
+          <span className="max-w-28 truncate">{scopeLabel}</span>
           <ChevronDown size={14} className={cn('inline opacity-50 transition-transform', scopeOpen && 'rotate-180')} />
         </button>
         {scopeOpen && (
           <div className="absolute bottom-20 left-6 right-6 overflow-hidden rounded-2xl border border-border bg-card shadow-xl">
-            {['Global', 'India', 'United States', 'Europe'].map((option) => (
+            {RANK_SCOPE_OPTIONS.map((option) => (
               <button
-                key={option}
+                key={option.value}
                 type="button"
-                onClick={() => chooseScope(option)}
+                onClick={() => chooseScope(option.value)}
                 className={cn(
                   'block w-full px-4 py-3 text-left text-[12px] font-bold transition hover:bg-muted',
-                  scope === option ? 'bg-muted text-foreground' : 'text-muted-foreground'
+                  pathname === '/ranks' && activeScope === option.value
+                    ? 'bg-muted text-foreground'
+                    : 'text-muted-foreground'
                 )}
               >
-                {option}
+                {option.label}
               </button>
             ))}
           </div>
