@@ -29,10 +29,10 @@ const validReport = {
 
 describe('final UI workflow rules', () => {
   it('allows reports without a source URL for IRL incidents', () => {
-    // evidenceSourceUrl is optional — IRL incidents don't require a source URL
     expect(reportCreateSchema.safeParse(validReport).success).toBe(true);
     const { evidenceSourceUrl: _removed, ...withoutSource } = validReport;
-    expect(reportCreateSchema.safeParse(withoutSource).success).toBe(true);
+    expect(reportCreateSchema.safeParse({ ...withoutSource, isIRL: true }).success).toBe(true);
+    expect(reportCreateSchema.safeParse(withoutSource).success).toBe(false);
     expect(reportCreateSchema.safeParse({ ...validReport, evidenceSourceUrl: '' }).success).toBe(false);
   });
 

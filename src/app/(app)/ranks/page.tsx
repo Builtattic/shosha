@@ -1,6 +1,7 @@
 import { getCurrentUser } from '@/lib/auth';
 import * as accountsRepo from '@/lib/repos/accounts';
 import type { AppUser } from '@/lib/repos/users';
+import { resolveRankScope } from '@/lib/rankScope';
 import { BASE_SCORE } from '@/lib/scoring';
 import { RanksTabs, type RankRow } from './RanksTabs';
 
@@ -77,9 +78,7 @@ function matchesScope(account: accountsRepo.AccountRecord, scope: string, viewer
 }
 
 export default async function RanksPage({ searchParams }: { searchParams?: { scope?: string } }) {
-  const scope = ['global', 'regional', 'national', 'local'].includes(searchParams?.scope ?? '')
-    ? searchParams!.scope!
-    : 'global';
+  const scope = resolveRankScope(searchParams?.scope);
   const viewer = await getCurrentUser();
   const all = await accountsRepo.listEvery().catch(() => []);
   const scoped = all.filter((account) => matchesScope(account, scope, viewer));

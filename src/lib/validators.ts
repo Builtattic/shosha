@@ -124,6 +124,7 @@ export const reportCreateSchema = z.object({
   publicAnonymous: z.boolean().default(false),
   location: z.string().max(160).optional(),
   tags: z.array(z.string().min(1).max(80)).max(10).optional(),
+  isIRL: z.boolean().default(false),
   evidenceSourceUrl: httpUrlSchema.optional(),
   links: z.array(
     z.object({
@@ -131,6 +132,14 @@ export const reportCreateSchema = z.object({
       title: z.string().max(120).optional(),
     })
   ).max(10).optional(),
+}).superRefine((data, ctx) => {
+  if (!data.isIRL && !data.evidenceSourceUrl) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['evidenceSourceUrl'],
+      message: 'Proof source URL is required for online reports.',
+    });
+  }
 });
 
 export const adjudicateSchema = z.object({

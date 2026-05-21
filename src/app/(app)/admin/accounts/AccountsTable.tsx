@@ -27,6 +27,8 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import type { AccountRecord } from '@/lib/repos/accounts';
 import { BASE_SCORE } from '@/lib/scoring';
+
+const ARCHIVED_ACCOUNT_BADGE = 'LEGEND';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRef } from 'react';
 
@@ -497,7 +499,7 @@ export function AccountsTable({ initialAccounts }: { initialAccounts: AccountRec
                     <span className="truncate">{account.displayName}</span>
                     {account.archived && (
                       <span className="shrink-0 rounded-lg border border-white/5 bg-secondary px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-muted-foreground">
-                        LEGEND
+                        {ARCHIVED_ACCOUNT_BADGE}
                       </span>
                     )}
                   </p>
@@ -613,7 +615,7 @@ export function AccountsTable({ initialAccounts }: { initialAccounts: AccountRec
                             {account.displayName}
                             {account.archived && (
                               <span className="rounded-lg border border-white/5 bg-secondary px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-muted-foreground">
-                                LEGEND
+                                {ARCHIVED_ACCOUNT_BADGE}
                               </span>
                             )}
                             <ExternalLink size={12} className="opacity-0 group-hover/link:opacity-100 transition-opacity" />

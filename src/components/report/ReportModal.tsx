@@ -51,6 +51,10 @@ type AccountCandidate = {
 
 type AdditionalSocialLinkRow = { platform: Platform; url: string };
 
+const CAMERA_IDEAL_WIDTH = 1280;
+const CAMERA_IDEAL_HEIGHT = 720;
+const CAMERA_JPEG_QUALITY = 0.92;
+
 type ApiPayload<T = unknown> = {
   ok?: boolean;
   data?: T;
@@ -150,6 +154,7 @@ export function ReportModal({
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [cameraFacing, setCameraFacing] = useState<'environment' | 'user'>('environment');
+  const [capturing, setCapturing] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
@@ -462,8 +467,8 @@ export function ReportModal({
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: { ideal: facing },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
+          width: { ideal: CAMERA_IDEAL_WIDTH },
+          height: { ideal: CAMERA_IDEAL_HEIGHT },
         },
         audio: false,
       });
@@ -483,25 +488,30 @@ export function ReportModal({
   };
 
   const capturePhoto = () => {
-    if (!videoRef.current || !canvasRef.current) return;
+    if (!videoRef.current || !canvasRef.current || capturing) return;
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    canvas.width = video.videoWidth || 1280;
-    canvas.height = video.videoHeight || 720;
+    canvas.width = video.videoWidth || CAMERA_IDEAL_WIDTH;
+    canvas.height = video.videoHeight || CAMERA_IDEAL_HEIGHT;
     canvas.getContext('2d')?.drawImage(video, 0, 0);
+    setCapturing(true);
     canvas.toBlob(async (blob) => {
-      if (!blob) return;
-      stopCamera();
-      const file = new File([blob], `camera-${Date.now()}.jpg`, {
-        type: 'image/jpeg',
-      });
-      const dt = new DataTransfer();
-      dt.items.add(file);
-      const fakeEvent = {
-        target: { files: dt.files },
-      } as unknown as React.ChangeEvent<HTMLInputElement>;
-      await handleFile(fakeEvent);
-    }, 'image/jpeg', 0.92);
+      try {
+        if (!blob) return;
+        stopCamera();
+        const file = new File([blob], `camera-${Date.now()}.jpg`, {
+          type: 'image/jpeg',
+        });
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        const fakeEvent = {
+          target: { files: dt.files },
+        } as unknown as React.ChangeEvent<HTMLInputElement>;
+        await handleFile(fakeEvent);
+      } finally {
+        setCapturing(false);
+      }
+    }, 'image/jpeg', CAMERA_JPEG_QUALITY);
   };
 
   useEffect(() => {
@@ -642,6 +652,7 @@ export function ReportModal({
           media: { url: media.url, thumbUrl: media.thumbUrl, type: media.type, bytes: media.bytes },
           location: location || undefined,
           tags: taggedPerson ? [taggedPerson] : [],
+          isIRL,
           ...(isIRL ? {} : { evidenceSourceUrl: normalizeUrl(evidenceSourceUrl) }),
           links: links
             .filter((l) => l.url.trim() !== '')
@@ -1198,10 +1209,10 @@ export function ReportModal({
                           <button
                             type="button"
                             onClick={capturePhoto}
-                            disabled={!cameraStream}
+                            disabled={!cameraStream || capturing || uploading}
                             className="flex-1 py-3 rounded-full bg-white text-black text-[14px] font-bold disabled:opacity-40 transition-opacity"
                           >
-                            📸 Capture
+                            {capturing ? 'Processing…' : '📸 Capture'}
                           </button>
 
                           <button

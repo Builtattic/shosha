@@ -7,23 +7,9 @@ import { Home, Target, TrendingUp, Info, User, ShieldAlert, Settings, Globe, Che
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useReportModal } from '@/components/report/ReportModalProvider';
+import { RANK_SCOPE_OPTIONS, resolveRankScope, type RankScopeValue } from '@/lib/rankScope';
 
 type LiveStats = { eventsToday: number; avgWeeklyDelta: number };
-
-const RANK_SCOPE_VALUES = ['global', 'regional', 'national', 'local'] as const;
-type RankScopeValue = (typeof RANK_SCOPE_VALUES)[number];
-
-const RANK_SCOPE_OPTIONS: { value: RankScopeValue; label: string }[] = [
-  { value: 'global', label: 'Global' },
-  { value: 'regional', label: 'Regional' },
-  { value: 'national', label: 'National' },
-  { value: 'local', label: 'Local' },
-];
-
-function resolveRankScope(param: string | null): RankScopeValue {
-  if (param && RANK_SCOPE_VALUES.includes(param as RankScopeValue)) return param as RankScopeValue;
-  return 'global';
-}
 
 export function Sidebar() {
   const pathname = usePathname();

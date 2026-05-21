@@ -28,6 +28,7 @@ import {
   Link2
 } from 'lucide-react';
 import { cn, formatDate } from '@/lib/utils';
+import { siteUrl } from '@/lib/seo';
 import { handleAvatarError, resolveAvatarUrl } from '@/lib/media';
 import { useToast } from '@/components/ui/Toast';
 import { FeedShareCard } from './FeedShareCard';
@@ -200,7 +201,7 @@ export function FeedItem({
         await navigator.share({
           title: `Report on Shosha: ${subjectName}`,
           text: `Report on Shosha: ${subjectName} · ${reportDeed}`,
-          url: `https://www.noshosha.com/post/${id}`,
+          url: `${siteUrl()}/post/${id}`,
         });
         return;
       }

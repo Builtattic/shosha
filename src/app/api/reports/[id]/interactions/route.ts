@@ -61,17 +61,17 @@ export async function POST(request: Request, { params }: { params: { id: string 
   const parsed = interactionSchema.safeParse(json);
   if (!parsed.success) return fail('validation_error', 'Invalid interaction payload.', 422);
 
-  if (parsed.data.action === 'share') {
-    const result = await interactionsRepo.addShare(id.data);
-    if (!result) return fail('not_found', 'No filing exists for that id.', 404);
-    return ok(result);
-  }
-
   let user;
   try {
     user = await requireUser();
   } catch {
     return fail('unauthorized', 'Sign in to interact with this filing.', 401);
+  }
+
+  if (parsed.data.action === 'share') {
+    const result = await interactionsRepo.addShare(id.data);
+    if (!result) return fail('not_found', 'No filing exists for that id.', 404);
+    return ok(result);
   }
 
     if (parsed.data.action === 'align' || parsed.data.action === 'oppose') {

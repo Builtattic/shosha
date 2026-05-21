@@ -126,6 +126,7 @@ export async function POST(request: Request) {
       circumstances: parsed.data.circumstances,
       location: parsed.data.location,
       tags: parsed.data.tags ?? [],
+      isIRL: parsed.data.isIRL,
       evidenceSourceUrl: parsed.data.evidenceSourceUrl || undefined,
       links: parsed.data.links ?? [],
       contentSafety: {
