@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import { MobileAppHeader } from '@/components/nav/MobileAppHeader';
 
 // ── Small primitives ──────────────────────────────────────────────────────────
 
@@ -90,6 +91,7 @@ function Footnote({ children }: { children: React.ReactNode }) {
 export default function HowItWorksPage() {
   return (
     <main className="min-h-screen bg-background safe-bottom">
+      <MobileAppHeader />
       <div className="mx-auto max-w-[860px] px-7">
 
         {/* ── HERO ── */}

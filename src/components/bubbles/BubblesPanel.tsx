@@ -8,9 +8,7 @@ import {
   Users, 
   Plus,
   Search,
-  ArrowRight,
-  Bell,
-  Menu
+  ArrowRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -60,29 +58,17 @@ export function BubblesPanel({ initialBubbles }: { initialBubbles: BubbleCard[] 
   return (
     <main className="min-h-screen bg-background safe-bottom">
       <div className="mx-auto max-w-7xl px-4 py-8 md:px-8 lg:px-12">
-        <header className="mb-10 flex flex-col gap-8">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div>
-              <h1 className="text-[32px] md:text-[40px] font-black leading-tight tracking-tight text-foreground uppercase">SHOSHA</h1>
-              <p className="text-[14px] md:text-[16px] font-bold text-muted-foreground uppercase tracking-widest">Community Bubbles</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <button 
-                onClick={() => router.push('/bubbles/create')}
-                className="flex h-12 px-6 items-center justify-center gap-2 rounded-full bg-primary text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 active:scale-95"
-              >
-                <Plus size={20} strokeWidth={3} />
-                <span className="font-black text-sm uppercase tracking-wider">Create Bubble</span>
-              </button>
-              <button onClick={() => router.push('/notifications')} className="relative flex h-12 w-12 items-center justify-center rounded-full bg-muted/50 text-foreground transition-all hover:bg-muted active:scale-90" aria-label="Notifications">
-                <Bell size={22} />
-              </button>
-              <button onClick={() => router.push('/settings')} className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/50 text-foreground transition-all hover:bg-muted active:scale-90" aria-label="Settings">
-                <Menu size={22} />
-              </button>
-            </div>
-          </div>
+        <div className="mb-6 flex">
+          <button
+            onClick={() => router.push('/bubbles/create')}
+            className="flex h-12 px-6 items-center justify-center gap-2 rounded-full bg-primary text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 active:scale-95"
+          >
+            <Plus size={20} strokeWidth={3} />
+            <span className="font-black text-sm uppercase tracking-wider">Create Bubble</span>
+          </button>
+        </div>
 
+        <div className="mb-10 flex flex-col gap-4">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} />
@@ -110,7 +96,7 @@ export function BubblesPanel({ initialBubbles }: { initialBubbles: BubbleCard[] 
                 ))}
             </div>
           </div>
-        </header>
+        </div>
 
         <section className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           {filteredBubbles.map((bubble) => {

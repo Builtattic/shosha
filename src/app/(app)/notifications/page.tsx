@@ -15,6 +15,7 @@ import {
   ShieldAlert
 } from 'lucide-react';
 import { cn, formatDate } from '@/lib/utils';
+import { MobileAppHeader } from '@/components/nav/MobileAppHeader';
 
 type Kind =
   | 'report_approved'
@@ -125,39 +126,32 @@ export default function NotificationsPage() {
 
   return (
     <main className="min-h-screen bg-background safe-bottom">
-      <header className="sticky top-0 z-50 bg-background/80 p-4 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <Bell size={20} />
-            </div>
-            <div>
-              <h1 className="text-[24px] font-serif font-black text-foreground leading-none">
-                Notifications
-                {unread > 0 && (
-                  <span className="ml-2 inline-flex items-center justify-center rounded-full bg-destructive px-2 py-0.5 text-[11px] font-bold text-background">
-                    {unread}
-                  </span>
-                )}
-              </h1>
-              <p className="text-[12px] text-muted-foreground mt-1">
-                Verdicts on your filings, claim decisions, and ledger activity.
-              </p>
-            </div>
-          </div>
+      <MobileAppHeader />
+
+      <div className="mx-auto max-w-2xl px-4 pt-4">
+        <div className="mb-4">
+          <h1 className="text-[24px] font-serif font-black leading-none text-foreground">
+            Notifications
+            {unread > 0 && (
+              <span className="ml-2 inline-flex items-center justify-center rounded-full bg-destructive px-2 py-0.5 text-[11px] font-bold text-background">
+                {unread}
+              </span>
+            )}
+          </h1>
+          <p className="mt-1 text-[12px] text-muted-foreground">
+            Verdicts on your filings, claim decisions, and ledger activity.
+          </p>
           <button
             type="button"
             onClick={markAll}
             disabled={busy || unread === 0}
-            className="flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-[12px] font-bold transition-colors hover:bg-muted disabled:opacity-50"
+            className="mt-3 flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-[12px] font-bold transition-colors hover:bg-muted disabled:opacity-50"
           >
             <CheckCheck size={14} />
             Mark all read
           </button>
         </div>
-      </header>
 
-      <div className="mx-auto max-w-2xl px-4 pt-4">
         {loading && (
           <div className="space-y-3">
             {[1, 2, 3, 4].map((i) => (

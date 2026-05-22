@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Bookmark } from 'lucide-react';
 import { FeedItem, type FeedItemProps } from '@/components/feed/FeedItem';
+import { MobileAppHeader } from '@/components/nav/MobileAppHeader';
 
 type FeedReport = {
   _id: string;
@@ -107,19 +108,12 @@ export default function BookmarksPage() {
 
   return (
     <main className="min-h-screen bg-background safe-bottom">
-      <header className="sticky top-0 z-50 bg-background/80 p-4 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-2xl items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <Bookmark size={20} />
-          </div>
-          <div>
-            <h1 className="text-[24px] font-serif font-black text-foreground leading-none">Bookmarks</h1>
-            <p className="text-[12px] text-muted-foreground mt-1">Filings you saved for later.</p>
-          </div>
-        </div>
-      </header>
+      <MobileAppHeader />
 
       <div className="mx-auto max-w-2xl px-4 pt-4">
+        <h1 className="text-[24px] font-serif font-black leading-none text-foreground">Bookmarks</h1>
+        <p className="mt-1 text-[12px] text-muted-foreground">Filings you saved for later.</p>
+
         {loading && (
           <div className="space-y-6">
             {[1, 2, 3].map((i) => (

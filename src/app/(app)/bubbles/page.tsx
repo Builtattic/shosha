@@ -1,5 +1,6 @@
 import * as bubblesRepo from '@/lib/repos/bubbles';
 import { BubblesPanel } from '@/components/bubbles/BubblesPanel';
+import { MobileAppHeader } from '@/components/nav/MobileAppHeader';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,5 +13,10 @@ export default async function BubblesPage() {
     })
   );
 
-  return <BubblesPanel initialBubbles={enriched} />;
+  return (
+    <>
+      <MobileAppHeader />
+      <BubblesPanel initialBubbles={enriched} />
+    </>
+  );
 }
