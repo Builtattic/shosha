@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { X, Download, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { ProfileShareCard, type ProfileShareCardProps } from './ProfileShareCard';
 
@@ -11,18 +11,51 @@ interface Props extends ProfileShareCardProps {
 
 type ExportFormat = 'pdf' | 'png';
 
-export function ShareCardModal({ open, onClose, ...cardProps }: Props) {
-  const cardRef = useRef<HTMLDivElement>(null);
-  const [exporting, setExporting] = useState<ExportFormat | null>(null);
+const CARD_SIZE = 600;
 
-  if (!open) return null;
+export function ShareCardModal({ open, onClose, ...cardProps }: Props) {
+  const exportRef = useRef<HTMLDivElement>(null);
+  const previewContainerRef = useRef<HTMLDivElement>(null);
+  const [exporting, setExporting] = useState<ExportFormat | null>(null);
+  const [scale, setScale] = useState(1);
+
+  useEffect(() => {
+    if (!open) return;
+    const el = previewContainerRef.current;
+    if (!el) return;
+
+    const updateScale = () => {
+      const w = el.clientWidth;
+      setScale(w > 0 ? Math.min(1, w / CARD_SIZE) : 1);
+    };
+
+    updateScale();
+    const ro = new ResizeObserver(updateScale);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
 
   async function getCanvas() {
     const { default: html2canvas } = await import('html2canvas');
-    return html2canvas(cardRef.current!, {
+    const node = exportRef.current;
+    if (!node) throw new Error('Card element not found');
+    return html2canvas(node, {
       scale: 2,
       useCORS: true,
+      allowTaint: false,
       backgroundColor: '#ffffff',
+      logging: false,
+      width: CARD_SIZE,
+      height: CARD_SIZE,
     });
   }
 
@@ -31,10 +64,8 @@ export function ShareCardModal({ open, onClose, ...cardProps }: Props) {
     try {
       const [canvas, { jsPDF }] = await Promise.all([getCanvas(), import('jspdf')]);
       const imgData = canvas.toDataURL('image/png');
-      // Match the locked 600x600 ProfileShareCard surface so the exported PDF
-      // mirrors the on-screen 1:1 reputation card.
-      const W = 600 * 0.2646; // px → mm
-      const H = 600 * 0.2646;
+      const W = CARD_SIZE * 0.2646;
+      const H = CARD_SIZE * 0.2646;
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [W, H] });
       pdf.addImage(imgData, 'PNG', 0, 0, W, H);
       pdf.save(`shosha_${cardProps.username}.pdf`);
@@ -65,20 +96,23 @@ export function ShareCardModal({ open, onClose, ...cardProps }: Props) {
     }
   }
 
+  if (!open) return null;
+
+  const scaledHeight = CARD_SIZE * scale;
+
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-[200] flex items-center justify-center overflow-x-hidden bg-black/70 backdrop-blur-sm p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="flex flex-col items-center gap-4 w-full max-w-[680px]">
+      <div className="flex w-full max-w-[min(680px,calc(100vw-2rem))] flex-col items-center gap-4">
 
         {/* Toolbar */}
-        <div className="flex w-full items-center justify-between">
+        <div className="flex w-full flex-wrap items-center justify-between gap-2">
           <p className="text-[12px] font-bold uppercase tracking-widest text-white/60">
             Profile Card
           </p>
-          <div className="flex items-center gap-2">
-            {/* PNG */}
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={handlePNG}
@@ -91,7 +125,6 @@ export function ShareCardModal({ open, onClose, ...cardProps }: Props) {
               {exporting === 'png' ? 'Saving…' : 'PNG'}
             </button>
 
-            {/* PDF */}
             <button
               type="button"
               onClick={handlePDF}
@@ -104,7 +137,6 @@ export function ShareCardModal({ open, onClose, ...cardProps }: Props) {
               {exporting === 'pdf' ? 'Saving…' : 'PDF'}
             </button>
 
-            {/* Close */}
             <button
               type="button"
               onClick={onClose}
@@ -116,11 +148,41 @@ export function ShareCardModal({ open, onClose, ...cardProps }: Props) {
           </div>
         </div>
 
-        {/* Card preview */}
-        <div className="overflow-auto rounded-sm shadow-2xl" style={{ maxHeight: 'calc(100vh - 120px)' }}>
-          <ProfileShareCard ref={cardRef} {...cardProps} />
+        {/* Scaled preview */}
+        <div
+          className="w-full max-w-[600px] overflow-y-auto overflow-x-hidden rounded-sm shadow-2xl"
+          style={{ maxHeight: 'calc(100vh - 120px)' }}
+        >
+          <div ref={previewContainerRef} className="mx-auto w-full overflow-hidden">
+            <div style={{ width: '100%', height: scaledHeight }}>
+              <div
+                style={{
+                  width: CARD_SIZE,
+                  height: CARD_SIZE,
+                  transform: `scale(${scale})`,
+                  transformOrigin: 'top left',
+                }}
+              >
+                <ProfileShareCard {...cardProps} />
+              </div>
+            </div>
+          </div>
         </div>
 
+        {/* Hidden full-size card for export */}
+        <div
+          style={{
+            position: 'fixed',
+            left: '-9999px',
+            top: 0,
+            zIndex: -1,
+            pointerEvents: 'none',
+            opacity: 0,
+          }}
+          aria-hidden
+        >
+          <ProfileShareCard ref={exportRef} {...cardProps} />
+        </div>
       </div>
     </div>
   );
