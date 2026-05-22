@@ -19,6 +19,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useReportModal } from '@/components/report/ReportModalProvider';
+import { useNotifications } from '@/contexts/NotificationsContext';
 
 const ADMIN_ROLES = ['moderator', 'editor', 'admin', 'super_admin'];
 
@@ -50,19 +51,8 @@ type MoreSheetProps = {
 
 export function MoreSheet({ open, onClose }: MoreSheetProps) {
   const { open: openReportModal } = useReportModal();
-  const [unreadCount, setUnreadCount] = useState(0);
+  const { unreadCount } = useNotifications();
   const [isAdmin, setIsAdmin] = useState(false);
-
-  useEffect(() => {
-    fetch('/api/notifications', { cache: 'no-store' })
-      .then((r) => r.json())
-      .then((payload) => {
-        if (payload.ok) {
-          setUnreadCount(typeof payload.data?.unread === 'number' ? payload.data.unread : 0);
-        }
-      })
-      .catch(() => {});
-  }, []);
 
   useEffect(() => {
     fetch('/api/me', { cache: 'no-store' })

@@ -38,14 +38,14 @@ export default async function PeoplePage() {
   const accounts = await accountsRepo.listTop(60).catch(() => []);
   const selected = accounts.filter((a) => !a.archived).slice(0, 20);
 
-  // Fetch reports for all selected accounts in parallel
-  const filings = await Promise.all(
-    selected.map((account) =>
-      reportsRepo.listForAccount(account._id, ['approved', 'ai_reviewed'], 8).catch(() => [])
-    )
+  const accountIds = selected.map((a) => a._id);
+  const filingsMap = await reportsRepo.listForAccounts(
+    accountIds,
+    ['approved', 'ai_reviewed'],
+    8
   );
 
-  const items: PeopleDeckItem[] = selected.map((account, index) => ({
+  const items: PeopleDeckItem[] = selected.map((account) => ({
     id: account._id,
     name: account.displayName.replace(/^@/, ''),
     handle: account.username.replace(/^@/, ''),
@@ -63,7 +63,7 @@ export default async function PeoplePage() {
     bio: account.bio && account.bio !== 'Platform User' ? account.bio : undefined,
     categories: deriveCategories(account),
     followUserId: account.claimedBy ?? undefined,
-    topReports: filings[index]
+    topReports: (filingsMap[account._id] ?? [])
       .map((report) => ({
         title: report.deed || report.description || 'Report recorded',
         delta: reportDelta(report),

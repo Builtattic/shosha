@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Bell, Plus, Search, Upload, User, X } from 'lucide-react';
 import { useReportModal } from '@/components/report/ReportModalProvider';
+import { useNotifications } from '@/contexts/NotificationsContext';
 
 export interface MobileAppHeaderProps {
   onSearch?: (query: string) => void;
@@ -20,21 +21,8 @@ export function MobileAppHeader({
 }: MobileAppHeaderProps) {
   const router = useRouter();
   const reportModal = useReportModal();
+  const { unreadCount } = useNotifications();
   const [query, setQuery] = useState('');
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  useEffect(() => {
-    fetch('/api/notifications')
-      .then((response) => {
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return response.json();
-      })
-      .then((payload) => {
-        if (!payload?.ok) return;
-        setUnreadCount(typeof payload.data?.unread === 'number' ? payload.data.unread : 0);
-      })
-      .catch(() => undefined);
-  }, []);
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/80 p-4 backdrop-blur-xl lg:hidden">

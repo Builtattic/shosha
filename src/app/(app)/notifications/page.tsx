@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { cn, formatDate } from '@/lib/utils';
 import { MobileAppHeader } from '@/components/nav/MobileAppHeader';
+import { useNotifications } from '@/contexts/NotificationsContext';
 
 type Kind =
   | 'report_approved'
@@ -83,8 +84,8 @@ function iconFor(kind: Kind) {
 }
 
 export default function NotificationsPage() {
+  const { unreadCount, refresh } = useNotifications();
   const [items, setItems] = useState<NotificationItem[]>([]);
-  const [unread, setUnread] = useState(0);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
@@ -95,7 +96,6 @@ export default function NotificationsPage() {
       const payload = await response.json();
       if (payload.ok) {
         setItems(payload.data?.items ?? []);
-        setUnread(Number(payload.data?.unread ?? 0));
       }
     } finally {
       setLoading(false);
@@ -108,8 +108,8 @@ export default function NotificationsPage() {
 
   async function markRead(id: string) {
     setItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
-    setUnread((n) => Math.max(0, n - 1));
     await fetch(`/api/notifications/${id}/read`, { method: 'POST' }).catch(() => {});
+    refresh();
   }
 
   async function markAll() {
@@ -118,7 +118,7 @@ export default function NotificationsPage() {
     try {
       await fetch('/api/notifications/read-all', { method: 'POST' });
       setItems((prev) => prev.map((n) => ({ ...n, read: true })));
-      setUnread(0);
+      refresh();
     } finally {
       setBusy(false);
     }
@@ -132,9 +132,9 @@ export default function NotificationsPage() {
         <div className="mb-4">
           <h1 className="text-[24px] font-serif font-black leading-none text-foreground">
             Notifications
-            {unread > 0 && (
+            {unreadCount > 0 && (
               <span className="ml-2 inline-flex items-center justify-center rounded-full bg-destructive px-2 py-0.5 text-[11px] font-bold text-background">
-                {unread}
+                {unreadCount}
               </span>
             )}
           </h1>
@@ -144,7 +144,7 @@ export default function NotificationsPage() {
           <button
             type="button"
             onClick={markAll}
-            disabled={busy || unread === 0}
+            disabled={busy || unreadCount === 0}
             className="mt-3 flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-[12px] font-bold transition-colors hover:bg-muted disabled:opacity-50"
           >
             <CheckCheck size={14} />
