@@ -74,9 +74,11 @@ export default async function PeoplePage() {
   }));
 
   return (
-    <>
+    <div className="flex h-[100dvh] flex-col overflow-hidden lg:h-screen">
       <MobileAppHeader />
-      <PeopleSwipeDeck initialItems={items} />
-    </>
+      <div className="min-h-0 flex-1 overflow-hidden">
+        <PeopleSwipeDeck initialItems={items} />
+      </div>
+    </div>
   );
 }
