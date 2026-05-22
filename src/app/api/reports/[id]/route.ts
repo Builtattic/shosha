@@ -3,7 +3,8 @@ import { getCurrentUser, isAdmin } from '@/lib/auth';
 import { idSchema } from '@/lib/validators';
 import * as reportsRepo from '@/lib/repos/reports';
 import * as accountsRepo from '@/lib/repos/accounts';
-import { redactPublicReporter } from '@/lib/reportPrivacy';
+import * as usersRepo from '@/lib/repos/users';
+import { hidesReporterOnPublicSurfaces, redactPublicReporter } from '@/lib/reportPrivacy';
 
 export async function GET(_: Request, { params }: { params: { id: string } }) {
   const id = idSchema.safeParse(params.id);
@@ -15,6 +16,12 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
   if (!user && !['approved', 'ai_reviewed'].includes(report.status)) {
     return fail('forbidden', 'That filing is still under seal.', 403);
   }
+  let reporter: Awaited<ReturnType<typeof usersRepo.findById>> = null;
+  if (!hidesReporterOnPublicSurfaces(report) && report.reporterId) {
+    reporter = await usersRepo.findById(report.reporterId);
+  }
+
   const account = await accountsRepo.findById(report.accountId);
-  return ok({ ...(isAdmin(user) ? report : redactPublicReporter(report)), account });
+  const enriched = { ...report, reporter: reporter ?? null, account };
+  return ok(isAdmin(user) ? enriched : redactPublicReporter(enriched));
 }

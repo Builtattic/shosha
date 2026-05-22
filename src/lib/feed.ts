@@ -17,6 +17,7 @@ export type FeedReport = {
   evidenceSourceUrl?: string;
   links?: Array<{ url: string; title?: string }>;
   canRequestModeration?: boolean;
+  publicAnonymous?: boolean;
   viewer?: FeedItemProps['viewer'];
   account: {
     _id: string;
@@ -78,6 +79,7 @@ export function toFeedItem(report: FeedReport): FeedItemProps {
     delta: report.adminDecision?.finalImpact ?? report.aiVerdict?.proposedImpact ?? 0,
     credibility: report.account.credibility,
     viewer: report.viewer,
-    canRequestModeration: report.canRequestModeration
+    canRequestModeration: report.canRequestModeration,
+    publicAnonymous: report.publicAnonymous ?? false
   };
 }
