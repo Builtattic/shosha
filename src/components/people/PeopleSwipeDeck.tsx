@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import {
   motion,
   AnimatePresence,
@@ -14,9 +14,8 @@ import {
 } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import {
-  ChevronLeft,
-  ChevronRight,
   ChevronUp,
+  ChevronDown,
   Globe,
   Loader2,
   Users,
@@ -60,25 +59,57 @@ const FLICK_MIN_OFFSET = 42;
 /** Framer reports velocity in px/s for drag end; keep high to avoid touch noise */
 const VELOCITY_THRESHOLD = 620;
 
-const FILTER_CHIPS = [
-  { label: 'All', params: {} },
+// ── Dropdown filter config ────────────────────────────────────────────────────
+
+type DropdownOption = { label: string; params: Record<string, string> };
+
+const ROLE_OPTIONS: DropdownOption[] = [
+  { label: 'All Roles', params: {} },
   { label: 'Public Figures', params: { role: 'Public Figure' } },
   { label: 'Founders', params: { role: 'Founder' } },
-  { label: 'Trending', params: { scoreFilter: 'trending' } },
-  { label: 'Under Fire', params: { scoreFilter: 'underfire' } },
-  { label: 'Global', params: { region: 'Global' } },
-  { label: '10K-1M+', params: { reach: '10K-1M+' } },
-  { label: '18-65+', params: { ageBand: '18-65' } },
-] as const;
+];
 
-function getParamsForLabel(label: string): Record<string, string> {
-  const chip = FILTER_CHIPS.find((c) => c.label === label);
-  if (!chip) return {};
-  const out: Record<string, string> = {};
-  for (const [k, v] of Object.entries(chip.params)) {
-    out[k] = String(v);
-  }
-  return out;
+const STATUS_OPTIONS: DropdownOption[] = [
+  { label: 'Any Status', params: {} },
+  { label: 'Trending ↑', params: { scoreFilter: 'trending' } },
+  { label: 'Under Fire ↓', params: { scoreFilter: 'underfire' } },
+];
+
+const REACH_OPTIONS: DropdownOption[] = [
+  { label: 'Any Reach', params: {} },
+  { label: '10K–1M+', params: { reach: '10K-1M+' } },
+  { label: 'Global', params: { region: 'Global' } },
+];
+
+const SORT_OPTIONS: DropdownOption[] = [
+  { label: 'Top Scored', params: {} },
+  { label: 'Age 18–65+', params: { ageBand: '18-65' } },
+];
+
+type ActiveFilters = {
+  role: DropdownOption;
+  status: DropdownOption;
+  reach: DropdownOption;
+  sort: DropdownOption;
+};
+
+function mergeParams(filters: ActiveFilters): Record<string, string> {
+  return {
+    ...filters.role.params,
+    ...filters.status.params,
+    ...filters.reach.params,
+    ...filters.sort.params,
+  };
+}
+
+function filterLabel(filters: ActiveFilters): string {
+  const parts = [
+    filters.role.label !== 'All Roles' ? filters.role.label : null,
+    filters.status.label !== 'Any Status' ? filters.status.label : null,
+    filters.reach.label !== 'Any Reach' ? filters.reach.label : null,
+    filters.sort.label !== 'Top Scored' ? filters.sort.label : null,
+  ].filter(Boolean);
+  return parts.length ? parts.join(', ') : 'All';
 }
 
 function buildDeckUrl(params: Record<string, string>, cursor: number): string {
@@ -89,47 +120,75 @@ function buildDeckUrl(params: Record<string, string>, cursor: number): string {
   return qs ? `${base}&${qs}` : base;
 }
 
-const EMPTY_STATE_COPY: Record<string, { title: string; body: string }> = {
-  All: { title: 'All caught up!', body: 'New profiles will appear as dossiers are created.' },
-  'Public Figures': {
-    title: 'No public figures yet',
-    body: "Public figure profiles will appear here as they're added.",
-  },
-  Founders: { title: 'No founders yet', body: "Founder profiles will appear here as they're added." },
-  Trending: {
-    title: 'No one trending up',
-    body: 'Profiles gaining reputation this week will appear here.',
-  },
-  'Under Fire': {
-    title: 'No one under fire',
-    body: 'Profiles losing reputation this week will appear here.',
-  },
-  Global: { title: 'No global profiles', body: 'Try switching to All to see everyone.' },
-  '10K-1M+': {
-    title: 'No profiles in range',
-    body: 'Not enough reach data yet — try All to see everyone.',
-  },
-  '18-65+': {
-    title: 'No profiles in range',
-    body: 'Age data is sparse — try All to see everyone.',
-  },
-};
-
-function chipIcon(label: (typeof FILTER_CHIPS)[number]['label']) {
-  switch (label) {
-    case 'Global':
-      return <Globe size={12} />;
-    case 'Trending':
-      return <TrendingUp size={12} />;
-    case 'Under Fire':
-      return <TrendingDown size={12} />;
-    case 'Public Figures':
-    case 'Founders':
-      return <Users size={12} />;
-    default:
-      return null;
-  }
+interface FilterDropdownProps {
+  label: string;
+  options: DropdownOption[];
+  selected: DropdownOption;
+  onSelect: (opt: DropdownOption) => void;
+  id: string;
 }
+
+function FilterDropdown({ label, options, selected, onSelect, id }: FilterDropdownProps) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const isActive = selected.label !== options[0].label;
+
+  useEffect(() => {
+    if (!open) return;
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative shrink-0">
+      <button
+        id={id}
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={cn(
+          'flex items-center gap-1 rounded-full border px-3 py-1.5 text-[12px] font-bold transition-all',
+          isActive
+            ? 'border-foreground bg-foreground text-background'
+            : 'border-border bg-card text-muted-foreground hover:bg-muted',
+        )}
+      >
+        {label}
+        <ChevronDown size={11} className={cn('transition-transform', open && 'rotate-180')} />
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -4, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4, scale: 0.97 }}
+            transition={{ duration: 0.12 }}
+            className="absolute left-0 top-9 z-50 min-w-[140px] overflow-hidden rounded-2xl border border-border bg-card shadow-xl"
+          >
+            {options.map((opt) => (
+              <button
+                key={opt.label}
+                type="button"
+                onClick={() => { onSelect(opt); setOpen(false); }}
+                className={cn(
+                  'flex w-full items-center gap-2 px-4 py-2.5 text-left text-[12px] font-semibold transition-colors hover:bg-muted',
+                  selected.label === opt.label ? 'text-foreground' : 'text-muted-foreground',
+                )}
+              >
+                {selected.label === opt.label && <Check size={11} className="shrink-0" />}
+                {selected.label !== opt.label && <span className="w-[11px] shrink-0" />}
+                {opt.label}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 
 type SwipeCardProps = {
   item: PeopleDeckItem;
@@ -492,7 +551,12 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
   const router = useRouter();
   const toast = useToast();
   const [items, setItems] = useState(initialItems);
-  const [activeFilter, setActiveFilter] = useState<string>('All');
+  const [activeFilters, setActiveFilters] = useState<ActiveFilters>({
+    role: ROLE_OPTIONS[0],
+    status: STATUS_OPTIONS[0],
+    reach: REACH_OPTIONS[0],
+    sort: SORT_OPTIONS[0],
+  });
   const [exitX, setExitX] = useState(0);
   const [exitY, setExitY] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -506,21 +570,8 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
     className: string;
   } | null>(null);
   const fetchState = useRef({ loading: false, hasMore: true });
-  const chipScrollRef = useRef<HTMLDivElement>(null);
-  const [chipScroll, setChipScroll] = useState({ canScroll: false, left: false, right: false });
 
-  const syncChipScroll = useCallback(() => {
-    const el = chipScrollRef.current;
-    if (!el) return;
-    const { scrollLeft, scrollWidth, clientWidth } = el;
-    const max = scrollWidth - clientWidth;
-    const canScroll = max > 2;
-    setChipScroll({
-      canScroll,
-      left: canScroll && scrollLeft > 2,
-      right: canScroll && scrollLeft < max - 2,
-    });
-  }, []);
+  const activeParams = useMemo(() => mergeParams(activeFilters), [activeFilters]);
 
   const showSwipeFeedback = useCallback((dir: 'align' | 'oppose', updatedScore?: number | null) => {
     const secondary =
@@ -572,12 +623,12 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
   const opposeSc = useTransform(sx, [-130, 0], [1.25, 1]);
   const nextX = useTransform(x, [-300, 0, 300], [10, 0, -10]);
 
-  const fetchMore = useCallback(async (currentCursor: number, chip: string, reset: boolean = false) => {
+  const fetchMore = useCallback(async (currentCursor: number, params: Record<string, string>, reset: boolean = false) => {
     if (fetchState.current.loading || (!fetchState.current.hasMore && !reset)) return;
     fetchState.current.loading = true;
     setLoading(true);
     try {
-      const res = await fetch(buildDeckUrl(getParamsForLabel(chip), currentCursor));
+      const res = await fetch(buildDeckUrl(params, currentCursor));
       const data = await res.json();
       const payload = data.ok ? data.data : undefined;
       if (payload?.items?.length) {
@@ -605,14 +656,14 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
     setCursor(0);
     setHasMore(true);
     fetchState.current.hasMore = true;
-    fetchMore(0, activeFilter, true);
-  }, [activeFilter, fetchMore]);
+    fetchMore(0, activeParams, true);
+  }, [activeParams, fetchMore]);
 
   useEffect(() => { 
     if (items.length <= 3 && hasMore && !loading) {
-      void fetchMore(cursor, activeFilter, false); 
+      void fetchMore(cursor, activeParams, false); 
     }
-  }, [items.length, hasMore, loading, cursor, activeFilter, fetchMore]);
+  }, [items.length, hasMore, loading, cursor, activeParams, fetchMore]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -632,27 +683,8 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
     y.set(0);
   }, [current?.id, x, y]);
 
-  /** Filter chip strip: horizontal scroll metrics for chevrons + ResizeObserver after layout. */
-  useLayoutEffect(() => {
-    syncChipScroll();
-  }, [syncChipScroll, activeFilter]);
+  // (chip scroll effects removed — no longer needed with dropdown filters)
 
-  useEffect(() => {
-    const el = chipScrollRef.current;
-    const bump = () => {
-      requestAnimationFrame(() => syncChipScroll());
-    };
-    bump();
-    window.addEventListener('resize', bump, { passive: true });
-    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(bump) : null;
-    if (el && ro) ro.observe(el);
-    el?.addEventListener('scroll', bump, { passive: true });
-    return () => {
-      window.removeEventListener('resize', bump);
-      el?.removeEventListener('scroll', bump);
-      ro?.disconnect();
-    };
-  }, [syncChipScroll, activeFilter, loading]);
 
   const handleSwipe = useCallback(
     (dir: 'align' | 'oppose') => {
@@ -743,7 +775,7 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
   }
 
   if (!current && !loading && items.length === 0) {
-    const emptyState = EMPTY_STATE_COPY[activeFilter] ?? EMPTY_STATE_COPY.All;
+    const activeLabel = filterLabel(activeFilters);
     return (
       <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 text-center">
         <motion.div
@@ -753,18 +785,18 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
           className="rounded-[32px] border border-border bg-card p-12 shadow-2xl"
         >
           <div className="mb-5 mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-muted text-4xl">👥</div>
-          <h2 className="text-[24px] font-black">{emptyState.title}</h2>
-          <p className="text-muted-foreground mt-2 text-center text-sm">{emptyState.body}</p>
-          {activeFilter !== 'All' && (
+          <h2 className="text-[24px] font-black">All caught up!</h2>
+          <p className="text-muted-foreground mt-2 text-center text-sm">New profiles will appear as dossiers are created.</p>
+          {activeLabel !== 'All' && (
             <button
               type="button"
               onClick={() => {
-                setActiveFilter('All');
+                setActiveFilters({ role: ROLE_OPTIONS[0], status: STATUS_OPTIONS[0], reach: REACH_OPTIONS[0], sort: SORT_OPTIONS[0] });
                 setQuery('');
               }}
               className="text-foreground hover:bg-muted mt-4 rounded-full border border-border px-5 py-2 text-sm font-medium transition-colors"
             >
-              Show all profiles
+              Clear filters
             </button>
           )}
         </motion.div>
@@ -791,64 +823,36 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
             </div>
           </header>
 
-          {/* Horizontal chips: flex-1 scroller (min-w-0) + optional chevrons; thin scrollbar; touch-pan-x for trackpads/phones. */}
-          <div className="relative mb-4 flex min-w-0 w-full max-w-full items-stretch gap-1">
-            {chipScroll.canScroll && (
-              <button
-                type="button"
-                aria-label="Scroll filters left"
-                disabled={!chipScroll.left}
-                onClick={() => chipScrollRef.current?.scrollBy({ left: -160, behavior: 'smooth' })}
-                className={cn(
-                  'flex h-10 w-8 shrink-0 items-center justify-center self-center rounded-full border border-border bg-card text-foreground shadow-sm transition-colors',
-                  chipScroll.left ? 'opacity-100 hover:bg-muted' : 'pointer-events-none opacity-30',
-                )}
-              >
-                <ChevronLeft size={18} strokeWidth={2.5} />
-              </button>
-            )}
-            <div
-              ref={chipScrollRef}
-              onScroll={syncChipScroll}
-              className={cn(
-                'flex min-h-10 min-w-0 flex-1 flex-nowrap gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain py-2 scroll-smooth touch-pan-x',
-                '[scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border',
-              )}
-            >
-              {FILTER_CHIPS.map(({ label }) => (
-                <button
-                  key={label}
-                  type="button"
-                  onClick={() => {
-                    setActiveFilter(label);
-                    setQuery('');
-                  }}
-                  className={cn(
-                    'flex shrink-0 items-center gap-1.5 self-center rounded-full border px-4 py-2 text-[12px] font-bold transition-all duration-300',
-                    activeFilter === label
-                      ? 'scale-[1.04] border-foreground bg-foreground text-background shadow-md'
-                      : 'border-border bg-card text-muted-foreground hover:bg-muted',
-                  )}
-                >
-                  {chipIcon(label)}
-                  {label}
-                </button>
-              ))}
-            </div>
-            {chipScroll.canScroll && (
-              <button
-                type="button"
-                aria-label="Scroll filters right"
-                disabled={!chipScroll.right}
-                onClick={() => chipScrollRef.current?.scrollBy({ left: 160, behavior: 'smooth' })}
-                className={cn(
-                  'flex h-10 w-8 shrink-0 items-center justify-center self-center rounded-full border border-border bg-card text-foreground shadow-sm transition-colors',
-                  chipScroll.right ? 'opacity-100 hover:bg-muted' : 'pointer-events-none opacity-30',
-                )}
-              >
-                <ChevronRight size={18} strokeWidth={2.5} />
-              </button>
-            )}
+          {/* Compact dropdown filters */}
+          <div className="mb-4 flex w-full flex-wrap gap-2">
+            <FilterDropdown
+              id="people-filter-role"
+              label={activeFilters.role.label !== 'All Roles' ? activeFilters.role.label : 'Role ▾'}
+              options={ROLE_OPTIONS}
+              selected={activeFilters.role}
+              onSelect={(opt) => setActiveFilters((f) => ({ ...f, role: opt }))}
+            />
+            <FilterDropdown
+              id="people-filter-status"
+              label={activeFilters.status.label !== 'Any Status' ? activeFilters.status.label : 'Status ▾'}
+              options={STATUS_OPTIONS}
+              selected={activeFilters.status}
+              onSelect={(opt) => setActiveFilters((f) => ({ ...f, status: opt }))}
+            />
+            <FilterDropdown
+              id="people-filter-reach"
+              label={activeFilters.reach.label !== 'Any Reach' ? activeFilters.reach.label : 'Reach ▾'}
+              options={REACH_OPTIONS}
+              selected={activeFilters.reach}
+              onSelect={(opt) => setActiveFilters((f) => ({ ...f, reach: opt }))}
+            />
+            <FilterDropdown
+              id="people-filter-sort"
+              label={activeFilters.sort.label !== 'Top Scored' ? activeFilters.sort.label : 'Sort ▾'}
+              options={SORT_OPTIONS}
+              selected={activeFilters.sort}
+              onSelect={(opt) => setActiveFilters((f) => ({ ...f, sort: opt }))}
+            />
           </div>
 
           <div className="mx-auto w-full max-w-sm shrink-0 pb-3">

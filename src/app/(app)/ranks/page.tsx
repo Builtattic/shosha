@@ -64,7 +64,6 @@ function matchesScope(account: accountsRepo.AccountRecord, scope: string, viewer
 
   switch (scope) {
     case 'national':
-    case 'regional':
       return Boolean(viewerCountry) && accountCountry === viewerCountry;
     case 'local':
       return (
