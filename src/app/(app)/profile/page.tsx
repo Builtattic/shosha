@@ -305,8 +305,8 @@ export default function ProfilePage() {
         {/* /profile is always the signed-in user's own profile — no "claim" CTA here. */}
 
         {/* Profile Info */}
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-          <div className="flex items-start gap-4 min-w-0 flex-1">
+        <div className="mt-4 flex min-w-0 flex-col gap-3 overflow-x-hidden md:flex-row md:items-start md:justify-between md:gap-4">
+          <div className="flex min-w-0 flex-1 items-start gap-4">
             <div className="relative h-20 w-20 shrink-0 group">
               <img
                 src={avatarUrl}
@@ -353,7 +353,7 @@ export default function ProfilePage() {
               )}
             </div>
           </div>
-          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:shrink-0 sm:justify-end">
+          <div className="flex w-full max-w-full flex-wrap items-center gap-2 md:w-auto md:shrink-0 md:justify-end">
             {trustBadge ? (
               <div className="flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-bold text-foreground">
                 <ShieldCheck size={13} className="shrink-0 text-foreground" />
@@ -372,7 +372,7 @@ export default function ProfilePage() {
             <button
               type="button"
               onClick={() => router.push('/profile/edit')}
-              className="flex shrink-0 items-center justify-center gap-1.5 rounded-full border border-border bg-background px-4 py-1.5 text-[12px] font-semibold text-foreground shadow-sm hover:bg-muted transition-all"
+              className="flex shrink-0 items-center justify-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-[12px] font-semibold text-foreground shadow-sm hover:bg-muted transition-all sm:px-4"
             >
               <Pencil size={12} strokeWidth={2.5} />
               Edit Profile
