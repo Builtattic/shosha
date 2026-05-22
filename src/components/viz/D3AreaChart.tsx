@@ -44,11 +44,6 @@ function niceSteps(min: number, max: number, count: number): number[] {
   return result;
 }
 
-function fmtY(v: number): string {
-  if (Math.abs(v) >= 10_000) return `${(v / 1000).toFixed(0)}k`;
-  if (Math.abs(v) >= 1000)  return `${(v / 1000).toFixed(1)}k`;
-  return String(Math.round(v));
-}
 
 function lerp(a: number, b: number, t: number) { return a + (b - a) * t; }
 
@@ -79,7 +74,7 @@ export function D3AreaChart({ data, height = 280, rangeMode = 'max' }: Props) {
     const dpr = window.devicePixelRatio || 1;
     const sorted = [...data].sort((a, b) => a.date.getTime() - b.date.getTime());
 
-    const pad = { top: 28, right: 16, bottom: 44, left: 54 };
+    const pad = { top: 28, right: 16, bottom: 44, left: 16 };
     const w = cw - pad.left - pad.right;
     const h = height - pad.top - pad.bottom;
 
@@ -131,15 +126,12 @@ export function D3AreaChart({ data, height = 280, rangeMode = 'max' }: Props) {
 
     ctx.clearRect(0, 0, cw, height);
 
-    // ── Y grid + labels ──
+    // ── Y grid (no numeric labels — use semantic end-caps instead) ──
     const yTicks = niceSteps(vMin, vMax, 5);
-    ctx.textAlign = 'right';
-    ctx.textBaseline = 'middle';
-    ctx.font = '600 11px system-ui, sans-serif';
     for (const v of yTicks) {
       const py = yOf(v);
       if (py < pad.top - 4 || py > pad.top + h + 4) continue;
-      // grid
+      // grid line only
       ctx.strokeStyle = border;
       ctx.lineWidth = 1;
       ctx.setLineDash([3, 3]);
@@ -148,10 +140,17 @@ export function D3AreaChart({ data, height = 280, rangeMode = 'max' }: Props) {
       ctx.lineTo(pad.left + w, py);
       ctx.stroke();
       ctx.setLineDash([]);
-      // label
-      ctx.fillStyle = mutedFg;
-      ctx.fillText(fmtY(v), pad.left - 8, py);
     }
+
+    // Semantic end-cap labels: "Positive" top-right, "Negative" bottom-right
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.font = '600 10px system-ui, sans-serif';
+    ctx.fillStyle = trendUp ? '#22c55e' : '#ef4444';
+    ctx.fillText('Positive', pad.left + w, pad.top + 4);
+    ctx.fillStyle = trendUp ? '#ef4444' : '#22c55e';
+    ctx.fillText('Negative', pad.left + w, pad.top + h - 4);
+    ctx.fillStyle = mutedFg;
 
     // ── X ticks ──
     const diffDays = tRange / 86_400_000;

@@ -83,24 +83,24 @@ export function D3ProfileGauge({ score, minScore = -99000, maxScore = 101000, si
         return (t) => String(Math.sin(i(t) - Math.PI / 2) * radius);
       });
 
-    // Labels
+    // Semantic end labels — no raw numbers
     g.append('text')
       .attr('x', -radius)
       .attr('y', 24)
       .attr('text-anchor', 'middle')
-      .attr('fill', 'var(--muted-foreground)')
+      .attr('fill', '#f87171')
       .attr('font-size', 10)
-      .attr('font-weight', '500')
-      .text(minScore);
+      .attr('font-weight', '700')
+      .text('Negative');
 
     g.append('text')
       .attr('x', radius)
       .attr('y', 24)
       .attr('text-anchor', 'middle')
-      .attr('fill', 'var(--muted-foreground)')
+      .attr('fill', '#4ade80')
       .attr('font-size', 10)
-      .attr('font-weight', '500')
-      .text(maxScore);
+      .attr('font-weight', '700')
+      .text('Positive');
 
   }, [score, minScore, maxScore, size]);
 

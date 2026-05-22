@@ -22,7 +22,6 @@ export type RankRow = {
 type ScopeOption = { value: string; label: string; Icon: typeof Globe };
 const SCOPES: ScopeOption[] = [
   { value: 'global', label: 'Global', Icon: Globe },
-  { value: 'regional', label: 'Regional', Icon: Globe },
   { value: 'national', label: 'National', Icon: Flag },
   { value: 'local', label: 'Local', Icon: MapPin },
 ];

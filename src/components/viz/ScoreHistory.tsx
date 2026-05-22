@@ -79,18 +79,14 @@ export function ScoreHistory({ className }: { className?: string }) {
       </div>
 
       <div className="relative h-[240px] w-full mt-6">
-        {/* Y-Axis Labels (approximated based on image) */}
-        <div className="absolute left-0 top-0 bottom-8 flex flex-col justify-between text-[10px] text-muted-foreground font-medium">
-          <span>20K</span>
-          <span>15K</span>
-          <span>10K</span>
-          <span>5K</span>
-          <span>0</span>
-          <span>-5K</span>
+        {/* Y-Axis Labels — semantic only, no raw numbers */}
+        <div className="absolute left-0 top-0 bottom-8 flex flex-col justify-between text-[10px] font-bold">
+          <span className="text-[#4ade80]">Positive</span>
+          <span className="text-red-400">Negative</span>
         </div>
 
         {/* Chart Area */}
-        <div className="absolute left-8 right-0 top-0 bottom-8">
+        <div className="absolute left-16 right-0 top-0 bottom-8">
           {/* Horizontal Grid Lines */}
           <div className="absolute inset-0 flex flex-col justify-between">
             {[0, 1, 2, 3, 4, 5].map((i) => (
@@ -155,7 +151,7 @@ export function ScoreHistory({ className }: { className?: string }) {
         </div>
 
         {/* X-Axis Labels */}
-        <div className="absolute left-8 right-0 bottom-0 flex justify-between text-[9px] text-muted-foreground font-medium pt-2">
+        <div className="absolute left-16 right-0 bottom-0 flex justify-between text-[9px] text-muted-foreground font-medium pt-2">
           <span>{formatDate("2023-05-01")}</span>
           <span>{formatDate("2023-09-01")}</span>
           <span>{formatDate("2024-01-01")}</span>

@@ -1,9 +1,8 @@
-export const RANK_SCOPE_VALUES = ['global', 'regional', 'national', 'local'] as const;
+export const RANK_SCOPE_VALUES = ['global', 'national', 'local'] as const;
 export type RankScopeValue = (typeof RANK_SCOPE_VALUES)[number];
 
 export const RANK_SCOPE_OPTIONS: { value: RankScopeValue; label: string }[] = [
   { value: 'global', label: 'Global' },
-  { value: 'regional', label: 'Regional' },
   { value: 'national', label: 'National' },
   { value: 'local', label: 'Local' },
 ];
