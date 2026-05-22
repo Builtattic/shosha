@@ -83,24 +83,28 @@ export function D3ProfileGauge({ score, minScore = -99000, maxScore = 101000, si
         return (t) => String(Math.sin(i(t) - Math.PI / 2) * radius);
       });
 
-    // Semantic end labels — no raw numbers
+    // Labels — scale with gauge size so − / + stay readable
+    const labelSize = Math.max(18, Math.round(size * 0.06));
+    const labelY = Math.round(size * 0.06);
     g.append('text')
       .attr('x', -radius)
-      .attr('y', 24)
+      .attr('y', labelY)
       .attr('text-anchor', 'middle')
-      .attr('fill', '#f87171')
-      .attr('font-size', 10)
+      .attr('dominant-baseline', 'middle')
+      .attr('fill', 'var(--muted-foreground)')
+      .attr('font-size', labelSize)
       .attr('font-weight', '700')
-      .text('Negative');
+      .text('-');
 
     g.append('text')
       .attr('x', radius)
-      .attr('y', 24)
+      .attr('y', labelY)
       .attr('text-anchor', 'middle')
-      .attr('fill', '#4ade80')
-      .attr('font-size', 10)
+      .attr('dominant-baseline', 'middle')
+      .attr('fill', 'var(--muted-foreground)')
+      .attr('font-size', labelSize)
       .attr('font-weight', '700')
-      .text('Positive');
+      .text('+');
 
   }, [score, minScore, maxScore, size]);
 
