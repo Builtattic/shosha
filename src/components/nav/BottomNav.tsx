@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Home, Users, Share2, User, Menu, type LucideIcon } from 'lucide-react';
+import { Home, Circle, Target, TrendingUp, Menu, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MoreSheet } from '@/components/nav/MoreSheet';
 
@@ -17,9 +17,9 @@ type BottomNavItem = {
 
 const items: BottomNavItem[] = [
   { href: '/feed', label: 'Feed', icon: Home },
-  { href: '/people', label: 'People', icon: Users },
-  { href: '/bubbles', label: 'Bubbles', icon: Share2 },
-  { href: '/profile', label: 'Profile', icon: User, matchPaths: ['/profile', '/account'] },
+  { href: '/ranks', label: 'Ranks', icon: TrendingUp },
+  { href: '/impact', label: 'Impact', icon: Target },
+  { href: '/bubbles', label: 'Bubbles', icon: Circle },
 ];
 
 export function BottomNav() {

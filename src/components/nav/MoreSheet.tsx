@@ -6,9 +6,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
   Home,
-  Target,
+  Users,
   Search,
-  TrendingUp,
   Bookmark,
   Bell,
   HelpCircle,
@@ -31,9 +30,8 @@ type NavItem = {
 
 const navigateItems: NavItem[] = [
   { href: '/dashboard', label: 'Home', icon: Home },
-  { href: '/impact', label: 'Impact', icon: Target },
+  { href: '/people', label: 'People', icon: Users },
   { href: '/search', label: 'Search', icon: Search },
-  { href: '/ranks', label: 'Ranks', icon: TrendingUp },
   { href: '/bookmarks', label: 'Bookmarks', icon: Bookmark },
   { href: '/notifications', label: 'Notifications', icon: Bell },
   { href: '/how-it-works', label: 'How It Works', icon: HelpCircle },

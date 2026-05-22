@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ChevronRight, TrendingUp } from 'lucide-react';
 import { PostDetailModal } from '@/components/feed/PostDetailModal';
+import { MobileAppHeader } from '@/components/nav/MobileAppHeader';
 import { D3ProfileGauge } from '@/components/viz/D3ProfileGauge';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -285,8 +286,9 @@ export default function ImpactPage() {
     reportsFiledCount >= REPORTS_CAP ? `${REPORTS_CAP}+` : String(reportsFiledCount);
 
   return (
-    <main className="min-h-screen bg-background safe-bottom pt-8 px-4 lg:px-12 pb-12">
-      <div className="mx-auto max-w-2xl space-y-10">
+    <main className="min-h-screen bg-background safe-bottom px-4 lg:px-12 pb-12">
+      <MobileAppHeader />
+      <div className="mx-auto max-w-2xl space-y-10 pt-4">
         <header className="space-y-2">
           <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-[12px] font-bold uppercase tracking-wider text-primary">
             <TrendingUp size={14} /> Trending Explore
