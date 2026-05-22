@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect, type CSSProperties } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   Building2, 
@@ -48,13 +48,448 @@ const BUBBLE_TYPES = [
   { id: 'other', label: 'Other', icon: MoreHorizontal },
 ];
 
+const MIN_CROP = 32;
+const MAX_CROP_DISPLAY_W = 480;
+const MAX_CROP_DISPLAY_H = 360;
+
+function cropDisplaySize(nw: number, nh: number) {
+  let displayW = Math.min(nw, MAX_CROP_DISPLAY_W);
+  let displayH = (displayW * nh) / nw;
+  if (displayH > MAX_CROP_DISPLAY_H) {
+    displayH = MAX_CROP_DISPLAY_H;
+    displayW = (displayH * nw) / nh;
+  }
+  return { displayW, displayH, scale: displayW / nw };
+}
+
+type CropRect = { x: number; y: number; w: number; h: number };
+
+type HandleMode = 'move' | 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w';
+
+type CropState = {
+  type: 'cover' | 'image';
+  objectUrl: string;
+  aspect: number;
+};
+
+function maxCenteredRect(nw: number, nh: number, aspect: number): CropRect {
+  let w = nw;
+  let h = w / aspect;
+  if (h > nh) {
+    h = nh;
+    w = h * aspect;
+  }
+  return { x: (nw - w) / 2, y: (nh - h) / 2, w, h };
+}
+
+function clampMove(rect: CropRect, nw: number, nh: number): CropRect {
+  const x = Math.max(0, Math.min(rect.x, nw - rect.w));
+  const y = Math.max(0, Math.min(rect.y, nh - rect.h));
+  return { ...rect, x, y };
+}
+
+function resizeFromHandle(
+  mode: HandleMode,
+  startRect: CropRect,
+  dx: number,
+  dy: number,
+  aspect: number,
+  nw: number,
+  nh: number
+): CropRect {
+  if (mode === 'move') {
+    return clampMove({ ...startRect, x: startRect.x + dx, y: startRect.y + dy }, nw, nh);
+  }
+
+  let x = startRect.x;
+  let y = startRect.y;
+  let w = startRect.w;
+  let h = startRect.h;
+
+  if (mode === 'se') {
+    w = Math.max(MIN_CROP, startRect.w + dx);
+    h = w / aspect;
+    if (x + w > nw) {
+      w = nw - x;
+      h = w / aspect;
+    }
+    if (y + h > nh) {
+      h = nh - y;
+      w = h * aspect;
+    }
+  } else if (mode === 'nw') {
+    const brx = startRect.x + startRect.w;
+    const bry = startRect.y + startRect.h;
+    w = Math.max(MIN_CROP, startRect.w - dx);
+    h = w / aspect;
+    x = brx - w;
+    y = bry - h;
+    if (x < 0) {
+      x = 0;
+      w = brx;
+      h = w / aspect;
+    }
+    if (y < 0) {
+      y = 0;
+      h = bry;
+      w = h * aspect;
+      x = brx - w;
+    }
+  } else if (mode === 'ne') {
+    const bry = startRect.y + startRect.h;
+    w = Math.max(MIN_CROP, startRect.w + dx);
+    h = w / aspect;
+    y = bry - h;
+    if (x + w > nw) {
+      w = nw - x;
+      h = w / aspect;
+      y = bry - h;
+    }
+    if (y < 0) {
+      y = 0;
+      h = bry;
+      w = h * aspect;
+    }
+  } else if (mode === 'sw') {
+    const brx = startRect.x + startRect.w;
+    w = Math.max(MIN_CROP, startRect.w - dx);
+    h = w / aspect;
+    x = brx - w;
+    y = startRect.y;
+    if (x < 0) {
+      x = 0;
+      w = brx;
+      h = w / aspect;
+    }
+    if (y + h > nh) {
+      h = nh - y;
+      w = h * aspect;
+      x = brx - w;
+    }
+  } else if (mode === 'e') {
+    w = Math.max(MIN_CROP, startRect.w + dx);
+    h = w / aspect;
+    const cy = startRect.y + startRect.h / 2;
+    y = cy - h / 2;
+    if (x + w > nw) {
+      w = nw - x;
+      h = w / aspect;
+      y = cy - h / 2;
+    }
+    if (y < 0) y = 0;
+    if (y + h > nh) y = nh - h;
+  } else if (mode === 'w') {
+    const brx = startRect.x + startRect.w;
+    w = Math.max(MIN_CROP, startRect.w - dx);
+    h = w / aspect;
+    x = brx - w;
+    const cy = startRect.y + startRect.h / 2;
+    y = cy - h / 2;
+    if (x < 0) {
+      x = 0;
+      w = brx;
+      h = w / aspect;
+      y = cy - h / 2;
+    }
+    if (y < 0) y = 0;
+    if (y + h > nh) y = nh - h;
+  } else if (mode === 's') {
+    h = Math.max(MIN_CROP, startRect.h + dy);
+    w = h * aspect;
+    const cx = startRect.x + startRect.w / 2;
+    x = cx - w / 2;
+    y = startRect.y;
+    if (y + h > nh) {
+      h = nh - y;
+      w = h * aspect;
+      x = cx - w / 2;
+    }
+    if (x < 0) x = 0;
+    if (x + w > nw) x = nw - w;
+  } else if (mode === 'n') {
+    const bry = startRect.y + startRect.h;
+    h = Math.max(MIN_CROP, startRect.h - dy);
+    w = h * aspect;
+    const cx = startRect.x + startRect.w / 2;
+    x = cx - w / 2;
+    y = bry - h;
+    if (y < 0) {
+      y = 0;
+      h = bry;
+      w = h * aspect;
+      x = cx - w / 2;
+    }
+    if (x < 0) x = 0;
+    if (x + w > nw) x = nw - w;
+  }
+
+  w = Math.max(MIN_CROP, w);
+  h = Math.max(MIN_CROP, w / aspect);
+
+  return clampMove({ x, y, w, h }, nw, nh);
+}
+
+const HANDLES: { mode: HandleMode; cursor: string; style: CSSProperties }[] = [
+  { mode: 'nw', cursor: 'nw-resize', style: { top: -5, left: -5 } },
+  { mode: 'n', cursor: 'n-resize', style: { top: -5, left: '50%', marginLeft: -5 } },
+  { mode: 'ne', cursor: 'ne-resize', style: { top: -5, right: -5 } },
+  { mode: 'e', cursor: 'e-resize', style: { top: '50%', right: -5, marginTop: -5 } },
+  { mode: 'se', cursor: 'se-resize', style: { bottom: -5, right: -5 } },
+  { mode: 's', cursor: 's-resize', style: { bottom: -5, left: '50%', marginLeft: -5 } },
+  { mode: 'sw', cursor: 'sw-resize', style: { bottom: -5, left: -5 } },
+  { mode: 'w', cursor: 'w-resize', style: { top: '50%', left: -5, marginTop: -5 } },
+];
+
+function CropModal({
+  cropState,
+  onCancel,
+  onConfirm,
+  uploading,
+}: {
+  cropState: CropState;
+  onCancel: () => void;
+  onConfirm: (blob: Blob) => void;
+  uploading?: boolean;
+}) {
+  const toast = useToast();
+  const [ready, setReady] = useState(false);
+  const [version, setVersion] = useState(0);
+  const imgRef = useRef<HTMLImageElement | null>(null);
+  const cropRectRef = useRef<CropRect>({ x: 0, y: 0, w: 0, h: 0 });
+  const scaleRef = useRef(1);
+  const nwRef = useRef(0);
+  const nhRef = useRef(0);
+  const displayWRef = useRef(0);
+  const displayHRef = useRef(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const cropOverlayRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{
+    mode: HandleMode;
+    startX: number;
+    startY: number;
+    startRect: CropRect;
+  } | null>(null);
+
+  const aspectLabel =
+    Math.abs(cropState.aspect - 16 / 6) < 0.01 ? '16:6' : '1:1';
+
+  useEffect(() => {
+    setReady(false);
+    const img = new Image();
+    imgRef.current = img;
+    img.onload = () => {
+      const nw = img.naturalWidth;
+      const nh = img.naturalHeight;
+      nwRef.current = nw;
+      nhRef.current = nh;
+      const { displayW, displayH, scale } = cropDisplaySize(nw, nh);
+      displayWRef.current = displayW;
+      displayHRef.current = displayH;
+      scaleRef.current = scale;
+      cropRectRef.current = maxCenteredRect(nw, nh, cropState.aspect);
+      setReady(true);
+      setVersion((v) => v + 1);
+    };
+    img.onerror = () => {
+      toast.push('Failed to load image.');
+      onCancel();
+    };
+    img.src = cropState.objectUrl;
+    return () => {
+      img.onload = null;
+      img.onerror = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload only when image URL changes
+  }, [cropState.objectUrl, cropState.aspect]);
+
+  const scale = scaleRef.current;
+  const rect = cropRectRef.current;
+  void version;
+
+  const overlayStyle = ready
+    ? {
+        left: rect.x * scale,
+        top: rect.y * scale,
+        width: rect.w * scale,
+        height: rect.h * scale,
+      }
+    : { left: 0, top: 0, width: 0, height: 0 };
+
+  const syncOverlayDom = () => {
+    const el = cropOverlayRef.current;
+    if (!el) return;
+    const s = scaleRef.current;
+    const r = cropRectRef.current;
+    el.style.left = `${r.x * s}px`;
+    el.style.top = `${r.y * s}px`;
+    el.style.width = `${r.w * s}px`;
+    el.style.height = `${r.h * s}px`;
+  };
+
+  const onPointerDown = (mode: HandleMode) => (e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    containerRef.current?.setPointerCapture(e.pointerId);
+    dragRef.current = {
+      mode,
+      startX: e.clientX,
+      startY: e.clientY,
+      startRect: { ...cropRectRef.current },
+    };
+  };
+
+  const onPointerMove = (e: React.PointerEvent) => {
+    const drag = dragRef.current;
+    if (!drag) return;
+    const dx = (e.clientX - drag.startX) / scaleRef.current;
+    const dy = (e.clientY - drag.startY) / scaleRef.current;
+    cropRectRef.current = resizeFromHandle(
+      drag.mode,
+      drag.startRect,
+      dx,
+      dy,
+      cropState.aspect,
+      nwRef.current,
+      nhRef.current
+    );
+    syncOverlayDom();
+  };
+
+  const onPointerUp = (e: React.PointerEvent) => {
+    if (!dragRef.current) return;
+    try {
+      containerRef.current?.releasePointerCapture(e.pointerId);
+    } catch {
+      /* already released */
+    }
+    dragRef.current = null;
+    setVersion((v) => v + 1);
+  };
+
+  const handleCropAndUpload = () => {
+    const img = imgRef.current;
+    if (!img || !ready) return;
+    const { x, y, w, h } = cropRectRef.current;
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(w);
+    canvas.height = Math.round(h);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      toast.push('Could not crop image.');
+      return;
+    }
+    ctx.drawImage(img, x, y, w, h, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          toast.push('Could not crop image.');
+          return;
+        }
+        URL.revokeObjectURL(cropState.objectUrl);
+        onConfirm(blob);
+      },
+      'image/jpeg',
+      0.92
+    );
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/70 p-4">
+      <div className="mx-auto flex w-full max-w-lg max-h-[calc(100vh-2rem)] flex-col rounded-2xl bg-background p-6 shadow-xl">
+        <h2 className="shrink-0 text-lg font-black">Crop image</h2>
+        <p className="mt-1 shrink-0 text-sm text-muted-foreground">Aspect ratio: {aspectLabel}</p>
+
+        <div className="mt-4 flex min-h-0 flex-1 justify-center overflow-auto">
+          {ready ? (
+            <div
+              ref={containerRef}
+              className="relative overflow-hidden"
+              style={{
+                width: displayWRef.current,
+                height: displayHRef.current,
+              }}
+              onPointerMove={onPointerMove}
+              onPointerUp={onPointerUp}
+              onPointerCancel={onPointerUp}
+            >
+              <img
+                src={cropState.objectUrl}
+                alt="Crop preview"
+                draggable={false}
+                className="block select-none"
+                style={{
+                  width: displayWRef.current,
+                  height: displayHRef.current,
+                }}
+              />
+              <div
+                ref={cropOverlayRef}
+                className="absolute touch-none"
+                style={{
+                  ...overlayStyle,
+                  border: '2px solid white',
+                  boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)',
+                  cursor: 'move',
+                }}
+                onPointerDown={onPointerDown('move')}
+              >
+                {HANDLES.map(({ mode, cursor, style }) => (
+                  <div
+                    key={mode}
+                    role="presentation"
+                    className="absolute z-10 bg-white"
+                    style={{
+                      width: 10,
+                      height: 10,
+                      cursor,
+                      ...style,
+                    }}
+                    onPointerDown={onPointerDown(mode)}
+                  />
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="flex h-40 items-center justify-center">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            </div>
+          )}
+        </div>
+
+        <div className="mt-6 flex shrink-0 gap-3 border-t border-border pt-4">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="flex h-12 flex-1 items-center justify-center rounded-xl border border-border bg-card text-sm font-bold text-foreground transition-colors hover:bg-muted"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={!ready || uploading}
+            onClick={handleCropAndUpload}
+            className="flex h-12 flex-1 items-center justify-center rounded-xl bg-primary text-sm font-black text-primary-foreground transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {uploading ? (
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+            ) : (
+              'Crop & Upload'
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function CreateBubbleFlow() {
   const router = useRouter();
   const toast = useToast();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState<'cover' | 'image' | null>(null);
-  
+  const [cropState, setCropState] = useState<CropState | null>(null);
+
   const [form, setForm] = useState({
     name: '',
     tagline: '',
@@ -71,13 +506,10 @@ export function CreateBubbleFlow() {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'cover' | 'image') => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const executeUpload = async (blob: Blob, type: 'cover' | 'image') => {
     setUploading(type);
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', blob, `${type}-${Date.now()}.jpg`);
 
     try {
       const res = await fetch('/api/media/upload', {
@@ -86,10 +518,10 @@ export function CreateBubbleFlow() {
       });
       const payload = await res.json();
       if (!payload.ok) throw new Error(payload.error?.message ?? 'Upload failed');
-      
-      setForm(prev => ({
+
+      setForm((prev) => ({
         ...prev,
-        [type === 'cover' ? 'coverImageUrl' : 'imageUrl']: payload.data.url
+        [type === 'cover' ? 'coverImageUrl' : 'imageUrl']: payload.data.url,
       }));
       toast.push('Image uploaded successfully!');
     } catch (err) {
@@ -97,6 +529,17 @@ export function CreateBubbleFlow() {
     } finally {
       setUploading(null);
     }
+  };
+
+  const handleUpload = (e: React.ChangeEvent<HTMLInputElement>, type: 'cover' | 'image') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCropState({
+      type,
+      objectUrl: URL.createObjectURL(file),
+      aspect: type === 'cover' ? 16 / 6 : 1,
+    });
+    e.target.value = '';
   };
 
   const handleSearch = async (q: string) => {
@@ -165,6 +608,7 @@ export function CreateBubbleFlow() {
   };
 
   return (
+    <>
     <div className="min-h-screen bg-background pb-20">
       <header className="sticky top-0 z-10 flex flex-col items-center border-b bg-background/80 backdrop-blur-md px-4 py-4 md:py-6">
         <div className="flex w-full max-w-5xl items-center justify-between">
@@ -562,5 +1006,20 @@ export function CreateBubbleFlow() {
         </p>
       </main>
     </div>
+    {cropState && (
+      <CropModal
+        cropState={cropState}
+        uploading={uploading === cropState.type}
+        onCancel={() => {
+          URL.revokeObjectURL(cropState.objectUrl);
+          setCropState(null);
+        }}
+        onConfirm={(blob) => {
+          executeUpload(blob, cropState.type);
+          setCropState(null);
+        }}
+      />
+    )}
+    </>
   );
 }
