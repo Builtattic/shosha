@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-  CheckCircle2, TrendingUp, Shield,
+  CheckCircle2, TrendingUp, Shield, ShieldCheck,
   PieChart, Activity, Target, User, Users, UserRound, ThumbsUp, ThumbsDown, Minus, ArrowRight,
   Briefcase, GraduationCap, FileText, Link2, Pencil, MapPin, ExternalLink,
   AlertCircle, Play, History, TrendingDown, Calendar, Eye, Link as LinkIcon
@@ -305,8 +305,8 @@ export default function ProfilePage() {
         {/* /profile is always the signed-in user's own profile — no "claim" CTA here. */}
 
         {/* Profile Info */}
-        <div className="mt-4 flex items-start justify-between gap-4">
-          <div className="flex items-start gap-4 min-w-0">
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+          <div className="flex items-start gap-4 min-w-0 flex-1">
             <div className="relative h-20 w-20 shrink-0 group">
               <img
                 src={avatarUrl}
@@ -334,6 +334,14 @@ export default function ProfilePage() {
                 <h1 className="text-[20px] font-bold text-foreground leading-none truncate">{displayName}</h1>
                 <CheckCircle2 size={16} fill="currentColor" className="text-foreground shrink-0" />
               </div>
+              {trustBadge && (
+                <div className="mt-1 flex items-center gap-1.5">
+                  <ShieldCheck size={14} className="text-foreground" />
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Verified Identity
+                  </span>
+                </div>
+              )}
               <p className="text-[13px] text-muted-foreground mt-1.5">@{username}</p>
               {appUser?.occupationRole && (
                 <p className="text-[13px] text-muted-foreground mt-0.5">{ROLE_LABELS[appUser.occupationRole] ?? appUser.occupationRole}</p>
@@ -345,11 +353,26 @@ export default function ProfilePage() {
               )}
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2 mt-2">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:shrink-0 sm:justify-end">
+            {trustBadge ? (
+              <div className="flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-bold text-foreground">
+                <ShieldCheck size={13} className="shrink-0 text-foreground" />
+                Trusted
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => router.push('/trust-badge')}
+                className="flex min-w-0 items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-[11px] font-semibold text-muted-foreground shadow-sm hover:bg-muted hover:text-foreground transition-all"
+              >
+                <ShieldCheck size={13} className="shrink-0" />
+                <span className="truncate">Get Trust Badge</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => router.push('/profile/edit')}
-              className="flex items-center justify-center gap-1.5 rounded-full border border-border bg-background px-4 py-1.5 text-[12px] font-semibold text-foreground shadow-sm hover:bg-muted transition-all"
+              className="flex shrink-0 items-center justify-center gap-1.5 rounded-full border border-border bg-background px-4 py-1.5 text-[12px] font-semibold text-foreground shadow-sm hover:bg-muted transition-all"
             >
               <Pencil size={12} strokeWidth={2.5} />
               Edit Profile
@@ -440,7 +463,11 @@ export default function ProfilePage() {
           {/* Card 4 — Credibility */}
           <div className="min-w-0 rounded-2xl border border-border bg-background py-3 px-1 text-center shadow-sm flex flex-col items-center justify-center">
             <div className="mx-auto flex items-center justify-center text-foreground">
-              <Shield size={18} strokeWidth={2.5} />
+              {trustBadge ? (
+                <ShieldCheck size={18} strokeWidth={2.5} className="text-foreground" />
+              ) : (
+                <Shield size={18} strokeWidth={2.5} />
+              )}
             </div>
             <p className="mt-1.5 text-[15px] sm:text-[17px] font-bold text-foreground tabular-nums">
               {profileCredibilityDisplay}%
