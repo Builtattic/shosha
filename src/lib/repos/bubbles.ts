@@ -92,6 +92,16 @@ export async function listMembers(bubbleId: string): Promise<BubbleMemberRecord[
   return out.sort((a, b) => b.score - a.score);
 }
 
+export async function listMembersForBubbles(
+  bubbleIds: string[]
+): Promise<Record<string, BubbleMemberRecord[]>> {
+  if (bubbleIds.length === 0) return {};
+  const results = await Promise.all(
+    bubbleIds.map((id) => listMembers(id).catch(() => [] as BubbleMemberRecord[]))
+  );
+  return Object.fromEntries(bubbleIds.map((id, i) => [id, results[i]]));
+}
+
 export async function requestJoin(bubbleId: string, userId: string) {
   const existingMember = await db().ref(`bubbleMembers/${memberKey(bubbleId, userId)}`).once('value');
   if (existingMember.exists()) return { alreadyMember: true as const };

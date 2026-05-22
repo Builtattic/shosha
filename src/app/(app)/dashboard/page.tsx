@@ -4,16 +4,16 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Search, Bell, Plus, ChevronRight, CheckCircle2, X } from 'lucide-react';
+import { ChevronRight, CheckCircle2 } from 'lucide-react';
 import { FeedItem, type FeedItemProps } from '@/components/feed/FeedItem';
 import { PostDetailModal } from '@/components/feed/PostDetailModal';
 import { FollowButton } from '@/components/profile/FollowButton';
 import { D3ScoreGauge } from '@/components/viz/D3ScoreGauge';
 import { cn } from '@/lib/utils';
-import { useReportModal } from '@/components/report/ReportModalProvider';
 import { SignInChip } from '@/components/nav/SignInChip';
 import { calcProfileScores, calcShoshaScore } from '@/lib/scoring';
 import { useAuth } from '@/contexts/AuthContext';
+import { MobileAppHeader } from '@/components/nav/MobileAppHeader';
 
 type FeedFilter = 'for_you' | 'following' | 'top' | 'near';
 
@@ -50,27 +50,7 @@ type FeedReport = {
   } | null;
 };
 
-type Notification = { id: string; title: string; body: string; link?: string; read?: boolean };
 type Platform = 'x' | 'instagram' | 'facebook' | 'youtube' | 'tiktok' | 'linkedin' | 'reddit' | 'snapchat' | 'website';
-type AccountMatch = {
-  _id: string;
-  platform: Platform;
-  username: string;
-  displayName: string;
-  bio?: string;
-  followers?: string;
-};
-type AccountCandidate = {
-  platform: Platform;
-  username: string;
-  displayName: string;
-  sourceUrl: string;
-  bio: string;
-  followers?: string;
-  verified?: boolean;
-  confidence: number;
-  reason: string;
-};
 
 type TrendingPerson = {
   id: string;
@@ -136,19 +116,12 @@ function toFeedItem(report: FeedReport): FeedItemProps {
 export default function DashboardPage() {
   const router = useRouter();
   const { user: firebaseUser } = useAuth();
-  const reportModal = useReportModal();
   const [activeTab, setActiveTab] = useState<FeedFilter>('for_you');
   const [feed, setFeed] = useState<FeedReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [myReportHref, setMyReportHref] = useState('/profile');
-  const [accountMatches, setAccountMatches] = useState<AccountMatch[]>([]);
-  const [accountCandidates, setAccountCandidates] = useState<AccountCandidate[]>([]);
-  const [searchingAccounts, setSearchingAccounts] = useState(false);
   const [meData, setMeData] = useState<{ user: any; claimedAccounts: any[] } | null>(null);
   const [heroImgError, setHeroImgError] = useState(false);
   
@@ -232,72 +205,6 @@ export default function DashboardPage() {
     };
   }, [loadMe]);
 
-  // Always fetch unread count for the badge
-  useEffect(() => {
-    fetch('/api/notifications')
-      .then((response) => {
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return response.json();
-      })
-      .then((payload) => {
-        if (!payload.ok) return;
-        const items = Array.isArray(payload.data?.items) ? payload.data.items : [];
-        setNotifications(items);
-        setUnreadCount(typeof payload.data?.unread === 'number' ? payload.data.unread : 0);
-      })
-      .catch(() => undefined);
-  }, [notificationsOpen]);
-
-  useEffect(() => {
-    if (!searchOpen || query.trim().length < 2) {
-      setAccountMatches([]);
-      setAccountCandidates([]);
-      return;
-    }
-
-    const controller = new AbortController();
-    const timer = window.setTimeout(async () => {
-      setSearchingAccounts(true);
-      try {
-        const response = await fetch(`/api/accounts/search?q=${encodeURIComponent(query)}&discover=1`, { signal: controller.signal });
-        const payload = await response.json();
-        if (payload.ok) {
-          setAccountMatches(payload.data.accounts ?? []);
-          setAccountCandidates(payload.data.candidates ?? []);
-        }
-      } catch (err: any) {
-        if (err?.name !== 'AbortError') {
-          setAccountMatches([]);
-          setAccountCandidates([]);
-        }
-      } finally {
-        if (!controller.signal.aborted) setSearchingAccounts(false);
-      }
-    }, 450);
-    return () => {
-      window.clearTimeout(timer);
-      controller.abort();
-    };
-  }, [query, searchOpen]);
-
-  async function openCandidate(candidate: AccountCandidate) {
-    const response = await fetch('/api/accounts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        platform: candidate.platform,
-        username: candidate.username,
-        displayName: candidate.displayName,
-        sourceUrl: candidate.sourceUrl,
-        bio: candidate.bio,
-        followers: candidate.followers,
-        verified: candidate.verified
-      })
-    });
-    const payload = await response.json();
-    if (payload.ok) router.push(`/account/${payload.data._id}`);
-  }
-
   const visibleFeed = useMemo(() => {
     const cleaned = query.trim().toLowerCase();
     if (!cleaned) return feed;
@@ -330,125 +237,15 @@ export default function DashboardPage() {
 
   return (
     <main className="min-h-screen overflow-x-clip bg-background safe-bottom">
-      <header className="sticky top-0 z-50 bg-background p-4">
-        <div className="mx-auto max-w-2xl">
-          <div className="flex items-center justify-between gap-3">
-            <div className="font-serif text-[28px] font-black text-foreground">
-              Sho<span className="font-normal italic text-muted-foreground">शा</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setSearchOpen((value) => !value)}
-                className="text-muted-foreground transition-colors hover:text-foreground"
-                aria-label="Search feed"
-              >
-                {searchOpen ? <X size={22} /> : <Search size={22} />}
-              </button>
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setNotificationsOpen((value) => !value)}
-                  className="text-muted-foreground transition-colors hover:text-foreground"
-                  aria-label="Notifications"
-                >
-                  <Bell size={22} />
-                </button>
-                {unreadCount > 0 && (
-                  <span className="pointer-events-none absolute right-0.5 top-0 flex h-4 min-w-4 items-center justify-center rounded-full border border-background bg-destructive px-1 text-[9px] font-bold text-background">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
-                )}
-                {notificationsOpen && (
-                  <div className="absolute right-0 top-9 z-30 w-80 rounded-[18px] border border-border bg-card p-2 shadow-xl">
-                    {notifications.length === 0 ? (
-                      <p className="px-3 py-6 text-center text-[12px] text-muted-foreground">You&apos;re all caught up.</p>
-                    ) : (
-                      <div className="max-h-96 overflow-y-auto">
-                        {notifications.slice(0, 12).map((item) => {
-                          const content = (
-                            <>
-                              <p className={cn('text-[13px] font-bold', item.read ? 'text-muted-foreground' : 'text-foreground')}>{item.title}</p>
-                              <p className="mt-1 text-[12px] leading-5 text-muted-foreground">{item.body}</p>
-                            </>
-                          );
-                          return item.link ? (
-                            <Link key={item.id} href={item.link} className="block rounded-xl px-3 py-2.5 transition-colors hover:bg-muted">
-                              {content}
-                            </Link>
-                          ) : (
-                            <div key={item.id} className="rounded-xl px-3 py-2.5">
-                              {content}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-              <motion.button
-                type="button"
-                onClick={() => reportModal.open({ onSubmitted: (id) => setMyReportHref(`/account/${id}`) })}
-                whileTap={{ scale: 0.94 }}
-                whileHover={{ scale: 1.02 }}
-                transition={{ type: 'spring', stiffness: 400, damping: 22 }}
-                className="hidden sm:flex items-center gap-1 rounded-full bg-foreground px-4 py-2 text-[13px] font-bold text-background shadow-sm transition-colors hover:bg-foreground/90"
-              >
-                <Plus size={16} strokeWidth={3} /> Create Report
-              </motion.button>
-              <div className="hidden sm:block">
-                <SignInChip />
-              </div>
-            </div>
-          </div>
-        {searchOpen && (
-          <div className="relative mt-3">
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              autoFocus
-              placeholder="Search reports, people, handles..."
-              className="w-full rounded-full border border-border bg-card px-4 py-3 text-[14px] outline-none focus:ring-2 focus:ring-primary/20"
-            />
-            {(searchingAccounts || accountMatches.length > 0 || accountCandidates.length > 0) && (
-              <div className="absolute left-0 right-0 top-14 z-50 max-h-[70vh] overflow-y-auto rounded-[20px] border border-border bg-card p-3 shadow-xl">
-                {searchingAccounts && <p className="px-2 py-2 text-[12px] text-muted-foreground">Searching accounts with Shosha...</p>}
-                {accountMatches.map((account) => (
-                  <Link
-                    key={account._id}
-                    href={`/account/${account._id}`}
-                    className="block rounded-[14px] px-3 py-3 transition hover:bg-muted"
-                  >
-                    <Link href={`/account/${account._id}`} className="text-[13px] font-bold hover:underline">{account.displayName}</Link>
-                    <p className="text-[11px] text-muted-foreground">{account.platform}</p>
-                  </Link>
-                ))}
-                {accountCandidates.map((candidate) => (
-                  <button
-                    key={`${candidate.platform}:${candidate.username}:${candidate.sourceUrl}`}
-                    type="button"
-                    onClick={() => openCandidate(candidate)}
-                    className="block w-full rounded-[14px] px-3 py-3 text-left transition hover:bg-muted"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate text-[13px] font-bold">{candidate.displayName}</p>
-                        <p className="truncate text-[11px] text-muted-foreground">{candidate.platform}</p>
-                      </div>
-                      <span className="rounded-full bg-foreground px-2 py-1 text-[10px] font-bold text-background">
-                        {Math.round(candidate.confidence * 100)}%
-                      </span>
-                    </div>
-                    <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-muted-foreground">{candidate.reason}</p>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-        </div>
-      </header>
+      <MobileAppHeader
+        onSearch={(q) => setQuery(q)}
+        showSearch={searchOpen}
+        onSearchToggle={() => setSearchOpen((v) => !v)}
+      />
+
+      <div className="mx-auto max-w-2xl px-4 pt-3 lg:px-0">
+        <SignInChip />
+      </div>
 
       <div className="mx-auto max-w-2xl px-4 lg:px-0">
         {/* ── Hero Banner ─────────────────────────────────────────────── */}

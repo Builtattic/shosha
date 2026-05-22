@@ -1,33 +1,24 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState, useRef } from 'react';
 import {
   motion,
   AnimatePresence,
-  useMotionValue,
-  useTransform,
-  useSpring,
-  animate,
-  useIsPresent,
-  type PanInfo,
-  type MotionValue,
 } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import {
-  ChevronUp,
-  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsRight,
   Globe,
-  Loader2,
   Users,
   Share2,
   X,
   Check,
-  Search,
   ShieldCheck,
   MapPin,
   TrendingUp,
   TrendingDown,
-  Lock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/Toast';
@@ -52,64 +43,25 @@ function compactFollowers(raw: string | number | undefined): string {
   return isNaN(n) ? String(raw) : compact(n);
 }
 
-/** px — horizontal travel to commit a swipe */
-const OFFSET_THRESHOLD = 118;
-/** px — minimum horizontal travel before a velocity-only flick counts */
-const FLICK_MIN_OFFSET = 42;
-/** Framer reports velocity in px/s for drag end; keep high to avoid touch noise */
-const VELOCITY_THRESHOLD = 620;
-
-// ── Dropdown filter config ────────────────────────────────────────────────────
-
-type DropdownOption = { label: string; params: Record<string, string> };
-
-const ROLE_OPTIONS: DropdownOption[] = [
-  { label: 'All Roles', params: {} },
+const FILTER_CHIPS = [
+  { label: 'All', params: {} },
   { label: 'Public Figures', params: { role: 'Public Figure' } },
   { label: 'Founders', params: { role: 'Founder' } },
-];
-
-const STATUS_OPTIONS: DropdownOption[] = [
-  { label: 'Any Status', params: {} },
-  { label: 'Trending ↑', params: { scoreFilter: 'trending' } },
-  { label: 'Under Fire ↓', params: { scoreFilter: 'underfire' } },
-];
-
-const REACH_OPTIONS: DropdownOption[] = [
-  { label: 'Any Reach', params: {} },
-  { label: '10K–1M+', params: { reach: '10K-1M+' } },
+  { label: 'Trending', params: { scoreFilter: 'trending' } },
+  { label: 'Under Fire', params: { scoreFilter: 'underfire' } },
   { label: 'Global', params: { region: 'Global' } },
-];
+  { label: '10K-1M+', params: { reach: '10K-1M+' } },
+  { label: '18-65+', params: { ageBand: '18-65' } },
+] as const;
 
-const SORT_OPTIONS: DropdownOption[] = [
-  { label: 'Top Scored', params: {} },
-  { label: 'Age 18–65+', params: { ageBand: '18-65' } },
-];
-
-type ActiveFilters = {
-  role: DropdownOption;
-  status: DropdownOption;
-  reach: DropdownOption;
-  sort: DropdownOption;
-};
-
-function mergeParams(filters: ActiveFilters): Record<string, string> {
-  return {
-    ...filters.role.params,
-    ...filters.status.params,
-    ...filters.reach.params,
-    ...filters.sort.params,
-  };
-}
-
-function filterLabel(filters: ActiveFilters): string {
-  const parts = [
-    filters.role.label !== 'All Roles' ? filters.role.label : null,
-    filters.status.label !== 'Any Status' ? filters.status.label : null,
-    filters.reach.label !== 'Any Reach' ? filters.reach.label : null,
-    filters.sort.label !== 'Top Scored' ? filters.sort.label : null,
-  ].filter(Boolean);
-  return parts.length ? parts.join(', ') : 'All';
+function getParamsForLabel(label: string): Record<string, string> {
+  const chip = FILTER_CHIPS.find((c) => c.label === label);
+  if (!chip) return {};
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(chip.params)) {
+    out[k] = String(v);
+  }
+  return out;
 }
 
 function buildDeckUrl(params: Record<string, string>, cursor: number): string {
@@ -120,244 +72,102 @@ function buildDeckUrl(params: Record<string, string>, cursor: number): string {
   return qs ? `${base}&${qs}` : base;
 }
 
-interface FilterDropdownProps {
-  label: string;
-  options: DropdownOption[];
-  selected: DropdownOption;
-  onSelect: (opt: DropdownOption) => void;
-  id: string;
+const EMPTY_STATE_COPY: Record<string, { title: string; body: string }> = {
+  All: { title: 'All caught up!', body: 'New profiles will appear as dossiers are created.' },
+  'Public Figures': {
+    title: 'No public figures yet',
+    body: "Public figure profiles will appear here as they're added.",
+  },
+  Founders: { title: 'No founders yet', body: "Founder profiles will appear here as they're added." },
+  Trending: {
+    title: 'No one trending up',
+    body: 'Profiles gaining reputation this week will appear here.',
+  },
+  'Under Fire': {
+    title: 'No one under fire',
+    body: 'Profiles losing reputation this week will appear here.',
+  },
+  Global: { title: 'No global profiles', body: 'Try switching to All to see everyone.' },
+  '10K-1M+': {
+    title: 'No profiles in range',
+    body: 'Not enough reach data yet — try All to see everyone.',
+  },
+  '18-65+': {
+    title: 'No profiles in range',
+    body: 'Age data is sparse — try All to see everyone.',
+  },
+};
+
+function chipIcon(label: (typeof FILTER_CHIPS)[number]['label']) {
+  switch (label) {
+    case 'Global':
+      return <Globe size={12} />;
+    case 'Trending':
+      return <TrendingUp size={12} />;
+    case 'Under Fire':
+      return <TrendingDown size={12} />;
+    case 'Public Figures':
+    case 'Founders':
+      return <Users size={12} />;
+    default:
+      return null;
+  }
 }
-
-function FilterDropdown({ label, options, selected, onSelect, id }: FilterDropdownProps) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const isActive = selected.label !== options[0].label;
-
-  useEffect(() => {
-    if (!open) return;
-    function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
-
-  return (
-    <div ref={ref} className="relative shrink-0">
-      <button
-        id={id}
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className={cn(
-          'flex items-center gap-1 rounded-full border px-3 py-1.5 text-[12px] font-bold transition-all',
-          isActive
-            ? 'border-foreground bg-foreground text-background'
-            : 'border-border bg-card text-muted-foreground hover:bg-muted',
-        )}
-      >
-        {label}
-        <ChevronDown size={11} className={cn('transition-transform', open && 'rotate-180')} />
-      </button>
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, y: -4, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -4, scale: 0.97 }}
-            transition={{ duration: 0.12 }}
-            className="absolute left-0 top-9 z-50 min-w-[140px] overflow-hidden rounded-2xl border border-border bg-card shadow-xl"
-          >
-            {options.map((opt) => (
-              <button
-                key={opt.label}
-                type="button"
-                onClick={() => { onSelect(opt); setOpen(false); }}
-                className={cn(
-                  'flex w-full items-center gap-2 px-4 py-2.5 text-left text-[12px] font-semibold transition-colors hover:bg-muted',
-                  selected.label === opt.label ? 'text-foreground' : 'text-muted-foreground',
-                )}
-              >
-                {selected.label === opt.label && <Check size={11} className="shrink-0" />}
-                {selected.label !== opt.label && <span className="w-[11px] shrink-0" />}
-                {opt.label}
-              </button>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
 
 type SwipeCardProps = {
   item: PeopleDeckItem;
   index: number;
-  exitX: number;
-  exitY: number;
+  exitDir: 'align' | 'oppose' | 'skip' | null;
   visibleItems: PeopleDeckItem[];
-  x: MotionValue<number>;
-  y: MotionValue<number>;
-  rotate: MotionValue<number>;
-  nextX: MotionValue<number>;
-  alignOp: MotionValue<number>;
-  opposeOp: MotionValue<number>;
-  opposeSc: MotionValue<number>;
-  alignSc: MotionValue<number>;
-  upOp: MotionValue<number>;
-  showUpHint: boolean;
-  setShowUpHint: (v: boolean) => void;
-  handleDragEnd: (e: PointerEvent, info: PanInfo) => void;
-  handleSwipe: (dir: 'align' | 'oppose') => void;
   handleShare: (card: PeopleDeckItem) => Promise<void>;
   onOpenProfile: () => void;
 };
 
 function SwipeCard(props: SwipeCardProps) {
-  const isPresent = useIsPresent();
   const {
     item,
     index,
-    exitX,
-    exitY,
+    exitDir,
     visibleItems,
-    x,
-    y,
-    rotate,
-    nextX,
-    alignOp,
-    opposeOp,
-    opposeSc,
-    alignSc,
-    upOp,
-    showUpHint,
-    setShowUpHint,
-    handleDragEnd,
-    handleSwipe,
     handleShare,
     onOpenProfile,
   } = props;
 
   const isCurrent = index === 0;
-  /** Exit must not read shared x/y — that was freezing the next card after 1–2 swipes */
-  const bindInteractive = isCurrent && isPresent;
-  const showParallax = index === 1 && isPresent;
-
-  /**
-   * Pure taps never call Framer onDragEnd (drag starts only after ~3px move).
-   * Open profile from pointer up when no drag session started; onDragStart marks real drags.
-   */
-  const tapBlockedRef = useRef(false);
-  const dragEverStartedRef = useRef(false);
 
   const skipProfileTarget = (el: EventTarget | null): boolean =>
     !!(el instanceof Element && el.closest('button, a, input, textarea, select'));
 
   return (
     <motion.article
-      initial={{ scale: 0.8, opacity: 0, y: 40 }}
-      animate={
-        isPresent
-          ? {
-              scale: isCurrent ? 1 : index === 1 ? 0.95 : 0.9,
-              opacity: 1,
-              y: isCurrent ? 0 : index === 1 ? 16 : 32,
-              ...(isCurrent ? {} : { rotate: index === 1 ? 2 : -2 }),
-            }
-          : false
-      }
+      initial={{ opacity: 0, y: 28 }}
+      animate={{ opacity: 1, y: 0 }}
       exit={{
-        x: exitX,
-        y: exitY,
+        x: exitDir === 'align' ? 600 : exitDir === 'oppose' ? -600 : 0,
         opacity: 0,
-        scale: 0.9,
-        rotate: exitX > 0 ? 15 : -15,
-        transition: { duration: 0.4, ease: [0.32, 0.72, 0, 1] },
+        scale: 0.85,
+        transition: { duration: 0.3 },
       }}
       transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-      style={{
-        zIndex: 30 - index,
-        ...(bindInteractive ? { x, y, rotate } : showParallax ? { x: nextX } : {}),
+      style={{ zIndex: 30 - index }}
+      onClick={(e) => {
+        if (!isCurrent) return;
+        if (skipProfileTarget(e.target)) return;
+        onOpenProfile();
       }}
-      {...(bindInteractive
-        ? {
-            drag: true,
-            dragConstraints: { left: 0, right: 0, top: 0, bottom: 0 },
-            dragElastic: 0.52,
-            onPointerDown: (e: React.PointerEvent) => {
-              if (e.pointerType === 'mouse' && e.button !== 0) return;
-              tapBlockedRef.current = skipProfileTarget(e.target);
-              dragEverStartedRef.current = false;
-            },
-            onDragStart: () => {
-              dragEverStartedRef.current = true;
-            },
-            onPointerUp: (e: React.PointerEvent) => {
-              if (e.pointerType === 'mouse' && e.button !== 0) return;
-              const blocked = tapBlockedRef.current;
-              requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                  if (blocked) return;
-                  if (dragEverStartedRef.current) return;
-                  onOpenProfile();
-                });
-              });
-            },
-            onPointerCancel: () => {
-              tapBlockedRef.current = false;
-              dragEverStartedRef.current = false;
-              setShowUpHint(false);
-              animate(x, 0, { type: 'spring', stiffness: 500, damping: 35 });
-              animate(y, 0, { type: 'spring', stiffness: 500, damping: 35 });
-            },
-            onDrag: (_: PointerEvent, info: PanInfo) => setShowUpHint(info.offset.y < -35),
-            onDragEnd: (e: PointerEvent, info: PanInfo) => {
-              setShowUpHint(false);
-              handleDragEnd(e, info);
-            },
-          }
-        : {})}
-      className="absolute inset-x-0 top-0 bottom-0 mx-auto w-full max-w-[400px] select-none overflow-hidden rounded-[32px] border border-white/10 bg-black shadow-2xl lg:max-w-[420px]"
+      className={cn(
+        'absolute inset-x-0 top-0 bottom-0 mx-auto w-full select-none overflow-hidden rounded-[32px] border border-white/10 bg-black shadow-2xl',
+        'max-w-[400px] lg:max-w-sm',
+        isCurrent && 'cursor-pointer',
+        index === 1 && 'scale-[0.95] translate-y-3 opacity-70',
+        index === 2 && 'scale-[0.90] translate-y-6 opacity-40',
+      )}
     >
       <motion.div
         initial={false}
         animate={{ opacity: isCurrent ? 0 : index === 1 ? 0.3 : 0.6 }}
         className="pointer-events-none absolute inset-0 z-40 bg-black/60 backdrop-blur-[2px] transition-opacity duration-300"
       />
-
-      <motion.div
-        style={{ opacity: bindInteractive ? alignOp : 0 }}
-        className="pointer-events-none absolute right-5 top-12 z-50 rotate-[20deg] rounded-2xl border-[3px] border-emerald-400 bg-emerald-400/10 px-5 py-2 backdrop-blur-sm"
-        aria-hidden
-      >
-        <span className="text-[26px] font-black tracking-widest text-emerald-400 drop-shadow sm:text-[28px]">ALIGN</span>
-      </motion.div>
-      <motion.div
-        style={{ opacity: bindInteractive ? opposeOp : 0 }}
-        className="pointer-events-none absolute left-5 top-12 z-50 -rotate-[20deg] rounded-2xl border-[3px] border-red-400 bg-red-400/10 px-5 py-2 backdrop-blur-sm"
-        aria-hidden
-      >
-        <span className="text-[26px] font-black tracking-widest text-red-400 drop-shadow sm:text-[28px]">OPPOSE</span>
-      </motion.div>
-
-      <AnimatePresence>
-        {bindInteractive && showUpHint && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="pointer-events-none absolute inset-x-0 top-6 z-50 flex justify-center"
-          >
-            <motion.div
-              style={{ opacity: upOp }}
-              className="flex items-center gap-1.5 rounded-full bg-white/90 px-5 py-2 shadow-lg backdrop-blur"
-            >
-              <ChevronUp size={14} className="text-black" />
-              <span className="text-[12px] font-black text-black">Open Profile</span>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       <img
         src={item.avatar}
@@ -396,57 +206,6 @@ function SwipeCard(props: SwipeCardProps) {
           <MapPin size={10} />
           {item.region || 'Global'}
         </span>
-      </div>
-
-      <div
-        className={cn(
-          'md:hidden absolute left-3 top-1/2 z-50 flex -translate-y-1/2 flex-col items-center transition-opacity duration-200',
-          !isCurrent && 'pointer-events-none opacity-0'
-        )}
-      >
-        <motion.button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleSwipe('oppose');
-          }}
-          whileTap={{ scale: 0.85 }}
-          style={{ scale: opposeSc }}
-          className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-full border-2 border-red-200/60 bg-white/90 text-red-500 shadow-xl backdrop-blur-sm pointer-events-auto"
-          aria-label="Oppose"
-        >
-          <X size={22} strokeWidth={2.5} />
-        </motion.button>
-        <p className="mt-1 text-center text-[9px] font-black uppercase text-red-500 drop-shadow-md">
-          Oppose
-          <br />
-          <span className="text-red-400">−5</span>
-        </p>
-      </div>
-      <div
-        className={cn(
-          'md:hidden absolute right-3 top-1/2 z-50 flex -translate-y-1/2 flex-col items-center transition-opacity duration-200',
-          !isCurrent && 'pointer-events-none opacity-0'
-        )}
-      >
-        <motion.button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleSwipe('align');
-          }}
-          whileTap={{ scale: 0.85 }}
-          style={{ scale: alignSc }}
-          className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-full border-2 border-emerald-200/60 bg-white/90 text-emerald-600 shadow-xl backdrop-blur-sm pointer-events-auto"
-          aria-label="Align"
-        >
-          <Check size={22} strokeWidth={2.5} />
-        </motion.button>
-        <p className="mt-1 text-center text-[9px] font-black uppercase text-emerald-600 drop-shadow-md">
-          Align
-          <br />
-          <span className="text-emerald-500">+5</span>
-        </p>
       </div>
 
       <div className="absolute bottom-0 left-0 right-0 z-30 p-5">
@@ -501,9 +260,7 @@ function SwipeCard(props: SwipeCardProps) {
           </div>
         )}
 
-        {item.bio ? (
-          <p className="line-clamp-2 text-[13px] leading-relaxed text-white/65">{item.bio}</p>
-        ) : null}
+        {item.bio ? <p className="line-clamp-3 text-[13px] leading-relaxed text-white/65">{item.bio}</p> : null}
         {item.topReports.length > 0 ? (
           <div className={cn('space-y-1.5', item.bio ? 'mt-2' : '')}>
             {item.topReports.slice(0, 2).map((r, i) => (
@@ -542,6 +299,7 @@ function SwipeCard(props: SwipeCardProps) {
             />
           ))}
         </div>
+        <p className="mt-2 pb-1 text-center text-[10px] text-white/40">Tap card to view profile</p>
       </div>
     </motion.article>
   );
@@ -551,27 +309,32 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
   const router = useRouter();
   const toast = useToast();
   const [items, setItems] = useState(initialItems);
-  const [activeFilters, setActiveFilters] = useState<ActiveFilters>({
-    role: ROLE_OPTIONS[0],
-    status: STATUS_OPTIONS[0],
-    reach: REACH_OPTIONS[0],
-    sort: SORT_OPTIONS[0],
-  });
-  const [exitX, setExitX] = useState(0);
-  const [exitY, setExitY] = useState(0);
+  const [activeFilter, setActiveFilter] = useState<string>('All');
+  const [exitDir, setExitDir] = useState<'align' | 'oppose' | 'skip' | null>(null);
   const [loading, setLoading] = useState(false);
   const [cursor, setCursor] = useState(initialItems.length);
   const [hasMore, setHasMore] = useState(true);
-  const [showUpHint, setShowUpHint] = useState(false);
-  const [query, setQuery] = useState('');
   const [swipeFeedback, setSwipeFeedback] = useState<{
     primary: string;
     secondary: string;
     className: string;
   } | null>(null);
   const fetchState = useRef({ loading: false, hasMore: true });
+  const chipScrollRef = useRef<HTMLDivElement>(null);
+  const [chipScroll, setChipScroll] = useState({ canScroll: false, left: false, right: false });
 
-  const activeParams = useMemo(() => mergeParams(activeFilters), [activeFilters]);
+  const syncChipScroll = useCallback(() => {
+    const el = chipScrollRef.current;
+    if (!el) return;
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    const max = scrollWidth - clientWidth;
+    const canScroll = max > 2;
+    setChipScroll({
+      canScroll,
+      left: canScroll && scrollLeft > 2,
+      right: canScroll && scrollLeft < max - 2,
+    });
+  }, []);
 
   const showSwipeFeedback = useCallback((dir: 'align' | 'oppose', updatedScore?: number | null) => {
     const secondary =
@@ -592,43 +355,15 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
     window.setTimeout(() => setSwipeFeedback(null), 1800);
   }, []);
 
-  const normalizedQuery = query.trim().toLowerCase();
-  const visibleItems = useMemo(
-    () =>
-      normalizedQuery
-        ? items.filter((item) => {
-            const n = item.name.toLowerCase();
-            const h = item.handle.toLowerCase();
-            const pk = item.profileKind ? String(item.profileKind).toLowerCase() : '';
-            const role = item.role ? item.role.toLowerCase() : '';
-            return (
-              n.includes(normalizedQuery) ||
-              h.includes(normalizedQuery) ||
-              pk.includes(normalizedQuery) ||
-              role.includes(normalizedQuery)
-            );
-          })
-        : items,
-    [items, normalizedQuery],
-  );
+  const visibleItems = useMemo(() => items, [items]);
   const current = visibleItems[0];
-  const x = useMotionValue(0), y = useMotionValue(0);
-  const rotate = useTransform(x, [-260, 0, 260], [-8, 0, 8]);
-  const upOp = useTransform(y, [-120, -40], [1, 0]);
-  /** Stamp overlays (matches main: ramp in over drag distance) */
-  const alignOp = useTransform(x, [18, 96], [0, 1]);
-  const opposeOp = useTransform(x, [-96, -18], [1, 0]);
-  const sx = useSpring(x, { stiffness: 400, damping: 30 });
-  const alignSc = useTransform(sx, [0, 130], [1, 1.25]);
-  const opposeSc = useTransform(sx, [-130, 0], [1.25, 1]);
-  const nextX = useTransform(x, [-300, 0, 300], [10, 0, -10]);
 
-  const fetchMore = useCallback(async (currentCursor: number, params: Record<string, string>, reset: boolean = false) => {
+  const fetchMore = useCallback(async (currentCursor: number, chip: string, reset: boolean = false) => {
     if (fetchState.current.loading || (!fetchState.current.hasMore && !reset)) return;
     fetchState.current.loading = true;
     setLoading(true);
     try {
-      const res = await fetch(buildDeckUrl(params, currentCursor));
+      const res = await fetch(buildDeckUrl(getParamsForLabel(chip), currentCursor));
       const data = await res.json();
       const payload = data.ok ? data.data : undefined;
       if (payload?.items?.length) {
@@ -656,14 +391,14 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
     setCursor(0);
     setHasMore(true);
     fetchState.current.hasMore = true;
-    fetchMore(0, activeParams, true);
-  }, [activeParams, fetchMore]);
+    fetchMore(0, activeFilter, true);
+  }, [activeFilter, fetchMore]);
 
   useEffect(() => { 
     if (items.length <= 3 && hasMore && !loading) {
-      void fetchMore(cursor, activeParams, false); 
+      void fetchMore(cursor, activeFilter, false); 
     }
-  }, [items.length, hasMore, loading, cursor, activeParams, fetchMore]);
+  }, [items.length, hasMore, loading, cursor, activeFilter, fetchMore]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -677,14 +412,27 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current]);
 
-  /** Shared drag MVs must match the new top card — layout+animate.rotate used to fight style.rotate and leave cards stuck */
+  /** Filter chip strip: horizontal scroll metrics for chevrons + ResizeObserver after layout. */
+  useLayoutEffect(() => {
+    syncChipScroll();
+  }, [syncChipScroll, activeFilter]);
+
   useEffect(() => {
-    x.set(0);
-    y.set(0);
-  }, [current?.id, x, y]);
-
-  // (chip scroll effects removed — no longer needed with dropdown filters)
-
+    const el = chipScrollRef.current;
+    const bump = () => {
+      requestAnimationFrame(() => syncChipScroll());
+    };
+    bump();
+    window.addEventListener('resize', bump, { passive: true });
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(bump) : null;
+    if (el && ro) ro.observe(el);
+    el?.addEventListener('scroll', bump, { passive: true });
+    return () => {
+      window.removeEventListener('resize', bump);
+      el?.removeEventListener('scroll', bump);
+      ro?.disconnect();
+    };
+  }, [syncChipScroll, activeFilter, loading]);
 
   const handleSwipe = useCallback(
     (dir: 'align' | 'oppose') => {
@@ -692,12 +440,9 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
       const rated = current;
       const ratedId = rated.id;
 
-      setExitX(dir === 'align' ? 800 : -800);
-      setExitY(-50);
+      setExitDir(dir);
 
       setItems((p) => p.filter((item) => item.id !== ratedId));
-      x.set(0);
-      y.set(0);
 
       void fetch(`/api/accounts/${ratedId}/swipe`, {
         method: 'POST',
@@ -712,8 +457,17 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
         })
         .catch((err) => toast.push(err instanceof Error ? err.message : 'Failed'));
     },
-    [current, toast, x, y, showSwipeFeedback],
+    [current, toast, showSwipeFeedback],
   );
+
+  function handleSkip() {
+    if (!current) return;
+    setExitDir('skip');
+    setItems((p) => p.filter((item) => item.id !== current.id));
+    if (items.length <= 3 && hasMore && !loading) {
+      void fetchMore(cursor, activeFilter, false);
+    }
+  }
 
   async function handleShare(card: PeopleDeckItem) {
     const url = `${window.location.origin}/account/${card.id}`;
@@ -738,44 +492,8 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
     }
   }
 
-  function handleDragEnd(_: PointerEvent, info: PanInfo): void {
-    const { offset, velocity } = info;
-    const dx = offset.x;
-    const dy = offset.y;
-    const vx = velocity.x;
-    const vy = velocity.y;
-    const absX = Math.abs(dx);
-    const absY = Math.abs(dy);
-
-    const horizontalDominant = absX >= absY * 0.88;
-    const verticalDominant = absY > absX * 1.12;
-
-    const swipedRight =
-      dx > OFFSET_THRESHOLD || (dx > FLICK_MIN_OFFSET && vx > VELOCITY_THRESHOLD);
-    const swipedLeft =
-      dx < -OFFSET_THRESHOLD || (dx < -FLICK_MIN_OFFSET && vx < -VELOCITY_THRESHOLD);
-    const swipedUp =
-      dy < -OFFSET_THRESHOLD || (dy < -48 && vy < -VELOCITY_THRESHOLD);
-
-    if (horizontalDominant && swipedRight) {
-      handleSwipe('align');
-      return;
-    }
-    if (horizontalDominant && swipedLeft) {
-      handleSwipe('oppose');
-      return;
-    }
-    if (verticalDominant && swipedUp) {
-      if (current) router.push(`/account/${current.id}`);
-      return;
-    }
-
-    animate(x, 0, { type: 'spring', stiffness: 400, damping: 30 });
-    animate(y, 0, { type: 'spring', stiffness: 400, damping: 30 });
-  }
-
   if (!current && !loading && items.length === 0) {
-    const activeLabel = filterLabel(activeFilters);
+    const emptyState = EMPTY_STATE_COPY[activeFilter] ?? EMPTY_STATE_COPY.All;
     return (
       <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 text-center">
         <motion.div
@@ -785,18 +503,17 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
           className="rounded-[32px] border border-border bg-card p-12 shadow-2xl"
         >
           <div className="mb-5 mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-muted text-4xl">👥</div>
-          <h2 className="text-[24px] font-black">All caught up!</h2>
-          <p className="text-muted-foreground mt-2 text-center text-sm">New profiles will appear as dossiers are created.</p>
-          {activeLabel !== 'All' && (
+          <h2 className="text-[24px] font-black">{emptyState.title}</h2>
+          <p className="text-muted-foreground mt-2 text-center text-sm">{emptyState.body}</p>
+          {activeFilter !== 'All' && (
             <button
               type="button"
               onClick={() => {
-                setActiveFilters({ role: ROLE_OPTIONS[0], status: STATUS_OPTIONS[0], reach: REACH_OPTIONS[0], sort: SORT_OPTIONS[0] });
-                setQuery('');
+                setActiveFilter('All');
               }}
               className="text-foreground hover:bg-muted mt-4 rounded-full border border-border px-5 py-2 text-sm font-medium transition-colors"
             >
-              Clear filters
+              Show all profiles
             </button>
           )}
         </motion.div>
@@ -805,188 +522,145 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
   }
 
   return (
-    <main className="flex h-[100dvh] min-h-0 w-full min-w-0 flex-col overflow-x-hidden overflow-y-hidden bg-background lg:h-screen lg:overflow-visible">
-      <div className="mx-auto flex min-h-0 w-full min-w-0 max-w-[520px] flex-1 flex-col px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-4 lg:h-full lg:min-h-0 lg:pb-8 lg:pt-8">
+    <main className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden">
+      <div className="mx-auto flex min-h-0 w-full min-w-0 max-w-[520px] flex-1 flex-col px-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))] pt-2 lg:h-full lg:min-h-0 lg:pb-6 lg:pt-4">
 
         {/* Top chrome above the deck: z-30 + bg so dragged cards (transform y) stay underneath and do not cover filters/search. */}
         <div className="relative z-30 w-full min-w-0 shrink-0 bg-background pb-1">
-          <header className="mb-4 flex w-full items-start justify-between">
-            <div>
-              <h1 className="text-[24px] lg:text-[28px] font-black tracking-tight" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>
-                Sho<span className="text-muted-foreground">शा</span>
-              </h1>
-              <p className="text-[13px] font-bold text-foreground">Discover &amp; Rate</p>
-              <p className="text-[10px] text-muted-foreground/70">Swipe to align or oppose impact.</p>
+          {/* Horizontal chips: flex-1 scroller (min-w-0) + optional chevrons; thin scrollbar; touch-pan-x for trackpads/phones. */}
+          <div className="relative mb-2 flex min-w-0 w-full max-w-full items-stretch gap-1">
+            {chipScroll.canScroll && (
+              <button
+                type="button"
+                aria-label="Scroll filters left"
+                disabled={!chipScroll.left}
+                onClick={() => chipScrollRef.current?.scrollBy({ left: -160, behavior: 'smooth' })}
+                className={cn(
+                  'flex h-10 w-8 shrink-0 items-center justify-center self-center rounded-full border border-border bg-card text-foreground shadow-sm transition-colors',
+                  chipScroll.left ? 'opacity-100 hover:bg-muted' : 'pointer-events-none opacity-30',
+                )}
+              >
+                <ChevronLeft size={18} strokeWidth={2.5} />
+              </button>
+            )}
+            <div
+              ref={chipScrollRef}
+              onScroll={syncChipScroll}
+              className={cn(
+                'flex min-h-10 min-w-0 flex-1 flex-nowrap gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain py-2 scroll-smooth touch-pan-x',
+                '[scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border',
+              )}
+            >
+              {FILTER_CHIPS.map(({ label }) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => {
+                    setActiveFilter(label);
+                  }}
+                  className={cn(
+                    'flex shrink-0 items-center gap-1.5 self-center rounded-full border px-4 py-2 text-[12px] font-bold transition-all duration-300',
+                    activeFilter === label
+                      ? 'scale-[1.04] border-foreground bg-foreground text-background shadow-md'
+                      : 'border-border bg-card text-muted-foreground hover:bg-muted',
+                  )}
+                >
+                  {chipIcon(label)}
+                  {label}
+                </button>
+              ))}
             </div>
-            <div className="flex items-center gap-2 pt-1">
-              {loading && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
-            </div>
-          </header>
-
-          {/* Compact dropdown filters */}
-          <div className="mb-4 flex w-full flex-wrap gap-2">
-            <FilterDropdown
-              id="people-filter-role"
-              label={activeFilters.role.label !== 'All Roles' ? activeFilters.role.label : 'Role ▾'}
-              options={ROLE_OPTIONS}
-              selected={activeFilters.role}
-              onSelect={(opt) => setActiveFilters((f) => ({ ...f, role: opt }))}
-            />
-            <FilterDropdown
-              id="people-filter-status"
-              label={activeFilters.status.label !== 'Any Status' ? activeFilters.status.label : 'Status ▾'}
-              options={STATUS_OPTIONS}
-              selected={activeFilters.status}
-              onSelect={(opt) => setActiveFilters((f) => ({ ...f, status: opt }))}
-            />
-            <FilterDropdown
-              id="people-filter-reach"
-              label={activeFilters.reach.label !== 'Any Reach' ? activeFilters.reach.label : 'Reach ▾'}
-              options={REACH_OPTIONS}
-              selected={activeFilters.reach}
-              onSelect={(opt) => setActiveFilters((f) => ({ ...f, reach: opt }))}
-            />
-            <FilterDropdown
-              id="people-filter-sort"
-              label={activeFilters.sort.label !== 'Top Scored' ? activeFilters.sort.label : 'Sort ▾'}
-              options={SORT_OPTIONS}
-              selected={activeFilters.sort}
-              onSelect={(opt) => setActiveFilters((f) => ({ ...f, sort: opt }))}
-            />
+            {chipScroll.canScroll && (
+              <button
+                type="button"
+                aria-label="Scroll filters right"
+                disabled={!chipScroll.right}
+                onClick={() => chipScrollRef.current?.scrollBy({ left: 160, behavior: 'smooth' })}
+                className={cn(
+                  'flex h-10 w-8 shrink-0 items-center justify-center self-center rounded-full border border-border bg-card text-foreground shadow-sm transition-colors',
+                  chipScroll.right ? 'opacity-100 hover:bg-muted' : 'pointer-events-none opacity-30',
+                )}
+              >
+                <ChevronRight size={18} strokeWidth={2.5} />
+              </button>
+            )}
           </div>
 
-          <div className="mx-auto w-full max-w-sm shrink-0 pb-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search people..."
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                className="w-full rounded-full border border-border bg-muted/50 py-2 pl-9 pr-4 text-sm placeholder:text-muted-foreground focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-            </div>
-          </div>
+          <div className="pb-1 lg:pb-2" />
         </div>
 
-        {/* Card stack — z-0 so top chrome always wins when geometry overlaps during drag. */}
-        <div className="relative z-0 min-h-0 w-full flex-1 overflow-visible pb-3">
-          <div className="relative flex h-full min-h-0 w-full items-center justify-center gap-0 px-1 py-2 sm:px-2 lg:gap-4">
-            {current && (
-              <motion.div
-                style={{ scale: opposeSc }}
-                className="z-10 mr-1 hidden shrink-0 flex-col items-center gap-2 md:flex lg:mr-2"
-              >
-                <motion.button
-                  type="button"
-                  onClick={() => handleSwipe('oppose')}
-                  whileTap={{ scale: 0.85 }}
-                  className="flex h-16 w-16 cursor-pointer items-center justify-center rounded-full border-[3px] border-red-200 bg-white text-red-500 shadow-2xl shadow-red-100/40 transition-all hover:scale-105 hover:shadow-red-200/60 dark:bg-card lg:h-[72px] lg:w-[72px]"
-                  aria-label="Oppose"
-                >
-                  <X size={28} strokeWidth={2.5} />
-                </motion.button>
-                <span className="text-[11px] font-black uppercase tracking-wider text-red-500">Oppose</span>
-                <span className="text-[12px] font-black text-red-400/80">−5</span>
-              </motion.div>
-            )}
-
+        {/* Card stack + actions: column flex so buttons never sit below clipped overflow */}
+        <div className="relative z-0 flex min-h-0 w-full flex-1 flex-col overflow-hidden">
+          <div className="flex min-h-0 flex-1 items-center justify-center px-1 py-1 sm:px-2">
             <div
-              className="relative h-full min-h-0 w-full max-w-[400px] shrink-0 lg:max-w-[420px]"
-              style={{ aspectRatio: '9/14', maxHeight: 'min(62dvh, 650px)' }}
+              className="relative mx-auto h-auto w-full max-h-full min-h-0 max-w-[400px] shrink lg:max-w-sm"
+              style={{ aspectRatio: '9/14' }}
             >
-            <AnimatePresence>
-              {visibleItems.slice(0, 3).map((item, index) => (
-                <SwipeCard
-                  key={item.id}
-                  item={item}
-                  index={index}
-                  exitX={exitX}
-                  exitY={exitY}
-                  visibleItems={visibleItems}
-                  x={x}
-                  y={y}
-                  rotate={rotate}
-                  nextX={nextX}
-                  alignOp={alignOp}
-                  opposeOp={opposeOp}
-                  opposeSc={opposeSc}
-                  alignSc={alignSc}
-                  upOp={upOp}
-                  showUpHint={showUpHint}
-                  setShowUpHint={setShowUpHint}
-                  handleDragEnd={handleDragEnd}
-                  handleSwipe={handleSwipe}
-                  handleShare={handleShare}
-                  onOpenProfile={() => router.push(`/account/${item.id}`)}
-                />
-              ))}
-            </AnimatePresence>
-            {!current && items.length > 0 && (
-              <div className="absolute inset-0 flex items-center justify-center px-4 text-center">
-                <div className="rounded-3xl border border-border bg-card/80 px-6 py-8">
-                  <p className="text-sm font-semibold text-foreground">No matches found.</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Try another name or username.</p>
+              <AnimatePresence>
+                {visibleItems.slice(0, 3).map((item, index) => (
+                  <SwipeCard
+                    key={item.id}
+                    item={item}
+                    index={index}
+                    exitDir={exitDir}
+                    visibleItems={visibleItems}
+                    handleShare={handleShare}
+                    onOpenProfile={() => router.push(`/account/${item.id}`)}
+                  />
+                ))}
+              </AnimatePresence>
+              {!current && items.length > 0 && (
+                <div className="absolute inset-0 flex items-center justify-center px-4 text-center">
+                  <div className="rounded-3xl border border-border bg-card/80 px-6 py-8">
+                    <p className="text-sm font-semibold text-foreground">No matches found.</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Try another name or username.</p>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
             </div>
-
-            {current && (
-              <motion.div
-                style={{ scale: alignSc }}
-                className="z-10 ml-1 hidden shrink-0 flex-col items-center gap-2 md:flex lg:ml-2"
-              >
-                <motion.button
-                  type="button"
-                  onClick={() => handleSwipe('align')}
-                  whileTap={{ scale: 0.85 }}
-                  className="flex h-16 w-16 cursor-pointer items-center justify-center rounded-full border-[3px] border-emerald-200 bg-white text-emerald-600 shadow-2xl shadow-emerald-100/40 transition-all hover:scale-105 hover:shadow-emerald-200/60 dark:bg-card lg:h-[72px] lg:w-[72px]"
-                  aria-label="Align"
-                >
-                  <Check size={28} strokeWidth={2.5} />
-                </motion.button>
-                <span className="text-[11px] font-black uppercase tracking-wider text-emerald-600">Align</span>
-                <span className="text-[12px] font-black text-emerald-500/80">+5</span>
-              </motion.div>
-            )}
           </div>
 
           {current && (
-            <motion.div
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.12 }}
-              className="mx-auto mt-3 w-full max-w-[420px] shrink-0 px-1"
-            >
-              <div className="flex items-stretch overflow-hidden rounded-2xl border border-border bg-card/80 shadow-sm backdrop-blur-sm">
-                <div className="flex flex-1 items-center justify-center gap-2.5 border-r border-border px-4 py-3.5">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-red-300 text-red-500">
-                    <X size={14} strokeWidth={2.5} />
-                  </span>
-                  <div>
-                    <p className="text-[11px] font-bold text-foreground">Left swipe = Oppose</p>
-                    <p className="text-[10px] font-bold text-red-500">−5 Rating</p>
-                  </div>
+            <div className="flex shrink-0 items-center justify-center gap-4 pb-1 pt-2">
+              <motion.button
+                whileTap={{ scale: 0.93 }}
+                onClick={() => {
+                  setExitDir('oppose');
+                  handleSwipe('oppose');
+                }}
+                className="flex flex-col items-center gap-2"
+              >
+                <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-destructive/40 bg-destructive/10 text-destructive transition-colors hover:bg-destructive/20 active:bg-destructive/30">
+                  <X size={26} strokeWidth={2.5} />
                 </div>
-                <div className="flex flex-1 items-center justify-center gap-2.5 px-4 py-3.5">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-emerald-300 text-emerald-600">
-                    <Check size={14} strokeWidth={2.5} />
-                  </span>
-                  <div>
-                    <p className="text-[11px] font-bold text-foreground">Right swipe = Align</p>
-                    <p className="text-[10px] font-bold text-emerald-600">+5 Rating &amp; Follow</p>
-                  </div>
+                <span className="text-[11px] font-bold uppercase tracking-widest text-destructive/70">Oppose</span>
+              </motion.button>
+
+              <motion.button
+                whileTap={{ scale: 0.93 }}
+                onClick={handleSkip}
+                className="flex flex-col items-center gap-2"
+              >
+                <div className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-muted text-muted-foreground transition-colors hover:bg-muted/80">
+                  <ChevronsRight size={20} strokeWidth={2} />
                 </div>
-              </div>
-              <p className="mt-3 flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground/55">
-                <Lock size={11} />
-                This action is public and the user will be notified.
-              </p>
-              <p className="mt-2 hidden text-center text-[10px] text-muted-foreground/40 lg:block">
-                ← → arrow keys to rate · ↑ open profile
-              </p>
-            </motion.div>
+                <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/60">Skip</span>
+              </motion.button>
+
+              <motion.button
+                whileTap={{ scale: 0.93 }}
+                onClick={() => {
+                  setExitDir('align');
+                  handleSwipe('align');
+                }}
+                className="flex flex-col items-center gap-2"
+              >
+                <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-emerald-400/40 bg-emerald-500/10 text-emerald-600 transition-colors hover:bg-emerald-500/20 active:bg-emerald-500/30">
+                  <Check size={26} strokeWidth={2.5} />
+                </div>
+                <span className="text-[11px] font-bold uppercase tracking-widest text-emerald-600/70">Align</span>
+              </motion.button>
+            </div>
           )}
         </div>
       </div>

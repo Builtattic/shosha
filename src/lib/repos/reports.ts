@@ -143,6 +143,18 @@ export async function listForAccount(accountId: string, statusIn: ReportStatus[]
   return results.slice(0, limit);
 }
 
+export async function listForAccounts(
+  accountIds: string[],
+  statusIn: ReportStatus[],
+  limitPerAccount: number
+): Promise<Record<string, ReportRecord[]>> {
+  if (accountIds.length === 0) return {};
+  const results = await Promise.all(
+    accountIds.map((id) => listForAccount(id, statusIn, limitPerAccount).catch(() => [] as ReportRecord[]))
+  );
+  return Object.fromEntries(accountIds.map((id, i) => [id, results[i]]));
+}
+
 export async function listAll(limit = 100): Promise<ReportRecord[]> {
   const snap = await ref().orderByChild('createdAt').limitToLast(limit).once('value');
   const results: ReportRecord[] = [];

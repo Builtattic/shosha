@@ -101,6 +101,7 @@ export interface FeedItemProps {
     isVerified: boolean;
   };
   canRequestModeration?: boolean;
+  publicAnonymous?: boolean;
 }
 
 export function FeedItem({
@@ -123,7 +124,8 @@ export function FeedItem({
   credibility,
   viewer,
   reporter,
-  canRequestModeration
+  canRequestModeration,
+  publicAnonymous
 }: FeedItemProps) {
   const router = useRouter();
   const toast = useToast();
@@ -340,10 +342,19 @@ export function FeedItem({
   }
 
   const isLiveNews = id.startsWith('twitter-') || id.startsWith('ig-') || id.startsWith('fb-') || id.startsWith('news-') || id.startsWith('reddit-');
-  const displayAuthor = reporter || (isLiveNews ? user : { name: 'Anonymous', handle: 'anonymous', avatar: '', isVerified: false });
+  const displayAuthor = reporter
+    ? reporter
+    : isLiveNews
+      ? user
+      : publicAnonymous === true
+        ? { name: 'Anonymous', handle: 'anonymous', avatar: '', isVerified: false }
+        : { name: 'Unknown', handle: '', avatar: '', isVerified: false };
   const displaySubject = isLiveNews ? null : user;
 
-  const authorLink = displayAuthor.handle === 'anonymous' ? '#' : `/account/website_${displayAuthor.handle.replace(/^@/, '')}`;
+  const authorLink =
+    displayAuthor.handle === 'anonymous' || !displayAuthor.handle
+      ? '#'
+      : `/account/website_${displayAuthor.handle.replace(/^@/, '')}`;
   const subjectLink = displaySubject ? `/account/${displaySubject.accountId || displaySubject.handle}` : null;
 
   return (

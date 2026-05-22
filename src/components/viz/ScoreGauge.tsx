@@ -124,8 +124,8 @@ export function ScoreGauge({
           )}
 
           {/* Min / Max Labels */}
-          <text x={radius - normalizedRadius} y={radius + 30} textAnchor="middle" className="fill-muted-foreground text-[12px] font-medium">{min}</text>
-          <text x={radius + normalizedRadius} y={radius + 30} textAnchor="middle" className="fill-muted-foreground text-[12px] font-medium">{max}</text>
+          <text x={radius - normalizedRadius} y={radius + 30} textAnchor="middle" className="fill-muted-foreground text-[20px] font-bold">-</text>
+          <text x={radius + normalizedRadius} y={radius + 30} textAnchor="middle" className="fill-muted-foreground text-[20px] font-bold">+</text>
         </svg>
       </div>
     </div>

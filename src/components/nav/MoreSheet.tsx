@@ -6,9 +6,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
   Home,
-  Target,
+  Users,
   Search,
-  TrendingUp,
   Bookmark,
   Bell,
   HelpCircle,
@@ -20,6 +19,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useReportModal } from '@/components/report/ReportModalProvider';
+import { useNotifications } from '@/contexts/NotificationsContext';
 
 const ADMIN_ROLES = ['moderator', 'editor', 'admin', 'super_admin'];
 
@@ -31,9 +31,8 @@ type NavItem = {
 
 const navigateItems: NavItem[] = [
   { href: '/dashboard', label: 'Home', icon: Home },
-  { href: '/impact', label: 'Impact', icon: Target },
+  { href: '/people', label: 'People', icon: Users },
   { href: '/search', label: 'Search', icon: Search },
-  { href: '/ranks', label: 'Ranks', icon: TrendingUp },
   { href: '/bookmarks', label: 'Bookmarks', icon: Bookmark },
   { href: '/notifications', label: 'Notifications', icon: Bell },
   { href: '/how-it-works', label: 'How It Works', icon: HelpCircle },
@@ -52,19 +51,8 @@ type MoreSheetProps = {
 
 export function MoreSheet({ open, onClose }: MoreSheetProps) {
   const { open: openReportModal } = useReportModal();
-  const [unreadCount, setUnreadCount] = useState(0);
+  const { unreadCount } = useNotifications();
   const [isAdmin, setIsAdmin] = useState(false);
-
-  useEffect(() => {
-    fetch('/api/notifications', { cache: 'no-store' })
-      .then((r) => r.json())
-      .then((payload) => {
-        if (payload.ok) {
-          setUnreadCount(typeof payload.data?.unread === 'number' ? payload.data.unread : 0);
-        }
-      })
-      .catch(() => {});
-  }, []);
 
   useEffect(() => {
     fetch('/api/me', { cache: 'no-store' })

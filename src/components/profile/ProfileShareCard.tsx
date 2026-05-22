@@ -56,12 +56,6 @@ function getGaugeBracket(score: number): number {
   return BRACKETS.find((b) => b >= abs) ?? BRACKETS[BRACKETS.length - 1];
 }
 
-function fmtBracket(n: number): string {
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(0) + 'M';
-  if (n >= 1_000) return (n / 1_000).toFixed(0) + 'k';
-  return String(n);
-}
-
 function fmtShort(n: number): string {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
   if (n >= 1_000) return (n / 1_000).toFixed(1) + 'K';
@@ -394,11 +388,11 @@ export const ProfileShareCard = forwardRef<HTMLDivElement, ProfileShareCardProps
                   fill="none" stroke="url(#gaugeGrad)" strokeWidth="17" strokeLinecap="round" opacity="0.25" />
                 <path d={arcPath(gCx, gCy, gR, gaugeStart, fillEndDeg)}
                   fill="none" stroke="url(#gaugeGrad)" strokeWidth="17" strokeLinecap="round" />
-                <text x="22"  y="144" textAnchor="middle" fontFamily={SANS} fontSize="9" fill={C.muted}>
-                  -{fmtBracket(bracket)}
+                <text x="22"  y="144" textAnchor="middle" dominantBaseline="middle" fontFamily={SANS} fontSize="14" fontWeight="700" fill={C.muted}>
+                  -
                 </text>
-                <text x="178" y="144" textAnchor="middle" fontFamily={SANS} fontSize="9" fill={C.muted}>
-                  +{fmtBracket(bracket)}
+                <text x="178" y="144" textAnchor="middle" dominantBaseline="middle" fontFamily={SANS} fontSize="14" fontWeight="700" fill={C.muted}>
+                  +
                 </text>
                 <circle cx={dotX.toFixed(2)} cy={dotY.toFixed(2)} r="6" fill="#1c1208" />
                 <text x="100" y="88"

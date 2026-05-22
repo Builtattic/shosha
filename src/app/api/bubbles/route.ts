@@ -19,12 +19,16 @@ const createBubbleSchema = z.object({
 
 export async function GET() {
   const bubbles = await bubblesRepo.list(60);
-  const withMembers = await Promise.all(
-    bubbles.map(async (bubble) => {
-      const members = await bubblesRepo.listMembers(bubble._id).catch(() => []);
-      return { ...bubble, memberCount: members.length, topMembers: members.slice(0, 5) };
-    })
-  );
+  const bubbleIds = bubbles.map((b) => b._id);
+  const membersMap = await bubblesRepo.listMembersForBubbles(bubbleIds);
+  const withMembers = bubbles.map((bubble) => {
+    const members = membersMap[bubble._id] ?? [];
+    return {
+      ...bubble,
+      memberCount: members.length,
+      topMembers: members.slice(0, 5),
+    };
+  });
   return ok(withMembers);
 }
 

@@ -4,6 +4,7 @@ import type { AppUser } from '@/lib/repos/users';
 import { resolveRankScope } from '@/lib/rankScope';
 import { BASE_SCORE } from '@/lib/scoring';
 import { RanksTabs, type RankRow } from './RanksTabs';
+import { MobileAppHeader } from '@/components/nav/MobileAppHeader';
 
 export const dynamic = 'force-dynamic';
 
@@ -114,6 +115,7 @@ export default async function RanksPage({ searchParams }: { searchParams?: { sco
 
   return (
     <main className="min-h-screen bg-background p-4 safe-bottom">
+      <MobileAppHeader />
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-[28px] font-bold text-foreground">Ranks</h1>
       </div>

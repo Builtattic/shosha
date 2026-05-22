@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-  CheckCircle2, Upload, TrendingUp, Shield,
+  CheckCircle2, TrendingUp, Shield,
   PieChart, Activity, Target, User, Users, UserRound, ThumbsUp, ThumbsDown, Minus, ArrowRight,
   Briefcase, GraduationCap, FileText, Link2, Pencil, MapPin, ExternalLink,
   AlertCircle, Play, History, TrendingDown, Calendar, Eye, Link as LinkIcon
@@ -21,6 +21,7 @@ import { ShareCardModal } from '@/components/profile/ShareCardModal';
 import { ConnectionListModal, type ConnectionListModalRef } from '@/components/profile/ConnectionListModal';
 import { SwipeScoreBreakdownCard } from '@/components/profile/SwipeScoreBreakdownCard';
 import { PostDetailModal } from '@/components/feed/PostDetailModal';
+import { MobileAppHeader } from '@/components/nav/MobileAppHeader';
 
 
 const EDU_LABELS: Record<string, string> = {
@@ -280,23 +281,7 @@ export default function ProfilePage() {
 
   return (
     <main className="min-h-screen bg-background safe-bottom font-sans">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-background px-4 py-4">
-        <div className="mx-auto flex max-w-2xl items-center justify-between">
-          <div className="font-serif text-[26px] font-black tracking-tight text-foreground">
-            Sho<span className="font-normal italic text-muted-foreground">शा</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => setShareOpen(true)}
-              className="text-foreground transition-opacity hover:opacity-70"
-              aria-label="Share profile card"
-            >
-              <Upload size={22} strokeWidth={2.5} />
-            </button>
-          </div>
-        </div>
-      </header>
+      <MobileAppHeader shareAction={() => setShareOpen(true)} />
 
       <div className="mx-auto max-w-2xl px-4">
         {/* Onboarding CTA banner */}

@@ -21,6 +21,7 @@ export function PostDetailModal({
 
   useEffect(() => {
     if (open && reportId) {
+      setReport(null);
       setLoading(true);
       setError(null);
       fetch(`/api/reports/${reportId}`)

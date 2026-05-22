@@ -2,12 +2,11 @@
 
 import { useEffect, useMemo, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Search, Bell, Plus, X } from 'lucide-react';
 import { FeedItem } from '@/components/feed/FeedItem';
-import { useReportModal } from '@/components/report/ReportModalProvider';
 import { PostDetailModal } from '@/components/feed/PostDetailModal';
 import { cn } from '@/lib/utils';
 import { type FeedReport, toFeedItem } from '@/lib/feed';
+import { MobileAppHeader } from '@/components/nav/MobileAppHeader';
 
 type FeedFilter = 'for_you' | 'top' | 'positive' | 'negative' | 'following';
 
@@ -20,7 +19,6 @@ const tabs: Array<{ label: string; value: FeedFilter }> = [
 ];
 
 function FeedContent() {
-  const reportModal = useReportModal();
   const searchParams = useSearchParams();
   const router = useRouter();
   
@@ -71,46 +69,11 @@ function FeedContent() {
 
   return (
     <main className="min-h-screen bg-background safe-bottom">
-      <header className="sticky top-0 z-50 bg-background p-4">
-        <div className="mx-auto flex max-w-2xl items-center justify-between">
-          <div className="font-serif text-[28px] font-black text-foreground">
-            Sho<span className="font-normal italic text-muted-foreground">शा</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <button
-              type="button"
-              onClick={() => setSearchOpen((value) => !value)}
-              className="text-muted-foreground transition-colors hover:text-foreground"
-              aria-label="Search reports"
-            >
-              {searchOpen ? <X size={22} /> : <Search size={22} />}
-            </button>
-            <button
-              type="button"
-              onClick={() => reportModal.open()}
-              className="text-muted-foreground transition-colors hover:text-foreground"
-              aria-label="Create report"
-            >
-              <Plus size={22} />
-            </button>
-            <button type="button" onClick={() => router.push('/notifications')} className="relative text-muted-foreground transition-colors hover:text-foreground" aria-label="Notifications">
-              <Bell size={22} />
-              <span className="pointer-events-none absolute right-0.5 top-0 h-2 w-2 rounded-full border border-background bg-destructive" />
-            </button>
-          </div>
-        </div>
-        {searchOpen && (
-          <div className="mx-auto max-w-2xl">
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              autoFocus
-              placeholder="Search reports..."
-              className="mt-3 w-full rounded-full border border-border bg-card px-4 py-3 text-[14px] outline-none focus:ring-2 focus:ring-primary/20"
-            />
-          </div>
-        )}
-      </header>
+      <MobileAppHeader
+        onSearch={(q) => setQuery(q)}
+        showSearch={searchOpen}
+        onSearchToggle={() => setSearchOpen((v) => !v)}
+      />
 
       <div className="mx-auto max-w-2xl">
         <div className="mb-6 mt-2 px-4">
