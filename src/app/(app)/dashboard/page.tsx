@@ -125,7 +125,17 @@ export default function DashboardPage() {
   const [meData, setMeData] = useState<{ user: any; claimedAccounts: any[] } | null>(null);
   const [heroImgError, setHeroImgError] = useState(false);
   
-  const [trendingPeople, setTrendingPeople] = useState<TrendingPerson[]>([]);
+  const [rawTrendingPeople, setRawTrendingPeople] = useState<TrendingPerson[]>([]);
+  const trendingPeople = useMemo(() => {
+    const followingUsers = meData?.user?.following ?? [];
+    const followingAccounts = meData?.user?.followingAccounts ?? [];
+    return rawTrendingPeople.filter((person) => {
+      const followedAsUser =
+        person.followUserId && followingUsers.includes(person.followUserId);
+      const followedAsAccount = followingAccounts.includes(person.id);
+      return !followedAsUser && !followedAsAccount;
+    });
+  }, [rawTrendingPeople, meData]);
   const [topStories, setTopStories] = useState<FeedReport[]>([]);
   const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null);
   const [storyDetailOpen, setStoryDetailOpen] = useState(false);
@@ -161,7 +171,7 @@ export default function DashboardPage() {
           ...person,
           followUserId: person.claimedBy ?? null,
         }));
-        if (active) setTrendingPeople(enriched);
+        if (active) setRawTrendingPeople(enriched);
       })
       .catch(() => undefined);
       

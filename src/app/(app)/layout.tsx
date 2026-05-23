@@ -1,4 +1,5 @@
 import { BottomNav } from '@/components/nav/BottomNav';
+import { DesktopTopBar } from '@/components/nav/DesktopTopBar';
 import { Sidebar } from '@/components/nav/Sidebar';
 import { EmailVerificationBanner } from '@/components/auth/EmailVerificationBanner';
 import { ReportModalProvider } from '@/components/report/ReportModalProvider';
@@ -22,6 +23,7 @@ export default function AppLayout({
           {/* Main Content */}
           <div className="min-w-0 flex-1 lg:pl-64">
             <EmailVerificationBanner />
+            <DesktopTopBar />
             {children}
             <PushNotificationPrompt />
           </div>
