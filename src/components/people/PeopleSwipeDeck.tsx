@@ -1,18 +1,18 @@
 'use client';
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import {
   motion,
   AnimatePresence,
 } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import {
-  ChevronLeft,
-  ChevronRight,
   ChevronsRight,
+  ChevronDown,
   Globe,
   Users,
   Share2,
+  SlidersHorizontal,
   X,
   Check,
   ShieldCheck,
@@ -320,21 +320,8 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
     className: string;
   } | null>(null);
   const fetchState = useRef({ loading: false, hasMore: true });
-  const chipScrollRef = useRef<HTMLDivElement>(null);
-  const [chipScroll, setChipScroll] = useState({ canScroll: false, left: false, right: false });
-
-  const syncChipScroll = useCallback(() => {
-    const el = chipScrollRef.current;
-    if (!el) return;
-    const { scrollLeft, scrollWidth, clientWidth } = el;
-    const max = scrollWidth - clientWidth;
-    const canScroll = max > 2;
-    setChipScroll({
-      canScroll,
-      left: canScroll && scrollLeft > 2,
-      right: canScroll && scrollLeft < max - 2,
-    });
-  }, []);
+  const filterMenuRef = useRef<HTMLDivElement>(null);
+  const [isOpen, setIsOpen] = useState(false);
 
   const showSwipeFeedback = useCallback((dir: 'align' | 'oppose', updatedScore?: number | null) => {
     const secondary =
@@ -412,27 +399,23 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current]);
 
-  /** Filter chip strip: horizontal scroll metrics for chevrons + ResizeObserver after layout. */
-  useLayoutEffect(() => {
-    syncChipScroll();
-  }, [syncChipScroll, activeFilter]);
-
   useEffect(() => {
-    const el = chipScrollRef.current;
-    const bump = () => {
-      requestAnimationFrame(() => syncChipScroll());
+    if (!isOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (filterMenuRef.current && !filterMenuRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
     };
-    bump();
-    window.addEventListener('resize', bump, { passive: true });
-    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(bump) : null;
-    if (el && ro) ro.observe(el);
-    el?.addEventListener('scroll', bump, { passive: true });
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    document.addEventListener('keydown', onKey);
     return () => {
-      window.removeEventListener('resize', bump);
-      el?.removeEventListener('scroll', bump);
-      ro?.disconnect();
+      document.removeEventListener('mousedown', handler);
+      document.removeEventListener('keydown', onKey);
     };
-  }, [syncChipScroll, activeFilter, loading]);
+  }, [isOpen]);
 
   const handleSwipe = useCallback(
     (dir: 'align' | 'oppose') => {
@@ -526,67 +509,76 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
       <div className="mx-auto flex min-h-0 w-full min-w-0 max-w-[520px] flex-1 flex-col px-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))] pt-2 lg:h-full lg:min-h-0 lg:pb-6 lg:pt-4">
 
         {/* Top chrome above the deck: z-30 + bg so dragged cards (transform y) stay underneath and do not cover filters/search. */}
-        <div className="relative z-30 w-full min-w-0 shrink-0 bg-background pb-1">
-          {/* Horizontal chips: flex-1 scroller (min-w-0) + optional chevrons; thin scrollbar; touch-pan-x for trackpads/phones. */}
-          <div className="relative mb-2 flex min-w-0 w-full max-w-full items-stretch gap-1">
-            {chipScroll.canScroll && (
-              <button
-                type="button"
-                aria-label="Scroll filters left"
-                disabled={!chipScroll.left}
-                onClick={() => chipScrollRef.current?.scrollBy({ left: -160, behavior: 'smooth' })}
-                className={cn(
-                  'flex h-10 w-8 shrink-0 items-center justify-center self-center rounded-full border border-border bg-card text-foreground shadow-sm transition-colors',
-                  chipScroll.left ? 'opacity-100 hover:bg-muted' : 'pointer-events-none opacity-30',
-                )}
-              >
-                <ChevronLeft size={18} strokeWidth={2.5} />
-              </button>
-            )}
-            <div
-              ref={chipScrollRef}
-              onScroll={syncChipScroll}
-              className={cn(
-                'flex min-h-10 min-w-0 flex-1 flex-nowrap gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain py-2 scroll-smooth touch-pan-x',
-                '[scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border',
-              )}
+        <div ref={filterMenuRef} className="relative z-30 w-full min-w-0 shrink-0 bg-background pb-2">
+          <div className="flex items-center gap-2 px-1">
+            <SlidersHorizontal size={16} className="shrink-0 text-muted-foreground" />
+            <button
+              type="button"
+              onClick={() => setIsOpen((prev) => !prev)}
+              className="flex min-w-[150px] items-center justify-between gap-2 rounded-xl border border-border bg-card px-4 py-2 text-[13px] font-semibold"
             >
-              {FILTER_CHIPS.map(({ label }) => (
-                <button
-                  key={label}
-                  type="button"
-                  onClick={() => {
-                    setActiveFilter(label);
-                  }}
-                  className={cn(
-                    'flex shrink-0 items-center gap-1.5 self-center rounded-full border px-4 py-2 text-[12px] font-bold transition-all duration-300',
-                    activeFilter === label
-                      ? 'scale-[1.04] border-foreground bg-foreground text-background shadow-md'
-                      : 'border-border bg-card text-muted-foreground hover:bg-muted',
-                  )}
-                >
-                  {chipIcon(label)}
-                  {label}
-                </button>
-              ))}
-            </div>
-            {chipScroll.canScroll && (
+              <span className="flex items-center gap-1.5">
+                {chipIcon(activeFilter as (typeof FILTER_CHIPS)[number]['label'])}
+                {activeFilter}
+              </span>
+              <ChevronDown
+                size={14}
+                className={cn('transition-transform', isOpen && 'rotate-180')}
+              />
+            </button>
+            {activeFilter !== 'All' && (
               <button
                 type="button"
-                aria-label="Scroll filters right"
-                disabled={!chipScroll.right}
-                onClick={() => chipScrollRef.current?.scrollBy({ left: 160, behavior: 'smooth' })}
-                className={cn(
-                  'flex h-10 w-8 shrink-0 items-center justify-center self-center rounded-full border border-border bg-card text-foreground shadow-sm transition-colors',
-                  chipScroll.right ? 'opacity-100 hover:bg-muted' : 'pointer-events-none opacity-30',
-                )}
+                onClick={() => setActiveFilter('All')}
+                className="text-[12px] text-muted-foreground underline underline-offset-2 hover:text-foreground"
               >
-                <ChevronRight size={18} strokeWidth={2.5} />
+                Clear
               </button>
             )}
           </div>
 
-          <div className="pb-1 lg:pb-2" />
+          {isOpen && (
+            <>
+              <div
+                className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+                onClick={() => setIsOpen(false)}
+              />
+              <div
+                className={cn(
+                  'fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl border-t border-border bg-background pb-8 pt-2 shadow-xl',
+                  'lg:absolute lg:bottom-auto lg:left-1 lg:right-auto lg:top-[44px]',
+                  'lg:min-w-[200px] lg:rounded-xl lg:border lg:pb-0 lg:pt-0 lg:shadow-lg',
+                )}
+              >
+                <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-border lg:hidden" />
+                <p className="px-4 pb-2 text-[11px] font-black uppercase tracking-widest text-muted-foreground lg:hidden">
+                  Filter People
+                </p>
+                <div className="overflow-hidden lg:rounded-xl">
+                  {FILTER_CHIPS.map(({ label }) => (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => {
+                        setActiveFilter(label);
+                        setIsOpen(false);
+                      }}
+                      className={cn(
+                        'flex w-full items-center gap-2 px-4 py-3 text-left text-[14px] lg:py-2.5 lg:text-[13px]',
+                        label === activeFilter
+                          ? 'bg-foreground font-bold text-background'
+                          : 'text-muted-foreground hover:bg-muted',
+                      )}
+                    >
+                      {chipIcon(label)}
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <div className="h-6 lg:hidden" />
+              </div>
+            </>
+          )}
         </div>
 
         {/* Card stack + actions: column flex so buttons never sit below clipped overflow */}
