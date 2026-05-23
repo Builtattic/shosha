@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Home, Target, TrendingUp, Info, User, ShieldAlert, Settings, Globe, ChevronDown, ShieldCheck, Newspaper, HelpCircle, Bookmark, Bell, Search, PlusCircle, Activity, Users, CircleDot } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useReportModal } from '@/components/report/ReportModalProvider';
 import { RANK_SCOPE_OPTIONS, resolveRankScope, type RankScopeValue } from '@/lib/rankScope';
 
@@ -97,9 +96,6 @@ export function Sidebar() {
           >
             <Activity size={14} />
           </Link>
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-card text-muted-foreground [&>button]:flex [&>button]:h-full [&>button]:w-full [&>button]:items-center [&>button]:justify-center [&>button]:rounded-full [&>button]:p-0">
-            <ThemeToggle />
-          </div>
         </div>
       </div>
 

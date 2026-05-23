@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Bell, Plus, Search, Upload, User, X } from 'lucide-react';
 import { useReportModal } from '@/components/report/ReportModalProvider';
 import { useNotifications } from '@/contexts/NotificationsContext';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 export interface MobileAppHeaderProps {
   onSearch?: (query: string) => void;
@@ -73,6 +74,9 @@ export function MobileAppHeader({
                 </span>
               )}
             </button>
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center text-muted-foreground [&>button]:flex [&>button]:h-full [&>button]:w-full [&>button]:items-center [&>button]:justify-center [&>button]:rounded-xl [&>button]:p-0 [&>button]:text-muted-foreground [&>button]:transition-colors [&>button]:hover:text-foreground">
+              <ThemeToggle />
+            </div>
             <button
               type="button"
               onClick={() => router.push('/profile')}

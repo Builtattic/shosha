@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Search as SearchIcon, X } from 'lucide-react';
 import { FeedItem, type FeedItemProps } from '@/components/feed/FeedItem';
 import { cn } from '@/lib/utils';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 type FeedReport = {
   _id: string;
@@ -147,13 +148,18 @@ export default function SearchPage() {
     <main className="min-h-screen bg-background safe-bottom">
       <header className="sticky top-0 z-50 bg-background p-4 border-b border-border">
         <div className="mx-auto max-w-2xl">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <SearchIcon size={18} />
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <SearchIcon size={18} />
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-[22px] font-serif font-black leading-none text-foreground">Search</h1>
+                <p className="mt-1 text-[11px] text-muted-foreground">Find filings by content, or accounts by handle.</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-[22px] font-serif font-black text-foreground leading-none">Search</h1>
-              <p className="text-[11px] text-muted-foreground mt-1">Find filings by content, or accounts by handle.</p>
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center text-muted-foreground lg:hidden [&>button]:flex [&>button]:h-full [&>button]:w-full [&>button]:items-center [&>button]:justify-center [&>button]:rounded-xl [&>button]:p-0">
+              <ThemeToggle />
             </div>
           </div>
           <div className="relative">
