@@ -103,20 +103,24 @@ export async function findById(id: string): Promise<ReportRecord | null> {
   return withId<ReportRecord>(snap.key!, snap.val());
 }
 
-export type CreateReportInput = Omit<ReportRecord, '_id' | 'createdAt' | 'updatedAt'>;
+export type CreateReportInput = Omit<ReportRecord, '_id' | 'createdAt' | 'updatedAt'> & {
+  createdAt?: string;
+};
 
 export async function create(input: CreateReportInput): Promise<ReportRecord> {
   const now = new Date().toISOString();
+  const createdAt = input.createdAt ?? now;
+  const { createdAt: _omitCreatedAt, ...rest } = input;
   const newRef = ref().push();
   const payload = stripUndefined({
-    ...input,
-    visibility: input.visibility ?? 'public',
-    pinned: input.pinned ?? false,
-    featured: input.featured ?? false,
-    source: input.source ?? 'user',
-    stats: input.stats ?? { aligns: 0, opposes: 0, comments: 0, shares: 0 },
-    createdAt: now,
-    updatedAt: now
+    ...rest,
+    visibility: rest.visibility ?? 'public',
+    pinned: rest.pinned ?? false,
+    featured: rest.featured ?? false,
+    source: rest.source ?? 'user',
+    stats: rest.stats ?? { aligns: 0, opposes: 0, comments: 0, shares: 0 },
+    createdAt,
+    updatedAt: createdAt
   });
   await newRef.set(payload);
   return { _id: newRef.key!, ...payload } as ReportRecord;

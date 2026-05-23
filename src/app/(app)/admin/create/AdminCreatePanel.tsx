@@ -26,6 +26,12 @@ const platforms: Platform[] = ['x', 'instagram', 'facebook', 'youtube', 'tiktok'
 
 type TabType = 'claim' | 'account' | 'ownership';
 
+function defaultDatetimeLocal(): string {
+  return new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
+    .toISOString()
+    .slice(0, 16);
+}
+
 export function AdminCreatePanel({ initialAccounts, users }: { initialAccounts: AccountOption[]; users: UserOption[] }) {
   const firstPositiveRow = SHEET_SCORING_INDEX.find((row) => row.type === 'positive') ?? SHEET_SCORING_INDEX[0];
   const [activeTab, setActiveTab] = useState<TabType>('claim');
@@ -61,7 +67,8 @@ export function AdminCreatePanel({ initialAccounts, users }: { initialAccounts: 
     status: 'approved', 
     visibility: 'public', 
     pinned: false, 
-    featured: false 
+    featured: false,
+    reportedAt: defaultDatetimeLocal(),
   });
   
   const [ownership, setOwnership] = useState({ 
@@ -127,7 +134,10 @@ export function AdminCreatePanel({ initialAccounts, users }: { initialAccounts: 
         baseScore: selectedScoringRow.baseScore,
         repetitionPattern: reportForm.repetitionPattern,
         intent: reportForm.intent,
-        circumstances: reportForm.circumstances
+        circumstances: reportForm.circumstances,
+        ...(reportForm.reportedAt.trim()
+          ? { reportedAt: new Date(reportForm.reportedAt).toISOString() }
+          : {}),
       }) 
     });
     const payload = await res.json();
@@ -384,6 +394,16 @@ export function AdminCreatePanel({ initialAccounts, users }: { initialAccounts: 
                       /> 
                       <span className="flex-1 group-hover:text-foreground transition-colors">Feature on Main Feed</span>
                     </label>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Report Date & Time</label>
+                    <input
+                      type="datetime-local"
+                      value={reportForm.reportedAt}
+                      onChange={(e) => setReportForm({ ...reportForm, reportedAt: e.target.value })}
+                      className="admin-input h-14 bg-secondary/30 border-white/5 w-full"
+                    />
                   </div>
 
                   <button 
