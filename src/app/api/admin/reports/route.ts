@@ -45,6 +45,7 @@ const createSchema = z.object({
     comments: z.number().int().nonnegative().default(0),
     shares: z.number().int().nonnegative().default(0),
   }).default({ aligns: 0, opposes: 0, comments: 0, shares: 0 }),
+  reportedAt: z.string().datetime().optional(),
 });
 
 export async function POST(request: Request) {
@@ -56,6 +57,7 @@ export async function POST(request: Request) {
   const account = await accountsRepo.findById(parsed.data.accountId);
   if (!account) return fail('not_found', 'No dossier exists for that claim.', 404);
   const now = new Date().toISOString();
+  const createdAt = parsed.data.reportedAt ?? now;
   const scoringRow = resolveSheetBaseImpact(parsed.data.deed, parsed.data.type);
   if (
     scoringRow.deed !== parsed.data.deed ||
@@ -131,6 +133,7 @@ export async function POST(request: Request) {
     createdByAdminId: user!._id,
     source: 'admin',
     stats: parsed.data.stats,
+    createdAt,
   });
 
   let updatedAccount = account;
