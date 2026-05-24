@@ -10,7 +10,6 @@ import { PostDetailModal } from '@/components/feed/PostDetailModal';
 import { FollowButton } from '@/components/profile/FollowButton';
 import { D3ScoreGauge } from '@/components/viz/D3ScoreGauge';
 import { cn } from '@/lib/utils';
-import { SignInChip } from '@/components/nav/SignInChip';
 import { calcProfileScores, calcShoshaScore } from '@/lib/scoring';
 import { useAuth } from '@/contexts/AuthContext';
 import { MobileAppHeader } from '@/components/nav/MobileAppHeader';
@@ -252,10 +251,6 @@ export default function DashboardPage() {
         showSearch={searchOpen}
         onSearchToggle={() => setSearchOpen((v) => !v)}
       />
-
-      <div className="mx-auto max-w-2xl px-4 pt-3 lg:px-0">
-        <SignInChip />
-      </div>
 
       <div className="mx-auto max-w-2xl px-4 lg:px-0">
         {/* ── Hero Banner ─────────────────────────────────────────────── */}

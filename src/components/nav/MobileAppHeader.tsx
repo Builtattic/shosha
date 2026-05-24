@@ -2,10 +2,13 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bell, Plus, Search, Upload, User, X } from 'lucide-react';
+import { Bell, LogOut, Plus, Search, Upload, X } from 'lucide-react';
 import { useReportModal } from '@/components/report/ReportModalProvider';
 import { useNotifications } from '@/contexts/NotificationsContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { useMePhotoUrl } from '@/hooks/useMePhotoUrl';
+import { cn } from '@/lib/utils';
 
 export interface MobileAppHeaderProps {
   onSearch?: (query: string) => void;
@@ -23,7 +26,11 @@ export function MobileAppHeader({
   const router = useRouter();
   const reportModal = useReportModal();
   const { unreadCount } = useNotifications();
+  const { user, signOut } = useAuth();
+  const { photoUrl, imgError, setImgError } = useMePhotoUrl();
   const [query, setQuery] = useState('');
+
+  const showAvatar = Boolean(photoUrl && !imgError);
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/80 p-4 backdrop-blur-xl lg:hidden">
@@ -80,11 +87,38 @@ export function MobileAppHeader({
             <button
               type="button"
               onClick={() => router.push('/profile')}
-              className="text-muted-foreground transition-colors hover:text-foreground"
+              className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full border border-border bg-muted text-muted-foreground transition-opacity hover:opacity-80"
               aria-label="Profile"
             >
-              <User size={22} />
+              {photoUrl ? (
+                <img
+                  key={photoUrl}
+                  src={photoUrl}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  onError={() => setImgError(true)}
+                  onLoad={() => setImgError(false)}
+                />
+              ) : null}
+              <div
+                className={cn(
+                  'avatar-fallback flex h-full w-full items-center justify-center text-primary text-sm font-bold',
+                  showAvatar && 'hidden',
+                )}
+              >
+                {(user?.displayName?.[0] ?? user?.email?.[0] ?? '?').toUpperCase()}
+              </div>
             </button>
+            {user && (
+              <button
+                type="button"
+                onClick={() => signOut()}
+                className="text-muted-foreground transition-colors hover:text-foreground"
+                aria-label="Sign out"
+              >
+                <LogOut size={22} />
+              </button>
+            )}
           </div>
         </div>
         {onSearch && showSearch && (

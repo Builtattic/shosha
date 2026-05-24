@@ -2,11 +2,13 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bell, LogOut, Plus, Search, User, X } from 'lucide-react';
+import { Bell, LogOut, Plus, Search, X } from 'lucide-react';
 import { useReportModal } from '@/components/report/ReportModalProvider';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { useMePhotoUrl } from '@/hooks/useMePhotoUrl';
+import { cn } from '@/lib/utils';
 
 const iconButtonClass =
   'p-2 rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground';
@@ -16,12 +18,11 @@ export function DesktopTopBar() {
   const reportModal = useReportModal();
   const { unreadCount } = useNotifications();
   const { user, signOut } = useAuth();
+  const { photoUrl, imgError, setImgError } = useMePhotoUrl();
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const [avatarError, setAvatarError] = useState(false);
 
-  const photoUrl = user?.photoURL;
-  const showAvatar = Boolean(photoUrl && !avatarError);
+  const showAvatar = Boolean(photoUrl && !imgError);
 
   function closeSearch() {
     setSearchOpen(false);
@@ -99,19 +100,27 @@ export function DesktopTopBar() {
         <button
           type="button"
           onClick={() => router.push('/profile')}
-          className={iconButtonClass}
+          className={cn(iconButtonClass, 'relative h-8 w-8 overflow-hidden rounded-full border border-border bg-muted p-0')}
           aria-label="Profile"
         >
-          {showAvatar ? (
+          {photoUrl ? (
             <img
-              src={photoUrl!}
+              key={photoUrl}
+              src={photoUrl}
               alt=""
-              className="h-8 w-8 rounded-full object-cover"
-              onError={() => setAvatarError(true)}
+              className="h-full w-full object-cover"
+              onError={() => setImgError(true)}
+              onLoad={() => setImgError(false)}
             />
-          ) : (
-            <User size={22} />
-          )}
+          ) : null}
+          <div
+            className={cn(
+              'avatar-fallback flex h-full w-full items-center justify-center text-primary text-sm font-bold',
+              showAvatar && 'hidden',
+            )}
+          >
+            {(user?.displayName?.[0] ?? user?.email?.[0] ?? '?').toUpperCase()}
+          </div>
         </button>
 
         {user && (
