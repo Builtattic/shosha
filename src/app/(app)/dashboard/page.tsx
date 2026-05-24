@@ -10,7 +10,6 @@ import { PostDetailModal } from '@/components/feed/PostDetailModal';
 import { FollowButton } from '@/components/profile/FollowButton';
 import { D3ScoreGauge } from '@/components/viz/D3ScoreGauge';
 import { cn } from '@/lib/utils';
-import { calcProfileScores, calcShoshaScore } from '@/lib/scoring';
 import { useAuth } from '@/contexts/AuthContext';
 import { MobileAppHeader } from '@/components/nav/MobileAppHeader';
 
@@ -222,11 +221,13 @@ export default function DashboardPage() {
     );
   }, [feed, query]);
 
-  // Compute user's own Shosha Score from profile dimensions
-  const profileDims = meData?.user ? calcProfileScores(meData.user) : [];
-  const contextPercent = calcShoshaScore(profileDims);
   const ledgerScore = meData?.user?.score ?? 1000;
-  const credibility = contextPercent;
+  const credibility =
+    typeof meData?.user?.profileCredibility === 'number'
+      ? Math.round(meData.user.profileCredibility)
+      : typeof meData?.user?.credibility === 'number'
+        ? Math.round(meData.user.credibility)
+        : 0;
   const hasOnboarded = !!(meData?.user?.onboardingComplete || meData?.user?.name || meData?.user?.occupationRole);
   const displayName = meData?.user?.name || firebaseUser?.displayName || firebaseUser?.email?.split('@')[0] || 'You';
   
