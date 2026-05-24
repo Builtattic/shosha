@@ -345,7 +345,8 @@ export default async function AccountPage({
     aligns: 0,
     opposes: 0,
   }));
-  const dossierTotalScore = account.score ?? 1000;
+  const dossierTotalScore =
+    account.displayScore ?? account.score ?? 1000;
 
   function formatImpact(value: number) {
     if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
@@ -509,7 +510,7 @@ export default async function AccountPage({
         <LiveAccountScorePanel
           accountId={account._id}
           initial={{
-            score: account.score,
+            score: account.displayScore ?? account.score ?? 1000,
             scoreHistory: account.scoreHistory,
             followers: displayedFollowers || account.followers,
             credibility: profileCredibility,

@@ -1,6 +1,6 @@
 import { Redis } from '@upstash/redis';
 
-type RedisClient = Pick<Redis, 'get' | 'set'>;
+type RedisClient = Pick<Redis, 'get' | 'set' | 'del'>;
 
 const g = globalThis as unknown as {
   __shoshaRedisCache?: RedisClient | null;
@@ -59,5 +59,17 @@ export function cacheKey(...parts: Array<string | number | boolean | null | unde
     .filter((part) => part !== null && part !== undefined && part !== '')
     .map((part) => encodeURIComponent(String(part)))
     .join(':');
+}
+
+/** Drop a cached entry so the next read loads fresh data (e.g. after a swipe score write). */
+export async function invalidateCacheKey(key: string): Promise<void> {
+  const client = redis();
+  if (!client) return;
+
+  try {
+    await client.del(key);
+  } catch {
+    // Cache invalidation must not fail the request.
+  }
 }
 

@@ -1,6 +1,7 @@
 import { adminDb } from '@/lib/firebase/admin';
 import { withId, stripId } from '@/lib/repos/_serialize';
 import { applySheetScore, sheetDecay } from '@/lib/scoring';
+import type { ScoreCause } from '@/types';
 
 export type UserRole = 'user' | 'moderator' | 'editor' | 'admin' | 'super_admin';
 export const USER_ROLES: UserRole[] = ['user', 'moderator', 'editor', 'admin', 'super_admin'];
@@ -44,7 +45,7 @@ export type ProfileVisibilitySettings = {
 export type LedgerEntryRecord = {
   t: string;
   delta: number;
-  cause: 'seed' | 'report' | 'audit' | 'decay';
+  cause: ScoreCause;
   category?: string;
   eventId?: string;
   multipliers?: Record<string, number>;

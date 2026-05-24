@@ -213,6 +213,14 @@ export default function DashboardPage() {
     };
   }, [loadMe]);
 
+  useEffect(() => {
+    const handler = () => {
+      void loadMe();
+    };
+    window.addEventListener('shosha:score-updated', handler);
+    return () => window.removeEventListener('shosha:score-updated', handler);
+  }, [loadMe]);
+
   const visibleFeed = useMemo(() => {
     const cleaned = query.trim().toLowerCase();
     if (!cleaned) return feed;

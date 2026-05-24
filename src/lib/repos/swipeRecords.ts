@@ -69,6 +69,14 @@ export async function listForUser(userId: string): Promise<SwipeRecord[]> {
   return out;
 }
 
+export async function countTodayForUser(userId: string): Promise<number> {
+  const records = await listForUser(userId);
+  const startOfToday = new Date();
+  startOfToday.setUTCHours(0, 0, 0, 0);
+  const todayISO = startOfToday.toISOString();
+  return records.filter((r) => (r.updatedAt ?? r.createdAt) >= todayISO).length;
+}
+
 export async function listForAccount(accountId: string): Promise<SwipeRecord[]> {
   const snap = await db().ref('swipeRecords').orderByChild('accountId').equalTo(accountId).once('value');
   const out: SwipeRecord[] = [];

@@ -52,13 +52,16 @@ export async function GET() {
       claimedAccounts.find((account) => account!.claimedBy === user._id) ??
       claimedAccounts[0] ??
       null;
-    const liveUser = liveScoreAccount && typeof liveScoreAccount.score === 'number'
-      ? {
-          ...user,
-          score: liveScoreAccount.score,
-          scoreHistory: Array.isArray(liveScoreAccount.scoreHistory) ? liveScoreAccount.scoreHistory : user.scoreHistory,
-        }
-      : user;
+    // Personal reputation (reports, swipe milestones) lives on the user record.
+    // Dossier score is exposed separately — do not overwrite user.score with account.score.
+    const dossierScore =
+      liveScoreAccount != null
+        ? typeof liveScoreAccount.displayScore === 'number'
+          ? liveScoreAccount.displayScore
+          : typeof liveScoreAccount.score === 'number'
+            ? liveScoreAccount.score
+            : null
+        : null;
 
     const profileCredibility = reputationCredibility(user, liveScoreAccount);
 
@@ -94,7 +97,8 @@ export async function GET() {
       }));
 
     return ok({
-      user: { ...liveUser, profileCredibility },
+      user: { ...user, profileCredibility },
+      dossierScore,
       claimedAccounts,
       recentEvents,
       swipeAggregate,

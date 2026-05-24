@@ -1,4 +1,4 @@
-import { cached, cacheKey } from '@/lib/cache';
+import { cached, cacheKey, invalidateCacheKey } from '@/lib/cache';
 import * as accountsRepo from '@/lib/repos/accounts';
 import type { AccountRecord } from '@/lib/repos/accounts';
 import * as reportsRepo from '@/lib/repos/reports';
@@ -95,6 +95,19 @@ export function getCachedAccountById(id: string) {
     PROFILE_CACHE_TTL,
     () => accountsRepo.findById(id)
   );
+}
+
+/** Clear profile caches after score or dossier mutations (swipes, reports, admin edits). */
+export async function invalidateProfileCaches(account: Pick<AccountRecord, '_id' | 'username'> & { slug?: string }) {
+  const keys = [
+    cacheKey('shosha', 'v1', 'profile', 'account', account._id),
+    cacheKey('shosha', 'v1', 'profile', 'bundle', account._id),
+    cacheKey('shosha', 'v1', 'profile', 'username', account.username.toLowerCase()),
+  ];
+  if (account.slug) {
+    keys.push(cacheKey('shosha', 'v1', 'profile', 'slug', account.slug));
+  }
+  await Promise.all(keys.map((key) => invalidateCacheKey(key)));
 }
 
 export function getCachedAccountBySlug(slug: string) {

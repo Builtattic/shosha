@@ -99,6 +99,7 @@ export default function ProfilePage() {
     claimedAccounts: any[];
     recentEvents: any[];
     swipeAggregate?: { score: number; aligns: number; opposes: number };
+    dossierScore?: number | null;
   } | null>(null);
   const [filingsData, setFilingsData] = useState<{
     filings: any[];
@@ -159,6 +160,14 @@ export default function ProfilePage() {
     };
   }, [loadProfile, loadFilings]);
 
+  useEffect(() => {
+    const handler = () => {
+      void loadProfile();
+    };
+    window.addEventListener('shosha:score-updated', handler);
+    return () => window.removeEventListener('shosha:score-updated', handler);
+  }, [loadProfile]);
+
   if (authLoading || loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
@@ -177,6 +186,8 @@ export default function ProfilePage() {
   const contextPercent = calcShoshaScore(scores); // 0–100 composite of profile multipliers
   const trustBadge = Boolean(appUser?.trustBadge);
   const ledgerScore = typeof appUser?.score === 'number' ? appUser.score : BASE_SCORE;
+  const dossierLedgerScore =
+    typeof data?.dossierScore === 'number' ? data.dossierScore : ledgerScore;
   const gaugeDisplayScore = Math.max(-1000, Math.min(1000, ledgerScore));
   const ledgerHistory: any[] = appUser?.scoreHistory ?? [];
 
@@ -640,7 +651,7 @@ export default function ProfilePage() {
               </div>
 
               {(swipeAggregate.aligns > 0 || swipeAggregate.opposes > 0) && (
-                <SwipeScoreBreakdownCard swipeAggregate={swipeAggregate} totalScore={ledgerScore} />
+                <SwipeScoreBreakdownCard swipeAggregate={swipeAggregate} totalScore={dossierLedgerScore} />
               )}
 
               {/* Breakdown */}
@@ -696,7 +707,7 @@ export default function ProfilePage() {
               showGraph={false}
               showImpactDetails
               swipeAggregate={swipeAggregate}
-              totalScore={ledgerScore}
+              totalScore={dossierLedgerScore}
               history={(filingsData?.history ?? []).map((entry: any) => ({
                 t: entry.t,
                 s: entry.s,
