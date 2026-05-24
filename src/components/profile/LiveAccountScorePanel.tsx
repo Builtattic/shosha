@@ -78,9 +78,16 @@ export function LiveAccountScorePanel({
     try {
       const response = await fetch(`/api/accounts/${accountId}`, { cache: 'no-store' });
       const payload = response.ok ? await response.json() : null;
-      if (payload?.ok && typeof payload.data?.score === 'number') {
+      if (payload?.ok) {
+        const nextScore =
+          typeof payload.data?.displayScore === 'number'
+            ? payload.data.displayScore
+            : typeof payload.data?.score === 'number'
+              ? payload.data.score
+              : null;
+        if (nextScore == null) return;
         setSnapshot({
-          score: payload.data.score,
+          score: nextScore,
           scoreHistory: payload.data.scoreHistory,
           followers: payload.data.followers,
           credibility: payload.data.credibility,
