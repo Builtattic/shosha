@@ -38,16 +38,18 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
   const newTodayCount = todayCount + 1;
   let swiperBonusAwarded = false;
+  let userScore = typeof user.score === 'number' ? user.score : 1000;
   if (newTodayCount % 10 === 0) {
-    await usersRepo.applyDelta(user._id, 5, {
+    const updated = await usersRepo.applyDelta(user._id, 5, {
       cause: 'swipe',
       profileId: account._id,
-      baseScore: user.score ?? 1000,
+      baseScore: userScore,
     });
+    if (updated && typeof updated.score === 'number') {
+      userScore = updated.score;
+    }
     swiperBonusAwarded = true;
   }
-  const swiperUser = await usersRepo.findById(user._id);
-  const userScore = typeof swiperUser?.score === 'number' ? swiperUser.score : user.score ?? 1000;
 
   let following = false;
 
