@@ -367,6 +367,16 @@ export default function ReportIssuePage() {
             </button>
           </form>
         )}
+
+        <p className="mt-6 text-center text-[12px] text-muted-foreground">
+          For urgent security issues, contact us directly at{' '}
+          <a
+            href="mailto:security@shosha.com"
+            className="font-semibold text-foreground underline underline-offset-2 hover:opacity-80"
+          >
+            security@shosha.com
+          </a>
+        </p>
       </main>
     </div>
   );
