@@ -10,8 +10,6 @@ import { PostDetailModal } from '@/components/feed/PostDetailModal';
 import { FollowButton } from '@/components/profile/FollowButton';
 import { D3ScoreGauge } from '@/components/viz/D3ScoreGauge';
 import { cn } from '@/lib/utils';
-import { SignInChip } from '@/components/nav/SignInChip';
-import { calcProfileScores, calcShoshaScore } from '@/lib/scoring';
 import { useAuth } from '@/contexts/AuthContext';
 import { MobileAppHeader } from '@/components/nav/MobileAppHeader';
 
@@ -215,6 +213,14 @@ export default function DashboardPage() {
     };
   }, [loadMe]);
 
+  useEffect(() => {
+    const handler = () => {
+      void loadMe();
+    };
+    window.addEventListener('shosha:score-updated', handler);
+    return () => window.removeEventListener('shosha:score-updated', handler);
+  }, [loadMe]);
+
   const visibleFeed = useMemo(() => {
     const cleaned = query.trim().toLowerCase();
     if (!cleaned) return feed;
@@ -223,11 +229,13 @@ export default function DashboardPage() {
     );
   }, [feed, query]);
 
-  // Compute user's own Shosha Score from profile dimensions
-  const profileDims = meData?.user ? calcProfileScores(meData.user) : [];
-  const contextPercent = calcShoshaScore(profileDims);
   const ledgerScore = meData?.user?.score ?? 1000;
-  const credibility = contextPercent;
+  const credibility =
+    typeof meData?.user?.profileCredibility === 'number'
+      ? Math.round(meData.user.profileCredibility)
+      : typeof meData?.user?.credibility === 'number'
+        ? Math.round(meData.user.credibility)
+        : 0;
   const hasOnboarded = !!(meData?.user?.onboardingComplete || meData?.user?.name || meData?.user?.occupationRole);
   const displayName = meData?.user?.name || firebaseUser?.displayName || firebaseUser?.email?.split('@')[0] || 'You';
   
@@ -252,10 +260,6 @@ export default function DashboardPage() {
         showSearch={searchOpen}
         onSearchToggle={() => setSearchOpen((v) => !v)}
       />
-
-      <div className="mx-auto max-w-2xl px-4 pt-3 lg:px-0">
-        <SignInChip />
-      </div>
 
       <div className="mx-auto max-w-2xl px-4 lg:px-0">
         {/* ── Hero Banner ─────────────────────────────────────────────── */}

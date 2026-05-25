@@ -1,5 +1,5 @@
 import { ok, fail } from '@/lib/api';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser, isAdmin } from '@/lib/auth';
 import * as accountsRepo from '@/lib/repos/accounts';
 import * as usersRepo from '@/lib/repos/users';
 import { calcCredibility } from '@/lib/credibility';
@@ -7,6 +7,7 @@ import { calcCredibility } from '@/lib/credibility';
 export async function POST() {
   const user = await getCurrentUser();
   if (!user) return fail('unauthorized', 'Must be signed in', 401);
+  if (!isAdmin(user)) return fail('forbidden', 'Admin only.', 403);
 
   // Mark verification on any claimed website account so the public profile reflects it.
   const claimed = await accountsRepo.listClaimedBy(user._id);

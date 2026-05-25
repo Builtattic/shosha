@@ -47,6 +47,7 @@ export default async function AdminPage() {
     pendingClaims,
     pendingAudits,
     abuseReports,
+    pendingTrustBadge,
     topAccounts,
   ] = await Promise.all([
     reportsRepo.listQueue({}, 10),
@@ -57,6 +58,7 @@ export default async function AdminPage() {
     claimsRepo.listPending(),
     auditsRepo.listPending(),
     reportsRepo.listAbuse(20),
+    usersRepo.listTrustBadgePending().catch(() => []),
     accountsRepo.listTop(5),
   ]);
 
@@ -300,6 +302,7 @@ export default async function AdminPage() {
                 { label: 'Pending Claims', count: pendingClaims.length, href: '/admin/claims', color: 'text-orange-500', bg: 'bg-orange-500/10' },
                 { label: 'Security Audits', count: pendingAudits.length, href: '/admin/audits', color: 'text-cyan-500', bg: 'bg-cyan-500/10' },
                 { label: 'Abuse Flagged', count: abuseReports.length, href: '/admin/abuse', color: 'text-red-500', bg: 'bg-red-500/10' },
+                { label: 'Trust Badge Review', count: pendingTrustBadge.length, href: '/admin/trust-badge', color: 'text-purple-500', bg: 'bg-purple-500/10' },
               ].map((item) => (
                 <Link
                   key={item.href}

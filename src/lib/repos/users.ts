@@ -1,6 +1,7 @@
 import { adminDb } from '@/lib/firebase/admin';
 import { withId, stripId } from '@/lib/repos/_serialize';
 import { applySheetScore, sheetDecay } from '@/lib/scoring';
+import type { ScoreCause } from '@/types';
 
 export type UserRole = 'user' | 'moderator' | 'editor' | 'admin' | 'super_admin';
 export const USER_ROLES: UserRole[] = ['user', 'moderator', 'editor', 'admin', 'super_admin'];
@@ -44,7 +45,7 @@ export type ProfileVisibilitySettings = {
 export type LedgerEntryRecord = {
   t: string;
   delta: number;
-  cause: 'seed' | 'report' | 'audit' | 'decay';
+  cause: ScoreCause;
   category?: string;
   eventId?: string;
   multipliers?: Record<string, number>;
@@ -122,6 +123,15 @@ export type AppUser = {
   quote?: string;
   trustBadge?: boolean;
   trustBadgeAt?: string;
+  trustBadgePending?: boolean;
+  trustBadgeSubmittedAt?: string;
+  trustBadgeSelfieUrl?: string;
+  trustBadgeDocUrl?: string;
+  trustBadgeDocType?: 'passport' | 'license' | 'national';
+  trustBadgeRejectedAt?: string;
+  trustBadgeRejectionReason?: string;
+  trustBadgePaymentId?: string;
+  trustBadgeOrderId?: string;
   credibility?: number;
   /** Reputation credibility from calcProfileCredibility (GET /api/me); distinct from completion-based `credibility`. */
   profileCredibility?: number;
@@ -215,18 +225,28 @@ export async function applyDelta(
   delta: number,
   entry: Omit<LedgerEntryRecord, 'delta' | 't'>
 ): Promise<AppUser | null> {
-  const existing = await findById(id);
-  if (!existing) return null;
-  const currentScore = typeof existing.score === 'number' ? existing.score : 1000;
-  const nextScore = applySheetScore(currentScore, delta).score;
-  const history = existing.scoreHistory ?? [];
-  const next: LedgerEntryRecord = { ...entry, delta, decay: entry.decay ?? sheetDecay(delta), t: new Date().toISOString() };
-  await ref().child(id).update({
-    score: nextScore,
-    scoreHistory: [...history, next],
-    updatedAt: new Date().toISOString()
+  const next: LedgerEntryRecord = {
+    ...entry,
+    delta,
+    decay: entry.decay ?? sheetDecay(delta),
+    t: new Date().toISOString(),
+  };
+  // RTDB transaction so concurrent applyDelta calls don't clobber each other's
+  // score / scoreHistory writes (e.g. two swipe-milestone bonuses firing at once).
+  const result = await ref().child(id).transaction((current: Record<string, unknown> | null) => {
+    if (!current) return current;
+    const rawScore = current.score;
+    const currentScore = typeof rawScore === 'number' ? rawScore : 1000;
+    const nextScore = applySheetScore(currentScore, delta).score;
+    const rawHistory = current.scoreHistory;
+    const history = Array.isArray(rawHistory) ? rawHistory : [];
+    current.score = nextScore;
+    current.scoreHistory = [...history, next];
+    current.updatedAt = new Date().toISOString();
+    return current;
   });
-  return findById(id);
+  if (!result.committed || !result.snapshot.exists()) return null;
+  return withId<AppUser>(id, result.snapshot.val());
 }
 
 export async function setReporterScore(id: string, value: number): Promise<void> {
@@ -258,6 +278,17 @@ export async function listAll(limit = 200): Promise<AppUser[]> {
     results.push(withId<AppUser>(child.key!, child.val()));
   });
   return results.reverse();
+}
+
+export async function listTrustBadgePending(): Promise<AppUser[]> {
+  const snap = await ref().orderByChild('trustBadgePending').equalTo(true).once('value');
+  const out: AppUser[] = [];
+  snap.forEach((child) => {
+    out.push(withId<AppUser>(child.key!, child.val()));
+  });
+  return out.sort((a, b) =>
+    (a.trustBadgeSubmittedAt ?? '') < (b.trustBadgeSubmittedAt ?? '') ? -1 : 1
+  );
 }
 
 export async function count(): Promise<number> {

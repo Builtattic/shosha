@@ -2,10 +2,10 @@ import { z } from 'zod';
 import { fail, ok } from '@/lib/api';
 import { getCurrentUser } from '@/lib/auth';
 import { idSchema } from '@/lib/validators';
-import { setScore } from '@/lib/repos/accounts';
 import * as accountsRepo from '@/lib/repos/accounts';
 import * as swipeRecordsRepo from '@/lib/repos/swipeRecords';
 import * as usersRepo from '@/lib/repos/users';
+import { invalidateProfileCaches } from '@/lib/profileData';
 
 const swipeSchema = z.object({
   direction: z.enum(['align', 'oppose']),
@@ -17,6 +17,11 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
   const user = await getCurrentUser();
   if (!user) return fail('unauthorized', 'Sign in to rate people.', 401);
+
+  const todayCount = await swipeRecordsRepo.countTodayForUser(user._id);
+  if (todayCount >= 25) {
+    return fail('rate_limited', 'You have reached your 25 swipe limit for today.', 429);
+  }
 
   const account = await accountsRepo.findById(id.data);
   if (!account) return fail('not_found', 'No profile exists for that id.', 404);
@@ -30,6 +35,21 @@ export async function POST(request: Request, { params }: { params: { id: string 
     userId: user._id,
     direction: parsed.data.direction,
   });
+
+  const newTodayCount = todayCount + 1;
+  let swiperBonusAwarded = false;
+  let userScore = typeof user.score === 'number' ? user.score : 1000;
+  if (newTodayCount % 10 === 0) {
+    const updated = await usersRepo.applyDelta(user._id, 5, {
+      cause: 'swipe',
+      profileId: account._id,
+      baseScore: userScore,
+    });
+    if (updated && typeof updated.score === 'number') {
+      userScore = updated.score;
+    }
+    swiperBonusAwarded = true;
+  }
 
   let following = false;
 
@@ -63,12 +83,34 @@ export async function POST(request: Request, { params }: { params: { id: string 
   }
 
   const aggregate = await swipeRecordsRepo.getAccountSwipeScore(account._id);
-  // Apply net swipe score to the account immediately (spec: ±5 per swipe, real-time)
-  const baseScore = typeof account.score === 'number' ? account.score : 1000;
-  const previousSwipeTotal = account.swipeScore ?? 0;
   const newSwipeTotal = aggregate.score;
-  const updatedScore = Math.round((baseScore - previousSwipeTotal + newSwipeTotal) * 10) / 10;
-  await setScore(account._id, updatedScore);
-  await accountsRepo.update(account._id, { swipeScore: newSwipeTotal });
-  return ok({ record, aggregate, following, score: updatedScore });
+  // Net swipe total before this gesture (handles missing/out-of-sync swipeScore).
+  const previousSwipeTotal =
+    typeof account.swipeScore === 'number'
+      ? account.swipeScore
+      : newSwipeTotal - record.delta;
+  const swipeDelta = newSwipeTotal - previousSwipeTotal;
+  const currentTotal =
+    typeof account.displayScore === 'number'
+      ? account.displayScore
+      : typeof account.score === 'number'
+        ? account.score
+        : 1000;
+  const updatedScore = Math.round((currentTotal + swipeDelta) * 10) / 10;
+  await accountsRepo.update(account._id, {
+    score: updatedScore,
+    displayScore: updatedScore,
+    swipeScore: newSwipeTotal,
+  });
+  await invalidateProfileCaches(account);
+  return ok({
+    record,
+    aggregate,
+    following,
+    score: updatedScore,
+    userScore,
+    todaySwipeCount: newTodayCount,
+    swiperBonusAwarded,
+    dailyLimit: 25,
+  });
 }

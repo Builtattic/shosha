@@ -314,6 +314,8 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
   const [loading, setLoading] = useState(false);
   const [cursor, setCursor] = useState(initialItems.length);
   const [hasMore, setHasMore] = useState(true);
+  const [limitReached, setLimitReached] = useState(false);
+  const [swipeProgress, setSwipeProgress] = useState<{ count: number; limit: number } | null>(null);
   const [swipeFeedback, setSwipeFeedback] = useState<{
     primary: string;
     secondary: string;
@@ -389,7 +391,7 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (!current) return;
+      if (!current || limitReached) return;
       if (e.key === 'ArrowRight') handleSwipe('align');
       if (e.key === 'ArrowLeft') handleSwipe('oppose');
       if (e.key === 'ArrowUp') router.push(`/account/${current.id}`);
@@ -397,7 +399,7 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current]);
+  }, [current, limitReached]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -419,7 +421,7 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
 
   const handleSwipe = useCallback(
     (dir: 'align' | 'oppose') => {
-      if (!current) return;
+      if (!current || limitReached) return;
       const rated = current;
       const ratedId = rated.id;
 
@@ -432,15 +434,40 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ direction: dir }),
       })
-        .then((r) => r.json())
-        .then((data) => {
+        .then(async (r) => {
+          const data = await r.json();
+          if (
+            !data.ok &&
+            (r.status === 429 || data.error?.code === 'rate_limited')
+          ) {
+            setLimitReached(true);
+            toast.push(
+              "You've reached your 25 swipe limit for today. Come back tomorrow!",
+            );
+            return;
+          }
           if (!data.ok) throw new Error(data.error?.message ?? 'Failed');
           const updatedScore = data?.data?.score ?? null;
           showSwipeFeedback(dir, updatedScore);
+          if (data?.data?.todaySwipeCount) {
+            setSwipeProgress({
+              count: data.data.todaySwipeCount,
+              limit: data.data.dailyLimit ?? 25,
+            });
+          }
+          if (data?.data?.swiperBonusAwarded) {
+            const userScore = data?.data?.userScore;
+            toast.push(
+              userScore != null
+                ? `+5 swipe milestone! Your score is now ${Number(userScore).toLocaleString()} pts`
+                : '+5 swipe milestone bonus added to your score!',
+            );
+            window.dispatchEvent(new CustomEvent('shosha:score-updated'));
+          }
         })
         .catch((err) => toast.push(err instanceof Error ? err.message : 'Failed'));
     },
-    [current, toast, showSwipeFeedback],
+    [current, limitReached, toast, showSwipeFeedback],
   );
 
   function handleSkip() {
@@ -583,6 +610,11 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
 
         {/* Card stack + actions: column flex so buttons never sit below clipped overflow */}
         <div className="relative z-0 flex min-h-0 w-full flex-1 flex-col overflow-hidden">
+          {limitReached && (
+            <div className="shrink-0 border-b border-border bg-muted/80 px-4 py-2.5 text-center text-sm text-muted-foreground">
+              You&apos;ve reached your 25 swipe limit for today. Come back tomorrow!
+            </div>
+          )}
           <div className="flex min-h-0 flex-1 items-center justify-center px-1 py-1 sm:px-2">
             <div
               className="relative mx-auto h-auto w-full max-h-full min-h-0 max-w-[400px] shrink lg:max-w-sm"
@@ -615,12 +647,17 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
           {current && (
             <div className="flex shrink-0 items-center justify-center gap-4 pb-1 pt-2">
               <motion.button
-                whileTap={{ scale: 0.93 }}
+                whileTap={{ scale: limitReached ? 1 : 0.93 }}
+                disabled={limitReached}
                 onClick={() => {
+                  if (limitReached) return;
                   setExitDir('oppose');
                   handleSwipe('oppose');
                 }}
-                className="flex flex-col items-center gap-2"
+                className={cn(
+                  'flex flex-col items-center gap-2',
+                  limitReached && 'cursor-not-allowed opacity-40',
+                )}
               >
                 <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-destructive/40 bg-destructive/10 text-destructive transition-colors hover:bg-destructive/20 active:bg-destructive/30">
                   <X size={26} strokeWidth={2.5} />
@@ -640,12 +677,17 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
               </motion.button>
 
               <motion.button
-                whileTap={{ scale: 0.93 }}
+                whileTap={{ scale: limitReached ? 1 : 0.93 }}
+                disabled={limitReached}
                 onClick={() => {
+                  if (limitReached) return;
                   setExitDir('align');
                   handleSwipe('align');
                 }}
-                className="flex flex-col items-center gap-2"
+                className={cn(
+                  'flex flex-col items-center gap-2',
+                  limitReached && 'cursor-not-allowed opacity-40',
+                )}
               >
                 <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-emerald-400/40 bg-emerald-500/10 text-emerald-600 transition-colors hover:bg-emerald-500/20 active:bg-emerald-500/30">
                   <Check size={26} strokeWidth={2.5} />
@@ -653,6 +695,14 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
                 <span className="text-[11px] font-bold uppercase tracking-widest text-emerald-600/70">Align</span>
               </motion.button>
             </div>
+          )}
+          {swipeProgress && (
+            <p className="pb-2 text-center text-[11px] text-muted-foreground">
+              {swipeProgress.count}/{swipeProgress.limit} swipes today
+              {swipeProgress.count % 10 !== 0 && (
+                <span> · next bonus in {10 - (swipeProgress.count % 10)}</span>
+              )}
+            </p>
           )}
         </div>
       </div>

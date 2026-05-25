@@ -111,7 +111,7 @@ export default function BookmarksPage() {
       <MobileAppHeader />
 
       <div className="mx-auto max-w-2xl px-4 pt-4">
-        <h1 className="text-[24px] font-serif font-black leading-none text-foreground">Bookmarks</h1>
+        <h1 className="font-serif text-[28px] font-black leading-none tracking-tight text-foreground">Bookmarks</h1>
         <p className="mt-1 text-[12px] text-muted-foreground">Filings you saved for later.</p>
 
         {loading && (
