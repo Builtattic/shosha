@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Home, Target, TrendingUp, Info, User, ShieldAlert, Settings, Globe, ChevronDown, ShieldCheck, Newspaper, HelpCircle, Bookmark, Bell, Search, PlusCircle, Activity, Users, CircleDot } from 'lucide-react';
+import { Home, Target, TrendingUp, Info, User, ShieldAlert, Settings, Globe, ChevronDown, ShieldCheck, Newspaper, HelpCircle, Bookmark, Bell, Search, PlusCircle, Activity, Users, CircleDot, Key, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useReportModal } from '@/components/report/ReportModalProvider';
 import { RANK_SCOPE_OPTIONS, resolveRankScope, type RankScopeValue } from '@/lib/rankScope';
@@ -61,11 +61,12 @@ export function Sidebar() {
   const items = [
     { href: '/dashboard', label: 'Home', icon: Home },
     { href: '/feed', label: 'Feed', icon: Newspaper },
+    { href: '/access', label: 'Access', icon: Key },
     { href: '/impact', label: 'Impact', icon: Target },
-    { href: '/search', label: 'Search', icon: Search },
     { href: '/people', label: 'People', icon: Users },
     { href: '/bubbles', label: 'Bubbles', icon: CircleDot },
     { href: '/ranks', label: 'Ranks', icon: TrendingUp },
+    { href: '/search', label: 'Search', icon: Search },
     { href: '/profile', label: 'Profile', icon: User },
     { href: '/bookmarks', label: 'Bookmarks', icon: Bookmark },
     { href: '/notifications', label: 'Notifications', icon: Bell },
@@ -74,6 +75,7 @@ export function Sidebar() {
 
   const navigationItems = [
     { href: '/disputes', label: 'Disputes', icon: ShieldAlert },
+     { href: '/report-issue', label: 'Report Issue', icon: AlertTriangle },
     { href: '/settings', label: 'Settings', icon: Settings },
     ...(isAdmin ? [{ href: '/admin', label: 'Admin', icon: ShieldCheck }] : []),
   ];

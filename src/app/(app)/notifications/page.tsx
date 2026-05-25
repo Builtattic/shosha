@@ -130,7 +130,7 @@ export default function NotificationsPage() {
 
       <div className="mx-auto max-w-2xl px-4 pt-4">
         <div className="mb-4">
-          <h1 className="text-[24px] font-serif font-black leading-none text-foreground">
+          <h1 className="font-serif text-[28px] font-black leading-none tracking-tight text-foreground">
             Notifications
             {unreadCount > 0 && (
               <span className="ml-2 inline-flex items-center justify-center rounded-full bg-destructive px-2 py-0.5 text-[11px] font-bold text-background">
