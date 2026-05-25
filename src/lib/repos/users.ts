@@ -225,18 +225,28 @@ export async function applyDelta(
   delta: number,
   entry: Omit<LedgerEntryRecord, 'delta' | 't'>
 ): Promise<AppUser | null> {
-  const existing = await findById(id);
-  if (!existing) return null;
-  const currentScore = typeof existing.score === 'number' ? existing.score : 1000;
-  const nextScore = applySheetScore(currentScore, delta).score;
-  const history = existing.scoreHistory ?? [];
-  const next: LedgerEntryRecord = { ...entry, delta, decay: entry.decay ?? sheetDecay(delta), t: new Date().toISOString() };
-  await ref().child(id).update({
-    score: nextScore,
-    scoreHistory: [...history, next],
-    updatedAt: new Date().toISOString()
+  const next: LedgerEntryRecord = {
+    ...entry,
+    delta,
+    decay: entry.decay ?? sheetDecay(delta),
+    t: new Date().toISOString(),
+  };
+  // RTDB transaction so concurrent applyDelta calls don't clobber each other's
+  // score / scoreHistory writes (e.g. two swipe-milestone bonuses firing at once).
+  const result = await ref().child(id).transaction((current: Record<string, unknown> | null) => {
+    if (!current) return current;
+    const rawScore = current.score;
+    const currentScore = typeof rawScore === 'number' ? rawScore : 1000;
+    const nextScore = applySheetScore(currentScore, delta).score;
+    const rawHistory = current.scoreHistory;
+    const history = Array.isArray(rawHistory) ? rawHistory : [];
+    current.score = nextScore;
+    current.scoreHistory = [...history, next];
+    current.updatedAt = new Date().toISOString();
+    return current;
   });
-  return findById(id);
+  if (!result.committed || !result.snapshot.exists()) return null;
+  return withId<AppUser>(id, result.snapshot.val());
 }
 
 export async function setReporterScore(id: string, value: number): Promise<void> {
