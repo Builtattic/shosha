@@ -13,6 +13,7 @@ import {
   Settings,
   ShieldAlert,
   ShieldCheck,
+  BadgeCheck,
   Users,
 } from 'lucide-react';
 
@@ -55,6 +56,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
       { href: '/admin/data', label: 'Data Center', icon: Database },
       { href: '/admin/claims', label: 'Claims', icon: ClipboardList },
       { href: '/admin/audits', label: 'Audits', icon: ShieldCheck },
+      { href: '/admin/trust-badge', label: 'Trust Badge', icon: BadgeCheck },
     ],
   },
   {
