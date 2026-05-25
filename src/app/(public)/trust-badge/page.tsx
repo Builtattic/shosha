@@ -71,7 +71,7 @@ const STEPS = [
     number: '02',
     title: 'Complete Payment',
     description:
-      'A one-time fee of $1.99 covers the cost of identity review. No subscriptions. No recurring charges.',
+      'A one-time fee of ₹199 covers the cost of identity review. No subscriptions. No recurring charges.',
   },
   {
     number: '03',
@@ -222,7 +222,7 @@ export default function TrustBadgePage() {
             href="/profile/upgrade"
             className="rounded-full bg-foreground px-10 py-4 text-[15px] font-bold text-background transition hover:opacity-90"
           >
-            Get Verified — $1.99
+            Get Verified — ₹199
           </Link>
           <p className="text-[12px] text-muted-foreground">
             Already verified?{' '}

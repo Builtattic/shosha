@@ -14,6 +14,8 @@ export type NotificationKind =
   | 'moderation_requested'
   | 'moderation_resolved'
   | 'dispute_resolved'
+  | 'trust_badge_approved'
+  | 'trust_badge_rejected'
   | 'system';
 
 export type NotificationRecord = {
