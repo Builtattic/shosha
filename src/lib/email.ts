@@ -1,6 +1,15 @@
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy client — Resend's constructor throws when the key is missing, which
+// blows up Next.js page-data collection at build time on Vercel.
+let cached: Resend | null = null;
+function getResend(): Resend | null {
+  if (cached) return cached;
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return null;
+  cached = new Resend(key);
+  return cached;
+}
 
 // Primary notification recipients. Add future emails to this array.
 const ADMIN_NOTIFY_EMAILS = [
@@ -51,7 +60,8 @@ export async function sendIssueReportEmail(report: {
     <p><a href="${siteUrl}/admin/issues">View in Admin Dashboard</a></p>
   `;
 
-  if (!process.env.RESEND_API_KEY) {
+  const resend = getResend();
+  if (!resend) {
     console.error('[issue-report] RESEND_API_KEY is not set — skipping email send.');
     return;
   }
