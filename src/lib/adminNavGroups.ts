@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import {
   Activity,
+  AlertTriangle,
   ClipboardList,
   Database,
   Gavel,
@@ -46,6 +47,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
       { href: '/admin/abuse', label: 'Abuse', icon: ShieldAlert },
       { href: '/admin/moderation', label: 'Requests', icon: Inbox },
       { href: '/admin/disputes', label: 'Disputes', icon: Gavel },
+      { href: '/admin/issues', label: 'Issues', icon: AlertTriangle },
     ],
   },
   {
