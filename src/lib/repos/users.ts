@@ -123,6 +123,15 @@ export type AppUser = {
   quote?: string;
   trustBadge?: boolean;
   trustBadgeAt?: string;
+  trustBadgePending?: boolean;
+  trustBadgeSubmittedAt?: string;
+  trustBadgeSelfieUrl?: string;
+  trustBadgeDocUrl?: string;
+  trustBadgeDocType?: 'passport' | 'license' | 'national';
+  trustBadgeRejectedAt?: string;
+  trustBadgeRejectionReason?: string;
+  trustBadgePaymentId?: string;
+  trustBadgeOrderId?: string;
   credibility?: number;
   /** Reputation credibility from calcProfileCredibility (GET /api/me); distinct from completion-based `credibility`. */
   profileCredibility?: number;
@@ -259,6 +268,17 @@ export async function listAll(limit = 200): Promise<AppUser[]> {
     results.push(withId<AppUser>(child.key!, child.val()));
   });
   return results.reverse();
+}
+
+export async function listTrustBadgePending(): Promise<AppUser[]> {
+  const snap = await ref().orderByChild('trustBadgePending').equalTo(true).once('value');
+  const out: AppUser[] = [];
+  snap.forEach((child) => {
+    out.push(withId<AppUser>(child.key!, child.val()));
+  });
+  return out.sort((a, b) =>
+    (a.trustBadgeSubmittedAt ?? '') < (b.trustBadgeSubmittedAt ?? '') ? -1 : 1
+  );
 }
 
 export async function count(): Promise<number> {

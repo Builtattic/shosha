@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -10,8 +10,38 @@ import {
   Loader2, Smartphone, Check, X, Camera,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/components/ui/Toast';
 
-type Step = 0 | 1 | 2 | 3 | 4 | 5; // 0=landing, 1=selfie, 2=id, 3=liveness, 4=loading, 5=success
+declare global {
+  interface Window {
+    Razorpay?: new (options: RazorpayOptions) => { open: () => void };
+  }
+}
+
+type RazorpaySuccessPayload = {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+};
+
+type RazorpayOptions = {
+  key: string;
+  amount: number;
+  currency: string;
+  name: string;
+  description: string;
+  order_id: string;
+  handler: (response: RazorpaySuccessPayload) => Promise<void>;
+  prefill: {
+    name: string;
+    email: string;
+  };
+  theme: { color: string };
+  modal: { ondismiss: () => void };
+};
+
+type Step = 0 | 1 | 2 | 3 | 4 | 5; // 0=landing, 1=selfie, 2=id, 3=payment, 4=loading, 5=success
 
 const ID_OPTIONS = [
   { id: 'passport', label: 'Passport' },
@@ -21,28 +51,197 @@ const ID_OPTIONS = [
 
 export default function TrustUpgradePage() {
   const router = useRouter();
+  const { user: firebaseUser } = useAuth();
+  const toast = useToast();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [step, setStep] = useState<Step>(0);
   const [selectedId, setSelectedId] = useState<string>('license');
-  const [uploaded, setUploaded] = useState<string | null>(null);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [selfieBlob, setSelfieBlob] = useState<Blob | null>(null);
+  const [selfiePreview, setSelfiePreview] = useState<string | null>(null);
+  const [docFile, setDocFile] = useState<File | null>(null);
+  const [docPreview, setDocPreview] = useState<string | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [cameraSessionKey, setCameraSessionKey] = useState(0);
 
   function next() { setStep((s) => Math.min(5, (s + 1) as Step) as Step); }
   function back() { setStep((s) => Math.max(0, (s - 1) as Step) as Step); }
 
+  function stopMediaStream(target: MediaStream | null) {
+    target?.getTracks().forEach((track) => track.stop());
+  }
+
+  useEffect(() => {
+    const existing = document.querySelector('script[data-razorpay-checkout="true"]');
+    if (existing) return;
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    script.dataset.razorpayCheckout = 'true';
+    document.body.appendChild(script);
+    return () => {
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (step !== 1) {
+      setCameraReady(false);
+      setStream((prev) => {
+        stopMediaStream(prev);
+        return null;
+      });
+      return;
+    }
+
+    if (selfiePreview) {
+      setCameraReady(true);
+      return;
+    }
+
+    let cancelled = false;
+    setCameraError(null);
+    setCameraReady(false);
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraError('Camera is not supported on this device.');
+      return;
+    }
+
+    navigator.mediaDevices
+      .getUserMedia({ video: { facingMode: 'user' }, audio: false })
+      .then((nextStream) => {
+        if (cancelled) {
+          stopMediaStream(nextStream);
+          return;
+        }
+        setStream((prev) => {
+          stopMediaStream(prev);
+          return nextStream;
+        });
+        if (videoRef.current) {
+          videoRef.current.srcObject = nextStream;
+          videoRef.current.onloadedmetadata = () => {
+            setCameraReady(true);
+          };
+        }
+      })
+      .catch(() => {
+        setCameraError('Camera access denied. Please allow camera access and try again.');
+      });
+
+    return () => {
+      cancelled = true;
+      setStream((prev) => {
+        stopMediaStream(prev);
+        return null;
+      });
+    };
+  }, [cameraSessionKey, selfiePreview, step]);
+
+  useEffect(() => {
+    return () => {
+      stopMediaStream(stream);
+      if (selfiePreview) URL.revokeObjectURL(selfiePreview);
+    };
+  }, [selfiePreview, stream]);
+
   async function complete() {
     setStep(4);
     try {
-      const res = await fetch('/api/me/upgrade', { method: 'POST' });
-      if (res.ok) {
-        setStep(5);
-        setTimeout(() => {
-          router.push('/profile');
-          router.refresh();
-        }, 1800);
-      } else {
-        setStep(0);
+      if (!selfieBlob) throw new Error('Selfie required.');
+      const selfieForm = new FormData();
+      selfieForm.append('file', selfieBlob, 'selfie.webp');
+      const selfieRes = await fetch('/api/media/upload', {
+        method: 'POST',
+        body: selfieForm,
+      });
+      const selfieData = await selfieRes.json().catch(() => null);
+      if (!selfieData?.ok || !selfieData?.data?.url) throw new Error('Selfie upload failed.');
+      const selfieUrl = selfieData.data.url as string;
+
+      if (!docFile) throw new Error('Document required.');
+      const docForm = new FormData();
+      docForm.append('file', docFile, docFile.name);
+      const docRes = await fetch('/api/media/upload', {
+        method: 'POST',
+        body: docForm,
+      });
+      const docData = await docRes.json().catch(() => null);
+      if (!docData?.ok || !docData?.data?.url) throw new Error('Document upload failed.');
+      const docUrl = docData.data.url as string;
+
+      const orderRes = await fetch('/api/me/upgrade/order', { method: 'POST' });
+      const orderData = await orderRes.json().catch(() => null);
+      if (!orderData?.ok) {
+        toast.push(orderData?.error?.message ?? 'Could not initiate payment.');
+        setStep(3);
+        return;
       }
-    } catch {
-      setStep(0);
+
+      if (!window.Razorpay) {
+        toast.push('Payment checkout is not ready. Please try again.');
+        setStep(3);
+        return;
+      }
+
+      const options: RazorpayOptions = {
+        key: orderData.data.keyId,
+        amount: orderData.data.amount,
+        currency: orderData.data.currency,
+        name: 'Shosha',
+        description: 'Trust Badge — Identity Verification',
+        order_id: orderData.data.orderId,
+        handler: async (response: RazorpaySuccessPayload) => {
+          try {
+            const verifyRes = await fetch('/api/me/upgrade/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                ...response,
+                selfieUrl,
+                docUrl,
+                docType: selectedId,
+              }),
+            });
+            const verifyData = await verifyRes.json().catch(() => null);
+            if (verifyData?.ok) {
+              setStep(5);
+              setTimeout(() => {
+                router.push('/profile');
+                router.refresh();
+              }, 1800);
+            } else {
+              toast.push(verifyData?.error?.message ?? 'Payment verification failed.');
+              setStep(0);
+            }
+          } catch {
+            toast.push('Payment verification failed.');
+            setStep(0);
+          }
+        },
+        prefill: {
+          name: firebaseUser?.displayName ?? '',
+          email: firebaseUser?.email ?? '',
+        },
+        theme: { color: '#000000' },
+        modal: {
+          ondismiss: () => {
+            toast.push('Payment cancelled.');
+            setStep(2);
+          },
+        },
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } catch (err) {
+      toast.push(err instanceof Error ? err.message : 'Could not initiate payment.');
+      setStep(2);
     }
   }
 
@@ -154,7 +353,7 @@ export default function TrustUpgradePage() {
             <p className="text-[11px] text-muted-foreground">All benefits. Instant unlock.</p>
           </div>
           <div className="text-right shrink-0">
-            <div className="text-[20px] font-black tabular-nums">$1.99</div>
+            <div className="text-[20px] font-black tabular-nums">₹199</div>
             <p className="text-[10px] text-muted-foreground">one time</p>
           </div>
           <button
@@ -202,7 +401,7 @@ export default function TrustUpgradePage() {
                 <h2 className="text-[16px] font-bold">
                   {step === 1 && 'Take a Selfie'}
                   {step === 2 && 'Verify Your Identity'}
-                  {step === 3 && 'Liveness Check'}
+                  {step === 3 && 'Confirm & Pay'}
                   {step === 4 && 'Verifying...'}
                   {step === 5 && 'Verification Submitted'}
                 </h2>
@@ -212,16 +411,83 @@ export default function TrustUpgradePage() {
               <AnimatePresence mode="wait">
                 {step === 1 && (
                   <motion.div key="s1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6 text-center">
-                    <div className="mx-auto h-28 w-28 rounded-full bg-muted flex items-center justify-center">
-                      <Camera size={42} className="text-muted-foreground" />
+                    <div className="mx-auto h-44 w-44 rounded-full border-4 border-primary/20 p-2">
+                      <div className="relative h-full w-full overflow-hidden rounded-full border-4 border-primary bg-muted">
+                        {selfiePreview ? (
+                          <img src={selfiePreview} alt="Selfie preview" className="h-full w-full object-cover" />
+                        ) : (
+                          <video ref={videoRef} autoPlay playsInline muted className="h-full w-full object-cover" />
+                        )}
+                      </div>
                     </div>
                     <p className="text-[13px] text-muted-foreground">We need to make sure you&apos;re a real person.</p>
+                    {cameraError ? (
+                      <div className="space-y-3">
+                        <p className="text-[12px] font-medium text-destructive">{cameraError}</p>
+                        <button
+                          onClick={() => {
+                            setCameraError(null);
+                            setSelfieBlob(null);
+                            if (selfiePreview) URL.revokeObjectURL(selfiePreview);
+                            setSelfiePreview(null);
+                            setCameraSessionKey((v) => v + 1);
+                          }}
+                          className="w-full rounded-full border border-border py-3 text-[13px] font-bold text-foreground transition hover:bg-muted"
+                        >
+                          Try Again
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => {
+                            if (selfiePreview) return;
+                            const canvas = canvasRef.current;
+                            const video = videoRef.current;
+                            if (!canvas || !video || !video.videoWidth || !video.videoHeight) return;
+                            canvas.width = video.videoWidth;
+                            canvas.height = video.videoHeight;
+                            canvas.getContext('2d')?.drawImage(video, 0, 0);
+                            canvas.toBlob((blob) => {
+                              if (!blob) return;
+                              if (selfiePreview) URL.revokeObjectURL(selfiePreview);
+                              setSelfieBlob(blob);
+                              setSelfiePreview(URL.createObjectURL(blob));
+                              setCameraReady(false);
+                              setStream((prev) => {
+                                stopMediaStream(prev);
+                                return null;
+                              });
+                            }, 'image/webp', 0.9);
+                          }}
+                          disabled={!cameraReady || !!selfiePreview}
+                          className="w-full rounded-full bg-foreground py-3.5 text-[14px] font-bold text-background transition hover:opacity-90 disabled:opacity-50"
+                        >
+                          Take Selfie
+                        </button>
+                        {selfiePreview && (
+                          <button
+                            onClick={() => {
+                              setSelfieBlob(null);
+                              if (selfiePreview) URL.revokeObjectURL(selfiePreview);
+                              setSelfiePreview(null);
+                              setCameraSessionKey((v) => v + 1);
+                            }}
+                            className="w-full rounded-full border border-border py-3 text-[13px] font-bold text-foreground transition hover:bg-muted"
+                          >
+                            Retake
+                          </button>
+                        )}
+                      </>
+                    )}
                     <button
                       onClick={next}
-                      className="w-full rounded-full bg-foreground py-3.5 text-[14px] font-bold text-background transition hover:opacity-90"
+                      disabled={!selfieBlob}
+                      className="w-full rounded-full bg-foreground py-3.5 text-[14px] font-bold text-background transition hover:opacity-90 disabled:opacity-50"
                     >
-                      Open Camera
+                      Continue
                     </button>
+                    <canvas ref={canvasRef} className="hidden" />
                     <p className="text-[10px] text-muted-foreground italic">🔒 Your identity will remain private</p>
                   </motion.div>
                 )}
@@ -255,10 +521,10 @@ export default function TrustUpgradePage() {
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Upload ID</p>
                       <label className="flex aspect-[1.6/1] w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border bg-card transition hover:bg-muted/50">
-                        {uploaded ? (
+                        {docPreview ? (
                           <>
                             <CheckCircle2 size={28} className="text-primary" />
-                            <p className="text-[12px] font-bold">{uploaded}</p>
+                            <p className="text-[12px] font-bold">{docPreview}</p>
                             <p className="text-[10px] text-muted-foreground">Tap to replace</p>
                           </>
                         ) : (
@@ -267,21 +533,27 @@ export default function TrustUpgradePage() {
                               <Smartphone size={22} className="text-muted-foreground" />
                             </div>
                             <p className="text-[13px] font-bold">Upload front side</p>
-                            <p className="text-[10px] text-muted-foreground">JPG, PNG or PDF (Max 10MB)</p>
+                            <p className="text-[10px] text-muted-foreground">JPG, PNG, WEBP (Max 10MB)</p>
                           </>
                         )}
                         <input
                           type="file"
-                          accept="image/*,.pdf"
+                          accept="image/*"
                           className="hidden"
-                          onChange={(e) => setUploaded(e.target.files?.[0]?.name ?? null)}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            setDocFile(file);
+                            setDocPreview(file.name);
+                          }}
                         />
                       </label>
                     </div>
 
                     <button
                       onClick={next}
-                      className="w-full rounded-full bg-foreground py-3.5 text-[14px] font-bold text-background transition hover:opacity-90"
+                      disabled={!docFile}
+                      className="w-full rounded-full bg-foreground py-3.5 text-[14px] font-bold text-background transition hover:opacity-90 disabled:opacity-50"
                     >
                       Continue
                     </button>
@@ -291,29 +563,19 @@ export default function TrustUpgradePage() {
 
                 {step === 3 && (
                   <motion.div key="s3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-5 text-center">
-                    <p className="text-[13px] text-muted-foreground">Take a quick selfie video to confirm you&apos;re a real person.</p>
-
-                    <div className="flex justify-center py-2">
-                      <div className="relative">
-                        <div className="h-44 w-44 rounded-full border-4 border-primary/20 p-2">
-                          <div className="relative h-full w-full overflow-hidden rounded-full border-4 border-primary">
-                            <div className="h-full w-full animate-pulse bg-gradient-to-br from-muted via-muted/40 to-muted" />
-                            <div className="absolute inset-0 border-[10px] border-primary/30 rounded-full animate-pulse" />
-                          </div>
-                        </div>
-                        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-primary px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-primary-foreground">
-                          Scanning…
-                        </div>
-                      </div>
+                    <div className="mx-auto h-16 w-16 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                      <Camera size={26} />
                     </div>
-
-                    <p className="text-[13px] font-bold">Look at the camera and slowly turn your head</p>
+                    <p className="text-[13px] text-muted-foreground">
+                      Your selfie and ID will be uploaded securely before payment checkout opens.
+                    </p>
+                    <p className="text-[13px] font-bold">Proceed to payment to submit for review.</p>
 
                     <button
                       onClick={complete}
                       className="w-full rounded-full bg-foreground py-3.5 text-[14px] font-bold text-background transition hover:opacity-90"
                     >
-                      Start
+                      Continue to Payment
                     </button>
                   </motion.div>
                 )}
@@ -334,9 +596,9 @@ export default function TrustUpgradePage() {
                       </div>
                     </div>
                     <div className="space-y-1">
-                      <h3 className="text-[20px] font-black text-primary">Trust Badge Earned!</h3>
+                      <h3 className="text-[20px] font-black text-primary">Submitted for Review</h3>
                       <p className="text-[12px] text-muted-foreground px-4">
-                        Your account has been upgraded. Credibility now reflects the full 100%.
+                        Your identity is being verified. We&apos;ll update your profile once approved.
                       </p>
                     </div>
                     <button
