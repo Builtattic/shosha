@@ -183,7 +183,7 @@ export default function DisputesPage() {
               <ShieldAlert size={22} />
             </div>
             <div>
-              <h1 className="text-[28px] font-serif font-black text-foreground leading-none">Dispute Center</h1>
+              <h1 className="font-serif text-[28px] font-black leading-none tracking-tight text-foreground">Dispute Center</h1>
               <p className="text-[13px] text-muted-foreground mt-1.5 max-w-md">
                 Challenge the factual accuracy of an approved filing on an account you own. Disputes need
                 documented evidence.

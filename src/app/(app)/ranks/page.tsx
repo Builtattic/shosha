@@ -117,7 +117,7 @@ export default async function RanksPage({ searchParams }: { searchParams?: { sco
     <main className="min-h-screen bg-background p-4 safe-bottom">
       <MobileAppHeader />
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-[28px] font-bold text-foreground">Ranks</h1>
+        <h1 className="font-serif text-[28px] font-black leading-none tracking-tight text-foreground">Ranks</h1>
       </div>
       <RanksTabs topGainers={gainers} underFire={underFire} archived={archived.map(toRow).slice(0, 20)} initialScope={scope} />
     </main>

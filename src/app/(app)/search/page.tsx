@@ -154,7 +154,7 @@ export default function SearchPage() {
                 <SearchIcon size={18} />
               </div>
               <div className="min-w-0">
-                <h1 className="text-[22px] font-serif font-black leading-none text-foreground">Search</h1>
+                <h1 className="font-serif text-[28px] font-black leading-none tracking-tight text-foreground">Search</h1>
                 <p className="mt-1 text-[11px] text-muted-foreground">Find filings by content, or accounts by handle.</p>
               </div>
             </div>
