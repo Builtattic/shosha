@@ -1,14 +1,13 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
-import { Mail, Phone, Eye, EyeOff, ArrowRight, ArrowLeft, CheckCircle2, Shield } from 'lucide-react';
-import type { ConfirmationResult } from 'firebase/auth';
+import { Mail, Eye, EyeOff, ArrowRight, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { sanitizeRedirectPath } from '@/lib/sanitizeRedirectPath';
 
-type AuthMode = 'choose' | 'email' | 'phone' | 'otp' | 'loading';
+type AuthMode = 'choose' | 'email' | 'loading';
 
 async function resolveRedirect(redirectParam: string): Promise<string> {
   const safeRedirect = sanitizeRedirectPath(redirectParam);
@@ -32,7 +31,7 @@ async function resolveRedirect(redirectParam: string): Promise<string> {
 
 export default function SignInPage() {
   const router = useRouter();
-  const { user, loading: authLoading, signIn, signUp, signInWithGoogle, sendPhoneOtp } = useAuth();
+  const { user, loading: authLoading, signIn, signUp, signInWithGoogle } = useAuth();
 
 
 
@@ -42,14 +41,9 @@ export default function SignInPage() {
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [countryCode, setCountryCode] = useState('+91');
-  const [phone, setPhone] = useState('');
-  const [otpPhone, setOtpPhone] = useState('');
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [confirmResult, setConfirmResult] = useState<ConfirmationResult | null>(null);
 
   useEffect(() => {
     if (!authLoading && user && mode !== 'loading') {
@@ -82,8 +76,6 @@ export default function SignInPage() {
     }, 5000);
     return () => clearTimeout(timer);
   }, [mode]);
-
-  const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   async function handleEmailSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -132,65 +124,6 @@ export default function SignInPage() {
     }
   }
 
-  async function handleSendOtp() {
-    setError('');
-    setLoading(true);
-    try {
-      const phoneDigits = phone.replace(/\D/g, '');
-      if (phoneDigits.length < 6) {
-        setError('Enter a valid phone number.');
-        setLoading(false);
-        return;
-      }
-      const fullPhoneNumber = `${countryCode}${phoneDigits}`;
-      const result = await sendPhoneOtp(fullPhoneNumber, 'recaptcha-container');
-      setConfirmResult(result);
-      setOtpPhone(fullPhoneNumber);
-      setMode('otp');
-    } catch (err: any) {
-      setError(err.message?.replace('Firebase: ', '') || 'Could not send OTP');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleVerifyOtp() {
-    if (!confirmResult) return;
-    setError('');
-    setLoading(true);
-    try {
-      const code = otp.join('');
-      const cred = await confirmResult.confirm(code);
-      const token = await cred.user.getIdToken();
-      document.cookie = `__session=${token}; path=/; max-age=3600; SameSite=Lax`;
-
-      const searchParams = new URLSearchParams(window.location.search);
-      setMode('loading');
-      const dest = await resolveRedirect(sanitizeRedirectPath(searchParams.get('redirect')));
-      router.push(dest);
-    } catch (err: any) {
-      setError('Invalid OTP. Please try again.');
-      setLoading(false);
-    }
-  }
-
-  function handleOtpChange(index: number, value: string) {
-    value = value.replace(/\D/g, '');
-    if (value.length > 1) value = value.slice(-1);
-    const next = [...otp];
-    next[index] = value;
-    setOtp(next);
-    if (value && index < 5) {
-      otpRefs.current[index + 1]?.focus();
-    }
-  }
-
-  function handleOtpKeyDown(index: number, e: React.KeyboardEvent) {
-    if (e.key === 'Backspace' && !otp[index] && index > 0) {
-      otpRefs.current[index - 1]?.focus();
-    }
-  }
-
   const slideVariants = {
     enter: { opacity: 0, x: 30 },
     center: { opacity: 1, x: 0 },
@@ -209,7 +142,6 @@ export default function SignInPage() {
         </div>
 
         <div className="rounded-3xl border border-border bg-card p-8 shadow-lg">
-          <div id="recaptcha-container" className="my-2" />
           <AnimatePresence mode="wait">
             {/* Step 1: Choose method */}
             {mode === 'choose' && (
@@ -241,15 +173,6 @@ export default function SignInPage() {
                   >
                     <Mail size={20} className="text-muted-foreground" />
                     <span className="font-medium">Continue with Email</span>
-                    <ArrowRight size={16} className="ml-auto text-muted-foreground" />
-                  </button>
-
-                  <button
-                    onClick={() => setMode('phone')}
-                    className="w-full flex items-center gap-3 rounded-2xl border border-border bg-background py-3 px-4 hover:bg-muted transition-colors text-left"
-                  >
-                    <Phone size={20} className="text-muted-foreground" />
-                    <span className="font-medium">Continue with Phone (OTP)</span>
                     <ArrowRight size={16} className="ml-auto text-muted-foreground" />
                   </button>
                 </div>
@@ -325,100 +248,7 @@ export default function SignInPage() {
               </motion.div>
             )}
 
-            {/* Step 2b: Phone */}
-            {mode === 'phone' && (
-              <motion.div key="phone" variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.2 }}>
-                <button onClick={() => { setMode('choose'); setError(''); }} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
-                  <ArrowLeft size={16} /> Back
-                </button>
-                <h2 className="text-xl font-bold mb-2">Phone verification</h2>
-                <p className="text-sm text-muted-foreground mb-6">We&apos;ll send a 6-digit code to your phone.</p>
-
-                {error && <p className="text-red-500 text-sm mb-4 bg-red-500/10 rounded-xl p-3">{error}</p>}
-
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1.5">Phone Number</label>
-                    <div className="flex gap-2">
-                      <select
-                        value={countryCode}
-                        onChange={(e) => setCountryCode(e.target.value)}
-                        className="w-[100px] rounded-xl border border-border bg-background px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 appearance-none text-center"
-                      >
-                        <option value="+1">🇺🇸 +1</option>
-                        <option value="+44">🇬🇧 +44</option>
-                        <option value="+61">🇦🇺 +61</option>
-                        <option value="+91">🇮🇳 +91</option>
-                        <option value="+971">🇦🇪 +971</option>
-                      </select>
-                      <input
-                        type="tel"
-                        required
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        className="flex-1 rounded-xl border border-border bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-                        placeholder="98765 43210"
-                      />
-                    </div>
-                  </div>
-                  <button
-                    onClick={handleSendOtp}
-                    disabled={loading || !phone}
-                    className="w-full rounded-2xl bg-foreground text-background py-3 font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
-                  >
-                    {loading ? 'Sending...' : 'Send OTP'}
-                  </button>
-                </div>
-                
-              </motion.div>
-            )}
-
-            {/* Step 3: OTP Verification */}
-            {mode === 'otp' && (
-              <motion.div key="otp" variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.2 }}>
-                <div className="text-center mb-6">
-                  <div className="mx-auto w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center text-primary mb-4">
-                    <Shield size={28} />
-                  </div>
-                  <h2 className="text-xl font-bold">Verify OTP</h2>
-                  <p className="text-sm text-muted-foreground mt-1">Enter the 6-digit code sent to {otpPhone || phone}</p>
-                </div>
-
-                {error && <p className="text-red-500 text-sm mb-4 bg-red-500/10 rounded-xl p-3 text-center">{error}</p>}
-
-                <div className="flex justify-center gap-3 mb-6">
-                  {otp.map((digit, i) => (
-                    <input
-                      key={i}
-                      ref={(el) => { otpRefs.current[i] = el; }}
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={1}
-                      value={digit}
-                      onChange={(e) => handleOtpChange(i, e.target.value)}
-                      onKeyDown={(e) => handleOtpKeyDown(i, e)}
-                      className="w-12 h-14 rounded-xl border-2 border-border bg-background text-center text-xl font-bold focus:outline-none focus:border-primary transition-colors"
-                    />
-                  ))}
-                </div>
-
-                <button
-                  onClick={handleVerifyOtp}
-                  disabled={loading || otp.some(d => !d)}
-                  className="w-full rounded-2xl bg-foreground text-background py-3 font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
-                >
-                  {loading ? 'Verifying...' : 'Verify & Sign In'}
-                </button>
-
-                <button
-                  onClick={() => { setMode('phone'); setOtp(['', '', '', '', '', '']); setError(''); }}
-                  className="w-full text-center text-sm text-muted-foreground mt-4 hover:text-foreground"
-                >
-                  Didn&apos;t receive it? Try again
-                </button>
-              </motion.div>
-            )}
-            {/* Step 4: Loading / Redirecting */}
+            {/* Step 3: Loading / Redirecting */}
             {mode === 'loading' && (
               <motion.div key="loading" variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.2 }} className="flex flex-col items-center justify-center py-12">
                 <div className="relative w-16 h-16 flex items-center justify-center mb-6">
