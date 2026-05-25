@@ -54,6 +54,7 @@ function applyDeckFilters(
     reach: string | null;
     ageBand: string | null;
     scoreFilter: string | null;
+    category: string | null;
     legacyFilter: string | null;
   },
 ): accountsRepo.AccountRecord[] {
@@ -106,12 +107,23 @@ function applyDeckFilters(
     });
   }
 
+  const category = opts.category;
+  if (category && category !== 'Any') {
+    const q = category.toLowerCase();
+    out = out.filter((a) =>
+      deriveCategories(a).some((c) => c.toLowerCase().includes(q)),
+    );
+  }
+
   const scoreFilter = opts.scoreFilter;
   if (scoreFilter === 'trending') {
     out = out.filter((a) => (a.score ?? 1000) > 1000);
   }
   if (scoreFilter === 'underfire') {
     out = out.filter((a) => (a.score ?? 1000) < 1000);
+  }
+  if (scoreFilter === 'elite') {
+    out = out.filter((a) => (a.score ?? 1000) >= 1100);
   }
 
   // Legacy single `filter` param (backward compatible)
@@ -174,9 +186,10 @@ export async function GET(request: Request) {
   const reach = url.searchParams.get('reach');
   const ageBand = url.searchParams.get('ageBand');
   const scoreFilter = url.searchParams.get('scoreFilter');
+  const category = url.searchParams.get('category');
   const legacyFilter = url.searchParams.get('filter');
 
-  const hasStructured = Boolean(region || role || reach || ageBand || scoreFilter);
+  const hasStructured = Boolean(region || role || reach || ageBand || scoreFilter || category);
   if (hasStructured) {
     eligible = applyDeckFilters(eligible, {
       region,
@@ -184,6 +197,7 @@ export async function GET(request: Request) {
       reach,
       ageBand,
       scoreFilter,
+      category,
       legacyFilter: null,
     });
   } else if (legacyFilter) {
@@ -193,6 +207,7 @@ export async function GET(request: Request) {
       reach: null,
       ageBand: null,
       scoreFilter: null,
+      category: null,
       legacyFilter,
     });
   }
