@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { z } from 'zod';
+import type { Orders } from 'razorpay/dist/types/orders';
 import { ok, fail } from '@/lib/api';
 import { getCurrentUser } from '@/lib/auth';
 import { razorpay } from '@/lib/razorpay';
@@ -64,9 +65,10 @@ export async function POST(request: Request) {
 
   // Bind the order to the current user — prevents replaying another user's
   // (order_id, payment_id, signature) triple from a different session.
-  let order: Awaited<ReturnType<ReturnType<typeof razorpay>['orders']['fetch']>>;
+  // Cast to the Promise overload — razorpay's TS overload union resolves to void.
+  let order: Orders.RazorpayOrder;
   try {
-    order = await razorpay().orders.fetch(razorpay_order_id);
+    order = (await razorpay().orders.fetch(razorpay_order_id)) as unknown as Orders.RazorpayOrder;
   } catch {
     return fail('forbidden', 'Order could not be verified.', 403);
   }
