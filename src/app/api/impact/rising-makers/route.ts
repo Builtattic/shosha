@@ -13,16 +13,20 @@ function avatarFor(account: accountsRepo.AccountRecord) {
 export async function GET() {
   const items = await cached('shosha:v1:impact:rising-makers', 60, async () => {
     const accounts = await accountsRepo.listEvery().catch(() => []);
-    return accounts
+    const eligible = accounts
       .filter((account) => !account.archived)
-      .map((account) => ({
-        id: account._id,
-        displayName: account.displayName.replace(/^@/, ''),
-        avatarUrl: avatarFor(account),
-        weeklyDelta: deriveProfileMetrics(account).weeklyDelta,
-      }))
-      .sort((a, b) => b.weeklyDelta - a.weeklyDelta)
+      .map((account) => ({ account, metrics: deriveProfileMetrics(account) }))
+      .filter(({ metrics }) => metrics.weeklyDelta > 0)
+      .sort((a, b) => b.metrics.weeklyDelta - a.metrics.weeklyDelta)
       .slice(0, 8);
+
+    return eligible
+      .map((account) => ({
+        id: account.account._id,
+        displayName: account.account.displayName.replace(/^@/, ''),
+        avatarUrl: avatarFor(account.account),
+        weeklyDelta: account.metrics.weeklyDelta,
+      }));
   });
 
   return ok(items);
