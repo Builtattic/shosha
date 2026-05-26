@@ -13,6 +13,8 @@ export type NotificationKind =
   | 'abuse_dismissed'
   | 'moderation_requested'
   | 'moderation_resolved'
+  | 'deletion_requested'
+  | 'deletion_resolved'
   | 'dispute_resolved'
   | 'trust_badge_approved'
   | 'trust_badge_rejected'

@@ -90,3 +90,64 @@ export async function sendIssueReportEmail(report: {
     console.error('[issue-report] Resend email threw:', err);
   }
 }
+
+export async function sendDeletionRequestEmail(report: {
+  username: string;
+  email: string;
+  reason: string;
+  details?: string;
+  attachmentUrls?: string[];
+  requestId: string;
+  createdAt: string;
+}): Promise<void> {
+  const attachmentsHtml = report.attachmentUrls?.length
+    ? `<p><strong>Attachments:</strong><br>${report.attachmentUrls
+        .map((url) => `<a href="${url}">${url}</a>`)
+        .join('<br>')}</p>`
+    : '';
+
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? '';
+  const html = `
+    <h2>Profile Deletion Request</h2>
+    <table>
+      <tr><td><strong>Request ID</strong></td><td>${report.requestId}</td></tr>
+      <tr><td><strong>Submitted</strong></td><td>${report.createdAt}</td></tr>
+      <tr><td><strong>Username</strong></td><td>@${report.username}</td></tr>
+      <tr><td><strong>Email</strong></td><td>${report.email}</td></tr>
+      <tr><td><strong>Reason</strong></td><td>${report.reason}</td></tr>
+      <tr><td><strong>Details</strong></td><td>${report.details ?? 'Not provided'}</td></tr>
+    </table>
+    ${attachmentsHtml}
+    <hr>
+    <p><a href="${siteUrl}/admin/deletion-requests">View in Admin Dashboard</a></p>
+  `;
+
+  const resend = getResend();
+  if (!resend) {
+    console.error('[deletion-request] RESEND_API_KEY is not set — skipping email send.');
+    return;
+  }
+
+  try {
+    const result = await resend.emails.send({
+      from: 'noreply@noshosha.com',
+      to: ADMIN_NOTIFY_EMAILS,
+      subject: `[Shosha Deletion] Account removal request from @${report.username}`,
+      html,
+    });
+
+    if (result.error) {
+      console.error('[deletion-request] Resend API rejected the send:', {
+        name: result.error.name,
+        message: result.error.message,
+        from: 'noreply@noshosha.com',
+        to: ADMIN_NOTIFY_EMAILS,
+      });
+      return;
+    }
+
+    console.log('[deletion-request] Resend email queued. id=', result.data?.id, 'to=', ADMIN_NOTIFY_EMAILS);
+  } catch (err) {
+    console.error('[deletion-request] Resend email threw:', err);
+  }
+}

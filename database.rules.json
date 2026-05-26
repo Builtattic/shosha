@@ -4,7 +4,7 @@
     ".write": false,
 
     "users": {
-      ".indexOn": ["username", "createdAt", "followingAccounts", "trustBadgePending"],
+      ".indexOn": ["username", "createdAt", "followingAccounts", "trustBadgePending", "role"],
       "$uid": {
         ".read": "auth != null && ($uid === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'super_admin')",
         ".write": "auth != null && ($uid === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'super_admin')"
@@ -99,6 +99,12 @@
       ".read": false,
       ".write": false,
       ".indexOn": ["userId", "accountId"]
+    },
+
+    "deletionRequests": {
+      ".read": false,
+      ".write": false,
+      ".indexOn": ["userId", "status", "createdAt"]
     },
 
     "siteSettings": {

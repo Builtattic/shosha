@@ -1,12 +1,18 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   ShieldCheck,
   Shield,
   TrendingUp,
   Eye,
   FileCheck,
+  Loader2,
 } from 'lucide-react';
 import { MobileAppHeader } from '@/components/nav/MobileAppHeader';
+import { useAuth } from '@/contexts/AuthContext';
 
 function SectionLabel({ number, label }: { number: string; label: string }) {
   return (
@@ -88,6 +94,51 @@ const STEPS = [
 ] as const;
 
 export default function TrustBadgePage() {
+  const { user: firebaseUser, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const [verificationState, setVerificationState] = useState<
+    'loading' | 'unauthenticated' | 'unverified' | 'pending' | 'verified' | 'rejected'
+  >('loading');
+  const [rejectionReason, setRejectionReason] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!firebaseUser) {
+      setVerificationState('unauthenticated');
+      return;
+    }
+
+    let cancelled = false;
+    fetch('/api/me', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled) return;
+        const u = data?.ok ? data?.data?.user : null;
+        if (!u) {
+          setVerificationState('unauthenticated');
+          return;
+        }
+
+        if (u.trustBadge) {
+          setVerificationState('verified');
+        } else if (u.trustBadgePending) {
+          setVerificationState('pending');
+        } else if (u.trustBadgeRejectedAt) {
+          setVerificationState('rejected');
+          setRejectionReason(u.trustBadgeRejectionReason ?? null);
+        } else {
+          setVerificationState('unverified');
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setVerificationState('unauthenticated');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [firebaseUser, authLoading]);
+
   return (
     <main className="min-h-screen bg-background safe-bottom">
       <MobileAppHeader />
@@ -211,28 +262,111 @@ export default function TrustBadgePage() {
           <div className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-foreground bg-card">
             <ShieldCheck size={36} className="text-foreground" />
           </div>
-          <h2 className="font-serif text-[40px] font-normal text-foreground leading-[1.1]">
-            Ready to get verified?
-          </h2>
-          <p className="text-[18px] text-muted-foreground max-w-[480px]">
-            Join verified contributors on Shosha. One-time verification. Permanent
-            badge.
-          </p>
-          <Link
-            href="/profile/upgrade"
-            className="rounded-full bg-foreground px-10 py-4 text-[15px] font-bold text-background transition hover:opacity-90"
-          >
-            Get Verified — ₹199
-          </Link>
-          <p className="text-[12px] text-muted-foreground">
-            Already verified?{' '}
-            <Link
-              href="/profile"
-              className="underline underline-offset-2 hover:text-foreground"
-            >
-              Back to your profile
-            </Link>
-          </p>
+
+          {verificationState === 'loading' && (
+            <>
+              <div className="h-10 w-64 rounded-full bg-muted animate-pulse" />
+              <div className="h-14 w-48 rounded-full bg-muted animate-pulse" />
+            </>
+          )}
+
+          {(verificationState === 'unauthenticated' || verificationState === 'unverified') && (
+            <>
+              <h2 className="font-serif text-[40px] font-normal text-foreground leading-[1.1]">
+                Ready to get verified?
+              </h2>
+              <p className="text-[18px] text-muted-foreground max-w-[480px]">
+                Join verified contributors on Shosha. One-time verification.
+                Permanent badge.
+              </p>
+              <button
+                type="button"
+                onClick={() => router.push('/profile/upgrade')}
+                className="rounded-full bg-foreground px-10 py-4 text-[15px] font-bold text-background transition hover:opacity-90"
+              >
+                Get Verified — ₹199
+              </button>
+              <p className="text-[12px] text-muted-foreground">
+                Already verified?{' '}
+                <Link
+                  href="/profile"
+                  className="underline underline-offset-2 hover:text-foreground"
+                >
+                  Back to your profile
+                </Link>
+              </p>
+            </>
+          )}
+
+          {verificationState === 'pending' && (
+            <>
+              <h2 className="font-serif text-[40px] font-normal text-foreground leading-[1.1]">
+                Verification in progress
+              </h2>
+              <p className="text-[18px] text-muted-foreground max-w-[480px]">
+                Your identity is currently under review. This typically takes 2-5
+                business days. We&apos;ll notify you once a decision is made.
+              </p>
+              <div className="flex items-center gap-3 rounded-full border border-amber-200 bg-amber-50 dark:bg-amber-500/10 dark:border-amber-500/30 px-6 py-3 text-[14px] font-bold text-amber-700 dark:text-amber-400">
+                <Loader2 size={18} className="animate-spin" />
+                Under Review
+              </div>
+              <Link
+                href="/profile"
+                className="text-[12px] text-muted-foreground underline underline-offset-2 hover:text-foreground"
+              >
+                Back to your profile
+              </Link>
+            </>
+          )}
+
+          {verificationState === 'verified' && (
+            <>
+              <h2 className="font-serif text-[40px] font-normal text-foreground leading-[1.1]">
+                You&apos;re verified
+              </h2>
+              <p className="text-[18px] text-muted-foreground max-w-[480px]">
+                Your Trust Badge is active. Your credibility score reflects your
+                verified status across the platform.
+              </p>
+              <div className="flex items-center gap-3 rounded-full border border-emerald-200 bg-emerald-50 dark:bg-emerald-500/10 dark:border-emerald-500/30 px-6 py-3 text-[14px] font-bold text-emerald-700 dark:text-emerald-400">
+                <ShieldCheck size={18} />
+                Trust Badge Active
+              </div>
+              <Link
+                href="/profile"
+                className="text-[12px] text-muted-foreground underline underline-offset-2 hover:text-foreground"
+              >
+                Back to your profile
+              </Link>
+            </>
+          )}
+
+          {verificationState === 'rejected' && (
+            <>
+              <h2 className="font-serif text-[40px] font-normal text-foreground leading-[1.1]">
+                Verification not approved
+              </h2>
+              <p className="text-[18px] text-muted-foreground max-w-[480px]">
+                {rejectionReason
+                  ? `Your previous application was not approved: ${rejectionReason}`
+                  : 'Your previous verification application was not approved. You may reapply.'}
+              </p>
+              <button
+                type="button"
+                onClick={() => router.push('/profile/upgrade')}
+                className="rounded-full bg-foreground px-10 py-4 text-[15px] font-bold text-background transition hover:opacity-90"
+              >
+                Reapply for Verification
+              </button>
+              <Link
+                href="/profile"
+                className="text-[12px] text-muted-foreground underline underline-offset-2 hover:text-foreground"
+              >
+                Back to your profile
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </main>

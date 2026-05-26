@@ -7,7 +7,7 @@ import * as interactionsRepo from '@/lib/repos/reportInteractions';
 import * as siteSettingsRepo from '@/lib/repos/siteSettings';
 import * as usersRepo from '@/lib/repos/users';
 import { hidesReporterOnPublicSurfaces, redactPublicReporter } from '@/lib/reportPrivacy';
-import { socialFeedScore } from '@/lib/feedRanking';
+import { MIN_TRENDING_ENGAGEMENT, socialFeedScore } from '@/lib/feedRanking';
 import { classifyType } from '@/lib/feedClassify';
 
 function createdTime(report: { createdAt?: string; timestamp?: string }) {
@@ -300,8 +300,8 @@ export async function GET(request: Request) {
     feed = feed.filter((report) => {
       const s = report.stats;
       const totalEngagement =
-        (s?.aligns ?? 0) + (s?.opposes ?? 0) + (s?.comments ?? 0);
-      return totalEngagement >= 1;
+        (s?.aligns ?? 0) + (s?.opposes ?? 0) + (s?.comments ?? 0) + (s?.shares ?? 0);
+      return totalEngagement >= MIN_TRENDING_ENGAGEMENT;
     });
   }
 

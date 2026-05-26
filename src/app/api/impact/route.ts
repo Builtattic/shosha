@@ -6,8 +6,9 @@ import type { ReportRecord } from '@/lib/repos/reports';
 import * as reportsRepo from '@/lib/repos/reports';
 import * as siteSettingsRepo from '@/lib/repos/siteSettings';
 import * as usersRepo from '@/lib/repos/users';
+import { MIN_TRENDING_ENGAGEMENT, socialFeedScore } from '@/lib/feedRanking';
 
-const TWENTY_FOUR_H_MS = 24 * 60 * 60 * 1000;
+const MIN_RECENT_ENGAGEMENT = 1;
 
 type ReportStats = NonNullable<ReportRecord['stats']>;
 
@@ -18,12 +19,6 @@ function engagementTotal(stats?: ReportStats) {
 function createdTime(report: { createdAt?: string }) {
   const time = report.createdAt ? new Date(report.createdAt).getTime() : 0;
   return Number.isFinite(time) ? time : 0;
-}
-
-function isWithin24h(createdAt?: string) {
-  if (!createdAt) return false;
-  const time = new Date(createdAt).getTime();
-  return Number.isFinite(time) && Date.now() - time <= TWENTY_FOUR_H_MS;
 }
 
 type EnrichedReport = ReportRecord & {
@@ -92,17 +87,17 @@ async function loadEnrichedReports(): Promise<EnrichedReport[]> {
 }
 
 function pickTopStories(reports: EnrichedReport[]): EnrichedReport[] {
-  const byEngagement = (a: EnrichedReport, b: EnrichedReport) =>
-    engagementTotal(b.stats) - engagementTotal(a.stats) || createdTime(b) - createdTime(a);
-
-  const last24h = reports.filter((report) => isWithin24h(report.createdAt)).sort(byEngagement);
-  const older = reports.filter((report) => !isWithin24h(report.createdAt)).sort(byEngagement);
-  const merged = [...last24h, ...older];
-  return merged.slice(0, 10);
+  return reports
+    .filter((report) => engagementTotal(report.stats) >= MIN_TRENDING_ENGAGEMENT)
+    .sort((a, b) => socialFeedScore(b as any) - socialFeedScore(a as any) || createdTime(b) - createdTime(a))
+    .slice(0, 10);
 }
 
 function pickRecentReports(reports: EnrichedReport[]): EnrichedReport[] {
-  return [...reports].sort((a, b) => createdTime(b) - createdTime(a)).slice(0, 10);
+  return reports
+    .filter((report) => engagementTotal(report.stats) >= MIN_RECENT_ENGAGEMENT)
+    .sort((a, b) => createdTime(b) - createdTime(a))
+    .slice(0, 10);
 }
 
 export async function GET() {

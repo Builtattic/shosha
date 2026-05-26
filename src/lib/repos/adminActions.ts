@@ -14,6 +14,7 @@ export type AdminEntityType =
   | 'dispute'
   | 'evidence'
   | 'moderationRequest'
+  | 'deletionRequest'
   | 'data';
 
 export type AdminActionRecord = {

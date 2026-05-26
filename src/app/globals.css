@@ -82,8 +82,8 @@ select {
 }
 
 ::selection {
-  background: #1a1a1a;
-  color: #ffffff;
+  background: var(--primary);
+  color: var(--primary-foreground);
 }
 
 .safe-bottom {
@@ -142,7 +142,7 @@ select {
 
 /* Smooth focus rings for keyboard users only */
 :focus-visible {
-  outline: 2px solid #1a1a1a;
+  outline: 2px solid var(--foreground);
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -190,7 +190,12 @@ button, a {
   100% { background-position: 480px 0; }
 }
 .shimmer {
-  background: linear-gradient(90deg, #f3f4f6 0px, #e9eaee 80px, #f3f4f6 160px);
+  background: linear-gradient(
+    90deg,
+    var(--muted) 0px,
+    var(--card) 80px,
+    var(--muted) 160px
+  );
   background-size: 480px 100%;
   animation: shimmer 1.4s linear infinite;
 }

@@ -18,7 +18,7 @@ export function Modal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-4">
-      <section className="max-h-[92vh] w-full max-w-md overflow-y-auto border border-border bg-bg p-4 shadow-lime">
+      <section className="max-h-[92vh] w-full max-w-md overflow-y-auto border border-border bg-card p-4 shadow-xl rounded-2xl">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-serif text-4xl">{title}</h2>
           <Button aria-label="Close modal" variant="ghost" className="h-11 w-11 p-0" onClick={onClose}>

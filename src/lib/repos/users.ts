@@ -280,6 +280,15 @@ export async function listAll(limit = 200): Promise<AppUser[]> {
   return results.reverse();
 }
 
+export async function listByRole(role: UserRole): Promise<AppUser[]> {
+  const snap = await ref().orderByChild('role').equalTo(role).once('value');
+  const results: AppUser[] = [];
+  snap.forEach((child) => {
+    results.push(withId<AppUser>(child.key!, child.val()));
+  });
+  return results;
+}
+
 export async function listTrustBadgePending(): Promise<AppUser[]> {
   const snap = await ref().orderByChild('trustBadgePending').equalTo(true).once('value');
   const out: AppUser[] = [];
