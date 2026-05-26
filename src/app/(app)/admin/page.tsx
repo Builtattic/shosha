@@ -24,6 +24,7 @@ import * as reportsRepo from '@/lib/repos/reports';
 import * as usersRepo from '@/lib/repos/users';
 import * as claimsRepo from '@/lib/repos/claimRequests';
 import * as auditsRepo from '@/lib/repos/auditRequests';
+import * as deletionRequestsRepo from '@/lib/repos/deletionRequests';
 import * as issueReportsRepo from '@/lib/repos/issueReports';
 import { AdminDashboardChart } from '@/components/admin/AdminDashboardChart';
 import { BASE_SCORE } from '@/lib/scoring';
@@ -49,6 +50,7 @@ export default async function AdminPage() {
     pendingAudits,
     abuseReports,
     pendingTrustBadge,
+    pendingDeletions,
     openIssues,
     topAccounts,
   ] = await Promise.all([
@@ -61,6 +63,7 @@ export default async function AdminPage() {
     auditsRepo.listPending(),
     reportsRepo.listAbuse(20),
     usersRepo.listTrustBadgePending().catch(() => []),
+    deletionRequestsRepo.listPending().catch(() => []),
     issueReportsRepo.listOpen().catch(() => []),
     accountsRepo.listTop(5),
   ]);
@@ -306,6 +309,7 @@ export default async function AdminPage() {
                 { label: 'Security Audits', count: pendingAudits.length, href: '/admin/audits', color: 'text-cyan-500', bg: 'bg-cyan-500/10' },
                 { label: 'Abuse Flagged', count: abuseReports.length, href: '/admin/abuse', color: 'text-red-500', bg: 'bg-red-500/10' },
                 { label: 'Trust Badge Review', count: pendingTrustBadge.length, href: '/admin/trust-badge', color: 'text-purple-500', bg: 'bg-purple-500/10' },
+                { label: 'Deletion Requests', count: pendingDeletions.length, href: '/admin/deletion-requests', color: 'text-rose-500', bg: 'bg-rose-500/10' },
                 { label: 'Reported Issues', count: openIssues.length, href: '/admin/issues', color: 'text-blue-500', bg: 'bg-blue-500/10' },
               ].map((item) => (
                 <Link
