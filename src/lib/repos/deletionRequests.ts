@@ -3,9 +3,16 @@ import { stripUndefined, withId } from '@/lib/repos/_serialize';
 
 export type DeletionRequestStatus = 'pending' | 'approved' | 'rejected' | 'completed';
 
+export type DeletionRequestUserSnapshot = {
+  username: string;
+  email: string;
+  name?: string;
+};
+
 export type DeletionRequestRecord = {
   _id: string;
   userId: string;
+  userSnapshot?: DeletionRequestUserSnapshot;
   reason: string;
   details?: string;
   attachmentUrls?: string[];
@@ -21,8 +28,10 @@ function ref() {
   return adminDb().ref('deletionRequests');
 }
 
+type CreateDeletionRequestInput = Omit<DeletionRequestRecord, '_id' | 'createdAt' | 'updatedAt'>;
+
 export async function create(
-  input: Omit<DeletionRequestRecord, '_id' | 'createdAt' | 'updatedAt'>
+  input: CreateDeletionRequestInput
 ): Promise<DeletionRequestRecord> {
   const now = new Date().toISOString();
   const newRef = ref().push();

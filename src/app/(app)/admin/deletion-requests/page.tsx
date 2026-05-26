@@ -10,12 +10,17 @@ export default async function AdminDeletionRequestsPage() {
   await requireAdmin();
 
   const requests = await deletionRequestsRepo.listAll(100);
-  const userIds = Array.from(new Set(requests.map((item) => item.userId)));
-  const users = await Promise.all(userIds.map((id) => usersRepo.findById(id)));
+  const missingSnapshotUserIds = Array.from(
+    new Set(requests.filter((item) => !item.userSnapshot).map((item) => item.userId))
+  );
+  const users = await Promise.all(missingSnapshotUserIds.map((id) => usersRepo.findById(id)));
   const userMap = new Map(users.filter(Boolean).map((user) => [user!._id, user!]));
 
   const rows = requests.map((request) => {
-    const user = userMap.get(request.userId) ?? null;
+    const snapshot = request.userSnapshot;
+    const user = snapshot
+      ? { _id: request.userId, username: snapshot.username, email: snapshot.email, name: snapshot.name }
+      : (userMap.get(request.userId) ?? null);
     return {
       ...request,
       user: user ? { _id: user._id, username: user.username, email: user.email, name: user.name } : null,

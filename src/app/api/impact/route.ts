@@ -8,6 +8,8 @@ import * as siteSettingsRepo from '@/lib/repos/siteSettings';
 import * as usersRepo from '@/lib/repos/users';
 import { MIN_TRENDING_ENGAGEMENT, socialFeedScore } from '@/lib/feedRanking';
 
+const MIN_RECENT_ENGAGEMENT = 1;
+
 type ReportStats = NonNullable<ReportRecord['stats']>;
 
 function engagementTotal(stats?: ReportStats) {
@@ -93,10 +95,7 @@ function pickTopStories(reports: EnrichedReport[]): EnrichedReport[] {
 
 function pickRecentReports(reports: EnrichedReport[]): EnrichedReport[] {
   return reports
-    .filter((report) => {
-      const s = report.stats;
-      return (s?.aligns ?? 0) + (s?.opposes ?? 0) + (s?.comments ?? 0) >= 1;
-    })
+    .filter((report) => engagementTotal(report.stats) >= MIN_RECENT_ENGAGEMENT)
     .sort((a, b) => createdTime(b) - createdTime(a))
     .slice(0, 10);
 }

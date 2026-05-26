@@ -8,7 +8,7 @@ import * as usersRepo from '@/lib/repos/users';
 
 export const runtime = 'nodejs';
 
-const ADMIN_ROLES = new Set(['moderator', 'editor', 'admin', 'super_admin']);
+const ADMIN_ROLES: usersRepo.UserRole[] = ['moderator', 'editor', 'admin', 'super_admin'];
 
 const deletionSchema = z.object({
   reason: z.enum([
@@ -44,6 +44,11 @@ export async function POST(request: Request) {
 
   const record = await deletionRequestsRepo.create({
     userId: user._id,
+    userSnapshot: {
+      username: user.username,
+      email: user.email,
+      name: user.name,
+    },
     reason: parsed.data.reason,
     details: parsed.data.details,
     attachmentUrls: parsed.data.attachmentUrls ?? [],
@@ -60,7 +65,7 @@ export async function POST(request: Request) {
     createdAt: record.createdAt,
   });
 
-  const admins = (await usersRepo.listAll(500)).filter((item) => ADMIN_ROLES.has(item.role));
+  const admins = (await Promise.all(ADMIN_ROLES.map((role) => usersRepo.listByRole(role)))).flat();
   await Promise.all(
     admins.map((admin) =>
       notificationsRepo.create({
