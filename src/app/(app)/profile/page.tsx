@@ -7,7 +7,7 @@ import {
   CheckCircle2, TrendingUp, Shield, ShieldCheck,
   PieChart, Activity, Target, User, Users, UserRound, ThumbsUp, ThumbsDown, Minus, ArrowRight,
   Briefcase, GraduationCap, FileText, Link2, Pencil, MapPin, ExternalLink,
-  AlertCircle, Play, History, TrendingDown, Calendar, Eye, Link as LinkIcon
+  AlertCircle, Play, History, TrendingDown, Calendar, Eye, Link as LinkIcon, Loader2
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn, formatDate, formatRelativeTime } from '@/lib/utils';
@@ -185,6 +185,8 @@ export default function ProfilePage() {
   const scores = appUser ? calcProfileScores(appUser) : [];
   const contextPercent = calcShoshaScore(scores); // 0–100 composite of profile multipliers
   const trustBadge = Boolean(appUser?.trustBadge);
+  const trustBadgePending = Boolean(appUser?.trustBadgePending);
+  const trustBadgeRejected = Boolean(appUser?.trustBadgeRejectedAt);
   const ledgerScore = typeof appUser?.score === 'number' ? appUser.score : BASE_SCORE;
   const dossierLedgerScore =
     typeof data?.dossierScore === 'number' ? data.dossierScore : ledgerScore;
@@ -370,6 +372,20 @@ export default function ProfilePage() {
                 <ShieldCheck size={13} className="shrink-0 text-foreground" />
                 Trusted
               </div>
+            ) : trustBadgePending ? (
+              <div className="flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 dark:bg-amber-500/10 dark:border-amber-500/30 px-3 py-1.5 text-[11px] font-bold text-amber-700 dark:text-amber-400">
+                <Loader2 size={13} className="shrink-0 animate-spin" />
+                Under Review
+              </div>
+            ) : trustBadgeRejected ? (
+              <button
+                type="button"
+                onClick={() => router.push('/trust-badge')}
+                className="flex min-w-0 items-center gap-1.5 rounded-full border border-destructive/30 bg-background px-3 py-1.5 text-[11px] font-semibold text-destructive shadow-sm hover:bg-destructive/10 transition-all"
+              >
+                <ShieldCheck size={13} className="shrink-0" />
+                <span className="truncate">Reapply for Badge</span>
+              </button>
             ) : (
               <button
                 type="button"
@@ -472,7 +488,11 @@ export default function ProfilePage() {
             <p title="Number of followers on ShoSha" className="mt-0.5 text-[9px] sm:text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Followers</p>
           </button>
           {/* Card 4 — Credibility */}
-          <div className="min-w-0 rounded-2xl border border-border bg-background py-3 px-1 text-center shadow-sm flex flex-col items-center justify-center">
+          <button
+            type="button"
+            onClick={() => router.push('/trust-badge')}
+            className="min-w-0 rounded-2xl border border-border bg-background py-3 px-1 text-center shadow-sm flex flex-col items-center justify-center transition-all hover:border-foreground/20 hover:shadow-md active:scale-[0.98] cursor-pointer"
+          >
             <div className="mx-auto flex items-center justify-center text-foreground">
               {trustBadge ? (
                 <ShieldCheck size={18} strokeWidth={2.5} className="text-foreground" />
@@ -484,7 +504,7 @@ export default function ProfilePage() {
               {profileCredibilityDisplay}%
             </p>
             <p title="Profile trustworthiness based on completion and reporting reliability. Max 100." className="mt-0.5 text-[9px] sm:text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Credibility</p>
-          </div>
+          </button>
         </div>
 
         {/* Tabs */}
