@@ -146,6 +146,7 @@ export function ReportModal({
   const [newProfileEmail, setNewProfileEmail] = useState('');
   const [newProfileUrl, setNewProfileUrl] = useState('');
   const [newProfileUsername, setNewProfileUsername] = useState('');
+  const [newProfilePlatform, setNewProfilePlatform] = useState<Platform>('instagram');
   const [addProfileStep, setAddProfileStep] = useState(1);
   const [additionalSocialLinks, setAdditionalSocialLinks] = useState<AdditionalSocialLinkRow[]>([]);
   const [extraLinkPlatform, setExtraLinkPlatform] = useState<Platform>('instagram');
@@ -220,6 +221,7 @@ export function ReportModal({
     setNewProfileEmail('');
     setNewProfileUrl('');
     setNewProfileUsername('');
+    setNewProfilePlatform('instagram');
     setAddProfileStep(1);
     setAdditionalSocialLinks([]);
     setExtraLinkPlatform('instagram');
@@ -235,7 +237,7 @@ export function ReportModal({
     const timer = window.setTimeout(async () => {
       setSearchingCandidates(true);
       try {
-        const response = await fetch(`/api/accounts/search?q=${encodeURIComponent(targetHandle)}&discover=0`);
+        const response = await fetch(`/api/accounts/search?q=${encodeURIComponent(targetHandle)}`);
         const payload = await readApiPayload<{ candidates?: AccountCandidate[]; accounts?: AccountRecord[] }>(
           response,
           'Search failed.'
@@ -744,6 +746,27 @@ export function ReportModal({
                 />
               </div>
 
+              <div className="mb-3">
+                <p className="text-[12px] font-bold text-muted-foreground mb-2">Platform</p>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {(['instagram', 'x', 'facebook', 'youtube', 'tiktok', 'linkedin', 'reddit', 'snapchat'] as const).map((platform) => (
+                    <button
+                      key={platform}
+                      type="button"
+                      onClick={() => setNewProfilePlatform(platform)}
+                      className={cn(
+                        'truncate rounded-full border px-2 py-2 text-[11px] font-bold transition-all active:scale-95',
+                        newProfilePlatform === platform
+                          ? 'border-foreground bg-foreground text-background shadow-md'
+                          : 'border-border bg-background text-muted-foreground hover:border-foreground/30'
+                      )}
+                    >
+                      {platform === 'x' ? 'X' : platform[0].toUpperCase() + platform.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <label className="text-[13px] font-bold block ml-1 uppercase tracking-wider text-muted-foreground">Platform Username</label>
                 <div className="relative">
@@ -752,7 +775,7 @@ export function ReportModal({
                     type="text"
                     value={newProfileUsername}
                     onChange={(e) => setNewProfileUsername(e.target.value.toLowerCase().replace(/\s+/g, ''))}
-                    placeholder="username"
+                    placeholder={`@username on ${newProfilePlatform === 'x' ? 'X' : newProfilePlatform}`}
                     className="w-full rounded-[18px] border border-border bg-card p-4 pl-9 text-[15px] focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium"
                   />
                 </div>
@@ -783,9 +806,9 @@ export function ReportModal({
                       body: JSON.stringify({
                         displayName: newProfileName,
                         username: newProfileUsername,
-                        platform: 'instagram', 
+                        platform: newProfilePlatform,
                         sourceUrl: newProfileUrl,
-                        manual: true
+                        skipDiscovery: false
                       })
                     });
                     const res = await response.json();
@@ -795,6 +818,7 @@ export function ReportModal({
                       setTargetDisplayName(newProfileName);
                       setTargetHandle(newProfileUsername);
                       setTargetSourceUrl(newProfileUrl);
+                      setTargetPlatform(newProfilePlatform);
                       setTargetManual(true);
                       setView('report');
                     }
@@ -904,6 +928,16 @@ export function ReportModal({
                   </div>
                 ) : (
                   <div className="mt-3 space-y-2">
+                    {searchingCandidates && candidates.length === 0 && (
+                      <div className="mt-3 space-y-2">
+                        {[1, 2].map((i) => (
+                          <div
+                            key={i}
+                            className="h-[68px] w-full rounded-[22px] border border-border bg-muted/30 animate-pulse"
+                          />
+                        ))}
+                      </div>
+                    )}
                     {candidates.slice(0, 4).map((candidate) => (
                       <button
                         key={`${candidate.existingAccountId ?? ''}:${candidate.platform}:${candidate.username}:${candidate.sourceUrl}`}
@@ -924,13 +958,23 @@ export function ReportModal({
                             </div>
                           </div>
                           <span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-black text-primary">
-                            {Math.round(candidate.confidence * 100)}% Match
+                            {candidate.existingAccountId
+                              ? 'On Shosha'
+                              : candidate.confidence >= 1
+                                ? '100% Match'
+                                : 'Found online'}
                           </span>
                         </div>
                       </button>
                     ))}
-                    
-                    {targetHandle.trim().length > 1 && (
+
+                    {candidates.length > 0 && candidates.every((candidate) => !candidate.existingAccountId) && (
+                      <p className="text-[11px] text-muted-foreground px-1 pt-1">
+                        No Shosha profile found - showing external results. Select one to import.
+                      </p>
+                    )}
+
+                    {targetHandle.trim().length > 1 && candidates.length === 0 && !searchingCandidates && (
                       <div className="pt-2">
                         <div className="rounded-[24px] border border-dashed border-border bg-muted/20 p-6 text-center">
                           <div className="h-12 w-12 rounded-full bg-background border border-border flex items-center justify-center mx-auto mb-3 shadow-sm">
@@ -946,6 +990,7 @@ export function ReportModal({
                               setAdditionalSocialLinks([]);
                               setExtraLinkPlatform('instagram');
                               setExtraLinkUrl('');
+                              setNewProfilePlatform(targetPlatform || 'instagram');
                               setView('add_profile');
                             }}
                           >
