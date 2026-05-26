@@ -371,10 +371,10 @@ export default function ReportIssuePage() {
         <p className="mt-6 text-center text-[12px] text-muted-foreground">
           For urgent security issues, contact us directly at{' '}
           <a
-            href="mailto:security@shosha.com"
+            href="mailto:tech@noshosha.com"
             className="font-semibold text-foreground underline underline-offset-2 hover:opacity-80"
           >
-            tech@shosha.com
+            tech@noshosha.com
           </a>
         </p>
       </main>
