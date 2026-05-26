@@ -13,6 +13,7 @@ import {
   Bell,
   HelpCircle,
   ShieldAlert,
+  AlertTriangle,
   Settings,
   ShieldCheck,
   ChevronRight,
@@ -42,6 +43,7 @@ const navigateItems: NavItem[] = [
 
 const manageItems: NavItem[] = [
   { href: '/disputes', label: 'Disputes', icon: ShieldAlert },
+  { href: '/report-issue', label: 'Report Issue', icon: AlertTriangle },
   { href: '/settings', label: 'Settings', icon: Settings },
   { href: '/admin', label: 'Admin', icon: ShieldCheck },
 ];
