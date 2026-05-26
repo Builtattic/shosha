@@ -8,7 +8,7 @@ export default function HomePage() {
       {/* HEADER */}
       <header className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-6 md:px-12">
         <div className="font-serif text-[28px] font-black text-foreground">
-          Sho<span className="font-normal italic text-muted-foreground">शा</span>
+          Sho<span className="font-normal italic text-muted-foreground">शा</span>™
         </div>
         <div className="flex items-center gap-3">
           {/* <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-card text-muted-foreground [&>button]:flex [&>button]:h-full [&>button]:w-full [&>button]:items-center [&>button]:justify-center [&>button]:rounded-full [&>button]:p-0">

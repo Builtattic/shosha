@@ -756,7 +756,7 @@ export default function OnboardPage() {
               {/* Alternate path — claim a profile someone else made of you */}
               <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-dashed border-border bg-muted/20 p-3">
                 <div className="min-w-0">
-                  <p className="text-[12px] font-bold leading-tight">Already on Shosha?</p>
+                  <p className="text-[12px] font-bold leading-tight">Already on Shosha™?</p>
                   <p className="mt-0.5 text-[11px] text-muted-foreground">
                     If someone made a profile of you, claim it instead of starting fresh.
                   </p>

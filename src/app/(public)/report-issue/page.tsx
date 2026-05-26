@@ -144,7 +144,7 @@ export default function ReportIssuePage() {
         <div className="mb-8 rounded-2xl border border-border bg-card p-6">
           <h1 className="text-[22px] font-black mb-2">Report an Issue</h1>
           <p className="text-[14px] text-muted-foreground leading-relaxed">
-            Help us improve Shosha by reporting bugs, broken functionality, incorrect calculations,
+            Help us improve Shosha™ by reporting bugs, broken functionality, incorrect calculations,
             or abusive content. Please provide as much detail as possible — including steps to
             reproduce and screenshots where relevant. We review all reports and respond to critical
             issues within 24 hours.

@@ -188,7 +188,7 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
                   <p className="truncate text-[11px] text-muted-foreground">{username}</p>
                   {typeof me?.score === 'number' && (
                     <p className="mt-0.5 text-[11px] font-bold tabular-nums text-foreground">
-                      {me.score.toLocaleString()} <span className="font-medium text-muted-foreground">Shosha Score</span>
+                      {me.score.toLocaleString()} <span className="font-medium text-muted-foreground">Shosha™ Score</span>
                     </p>
                   )}
                 </div>

@@ -276,7 +276,7 @@ export default function TrustBadgePage() {
                 Ready to get verified?
               </h2>
               <p className="text-[18px] text-muted-foreground max-w-[480px]">
-                Join verified contributors on Shosha. One-time verification.
+                Join verified contributors on Shosha™. One-time verification.
                 Permanent badge.
               </p>
               <button

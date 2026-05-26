@@ -248,7 +248,7 @@ export default function DashboardPage() {
   const showHeroAvatar = Boolean(avatarUrl && !heroImgError);
 
   const displayScore = ledgerScore;
-  const scoreLabel = 'Shosha Score';
+  const scoreLabel = 'Shosha™ Score';
   const scoreContext = hasOnboarded
     ? 'Calculated from your profile dimensions and reported events'
     : 'Complete your profile to start building your Shosha Score';

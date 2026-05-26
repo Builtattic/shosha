@@ -280,7 +280,7 @@ export const ProfileShareCard = forwardRef<HTMLDivElement, ProfileShareCardProps
             <div style={{ textAlign: 'right' }}>
               <div style={{ fontSize: 10, color: C.muted, fontFamily: SANS }}>Social Accountability.</div>
               <div style={{ fontSize: 10, color: C.muted, fontFamily: SANS }}>
-                Powered by Sho<span style={{ fontStyle: 'italic' }}>शा</span>
+                Powered by Sho<span style={{ fontStyle: 'italic' }}>शा</span>™
               </div>
             </div>
           </div>

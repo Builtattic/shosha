@@ -13,7 +13,7 @@ import React, { forwardRef } from 'react';
  */
 
 /* ----------------------------- Visual brand constants ----------------------------- */
-const BRAND = 'Shoशा';
+const BRAND = 'Shoशा™';
 const LOGO_SRC = '/logo-light.png';
 const REPORT_URL = 'https://noshosha.com';
 const REPORT_HOST = 'noshosha.com';

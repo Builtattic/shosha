@@ -101,7 +101,7 @@ export async function GET(req: NextRequest) {
                 letterSpacing: '-0.5px',
               }}
             >
-              Shosha
+              Shosha™
             </div>
             <div
               style={{
