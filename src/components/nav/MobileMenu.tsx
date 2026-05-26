@@ -17,7 +17,6 @@ import {
   ShieldAlert,
   AlertTriangle,
   Settings,
-  Info,
   HelpCircle,
   ShieldCheck,
   LogOut,
@@ -26,6 +25,7 @@ import {
   Globe,
   Users,
   CircleDot,
+  Scale,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -69,6 +69,7 @@ const groups: NavGroup[] = [
     label: 'About',
     items: [
       { href: '/how-it-works', label: 'How It Works', icon: HelpCircle },
+      { href: '/legal-policies', label: 'Legal & Policies', icon: Scale },
       { href: '/admin', label: 'Admin Console', icon: ShieldCheck, admin: true },
     ],
   },

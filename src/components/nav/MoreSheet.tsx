@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   ChevronRight,
   PlusCircle,
+  Scale,
   type LucideIcon,
 } from 'lucide-react';
 import { useReportModal } from '@/components/report/ReportModalProvider';
@@ -39,6 +40,7 @@ const navigateItems: NavItem[] = [
   { href: '/bookmarks', label: 'Bookmarks', icon: Bookmark },
   { href: '/notifications', label: 'Notifications', icon: Bell },
   { href: '/how-it-works', label: 'How It Works', icon: HelpCircle },
+  { href: '/legal-policies', label: 'Legal & Policies', icon: Scale },
 ];
 
 const manageItems: NavItem[] = [
@@ -160,6 +162,9 @@ export function MoreSheet({ open, onClose }: MoreSheetProps) {
                 </button>
                 <p className="mt-2 text-center text-[11px] text-muted-foreground">
                   Add proof, classify impact, and send it to review.
+                </p>
+                <p className="mt-4 text-center text-[10px] font-normal leading-snug text-muted-foreground">
+                  © 2026 Builtattic Private Limited. All rights reserved.
                 </p>
               </div>
             </div>

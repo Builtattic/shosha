@@ -374,7 +374,7 @@ export default function ReportIssuePage() {
             href="mailto:security@shosha.com"
             className="font-semibold text-foreground underline underline-offset-2 hover:opacity-80"
           >
-            security@shosha.com
+            tech@shosha.com
           </a>
         </p>
       </main>

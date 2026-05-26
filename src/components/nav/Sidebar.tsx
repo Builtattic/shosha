@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Home, Target, TrendingUp, Info, User, ShieldAlert, Settings, Globe, ChevronDown, ShieldCheck, Newspaper, HelpCircle, Bookmark, Bell, Search, PlusCircle, Activity, Users, CircleDot, Key, AlertTriangle } from 'lucide-react';
+import { Home, Target, TrendingUp, Info, User, ShieldAlert, Settings, Globe, ChevronDown, ShieldCheck, Newspaper, HelpCircle, Bookmark, Bell, Search, PlusCircle, Activity, Users, CircleDot, Key, AlertTriangle, Scale } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useReportModal } from '@/components/report/ReportModalProvider';
 import { RANK_SCOPE_OPTIONS, resolveRankScope, type RankScopeValue } from '@/lib/rankScope';
@@ -71,6 +71,7 @@ export function Sidebar() {
     { href: '/bookmarks', label: 'Bookmarks', icon: Bookmark },
     { href: '/notifications', label: 'Notifications', icon: Bell },
     { href: '/how-it-works', label: 'How It Works', icon: HelpCircle },
+    { href: '/legal-policies', label: 'Legal & Policies', icon: Scale },
   ];
 
   const navigationItems = [
@@ -235,6 +236,9 @@ export function Sidebar() {
             ))}
           </div>
         )}
+        <p className="mt-3 text-center text-[10px] font-normal leading-snug text-muted-foreground">
+          © 2026 Builtattic Private Limited. All rights reserved.
+        </p>
       </div>
     </aside>
   );
