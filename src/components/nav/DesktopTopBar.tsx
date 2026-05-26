@@ -6,7 +6,7 @@ import { Bell, LogOut, Plus, Search, X } from 'lucide-react';
 import { useReportModal } from '@/components/report/ReportModalProvider';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { ThemeToggle } from '@/components/ui/ThemeToggle';
+// import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useMePhotoUrl } from '@/hooks/useMePhotoUrl';
 import { cn } from '@/lib/utils';
 
@@ -93,9 +93,9 @@ export function DesktopTopBar() {
           )}
         </button>
 
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-xl text-muted-foreground [&>button]:flex [&>button]:h-full [&>button]:w-full [&>button]:items-center [&>button]:justify-center [&>button]:rounded-xl [&>button]:p-0">
+        {/* <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-xl text-muted-foreground [&>button]:flex [&>button]:h-full [&>button]:w-full [&>button]:items-center [&>button]:justify-center [&>button]:rounded-xl [&>button]:p-0">
           <ThemeToggle />
-        </div>
+        </div> */}
 
         <button
           type="button"

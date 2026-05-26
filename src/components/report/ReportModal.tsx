@@ -1312,7 +1312,7 @@ export function ReportModal({
                   )}
                 >
                   <div className={cn(
-                    "absolute top-1 h-4 w-4 rounded-full bg-white transition-all shadow-sm",
+                    "absolute top-1 h-4 w-4 rounded-full bg-background transition-all shadow-sm",
                     publicAnonymous ? "left-6" : "left-1"
                   )} />
                 </button>
@@ -1332,7 +1332,7 @@ export function ReportModal({
                   )}
                 >
                   <div className={cn(
-                    "absolute top-1 h-4 w-4 rounded-full bg-white transition-all shadow-sm",
+                    "absolute top-1 h-4 w-4 rounded-full bg-background transition-all shadow-sm",
                     aiConsent ? "left-6" : "left-1"
                   )} />
                 </button>

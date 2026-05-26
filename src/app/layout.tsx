@@ -60,8 +60,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="en"
-      suppressHydrationWarning
-      className={`${instrumentSans.variable} ${playfairDisplay.variable} ${dmMono.variable}`}
+      className={`light ${instrumentSans.variable} ${playfairDisplay.variable} ${dmMono.variable}`}
     >
       <body className="font-sans text-foreground bg-background antialiased selection:bg-primary selection:text-background">
         {/* App-shell splash — paints with first HTML byte so PWA + APK WebView

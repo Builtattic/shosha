@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Search as SearchIcon, X } from 'lucide-react';
 import { FeedItem, type FeedItemProps } from '@/components/feed/FeedItem';
 import { cn } from '@/lib/utils';
-import { ThemeToggle } from '@/components/ui/ThemeToggle';
+// import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 type FeedReport = {
   _id: string;
@@ -158,9 +158,9 @@ export default function SearchPage() {
                 <p className="mt-1 text-[11px] text-muted-foreground">Find filings by content, or accounts by handle.</p>
               </div>
             </div>
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center text-muted-foreground lg:hidden [&>button]:flex [&>button]:h-full [&>button]:w-full [&>button]:items-center [&>button]:justify-center [&>button]:rounded-xl [&>button]:p-0">
+            {/* <div className="flex h-8 w-8 shrink-0 items-center justify-center text-muted-foreground lg:hidden [&>button]:flex [&>button]:h-full [&>button]:w-full [&>button]:items-center [&>button]:justify-center [&>button]:rounded-xl [&>button]:p-0">
               <ThemeToggle />
-            </div>
+            </div> */}
           </div>
           <div className="relative">
             <SearchIcon

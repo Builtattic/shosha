@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { CheckCircle, Globe, Lock, Palette, Pencil, Settings, Trash2, User, Bell, X } from 'lucide-react';
-import { ThemeToggle } from '@/components/ui/ThemeToggle';
+// import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { Button } from '@/components/ui/Button';
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (value: boolean) => void }) {
@@ -15,7 +15,7 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (value: boo
       className={`relative h-6 w-10 rounded-full transition ${checked ? 'bg-primary' : 'bg-muted'}`}
       aria-pressed={checked}
     >
-      <span className={`absolute top-1 h-4 w-4 rounded-full bg-white transition ${checked ? 'right-1' : 'left-1'}`} />
+      <span className={`absolute top-1 h-4 w-4 rounded-full bg-background transition ${checked ? 'right-1' : 'left-1'}`} />
     </button>
   );
 }
@@ -349,23 +349,6 @@ export default function SettingsPage() {
                 <p className="text-[12px] text-muted-foreground">A summary of your weekly momentum</p>
               </div>
               <Toggle checked={weeklyDigest} onChange={updateWeeklyDigest} />
-            </div>
-          </div>
-        </section>
-
-        <section className="rounded-[24px] border border-border bg-card p-6">
-          <div className="mb-4 flex items-center gap-3 border-b border-border pb-4">
-            <Palette size={20} className="text-foreground" />
-            <h2 className="text-[18px] font-bold text-foreground">Appearance</h2>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-[14px] font-bold">Theme</p>
-                <p className="text-[12px] text-muted-foreground">Switch between light and dark mode</p>
-              </div>
-              <ThemeToggle showLabel={true} />
             </div>
           </div>
         </section>

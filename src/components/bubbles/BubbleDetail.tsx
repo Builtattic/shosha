@@ -186,13 +186,13 @@ export function BubbleDetail({ bubble, currentUser, members, requests: initialRe
         <div className="absolute top-0 z-10 flex w-full items-center justify-between px-4 py-4 md:px-8">
           <button 
             onClick={() => window.history.back()}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-foreground shadow-sm backdrop-blur-md transition-all duration-200 hover:bg-white active:scale-95"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-background/90 text-foreground shadow-sm backdrop-blur-md transition-all duration-200 hover:bg-background active:scale-95"
             aria-label="Go back"
           >
             <ArrowLeft size={20} />
           </button>
           <div className="flex items-center gap-2">
-            <button onClick={() => setActiveTab('requests')} className="relative flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-foreground shadow-sm backdrop-blur-md transition-all duration-200 hover:bg-white active:scale-95" aria-label="Requests">
+            <button onClick={() => setActiveTab('requests')} className="relative flex h-10 w-10 items-center justify-center rounded-full bg-background/90 text-foreground shadow-sm backdrop-blur-md transition-all duration-200 hover:bg-background active:scale-95" aria-label="Requests">
               <Bell size={20} />
               {requests.length > 0 && (
                 <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-black text-primary-foreground">
@@ -200,7 +200,7 @@ export function BubbleDetail({ bubble, currentUser, members, requests: initialRe
                 </span>
               )}
             </button>
-            <button onClick={handleShare} className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-foreground shadow-sm backdrop-blur-md transition-all duration-200 hover:bg-white active:scale-95" aria-label="Share bubble">
+            <button onClick={handleShare} className="flex h-10 w-10 items-center justify-center rounded-full bg-background/90 text-foreground shadow-sm backdrop-blur-md transition-all duration-200 hover:bg-background active:scale-95" aria-label="Share bubble">
               <MoreHorizontal size={20} />
             </button>
           </div>

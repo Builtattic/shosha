@@ -6,7 +6,7 @@ import { Bell, LogOut, Plus, Search, Upload, X } from 'lucide-react';
 import { useReportModal } from '@/components/report/ReportModalProvider';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { ThemeToggle } from '@/components/ui/ThemeToggle';
+// import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useMePhotoUrl } from '@/hooks/useMePhotoUrl';
 import { cn } from '@/lib/utils';
 
@@ -33,7 +33,7 @@ export function MobileAppHeader({
   const showAvatar = Boolean(photoUrl && !imgError);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-background/80 p-4 backdrop-blur-xl lg:hidden">
+    <header className="sticky top-0 z-50 border-b border-border bg-background p-4 lg:hidden">
       <div className="mx-auto max-w-2xl">
         <div className="flex items-center justify-between">
           <div className="font-serif text-[28px] font-black text-foreground">
@@ -81,9 +81,9 @@ export function MobileAppHeader({
                 </span>
               )}
             </button>
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center text-muted-foreground [&>button]:flex [&>button]:h-full [&>button]:w-full [&>button]:items-center [&>button]:justify-center [&>button]:rounded-xl [&>button]:p-0 [&>button]:text-muted-foreground [&>button]:transition-colors [&>button]:hover:text-foreground">
+            {/* <div className="flex h-8 w-8 shrink-0 items-center justify-center text-muted-foreground [&>button]:flex [&>button]:h-full [&>button]:w-full [&>button]:items-center [&>button]:justify-center [&>button]:rounded-xl [&>button]:p-0 [&>button]:text-muted-foreground [&>button]:transition-colors [&>button]:hover:text-foreground">
               <ThemeToggle />
-            </div>
+            </div> */}
             <button
               type="button"
               onClick={() => router.push('/profile')}

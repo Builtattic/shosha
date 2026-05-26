@@ -366,7 +366,7 @@ export default async function AccountPage({
   const activeTab = searchParams.tab || 'overview';
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-white dark:bg-zinc-950 safe-bottom font-sans">
+    <main className="min-h-screen overflow-x-hidden bg-background safe-bottom font-sans">
       {/* Sticky header with back + share */}
       <header className="sticky top-0 z-30 border-b border-border/60 bg-background/85 backdrop-blur-xl pt-4">
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-2 px-3 pb-3 sm:px-4">
