@@ -18,7 +18,7 @@ const analyzeSchema = z.object({
 
 export async function POST(request: Request) {
   const user = await getCurrentUser();
-  if (!isAdmin(user)) return fail('forbidden', 'Only tribunal staff can run direct analysis.', 403);
+  if (!user || !isAdmin(user)) return fail('forbidden', 'Only tribunal staff can run direct analysis.', 403);
 
   const aiLimit = await assertLimit(rateLimits.analyzeAi, user._id);
   if (!aiLimit.allowed) {
