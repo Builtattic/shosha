@@ -27,6 +27,7 @@ export type AiVerdict = {
     mediaFlags: string[];
   };
   analyzedAt: Date;
+  usedHeuristic?: boolean;
 };
 
 export type AuditOutput = {
@@ -232,6 +233,7 @@ function heuristicAdjudication(input: AdjudicationInput): AiVerdict {
 }
 
 export async function adjudicateReport(input: AdjudicationInput): Promise<AiVerdict> {
+  // dev/config fallback — not an error
   if (!aiKey() || !aiModel()) return heuristicAdjudication(input);
 
   try {
@@ -295,7 +297,8 @@ ${input.mediaType === 'video' && input.mediaUrl ? `A video proof was uploaded bu
       analyzedAt: new Date()
     };
   } catch {
-    return heuristicAdjudication(input);
+    const h = heuristicAdjudication(input);
+    return { ...h, usedHeuristic: true };
   }
 }
 

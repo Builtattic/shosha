@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 
 // Public routes that don't require auth
 const publicPaths = ['/', '/sign-in', '/sign-up', '/ranks', '/impact', '/feed', '/post', '/leaderboard', '/how-it-works', '/legal-policies'];
-const publicApiPaths = ['/api/health', '/api/events', '/api/accounts', '/api/feed', '/api/impact', '/api/og', '/api/report-issue'];
+const publicApiPaths = ['/api/health', '/api/accounts', '/api/feed', '/api/impact', '/api/og', '/api/report-issue'];
 const protectedPathPrefixes = [
   '/account',
   '/admin',
@@ -28,7 +28,7 @@ function isPublicReportsApi(req: NextRequest): boolean {
   if (segments[0] !== 'api' || segments[1] !== 'reports') return false;
 
   if (segments.length === 2 && method === 'POST') {
-    return true;
+    return false;
   }
 
   if (segments.length === 3 && method === 'GET' && !REPORTS_API_RESERVED.has(segments[2])) {

@@ -105,7 +105,7 @@ export async function POST(request: Request) {
     : null;
   const report = await reportsRepo.create({
     accountId: parsed.data.accountId,
-    reportNo: (await reportsRepo.count().catch(() => 0)) + 1,
+    reportNo: await reportsRepo.nextReportNo(),
     reporterId: null,
     anonymousTag: anonymousTag(request),
     hashedUserId: user!._id,

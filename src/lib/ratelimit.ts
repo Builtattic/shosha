@@ -24,8 +24,37 @@ export const rateLimits = {
     : null,
   search: redis
     ? new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(60, '1 m'), analytics: true })
-    : null
+    : null,
+  classifyAi: redis
+    ? new Ratelimit({
+        redis,
+        limiter: Ratelimit.slidingWindow(20, '1 h'),
+        analytics: true,
+      })
+    : null,
+  analyzeAi: redis
+    ? new Ratelimit({
+        redis,
+        limiter: Ratelimit.slidingWindow(30, '1 h'),
+        analytics: true,
+      })
+    : null,
+  adjudicate: redis
+    ? new Ratelimit({
+        redis,
+        limiter: Ratelimit.slidingWindow(5, '1 h'),
+        analytics: true,
+      })
+    : null,
 };
+
+export const eventsLimiter = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(10, '1 h'),
+      prefix: 'rl:events',
+    })
+  : null;
 
 export function getRequestKey(request: Request, fallback = 'unknown') {
   const forwarded = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
@@ -36,7 +65,15 @@ export async function assertLimit(
   limiter: Ratelimit | null,
   key: string
 ): Promise<{ allowed: true } | { allowed: false }> {
-  if (!limiter) return { allowed: true };
-  const result = await limiter.limit(key);
-  return result.success ? { allowed: true } : { allowed: false };
+  if (!limiter) return { allowed: false };
+  try {
+    const result = await limiter.limit(key);
+    return result.success ? { allowed: true } : { allowed: false };
+  } catch {
+    return { allowed: false };
+  }
+}
+
+export function skipLimit(): { allowed: true } {
+  return { allowed: true };
 }

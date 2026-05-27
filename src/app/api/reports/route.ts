@@ -1,8 +1,8 @@
-import { anonymousHash, anonymousTag } from '@/lib/anonymous';
+import { anonymousTag } from '@/lib/anonymous';
 import { fail, fromZod, ok } from '@/lib/api';
 import { adjudicateReport } from '@/lib/gemini';
-import { getCurrentUser, getCurrentUserReadOnly, isAdmin, isEmailVerified } from '@/lib/auth';
-import { assertLimit, getRequestKey, rateLimits } from '@/lib/ratelimit';
+import { requireUser, getCurrentUserReadOnly, isAdmin, isEmailVerified } from '@/lib/auth';
+import { assertLimit, rateLimits } from '@/lib/ratelimit';
 import { idSchema, reportCreateSchema } from '@/lib/validators';
 import {
   WORKBOOK_FORMULA_VERSION,
@@ -17,6 +17,8 @@ import * as accountsRepo from '@/lib/repos/accounts';
 import * as reportsRepo from '@/lib/repos/reports';
 import * as reportMetadataRepo from '@/lib/repos/reportMetadata';
 import * as siteSettingsRepo from '@/lib/repos/siteSettings';
+
+export const maxDuration = 60;
 
 export async function GET(request: Request) {
   const user = await getCurrentUserReadOnly();
@@ -37,20 +39,29 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const user = await getCurrentUser();
-    // Email-verification gate: signed-in users with an email must verify before filing.
-    // Anonymous filers and phone-OTP users (no email) pass through.
-    if (user && !isEmailVerified(user)) {
+    const user = await requireUser();
+    // Email-verification gate: users with an email must verify before filing.
+    // Phone-OTP users (no email) pass through.
+    if (!isEmailVerified(user)) {
       return fail(
         'email_unverified',
         'Verify your email before filing a report. Open the verification email we sent at signup.',
         403
       );
     }
-    const key = user ? user._id : getRequestKey(request);
-    const limiter = user ? rateLimits.reportUser : rateLimits.reportAnon;
+    const key = user._id;
+    const limiter = rateLimits.reportUser;
     const limit = await assertLimit(limiter, key);
     if (!limit.allowed) return fail('rate_limited', 'The filing desk is cooling down for this account.', 429);
+
+    const geminiLimit = await assertLimit(rateLimits.adjudicate, `adjudicate:${user._id}`);
+    if (!geminiLimit.allowed) {
+      return fail(
+        'rate_limited',
+        'Report analysis limit reached. Try again in an hour.',
+        429
+      );
+    }
 
     const json = await request.json().catch(() => null);
     const parsed = reportCreateSchema.safeParse(json);
@@ -68,15 +79,10 @@ export async function POST(request: Request) {
     }
 
     const settings = await siteSettingsRepo.get();
-    const actorHash = user?._id ?? anonymousHash(request);
-    const recentProfileReports = await reportsRepo.listForAccount(account._id, ['pending_ai', 'ai_reviewed', 'approved', 'flagged'], 200);
+    const actorHash = user._id;
     const cooldownMs = settings.reportCooldownHours * 60 * 60 * 1000;
-    const repeated = recentProfileReports.some((item) => {
-      const created = item.createdAt ? new Date(item.createdAt).getTime() : 0;
-      return item.hashedUserId === actorHash &&
-        item.deed === scoringRow.deed &&
-        Date.now() - created < cooldownMs;
-    });
+    const recentActorReports = await reportsRepo.listRecentForActorOnAccount(account._id, actorHash, cooldownMs);
+    const repeated = recentActorReports.some((item) => item.deed === scoringRow.deed);
     if (repeated) {
       return fail('cooldown_active', 'A similar filing from this account is cooling down for this profile.', 429);
     }
@@ -88,8 +94,8 @@ export async function POST(request: Request) {
     });
     const multiplierQuotient = calcMultiplierQuotient(multipliers);
     const reportScore = calcDelta(scoringRow.baseScore, multipliers);
-    const weight = credibilityWeight(user?.reporterScore, user ? 80 : 50);
-    const publicAnonymous = !user || (parsed.data.publicAnonymous ?? false);
+    const weight = credibilityWeight(user.reporterScore, 80);
+    const publicAnonymous = parsed.data.publicAnonymous ?? false;
 
     const verdict = await adjudicateReport({
       description: parsed.data.description,
@@ -105,10 +111,18 @@ export async function POST(request: Request) {
       mediaType: parsed.data.media.type
     });
 
+    if (verdict.usedHeuristic) {
+      return fail(
+        'internal_error',
+        'Report analysis is temporarily unavailable. Please try again shortly.',
+        503
+      );
+    }
+
     const report = await reportsRepo.create({
       accountId: parsed.data.accountId,
-      reportNo: (await reportsRepo.count().catch(() => 0)) + 1,
-      reporterId: user?._id ?? null,
+      reportNo: await reportsRepo.nextReportNo(),
+      reporterId: user._id,
       anonymousTag: publicAnonymous ? anonymousTag(request) : user.username,
       hashedUserId: actorHash,
       publicAnonymous,

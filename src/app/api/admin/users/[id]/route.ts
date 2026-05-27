@@ -39,10 +39,24 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   const json = await request.json().catch(() => null);
   const parsed = updateUserSchema.safeParse(json);
   if (!parsed.success) return fromZod(parsed.error);
+  if (parsed.data.role && user?.role !== 'super_admin') {
+    return fail('forbidden', 'Only super_admin can change roles.', 403);
+  }
 
   const before = await usersRepo.findById(id.data);
   if (!before) return fail('not_found', 'No user found for that id.', 404);
-  const updated = await usersRepo.update(id.data, parsed.data);
+  const { role, ...rest } = parsed.data;
+  let updated = before;
+  if (role) {
+    const roleUpdated = await usersRepo.updateRole(id.data, role);
+    if (!roleUpdated) return fail('not_found', 'No user found for that id.', 404);
+    updated = roleUpdated;
+  }
+  if (Object.keys(rest).length) {
+    const restUpdated = await usersRepo.update(id.data, rest);
+    if (!restUpdated) return fail('not_found', 'No user found for that id.', 404);
+    updated = restUpdated;
+  }
   if (!updated) return fail('not_found', 'No user found for that id.', 404);
   await adminActionsRepo.create({ actor: user!, action: 'user.update', entityType: 'user', entityId: id.data, before, after: updated });
   return ok(updated);

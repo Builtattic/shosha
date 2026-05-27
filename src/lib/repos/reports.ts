@@ -147,6 +147,29 @@ export async function listForAccount(accountId: string, statusIn: ReportStatus[]
   return results.slice(0, limit);
 }
 
+export async function listRecentForActorOnAccount(
+  accountId: string,
+  hashedUserId: string,
+  withinMs: number,
+  limit = 10
+): Promise<ReportRecord[]> {
+  const snap = await ref()
+    .orderByChild('accountId')
+    .equalTo(accountId)
+    .limitToLast(100)
+    .once('value');
+  const cutoff = Date.now() - withinMs;
+  const results: ReportRecord[] = [];
+  snap.forEach((child) => {
+    const val = child.val();
+    const created = val.createdAt ? new Date(val.createdAt).getTime() : 0;
+    if (val.hashedUserId === hashedUserId && created >= cutoff) {
+      results.push(withId<ReportRecord>(child.key!, val));
+    }
+  });
+  return results.slice(0, limit);
+}
+
 export async function listForAccounts(
   accountIds: string[],
   statusIn: ReportStatus[],
@@ -247,6 +270,14 @@ export async function listAbuse(limit = 100): Promise<ReportRecord[]> {
 export async function count(): Promise<number> {
   const snap = await ref().once('value');
   return snap.numChildren();
+}
+
+export async function nextReportNo(): Promise<number> {
+  const counterRef = adminDb().ref('counters/reportCount');
+  const result = await counterRef.transaction((current) => {
+    return (current ?? 0) + 1;
+  });
+  return result.snapshot.val() as number;
 }
 
 export async function countSince(date: Date): Promise<number> {

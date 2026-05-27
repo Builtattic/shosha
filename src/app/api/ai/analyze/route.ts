@@ -1,6 +1,7 @@
 import { fail, ok } from '@/lib/api';
 import { adjudicateReport } from '@/lib/gemini';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
+import { rateLimits, assertLimit } from '@/lib/ratelimit';
 import { reportTypeSchema } from '@/lib/validators';
 import { z } from 'zod';
 
@@ -17,7 +18,13 @@ const analyzeSchema = z.object({
 
 export async function POST(request: Request) {
   const user = await getCurrentUser();
-  if (!isAdmin(user)) return fail('forbidden', 'Only tribunal staff can run direct analysis.', 403);
+  if (!user || !isAdmin(user)) return fail('forbidden', 'Only tribunal staff can run direct analysis.', 403);
+
+  const aiLimit = await assertLimit(rateLimits.analyzeAi, user._id);
+  if (!aiLimit.allowed) {
+    return fail('rate_limited', 'Analysis limit reached. Try again later.', 429);
+  }
+
   const json = await request.json().catch(() => null);
   const parsed = analyzeSchema.safeParse(json);
   if (!parsed.success) return fail('validation_error', 'Analysis payload is incomplete.', 422);
