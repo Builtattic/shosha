@@ -168,7 +168,6 @@ export async function upsertFromClerk(input: {
       email: input.email,
       updatedAt: now
     };
-    if (input.role) update.role = input.role;
     await ref().child(input.id).update(update);
     return (await findById(input.id))!;
   }
@@ -315,6 +314,7 @@ export async function updateRole(id: string, role: UserRole): Promise<AppUser | 
 export async function update(id: string, partial: Partial<Omit<AppUser, '_id'>>): Promise<AppUser | null> {
   const existing = await findById(id);
   if (!existing) return null;
+  delete (partial as Record<string, unknown>).role;
   const patch: Record<string, unknown> = { ...partial, updatedAt: new Date().toISOString() };
   delete patch._id;
   await ref().child(id).update(patch);
