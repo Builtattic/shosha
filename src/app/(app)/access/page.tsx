@@ -72,7 +72,7 @@ const REWARDS: AccessItem[] = [
   {
     score: 75_000,
     title: 'Legacy Mode',
-    description: 'Sponsor a real-world community project in your name through Shosha.',
+    description: 'Sponsor a real-world community project in your name through Shosha™.',
     note: 'actual meaningful reward',
     icon: 'building-community',
   },

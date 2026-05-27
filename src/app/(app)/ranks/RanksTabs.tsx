@@ -158,7 +158,7 @@ export function RanksTabs({
       </div>
 
       <div className="mb-4 flex items-center justify-between gap-3">
-        <p className="text-[12px] text-muted-foreground leading-snug">Real-time ranking of public figures by Shosha Score.</p>
+        <p className="text-[12px] text-muted-foreground leading-snug">Real-time ranking of public figures by Shosha™ Score.</p>
         <div ref={scopeRef} className="relative shrink-0">
           <button
             onClick={() => setScopeOpen((v) => !v)}

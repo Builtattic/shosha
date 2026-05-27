@@ -102,7 +102,7 @@ export default function HowItWorksPage() {
             <em className="text-muted-foreground italic">everything you&apos;ve done.</em>
           </h1>
           <p className="text-[20px] text-muted-foreground leading-[2] max-w-[600px]">
-            Sho<span className="font-serif italic">शा</span> doesn&apos;t judge you. It records what you did, weighs it
+            Sho<span className="font-serif italic">शा</span>™ doesn&apos;t judge you. It records what you did, weighs it
             against who you are and what you had, and updates continuously. This page explains how — in plain
             language, without the math.
           </p>

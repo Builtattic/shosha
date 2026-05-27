@@ -13,6 +13,7 @@ import {
 import { calcCredibility, CRED_SECTIONS, SOCIAL_LINKS_GATE, type CredibilityInput } from '@/lib/credibility';
 import { ClaimProfileSearchModal } from '@/components/profile/ClaimProfileSearchModal';
 import { cn } from '@/lib/utils';
+import { TRUST_BADGE_USD, TRUST_BADGE_INR } from '@/lib/pricing';
 
 // ── Option maps ────────────────────────────────────────────────────────────────
 
@@ -731,7 +732,7 @@ export default function OnboardPage() {
                     <p className="mt-0.5 text-[11px] text-muted-foreground">
                       {form.trustBadge
                         ? 'You unlocked the full 20% verification weight.'
-                        : 'Purchase a Trust Badge for ₹199 to lift you to 100%.'}
+                        : `Purchase a Trust Badge for $${TRUST_BADGE_USD} / ₹${TRUST_BADGE_INR} to lift you to 100%.`}
                     </p>
                   </div>
                 </div>
@@ -744,7 +745,7 @@ export default function OnboardPage() {
                     href="/profile/upgrade"
                     className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-[12px] font-bold text-background transition-opacity hover:opacity-90"
                   >
-                    Get Trust Badge · ₹199
+                    {`Get Trust Badge · $${TRUST_BADGE_USD} / ₹${TRUST_BADGE_INR}`}
                   </Link>
                 )}
               </div>
@@ -756,7 +757,7 @@ export default function OnboardPage() {
               {/* Alternate path — claim a profile someone else made of you */}
               <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-dashed border-border bg-muted/20 p-3">
                 <div className="min-w-0">
-                  <p className="text-[12px] font-bold leading-tight">Already on Shosha?</p>
+                  <p className="text-[12px] font-bold leading-tight">Already on Shosha™?</p>
                   <p className="mt-0.5 text-[11px] text-muted-foreground">
                     If someone made a profile of you, claim it instead of starting fresh.
                   </p>

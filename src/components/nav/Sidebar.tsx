@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Home, Target, TrendingUp, Info, User, ShieldAlert, Settings, Globe, ChevronDown, ShieldCheck, Newspaper, HelpCircle, Bookmark, Bell, Search, PlusCircle, Activity, Users, CircleDot, Key, AlertTriangle } from 'lucide-react';
+import { Home, Target, TrendingUp, Info, User, ShieldAlert, Settings, Globe, ChevronDown, ShieldCheck, Newspaper, HelpCircle, Bookmark, Bell, Search, PlusCircle, Activity, Users, CircleDot, Key, AlertTriangle, Scale } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useReportModal } from '@/components/report/ReportModalProvider';
 import { RANK_SCOPE_OPTIONS, resolveRankScope, type RankScopeValue } from '@/lib/rankScope';
@@ -71,6 +71,7 @@ export function Sidebar() {
     { href: '/bookmarks', label: 'Bookmarks', icon: Bookmark },
     { href: '/notifications', label: 'Notifications', icon: Bell },
     { href: '/how-it-works', label: 'How It Works', icon: HelpCircle },
+    { href: '/legal-policies', label: 'Legal & Policies', icon: Scale },
   ];
 
   const navigationItems = [
@@ -82,7 +83,7 @@ export function Sidebar() {
 
   return (
     <aside className="fixed bottom-0 left-0 top-0 z-40 hidden w-64 border-r border-border bg-background lg:flex lg:flex-col">
-      <div className="flex h-16 shrink-0 items-center justify-between border-b border-border px-6">
+      <div className="flex h-[var(--app-shell-header-height)] shrink-0 items-center justify-between border-b border-border px-6">
         <Link href="/dashboard" className="group inline-flex items-baseline gap-1 font-serif text-[24px] font-black text-foreground">
           <span className="transition-transform duration-300 group-hover:-translate-y-0.5">Sho</span>
           <span className="font-normal italic text-muted-foreground transition-colors group-hover:text-foreground">शा</span>
@@ -235,6 +236,9 @@ export function Sidebar() {
             ))}
           </div>
         )}
+        <p className="mt-3 text-center text-[10px] font-normal leading-snug text-muted-foreground">
+          © 2026 Builtattic Private Limited. All rights reserved.
+        </p>
       </div>
     </aside>
   );

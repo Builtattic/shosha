@@ -136,7 +136,7 @@ export default function SignInPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-black tracking-tight">
-            Sho<span className="text-primary">शा</span>
+            Sho<span className="text-primary">शा</span>™
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">The Reputation Ledger</p>
         </div>

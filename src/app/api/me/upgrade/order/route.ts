@@ -1,5 +1,6 @@
 import { ok, fail } from '@/lib/api';
 import { getCurrentUser } from '@/lib/auth';
+import { TRUST_BADGE_PAISE } from '@/lib/pricing';
 import { razorpay } from '@/lib/razorpay';
 
 export const runtime = 'nodejs';
@@ -14,7 +15,7 @@ export async function POST() {
 
   try {
     const order = await razorpay().orders.create({
-      amount: 19900,
+      amount: TRUST_BADGE_PAISE,
       currency: 'INR',
       receipt: `tb_${user._id.slice(0, 20)}_${Date.now().toString().slice(-8)}`,
       notes: {

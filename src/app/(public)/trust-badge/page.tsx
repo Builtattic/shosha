@@ -12,6 +12,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { MobileAppHeader } from '@/components/nav/MobileAppHeader';
+import { TRUST_BADGE_USD, TRUST_BADGE_INR } from '@/lib/pricing';
 import { useAuth } from '@/contexts/AuthContext';
 
 function SectionLabel({ number, label }: { number: string; label: string }) {
@@ -77,7 +78,7 @@ const STEPS = [
     number: '02',
     title: 'Complete Payment',
     description:
-      'A one-time fee of ₹199 covers the cost of identity review. No subscriptions. No recurring charges.',
+      `A one-time fee of $${TRUST_BADGE_USD}.00 / ₹${TRUST_BADGE_INR} covers the cost of identity review. No subscriptions. No recurring charges.`,
   },
   {
     number: '03',
@@ -276,7 +277,7 @@ export default function TrustBadgePage() {
                 Ready to get verified?
               </h2>
               <p className="text-[18px] text-muted-foreground max-w-[480px]">
-                Join verified contributors on Shosha. One-time verification.
+                Join verified contributors on Shosha™. One-time verification.
                 Permanent badge.
               </p>
               <button
@@ -284,7 +285,7 @@ export default function TrustBadgePage() {
                 onClick={() => router.push('/profile/upgrade')}
                 className="rounded-full bg-foreground px-10 py-4 text-[15px] font-bold text-background transition hover:opacity-90"
               >
-                Get Verified — ₹199
+                {`Get Verified — $${TRUST_BADGE_USD} / ₹${TRUST_BADGE_INR}`}
               </button>
               <p className="text-[12px] text-muted-foreground">
                 Already verified?{' '}

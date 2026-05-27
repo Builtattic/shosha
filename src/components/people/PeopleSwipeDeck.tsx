@@ -544,10 +544,10 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
 
   return (
     <main className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden">
-      <div className="mx-auto flex min-h-0 w-full min-w-0 max-w-[520px] flex-1 flex-col px-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))] pt-2 lg:h-full lg:min-h-0 lg:pb-6 lg:pt-4">
+      <div className="mx-auto flex min-h-0 w-full min-w-0 max-w-[520px] flex-1 flex-col px-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))] pt-2 lg:h-full lg:max-h-full lg:min-h-0 lg:pb-2 lg:pt-2">
 
         {/* Top chrome above the deck: z-30 + bg so dragged cards (transform y) stay underneath and do not cover filters. */}
-        <div ref={filterBarRef} className="relative z-30 w-full shrink-0 bg-background pb-2">
+        <div ref={filterBarRef} className="relative z-30 w-full shrink-0 bg-background pb-2 lg:pb-1">
           <div className="flex items-center gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {(Object.keys(FILTER_OPTIONS) as Array<keyof typeof FILTER_OPTIONS>).map((key) => {
               const value = filters[key];
@@ -642,18 +642,16 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
             </div>
           )}
           {current && (
-            <div className="w-full shrink-0 px-2 pb-1 text-center">
-              <p className="text-[13px] font-semibold text-muted-foreground">
-                Are you better than{' '}
-                <span className="font-bold text-foreground">{current.name}</span>?
+            <div className="w-full shrink-0 px-2 pb-0.5 text-center lg:pb-0">
+              <p className="text-[13px] font-semibold leading-tight text-muted-foreground lg:text-[12px]">
+                Is{' '}
+                <span className="font-bold text-foreground">{current.name}</span>{' '}
+                better than you?
               </p>
             </div>
           )}
-          <div className="flex min-h-0 flex-1 items-center justify-center px-1 py-1 sm:px-2">
-            <div
-              className="relative mx-auto h-auto w-full max-h-full min-h-0 max-w-[400px] shrink lg:max-w-sm"
-              style={{ aspectRatio: '9/14' }}
-            >
+          <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden px-1 py-0 sm:px-2">
+            <div className="relative mx-auto h-full max-h-full min-h-0 w-auto max-w-[400px] shrink-0 aspect-[9/14] lg:max-w-sm">
               <AnimatePresence>
                 {visibleItems.slice(0, 3).map((item, index) => (
                   <SwipeCard
@@ -679,7 +677,7 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
           </div>
 
           {current && (
-            <div className="flex shrink-0 items-center justify-center gap-4 pb-1 pt-2">
+            <div className="flex shrink-0 items-center justify-center gap-4 pb-0 pt-1 lg:gap-3 lg:pt-0.5">
               <motion.button
                 whileTap={{ scale: limitReached ? 1 : 0.93 }}
                 disabled={limitReached}
@@ -689,22 +687,22 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
                   handleSwipe('oppose');
                 }}
                 className={cn(
-                  'flex flex-col items-center gap-2',
+                  'flex flex-col items-center gap-1.5 lg:gap-1',
                   limitReached && 'cursor-not-allowed opacity-40',
                 )}
               >
-                <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-destructive/40 bg-destructive/10 text-destructive transition-colors hover:bg-destructive/20 active:bg-destructive/30">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-destructive/40 bg-destructive/10 text-destructive transition-colors hover:bg-destructive/20 active:bg-destructive/30 lg:h-14 lg:w-14">
                   <X size={26} strokeWidth={2.5} />
                 </div>
-                <span className="text-[11px] font-bold uppercase tracking-widest text-destructive/70">Not Better</span>
+                <span className="text-[11px] font-bold uppercase tracking-widest text-destructive/70 lg:text-[10px]">Not Better</span>
               </motion.button>
 
               <motion.button
                 whileTap={{ scale: 0.93 }}
                 onClick={handleSkip}
-                className="flex flex-col items-center gap-2"
+                className="flex flex-col items-center gap-1.5 lg:gap-1"
               >
-                <div className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-muted text-muted-foreground transition-colors hover:bg-muted/80">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-muted text-muted-foreground transition-colors hover:bg-muted/80 lg:h-10 lg:w-10">
                   <ChevronsRight size={20} strokeWidth={2} />
                 </div>
                 <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/60">Skip</span>
@@ -719,14 +717,14 @@ export function PeopleSwipeDeck({ initialItems }: { initialItems: PeopleDeckItem
                   handleSwipe('align');
                 }}
                 className={cn(
-                  'flex flex-col items-center gap-2',
+                  'flex flex-col items-center gap-1.5 lg:gap-1',
                   limitReached && 'cursor-not-allowed opacity-40',
                 )}
               >
-                <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-emerald-400/40 bg-emerald-500/10 text-emerald-600 transition-colors hover:bg-emerald-500/20 active:bg-emerald-500/30">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-emerald-400/40 bg-emerald-500/10 text-emerald-600 transition-colors hover:bg-emerald-500/20 active:bg-emerald-500/30 lg:h-14 lg:w-14">
                   <Check size={26} strokeWidth={2.5} />
                 </div>
-                <span className="text-[11px] font-bold uppercase tracking-widest text-emerald-600/70">Better</span>
+                <span className="text-[11px] font-bold uppercase tracking-widest text-emerald-600/70 lg:text-[10px]">Better</span>
               </motion.button>
             </div>
           )}

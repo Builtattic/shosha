@@ -17,7 +17,6 @@ import {
   ShieldAlert,
   AlertTriangle,
   Settings,
-  Info,
   HelpCircle,
   ShieldCheck,
   LogOut,
@@ -26,6 +25,7 @@ import {
   Globe,
   Users,
   CircleDot,
+  Scale,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -69,6 +69,7 @@ const groups: NavGroup[] = [
     label: 'About',
     items: [
       { href: '/how-it-works', label: 'How It Works', icon: HelpCircle },
+      { href: '/legal-policies', label: 'Legal & Policies', icon: Scale },
       { href: '/admin', label: 'Admin Console', icon: ShieldCheck, admin: true },
     ],
   },
@@ -187,7 +188,7 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
                   <p className="truncate text-[11px] text-muted-foreground">{username}</p>
                   {typeof me?.score === 'number' && (
                     <p className="mt-0.5 text-[11px] font-bold tabular-nums text-foreground">
-                      {me.score.toLocaleString()} <span className="font-medium text-muted-foreground">Shosha Score</span>
+                      {me.score.toLocaleString()} <span className="font-medium text-muted-foreground">Shosha™ Score</span>
                     </p>
                   )}
                 </div>

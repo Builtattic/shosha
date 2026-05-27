@@ -109,7 +109,7 @@ export default async function PublicProfilePage({
       {score !== null && (
         <section aria-labelledby="score-heading" style={{ marginBottom: 32 }}>
           <h2 id="score-heading" style={{ fontSize: 18, fontWeight: 500, marginBottom: 8 }}>
-            Shosha Score
+            Shosha™ Score
           </h2>
           <p style={{ fontSize: 48, fontWeight: 700 }}>{score}</p>
           <p style={{ color: '#666', fontSize: 14 }}>
