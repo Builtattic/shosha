@@ -1,8 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone',
   experimental: {
-    serverComponentsExternalPackages: ['firebase-admin']
+    serverComponentsExternalPackages: [
+      'firebase-admin',
+      'sharp',
+      'rss-parser',
+      'razorpay',
+    ]
   },
 
   images: {
