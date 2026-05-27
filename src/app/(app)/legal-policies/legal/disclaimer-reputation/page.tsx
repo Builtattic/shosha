@@ -33,7 +33,7 @@ export default function DisclaimerReputationPage() {
             Disclaimer & Reputation Policy
           </h1>
           <p className="mt-1.5 text-[13px] text-muted-foreground">
-            Shosha's position on liability, reputation scores, and published reports.
+            Shosha&apos;s position on liability, reputation scores, and published reports.
           </p>
         </div>
 

@@ -57,7 +57,7 @@ export default function LegalPoliciesPage() {
             LEGAL & POLICIES
           </h1>
           <p className="mt-1 text-[13px] font-semibold text-foreground">
-            How Shosha works, what we stand for, and what we're bound by.
+            How Shosha works, what we stand for, and what we&apos;re bound by.
           </p>
           <p className="mt-1.5 text-[13px] text-muted-foreground">
             Select a document below to read the full policy.
