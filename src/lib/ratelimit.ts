@@ -39,6 +39,13 @@ export const rateLimits = {
         analytics: true,
       })
     : null,
+  adjudicate: redis
+    ? new Ratelimit({
+        redis,
+        limiter: Ratelimit.slidingWindow(5, '1 h'),
+        analytics: true,
+      })
+    : null,
 };
 
 export const eventsLimiter = redis

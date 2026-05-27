@@ -28,7 +28,7 @@ function isPublicReportsApi(req: NextRequest): boolean {
   if (segments[0] !== 'api' || segments[1] !== 'reports') return false;
 
   if (segments.length === 2 && method === 'POST') {
-    return true;
+    return false;
   }
 
   if (segments.length === 3 && method === 'GET' && !REPORTS_API_RESERVED.has(segments[2])) {
