@@ -47,6 +47,11 @@ export async function cached<T>(
   const hit = await getJson<T>(key);
   if (hit !== null) return hit;
 
+  if (!redis()) {
+    // Redis unavailable — cache miss, executing loader directly
+    return loader();
+  }
+
   const value = await loader();
   if (value !== null && value !== undefined) {
     await setJson(key, value, ttlSeconds);

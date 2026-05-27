@@ -27,6 +27,14 @@ export const rateLimits = {
     : null
 };
 
+export const eventsLimiter = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(10, '1 h'),
+      prefix: 'rl:events',
+    })
+  : null;
+
 export function getRequestKey(request: Request, fallback = 'unknown') {
   const forwarded = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
   return forwarded || request.headers.get('x-real-ip') || fallback;
@@ -36,7 +44,11 @@ export async function assertLimit(
   limiter: Ratelimit | null,
   key: string
 ): Promise<{ allowed: true } | { allowed: false }> {
-  if (!limiter) return { allowed: true };
+  if (!limiter) return { allowed: false };
   const result = await limiter.limit(key);
   return result.success ? { allowed: true } : { allowed: false };
+}
+
+export function skipLimit(): { allowed: true } {
+  return { allowed: true };
 }

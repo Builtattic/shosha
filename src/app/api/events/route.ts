@@ -1,9 +1,11 @@
 import { ok, fail } from '@/lib/api';
-import { getCurrentUser } from '@/lib/auth';
+import { requireUser } from '@/lib/auth';
 import { anonymousTag } from '@/lib/anonymous';
+import { eventsLimiter, assertLimit } from '@/lib/ratelimit';
 import * as eventsRepo from '@/lib/repos/events';
 import * as accountsRepo from '@/lib/repos/accounts';
 import * as subscriptionsRepo from '@/lib/repos/subscriptions';
+import * as siteSettingsRepo from '@/lib/repos/siteSettings';
 import {
   DEFAULT_MULTIPLIERS,
   WORKBOOK_FORMULA_VERSION,
@@ -68,7 +70,12 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const user = await getCurrentUser();
+    const user = await requireUser();
+
+    const limited = await assertLimit(eventsLimiter, `events:${user._id}`);
+    if (!limited.allowed) {
+      return fail('rate_limited', 'Too many events filed. Try again later.', 429);
+    }
 
     const json = await request.json().catch(() => null);
     const parsed = eventCreateSchema.safeParse(json);
@@ -77,12 +84,9 @@ export async function POST(request: Request) {
       return fail('validation_error', first?.message ?? 'Invalid event data.', 422);
     }
 
-    // Rate limit check
-    if (user) {
-      const can = await subscriptionsRepo.canReport(user._id);
-      if (!can.allowed) {
-        return fail('rate_limited', `Daily limit reached (${can.tier}). ${can.remaining} remaining.`, 429);
-      }
+    const can = await subscriptionsRepo.canReport(user._id);
+    if (!can.allowed) {
+      return fail('rate_limited', `Daily limit reached (${can.tier}). ${can.remaining} remaining.`, 429);
     }
 
     // Verify account exists
@@ -93,12 +97,16 @@ export async function POST(request: Request) {
     const scoringRow = resolveSheetBaseImpact(parsed.data.baseImpactKey, parsed.data.eventType);
     const baseImpact = scoringRow.baseScore;
 
+    const settings = await siteSettingsRepo.get();
+    const deltaCap = settings?.singleReportDeltaCap ?? 3000;
+
     // Merge multipliers
     const multipliers: EventMultipliers = { ...DEFAULT_MULTIPLIERS, ...(parsed.data.multipliers ?? {}) };
 
     // Compute delta
     const multiplierQuotient = calcMultiplierQuotient(multipliers);
-    const delta = calcDelta(baseImpact, multipliers);
+    const rawDelta = calcDelta(baseImpact, multipliers);
+    const delta = Math.sign(rawDelta) * Math.min(Math.abs(rawDelta), deltaCap);
     const scoreBefore = account.score ?? 1000;
     const decay = workbookDecay(delta);
 
@@ -111,8 +119,8 @@ export async function POST(request: Request) {
     // Create event
     const event = await eventsRepo.create({
       subjectId: parsed.data.subjectId,
-      reporterId: parsed.data.isAnonymous ? null : (user?._id ?? null),
-      anonymousTag: user?.username ?? anonymousTag(request),
+      reporterId: parsed.data.isAnonymous ? null : user._id,
+      anonymousTag: parsed.data.isAnonymous ? anonymousTag(request) : user.username,
       eventType: parsed.data.eventType,
       description: parsed.data.description,
       baseImpactKey: parsed.data.baseImpactKey,
@@ -174,8 +182,7 @@ export async function POST(request: Request) {
       ],
     });
 
-    // Increment usage
-    if (user) await subscriptionsRepo.incrementDailyReport(user._id);
+    await subscriptionsRepo.incrementDailyReport(user._id);
 
     return ok({ ...event, account: { ...account, score: scoreAfter } }, 201);
   } catch (err) {
