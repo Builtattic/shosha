@@ -26,6 +26,11 @@
       ".indexOn": ["createdAt", "accountId", "reporterId", "hashedUserId", "disputeStatus"]
     },
 
+    "counters": {
+      ".read": "auth != null",
+      ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'super_admin')"
+    },
+
     "reportMetadata": {
       ".read": "auth != null",
       ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'super_admin')",

@@ -1,4 +1,5 @@
 import { adminDb } from '@/lib/firebase/admin';
+import { cached, cacheKey, invalidateCacheKey } from '@/lib/cache';
 import type { Platform, ReportStatus } from '@/types';
 
 export type FeedRankingMode = 'smart' | 'recent';
@@ -39,20 +40,30 @@ function ref() {
   return adminDb().ref('siteSettings').child('current');
 }
 
+const SETTINGS_CACHE_KEY = cacheKey('siteSettings', 'current');
+const SETTINGS_TTL = 60; // seconds
+
 export async function get(): Promise<SiteSettings> {
-  const snap = await ref().once('value');
-  const value = snap.exists() ? snap.val() : {};
-  return {
-    ...DEFAULT_SITE_SETTINGS,
-    ...value,
-    enabledPlatforms: Array.isArray(value.enabledPlatforms) ? value.enabledPlatforms : DEFAULT_SITE_SETTINGS.enabledPlatforms,
-  };
+  return cached(SETTINGS_CACHE_KEY, SETTINGS_TTL, async () => {
+    const snap = await ref().once('value');
+    const value = snap.exists() ? snap.val() : {};
+    return {
+      ...DEFAULT_SITE_SETTINGS,
+      ...value,
+      enabledPlatforms: Array.isArray(value.enabledPlatforms) ? value.enabledPlatforms : DEFAULT_SITE_SETTINGS.enabledPlatforms,
+    };
+  });
+}
+
+export async function invalidateCache(): Promise<void> {
+  await invalidateCacheKey(SETTINGS_CACHE_KEY);
 }
 
 export async function update(partial: Partial<SiteSettings>): Promise<SiteSettings> {
   const current = await get();
   const next = { ...current, ...partial };
   await ref().set({ ...next, updatedAt: new Date().toISOString() });
+  await invalidateCache();
   return next;
 }
 

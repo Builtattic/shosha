@@ -18,6 +18,8 @@ import * as reportsRepo from '@/lib/repos/reports';
 import * as reportMetadataRepo from '@/lib/repos/reportMetadata';
 import * as siteSettingsRepo from '@/lib/repos/siteSettings';
 
+export const maxDuration = 60;
+
 export async function GET(request: Request) {
   const user = await getCurrentUserReadOnly();
   const { searchParams } = new URL(request.url);
@@ -78,14 +80,9 @@ export async function POST(request: Request) {
 
     const settings = await siteSettingsRepo.get();
     const actorHash = user._id;
-    const recentProfileReports = await reportsRepo.listForAccount(account._id, ['pending_ai', 'ai_reviewed', 'approved', 'flagged'], 200);
     const cooldownMs = settings.reportCooldownHours * 60 * 60 * 1000;
-    const repeated = recentProfileReports.some((item) => {
-      const created = item.createdAt ? new Date(item.createdAt).getTime() : 0;
-      return item.hashedUserId === actorHash &&
-        item.deed === scoringRow.deed &&
-        Date.now() - created < cooldownMs;
-    });
+    const recentActorReports = await reportsRepo.listRecentForActorOnAccount(account._id, actorHash, cooldownMs);
+    const repeated = recentActorReports.some((item) => item.deed === scoringRow.deed);
     if (repeated) {
       return fail('cooldown_active', 'A similar filing from this account is cooling down for this profile.', 429);
     }
@@ -124,7 +121,7 @@ export async function POST(request: Request) {
 
     const report = await reportsRepo.create({
       accountId: parsed.data.accountId,
-      reportNo: (await reportsRepo.count().catch(() => 0)) + 1,
+      reportNo: await reportsRepo.nextReportNo(),
       reporterId: user._id,
       anonymousTag: publicAnonymous ? anonymousTag(request) : user.username,
       hashedUserId: actorHash,
