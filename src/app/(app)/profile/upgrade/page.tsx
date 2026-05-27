@@ -10,6 +10,7 @@ import {
   Loader2, Smartphone, Check, X, Camera,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { TRUST_BADGE_USD, TRUST_BADGE_INR, USD_TO_INR_RATE } from '@/lib/pricing';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 
@@ -65,6 +66,7 @@ export default function TrustUpgradePage() {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraSessionKey, setCameraSessionKey] = useState(0);
+  const [currency, setCurrency] = useState<'USD' | 'INR'>('USD');
 
   function next() { setStep((s) => Math.min(5, (s + 1) as Step) as Step); }
   function back() { setStep((s) => Math.max(0, (s - 1) as Step) as Step); }
@@ -352,9 +354,42 @@ export default function TrustUpgradePage() {
             <h3 className="text-[14px] font-bold">Upgrade to Trust Account</h3>
             <p className="text-[11px] text-muted-foreground">All benefits. Instant unlock.</p>
           </div>
-          <div className="text-right shrink-0">
-            <div className="text-[20px] font-black tabular-nums">₹199</div>
-            <p className="text-[10px] text-muted-foreground">one time</p>
+          <div className="text-right shrink-0 flex flex-col items-end gap-2">
+            <div className="flex rounded-full border border-border p-0.5">
+              <button
+                type="button"
+                onClick={() => setCurrency('USD')}
+                className={cn(
+                  'rounded-full px-2.5 py-1 text-[10px] font-bold transition',
+                  currency === 'USD'
+                    ? 'bg-foreground text-background'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                $ USD
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrency('INR')}
+                className={cn(
+                  'rounded-full px-2.5 py-1 text-[10px] font-bold transition',
+                  currency === 'INR'
+                    ? 'bg-foreground text-background'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                ₹ INR
+              </button>
+            </div>
+            <div>
+              <div className="text-[20px] font-black tabular-nums">
+                {currency === 'USD' ? `$${TRUST_BADGE_USD}.00` : `₹${TRUST_BADGE_INR}`}
+              </div>
+              <p className="text-[10px] text-muted-foreground">one time</p>
+            </div>
+            <p className="max-w-[11rem] text-right text-[10px] text-muted-foreground leading-snug">
+              1 USD = ₹{USD_TO_INR_RATE} · charged in INR via Razorpay
+            </p>
           </div>
           <button
             onClick={() => setStep(1)}

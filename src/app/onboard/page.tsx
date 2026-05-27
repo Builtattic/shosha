@@ -13,6 +13,7 @@ import {
 import { calcCredibility, CRED_SECTIONS, SOCIAL_LINKS_GATE, type CredibilityInput } from '@/lib/credibility';
 import { ClaimProfileSearchModal } from '@/components/profile/ClaimProfileSearchModal';
 import { cn } from '@/lib/utils';
+import { TRUST_BADGE_USD, TRUST_BADGE_INR } from '@/lib/pricing';
 
 // ── Option maps ────────────────────────────────────────────────────────────────
 
@@ -731,7 +732,7 @@ export default function OnboardPage() {
                     <p className="mt-0.5 text-[11px] text-muted-foreground">
                       {form.trustBadge
                         ? 'You unlocked the full 20% verification weight.'
-                        : 'Purchase a Trust Badge for ₹199 to lift you to 100%.'}
+                        : `Purchase a Trust Badge for $${TRUST_BADGE_USD} / ₹${TRUST_BADGE_INR} to lift you to 100%.`}
                     </p>
                   </div>
                 </div>
@@ -744,7 +745,7 @@ export default function OnboardPage() {
                     href="/profile/upgrade"
                     className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-[12px] font-bold text-background transition-opacity hover:opacity-90"
                   >
-                    Get Trust Badge · ₹199
+                    {`Get Trust Badge · $${TRUST_BADGE_USD} / ₹${TRUST_BADGE_INR}`}
                   </Link>
                 )}
               </div>
