@@ -139,8 +139,29 @@ export function getCachedProfileBundle(accountId: string) {
         accountsRepo.listAll(120).catch(() => [])
       ]);
 
+      // For website accounts, inject reporter filings from linked user
+      let allFilings = filingsRaw;
+      if (account.platform === 'website') {
+        const linkedUser = account.claimedBy
+          ? await usersRepo.findById(account.claimedBy).catch(() => null)
+          : await usersRepo.findByUsername(account.username).catch(() => null);
+
+        if (linkedUser) {
+          const reporterFilings = await reportsRepo.listByReporter(linkedUser._id, 50)
+            .catch(() => [] as typeof filingsRaw);
+
+          // Merge and deduplicate by _id, reporter filings first
+          const seen = new Set<string>();
+          allFilings = [...reporterFilings, ...filingsRaw].filter((f) => {
+            if (seen.has(f._id)) return false;
+            seen.add(f._id);
+            return true;
+          });
+        }
+      }
+
       const reporterIds = Array.from(new Set(
-        filingsRaw
+        allFilings
           .filter((filing) => !hidesReporterOnPublicSurfaces(filing))
           .map((filing) => filing.reporterId)
           .filter(Boolean) as string[]
@@ -152,7 +173,7 @@ export function getCachedProfileBundle(accountId: string) {
 
       return {
         account: sanitizeBundleAccount(account),
-        filingsRaw,
+        filingsRaw: allFilings,
         reporters: reporters.filter(Boolean).map((reporter) => summarizeReporter(reporter!)),
         similarProfiles,
         metrics: deriveProfileMetrics(account)

@@ -5,6 +5,7 @@ import * as reportsRepo from '@/lib/repos/reports';
 import { getAccountSwipeScore } from '@/lib/repos/swipeRecords';
 import * as usersRepo from '@/lib/repos/users';
 import { normalizeProfileVisibility } from '@/lib/profilePrivacy';
+import { invalidateProfileCaches } from '@/lib/profileData';
 import { calcCredibility } from '@/lib/credibility';
 import { calcProfileCredibility } from '@/lib/scoring';
 import { userUsernameSchema } from '@/lib/validators';
@@ -228,6 +229,43 @@ export async function PATCH(req: NextRequest) {
     }
 
     const updated = await usersRepo.update(user._id, patch);
+    // If username changed, sync website account and invalidate caches
+    if ('username' in patch && typeof patch.username === 'string') {
+      const newUsername = patch.username;
+      const oldUsername = user.username?.toLowerCase();
+
+      // Invalidate old username cache if username actually changed
+      if (oldUsername && oldUsername !== newUsername) {
+        // Invalidate old account cache
+        const oldAccountId = accountsRepo.deriveId('website', oldUsername);
+        await invalidateProfileCaches({
+          _id: oldAccountId,
+          username: oldUsername,
+        }).catch(() => null);
+      }
+
+      // Sync website account to new username (creates or updates)
+      if (updated) {
+        await accountsRepo.ensureWebsiteAccountForUser({
+          _id: user._id,
+          username: newUsername,
+          name: updated.name,
+          photoUrl: updated.photoUrl,
+          bio: updated.bio,
+          score: updated.score,
+          scoreHistory: updated.scoreHistory,
+        }).catch((err) => {
+          console.error('[PATCH /api/me] Failed to sync website account:', err);
+        });
+
+        // Invalidate new username cache
+        const newAccountId = accountsRepo.deriveId('website', newUsername);
+        await invalidateProfileCaches({
+          _id: newAccountId,
+          username: newUsername,
+        }).catch(() => null);
+      }
+    }
     return ok({ user: updated });
   } catch (err) {
     console.error('[PATCH /api/me]', err);
