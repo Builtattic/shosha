@@ -1,5 +1,31 @@
 import { z } from 'zod';
 
+export const userUsernameSchema = z
+  .string()
+  .min(1, 'Username is required')
+  .transform((val) => val.replace(/^@+/, '').trim().toLowerCase())
+  .pipe(
+    z
+      .string()
+      .min(3, 'Username must be at least 3 characters')
+      .max(30, 'Username must be at most 30 characters')
+      .regex(
+        /^[a-zA-Z0-9][a-zA-Z0-9._]*[a-zA-Z0-9]$|^[a-zA-Z0-9]$/,
+        'Username can only contain letters, numbers, underscores, and periods'
+      )
+      .refine(
+        (val) => !/([._]){2,}/.test(val) && !/(\.\_|\_\.)/.test(val),
+        'Username cannot have consecutive special characters'
+      )
+  );
+
+// Standalone format check for client-side (no async, no DB)
+export function validateUsernameFormat(raw: string): string | null {
+  const result = userUsernameSchema.safeParse(raw);
+  if (result.success) return null;
+  return result.error.errors[0]?.message ?? 'Invalid username';
+}
+
 // Firestore doc ids are strings like "x_someuser" or auto-generated 20-char ids,
 // not 24-char Mongo ObjectIds. Validate as a generic safe id.
 export const idSchema = z.string().min(1).max(200).regex(/^[A-Za-z0-9_.\-]+$/, 'Invalid id');

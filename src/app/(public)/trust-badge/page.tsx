@@ -78,7 +78,7 @@ const STEPS = [
     number: '02',
     title: 'Complete Payment',
     description:
-      `A one-time fee of $${TRUST_BADGE_USD}.00 / ₹${TRUST_BADGE_INR} covers the cost of identity review. No subscriptions. No recurring charges.`,
+      `A monthly fee of $${TRUST_BADGE_USD} / ₹${TRUST_BADGE_INR} covers the cost of identity review. $1/mo or ₹99/mo · Cancel anytime`,
   },
   {
     number: '03',
@@ -285,7 +285,7 @@ export default function TrustBadgePage() {
                 onClick={() => router.push('/profile/upgrade')}
                 className="rounded-full bg-foreground px-10 py-4 text-[15px] font-bold text-background transition hover:opacity-90"
               >
-                {`Get Verified — $${TRUST_BADGE_USD} / ₹${TRUST_BADGE_INR}`}
+                Get Verified — from $1/mo
               </button>
               <p className="text-[12px] text-muted-foreground">
                 Already verified?{' '}

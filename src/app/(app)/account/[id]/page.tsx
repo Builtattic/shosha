@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import {
   CheckCircle2,
@@ -226,6 +226,14 @@ export default async function AccountPage({
       }
     } else {
       notFound();
+    }
+  }
+  if (!account && id.data.startsWith('website_')) {
+    const maybeUsername = id.data.replace('website_', '');
+    const user = await usersRepo.findByUsername(maybeUsername).catch(() => null);
+    if (user && user.username !== maybeUsername) {
+      const newId = accountsRepo.deriveId('website', user.username);
+      redirect(`/account/${newId}`);
     }
   }
   if (!account) notFound();

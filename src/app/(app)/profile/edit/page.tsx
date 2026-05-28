@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   ChevronLeft, 
@@ -27,6 +27,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { defaultProfileVisibility, normalizeProfileVisibility } from '@/lib/profilePrivacy';
+import { validateUsernameFormat } from '@/lib/validators';
 
 const multipliers = [
   { id: 'massiveAction', label: '1. Massive Action', desc: 'What actions have you taken at scale?', icon: Star, options: ['Getting Started', 'Making Moves', 'High Impact', 'Massive'] },
@@ -48,6 +49,9 @@ export default function EditProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [usernameError, setUsernameError] = useState<string | null>(null);
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const [usernameChecking, setUsernameChecking] = useState(false);
   
   const [form, setForm] = useState({
     name: '',
@@ -80,6 +84,47 @@ export default function EditProfilePage() {
     photoUrl: '',
     profileFieldVisibility: defaultProfileVisibility,
   });
+
+  const usernameCheckRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function handleUsernameChange(raw: string) {
+    // Auto-format: strip @, trim, lowercase
+    const cleaned = raw.replace(/^@+/, '').toLowerCase();
+    updateField('username', cleaned);
+    setUsernameAvailable(null);
+
+    // Immediate format check
+    const formatError = validateUsernameFormat(cleaned);
+    if (formatError) {
+      setUsernameError(formatError);
+      return;
+    }
+    setUsernameError(null);
+
+    // Debounced availability check
+    if (usernameCheckRef.current) clearTimeout(usernameCheckRef.current);
+    setUsernameChecking(true);
+    usernameCheckRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `/api/me/username-check?username=${encodeURIComponent(cleaned)}`
+        );
+        const data = await res.json();
+        if (data.ok) {
+          setUsernameAvailable(data.data.available);
+          if (!data.data.available) {
+            setUsernameError(data.data.error ?? 'Username is already taken');
+          } else {
+            setUsernameError(null);
+          }
+        }
+      } catch {
+        // ignore network errors on check
+      } finally {
+        setUsernameChecking(false);
+      }
+    }, 500);
+  }
 
   useEffect(() => {
     if (authLoading) return;
@@ -169,6 +214,10 @@ export default function EditProfilePage() {
 
   const handleSave = async () => {
     setError('');
+    if (usernameError) {
+      setError('Please fix your username before saving.');
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetch('/api/me', {
@@ -288,13 +337,37 @@ export default function EditProfilePage() {
             />
           </div>
           <div className="p-3 border border-border rounded-xl bg-card">
-            <label className="block text-[11px] text-muted-foreground font-medium mb-1">Username</label>
-            <input 
-              value={form.username} 
-              onChange={(e) => updateField('username', e.target.value)} 
-              className="w-full bg-transparent text-[14px] font-medium outline-none text-foreground"
-              placeholder="handle"
-            />
+            <label className="block text-[11px] text-muted-foreground font-medium mb-1">
+              Username
+            </label>
+            <div className="flex items-center gap-2">
+              <span className="text-[14px] text-muted-foreground">@</span>
+              <input
+                value={form.username}
+                onChange={(e) => handleUsernameChange(e.target.value)}
+                className="flex-1 bg-transparent text-[14px] font-medium outline-none text-foreground"
+                placeholder="handle"
+                maxLength={30}
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+              />
+              {usernameChecking && (
+                <span className="text-[11px] text-muted-foreground">checking…</span>
+              )}
+              {!usernameChecking && usernameAvailable === true && (
+                <span className="text-[11px] text-green-500">available</span>
+              )}
+              {!usernameChecking && usernameAvailable === false && (
+                <span className="text-[11px] text-destructive">taken</span>
+              )}
+            </div>
+            {usernameError && (
+              <p className="mt-1 text-[11px] text-destructive">{usernameError}</p>
+            )}
+            <p className="mt-1 text-[10px] text-muted-foreground">
+              Letters, numbers, underscores, and periods only. 3–30 chars.
+            </p>
           </div>
         </div>
 

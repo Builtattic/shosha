@@ -132,6 +132,10 @@ export type AppUser = {
   trustBadgeRejectionReason?: string;
   trustBadgePaymentId?: string;
   trustBadgeOrderId?: string;
+  trustBadgeSubscriptionId?: string;
+  trustBadgeSubscriptionStatus?: 'created' | 'authenticated' | 'active' | 'halted' | 'cancelled';
+  trustBadgeSubscriptionCurrency?: 'USD' | 'INR';
+  trustBadgeSubscriptionRenewedAt?: string;
   credibility?: number;
   /** Reputation credibility from calcProfileCredibility (GET /api/me); distinct from completion-based `credibility`. */
   profileCredibility?: number;

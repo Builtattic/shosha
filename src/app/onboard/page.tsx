@@ -13,7 +13,8 @@ import {
 import { calcCredibility, CRED_SECTIONS, SOCIAL_LINKS_GATE, type CredibilityInput } from '@/lib/credibility';
 import { ClaimProfileSearchModal } from '@/components/profile/ClaimProfileSearchModal';
 import { cn } from '@/lib/utils';
-import { TRUST_BADGE_USD, TRUST_BADGE_INR } from '@/lib/pricing';
+import { TRUST_BADGE_INR } from '@/lib/pricing';
+import { validateUsernameFormat } from '@/lib/validators';
 
 // ── Option maps ────────────────────────────────────────────────────────────────
 
@@ -328,11 +329,51 @@ export default function OnboardPage() {
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [usernameError, setUsernameError] = useState<string | null>(null);
+  const [usernameChecking, setUsernameChecking] = useState(false);
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const [claimSearchOpen, setClaimSearchOpen] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const usernameCheckRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  function handleUsernameChange(raw: string) {
+    const cleaned = raw.replace(/^@+/, '').toLowerCase();
+    set('username', cleaned);
+    setUsernameAvailable(null);
+
+    const formatError = validateUsernameFormat(cleaned);
+    if (formatError) {
+      setUsernameError(formatError);
+      return;
+    }
+    setUsernameError(null);
+
+    if (usernameCheckRef.current) clearTimeout(usernameCheckRef.current);
+    setUsernameChecking(true);
+    usernameCheckRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `/api/me/username-check?username=${encodeURIComponent(cleaned)}`
+        );
+        const data = await res.json();
+        if (data.ok) {
+          setUsernameAvailable(data.data.available);
+          if (!data.data.available) {
+            setUsernameError(data.data.error ?? 'Username is already taken');
+          } else {
+            setUsernameError(null);
+          }
+        }
+      } catch {
+        // ignore
+      } finally {
+        setUsernameChecking(false);
+      }
+    }, 500);
   }
 
   useEffect(() => {
@@ -403,6 +444,10 @@ export default function OnboardPage() {
 
   async function handleSave({ markComplete }: { markComplete: boolean }) {
     setError('');
+    if (usernameError) {
+      setError('Please fix your username before continuing.');
+      return;
+    }
     if (markComplete) {
       const required: Array<[keyof FormState, string]> = [
         ['name', 'full name'],
@@ -550,11 +595,34 @@ export default function OnboardPage() {
                 </div>
                 <div>
                   <FieldLabel>Username</FieldLabel>
-                  <TextField
-                    value={form.username ?? ''}
-                    onChange={(v) => set('username', v.toLowerCase())}
-                    placeholder="auto_handle"
-                  />
+                  <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2">
+                    <span className="text-[14px] text-muted-foreground">@</span>
+                    <input
+                      value={form.username ?? ''}
+                      onChange={(e) => handleUsernameChange(e.target.value)}
+                      className="flex-1 bg-transparent text-[14px] font-medium outline-none text-foreground"
+                      placeholder="your_handle"
+                      maxLength={30}
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
+                    />
+                    {usernameChecking && (
+                      <span className="text-[11px] text-muted-foreground">checking…</span>
+                    )}
+                    {!usernameChecking && usernameAvailable === true && (
+                      <span className="text-[11px] text-green-500">available</span>
+                    )}
+                    {!usernameChecking && usernameAvailable === false && (
+                      <span className="text-[11px] text-destructive">taken</span>
+                    )}
+                  </div>
+                  {usernameError && (
+                    <p className="mt-1 text-[11px] text-destructive">{usernameError}</p>
+                  )}
+                  <p className="mt-1 text-[10px] text-muted-foreground">
+                    Letters, numbers, underscores, periods. 3–30 chars.
+                  </p>
                 </div>
                 <div>
                   <FieldLabel>Phone Number</FieldLabel>
@@ -732,7 +800,7 @@ export default function OnboardPage() {
                     <p className="mt-0.5 text-[11px] text-muted-foreground">
                       {form.trustBadge
                         ? 'You unlocked the full 20% verification weight.'
-                        : `Purchase a Trust Badge for $${TRUST_BADGE_USD} / ₹${TRUST_BADGE_INR} to lift you to 100%.`}
+                        : `Purchase a Trust Badge from ₹${TRUST_BADGE_INR}/mo to lift you to 100%.`}
                     </p>
                   </div>
                 </div>
@@ -745,7 +813,7 @@ export default function OnboardPage() {
                     href="/profile/upgrade"
                     className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-[12px] font-bold text-background transition-opacity hover:opacity-90"
                   >
-                    {`Get Trust Badge · $${TRUST_BADGE_USD} / ₹${TRUST_BADGE_INR}`}
+                    {`Get Trust Badge · from ₹${TRUST_BADGE_INR}/mo`}
                   </Link>
                 )}
               </div>
