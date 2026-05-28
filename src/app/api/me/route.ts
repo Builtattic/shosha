@@ -7,6 +7,7 @@ import * as usersRepo from '@/lib/repos/users';
 import { normalizeProfileVisibility } from '@/lib/profilePrivacy';
 import { calcCredibility } from '@/lib/credibility';
 import { calcProfileCredibility } from '@/lib/scoring';
+import { userUsernameSchema } from '@/lib/validators';
 import { NextRequest, NextResponse } from 'next/server';
 import type { AccountRecord } from '@/lib/repos/accounts';
 import type { AppUser } from '@/lib/repos/users';
@@ -200,6 +201,31 @@ export async function PATCH(req: NextRequest) {
       trustBadge: Boolean(merged.trustBadge),
     });
     patch.credibility = cred.total;
+
+    // Username validation
+    if ('username' in patch) {
+      const parsed = userUsernameSchema.safeParse(patch.username);
+      if (!parsed.success) {
+        return NextResponse.json(
+          { error: parsed.error.errors[0]?.message ?? 'Invalid username' },
+          { status: 400 }
+        );
+      }
+
+      const normalized = parsed.data;
+      patch.username = normalized;
+
+      // Uniqueness check (exclude self)
+      if (user.username?.toLowerCase() !== normalized) {
+        const existing = await usersRepo.findByUsername(normalized);
+        if (existing && existing._id !== user._id) {
+          return NextResponse.json(
+            { error: 'Username is already taken' },
+            { status: 400 }
+          );
+        }
+      }
+    }
 
     const updated = await usersRepo.update(user._id, patch);
     return ok({ user: updated });
