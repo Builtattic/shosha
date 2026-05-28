@@ -21,18 +21,16 @@ declare global {
 }
 
 type RazorpaySuccessPayload = {
-  razorpay_order_id: string;
   razorpay_payment_id: string;
+  razorpay_subscription_id: string;
   razorpay_signature: string;
 };
 
 type RazorpayOptions = {
   key: string;
-  amount: number;
-  currency: string;
+  subscription_id: string;
   name: string;
   description: string;
-  order_id: string;
   handler: (response: RazorpaySuccessPayload) => Promise<void>;
   prefill: {
     name: string;
@@ -67,6 +65,7 @@ export default function TrustUpgradePage() {
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraSessionKey, setCameraSessionKey] = useState(0);
   const [currency, setCurrency] = useState<'USD' | 'INR'>('USD');
+  const [geoLoading, setGeoLoading] = useState(true);
 
   function next() { setStep((s) => Math.min(5, (s + 1) as Step) as Step); }
   function back() { setStep((s) => Math.max(0, (s - 1) as Step) as Step); }
@@ -88,6 +87,17 @@ export default function TrustUpgradePage() {
         document.body.removeChild(script);
       }
     };
+  }, []);
+
+  useEffect(() => {
+    fetch('https://ipapi.co/json/')
+      .then((r) => r.json())
+      .then((data: { country_code?: string }) => {
+        if (data.country_code === 'IN') setCurrency('INR');
+        else setCurrency('USD');
+      })
+      .catch(() => setCurrency('USD'))
+      .finally(() => setGeoLoading(false));
   }, []);
 
   useEffect(() => {
@@ -177,7 +187,11 @@ export default function TrustUpgradePage() {
       if (!docData?.ok || !docData?.data?.url) throw new Error('Document upload failed.');
       const docUrl = docData.data.url as string;
 
-      const orderRes = await fetch('/api/me/upgrade/order', { method: 'POST' });
+      const orderRes = await fetch('/api/me/upgrade/order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currency }),
+      });
       const orderData = await orderRes.json().catch(() => null);
       if (!orderData?.ok) {
         toast.push(orderData?.error?.message ?? 'Could not initiate payment.');
@@ -193,11 +207,9 @@ export default function TrustUpgradePage() {
 
       const options: RazorpayOptions = {
         key: orderData.data.keyId,
-        amount: orderData.data.amount,
-        currency: orderData.data.currency,
+        subscription_id: orderData.data.subscriptionId,
         name: 'Shosha',
         description: 'Trust Badge — Identity Verification',
-        order_id: orderData.data.orderId,
         handler: async (response: RazorpaySuccessPayload) => {
           try {
             const verifyRes = await fetch('/api/me/upgrade/verify', {
@@ -346,57 +358,57 @@ export default function TrustUpgradePage() {
         </div>
 
         {/* Pricing CTA */}
-        <div className="mt-8 flex items-center gap-4 rounded-[24px] border border-border bg-card p-5">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-foreground text-background">
-            <ShieldCheck size={22} />
+        <div className="mt-8 flex flex-col gap-3 rounded-[24px] border border-border bg-card p-5">
+          {/* Currency toggle */}
+          <div className="flex items-center gap-1 self-start rounded-full border border-border p-1">
+            <button
+              onClick={() => setCurrency('USD')}
+              className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                currency === 'USD'
+                  ? 'bg-foreground text-background'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              $ USD
+            </button>
+            <button
+              onClick={() => setCurrency('INR')}
+              className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                currency === 'INR'
+                  ? 'bg-foreground text-background'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              ₹ INR
+            </button>
           </div>
-          <div className="min-w-0 flex-1">
-            <h3 className="text-[14px] font-bold">Upgrade to Trust Account</h3>
-            <p className="text-[11px] text-muted-foreground">All benefits. Instant unlock.</p>
-          </div>
-          <div className="text-right shrink-0 flex flex-col items-end gap-2">
-            <div className="flex rounded-full border border-border p-0.5">
-              <button
-                type="button"
-                onClick={() => setCurrency('USD')}
-                className={cn(
-                  'rounded-full px-2.5 py-1 text-[10px] font-bold transition',
-                  currency === 'USD'
-                    ? 'bg-foreground text-background'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                $ USD
-              </button>
-              <button
-                type="button"
-                onClick={() => setCurrency('INR')}
-                className={cn(
-                  'rounded-full px-2.5 py-1 text-[10px] font-bold transition',
-                  currency === 'INR'
-                    ? 'bg-foreground text-background'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                ₹ INR
-              </button>
-            </div>
+
+          {/* Price + CTA */}
+          <div className="flex items-center justify-between">
             <div>
-              <div className="text-[20px] font-black tabular-nums">
-                {currency === 'USD' ? `$${TRUST_BADGE_USD}.00` : `₹${TRUST_BADGE_INR}`}
-              </div>
-              <p className="text-[10px] text-muted-foreground">one time</p>
+              {geoLoading ? (
+                <div className="h-7 w-16 animate-pulse rounded bg-muted" />
+              ) : (
+                <>
+                  <div className="text-[20px] font-black tabular-nums">
+                    {currency === 'USD' ? `$${TRUST_BADGE_USD.toFixed(2)}` : `₹${TRUST_BADGE_INR}`}
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">per month</p>
+                  <p className="mt-0.5 text-[9px] text-muted-foreground">
+                    {currency === 'USD'
+                      ? `1 USD ≈ ₹${USD_TO_INR_RATE} · charged in USD via Razorpay`
+                      : 'charged in INR via Razorpay'}
+                  </p>
+                </>
+              )}
             </div>
-            <p className="max-w-[11rem] text-right text-[10px] text-muted-foreground leading-snug">
-              1 USD = ₹{USD_TO_INR_RATE} · charged in INR via Razorpay
-            </p>
+            <button
+              onClick={() => setStep(1)}
+              className="shrink-0 rounded-full bg-foreground px-5 py-2.5 text-[13px] font-bold text-background transition hover:opacity-90"
+            >
+              Upgrade Now
+            </button>
           </div>
-          <button
-            onClick={() => setStep(1)}
-            className="shrink-0 rounded-full bg-foreground px-5 py-2.5 text-[13px] font-bold text-background transition hover:opacity-90"
-          >
-            Upgrade Now
-          </button>
         </div>
 
         {/* Trust strip */}

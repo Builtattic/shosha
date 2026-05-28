@@ -1,11 +1,17 @@
 import { ok, fail } from '@/lib/api';
 import { getCurrentUser } from '@/lib/auth';
-import { TRUST_BADGE_PAISE } from '@/lib/pricing';
-import { razorpay } from '@/lib/razorpay';
+import { createTrustBadgeSubscription } from '@/lib/razorpay';
+import * as usersRepo from '@/lib/repos/users';
+import type { PlanCurrency } from '@/lib/pricing';
+import { z } from 'zod';
 
 export const runtime = 'nodejs';
 
-export async function POST() {
+const orderSchema = z.object({
+  currency: z.enum(['USD', 'INR']),
+});
+
+export async function POST(request: Request) {
   const user = await getCurrentUser();
   if (!user) return fail('unauthorized', 'Sign in to continue.', 401);
 
@@ -13,25 +19,39 @@ export async function POST() {
     return fail('validation_error', 'Trust Badge already active.', 400);
   }
 
+  const json = await request.json().catch(() => null);
+  const parsed = orderSchema.safeParse(json);
+  if (!parsed.success) return fail('validation_error', 'Invalid payload.', 422);
+
+  const currency = parsed.data.currency as PlanCurrency;
+
+  // Return existing subscription if already pending
+  if (user.trustBadgeSubscriptionId && user.trustBadgePending) {
+    return ok({
+      subscriptionId: user.trustBadgeSubscriptionId,
+      keyId: process.env.RAZORPAY_KEY_ID,
+      currency,
+      isSubscription: true,
+    });
+  }
+
   try {
-    const order = await razorpay().orders.create({
-      amount: TRUST_BADGE_PAISE,
-      currency: 'INR',
-      receipt: `tb_${user._id.slice(0, 20)}_${Date.now().toString().slice(-8)}`,
-      notes: {
-        userId: user._id,
-        purpose: 'trust_badge',
-      },
+    const subscription = await createTrustBadgeSubscription(user._id, currency);
+
+    await usersRepo.update(user._id, {
+      trustBadgeSubscriptionId: subscription.id,
+      trustBadgeSubscriptionStatus: 'created',
+      trustBadgeSubscriptionCurrency: currency,
     });
 
     return ok({
-      orderId: order.id,
-      amount: order.amount,
-      currency: order.currency,
+      subscriptionId: subscription.id,
       keyId: process.env.RAZORPAY_KEY_ID,
+      currency,
+      isSubscription: true,
     });
   } catch (error) {
     console.error('[POST /api/me/upgrade/order]', error);
-    return fail('internal_error', 'Could not create payment order.', 500);
+    return fail('internal_error', 'Could not create subscription.', 500);
   }
 }
