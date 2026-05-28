@@ -18,6 +18,8 @@ export type NotificationKind =
   | 'dispute_resolved'
   | 'trust_badge_approved'
   | 'trust_badge_rejected'
+  | 'trust_badge_cancelled'
+  | 'trust_badge_payment_failed'
   | 'system';
 
 export type NotificationRecord = {

@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 
 // Public routes that don't require auth
 const publicPaths = ['/', '/sign-in', '/sign-up', '/ranks', '/impact', '/feed', '/post', '/leaderboard', '/how-it-works', '/legal-policies'];
-const publicApiPaths = ['/api/health', '/api/accounts', '/api/feed', '/api/impact', '/api/og', '/api/report-issue'];
+const publicApiPaths = ['/api/health', '/api/accounts', '/api/feed', '/api/impact', '/api/og', '/api/report-issue', '/api/webhooks'];
 const protectedPathPrefixes = [
   '/account',
   '/admin',

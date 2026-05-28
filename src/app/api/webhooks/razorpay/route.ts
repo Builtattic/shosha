@@ -79,7 +79,7 @@ export async function POST(request: Request) {
 
       await notificationsRepo.create({
         userId,
-        kind: 'trust_badge_cancelled' as Parameters<typeof notificationsRepo.create>[0]['kind'],
+        kind: 'trust_badge_cancelled',
         title: 'Trust Badge Cancelled',
         body: 'Your Trust Badge subscription has ended. Re-subscribe to restore your badge.',
         link: '/profile/upgrade',
@@ -93,7 +93,7 @@ export async function POST(request: Request) {
       });
       await notificationsRepo.create({
         userId,
-        kind: 'trust_badge_payment_failed' as Parameters<typeof notificationsRepo.create>[0]['kind'],
+        kind: 'trust_badge_payment_failed',
         title: 'Trust Badge Payment Failed',
         body: 'We could not charge your payment method. Please update it to keep your badge.',
         link: '/profile/upgrade',

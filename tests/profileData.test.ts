@@ -14,6 +14,7 @@ vi.mock('@/lib/repos/accounts', () => ({
 
 vi.mock('@/lib/repos/reports', () => ({
   listForAccount: vi.fn(),
+  listByReporter: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock('@/lib/repos/users', () => ({
