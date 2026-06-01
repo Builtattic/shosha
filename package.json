@@ -7,7 +7,7 @@
     "node": "20.x"
   },
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "emulators": "firebase emulators:start --import=./.emulator-data --export-on-exit",
