@@ -1,0 +1,167 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: #ffffff;
+    --foreground: #1a1a1a;
+    --card: #f9f9f9;
+    --card-foreground: #1a1a1a;
+    --popover: #ffffff;
+    --popover-foreground: #1a1a1a;
+    --primary: #1a1a1a;
+    --primary-foreground: #ffffff;
+    --secondary: #f3f4f6;
+    --secondary-foreground: #1a1a1a;
+    --muted: #f3f4f6;
+    --muted-foreground: #6b7280;
+    --accent: #f3f4f6;
+    --accent-foreground: #1a1a1a;
+    --destructive: #ef4444;
+    --destructive-foreground: #ffffff;
+    --positive: #22c55e;
+    --positive-foreground: #ffffff;
+    --neutral-status: #f59e0b;
+    --neutral-status-foreground: #ffffff;
+    --border: #e5e7eb;
+    --input: #e5e7eb;
+    --ring: #1a1a1a;
+    --radius: 0.75rem; /* 12px default for cards, rounded-xl */
+    --score-gradient: linear-gradient(to right, #f43f5e 0%, #fb923c 30%, #d4ff4a 60%, #4ade80 100%);
+    
+    /* Shadcn defaults for charts and sidebar */
+    --chart-1: oklch(0.87 0 0);
+    --chart-2: oklch(0.556 0 0);
+    --chart-3: oklch(0.439 0 0);
+    --chart-4: oklch(0.371 0 0);
+    --chart-5: oklch(0.269 0 0);
+    --sidebar: oklch(0.985 0 0);
+    --sidebar-foreground: oklch(0.145 0 0);
+    --sidebar-primary: oklch(0.205 0 0);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.97 0 0);
+    --sidebar-accent-foreground: oklch(0.205 0 0);
+    --sidebar-border: oklch(0.922 0 0);
+    --sidebar-ring: oklch(0.708 0 0);
+  }
+
+  .dark {
+    --background: #0f0f0f;
+    --foreground: #f0f0f0;
+    --card: #1a1a1a;
+    --card-foreground: #f0f0f0;
+    --popover: #0f0f0f;
+    --popover-foreground: #f0f0f0;
+    --primary: #ffffff;
+    --primary-foreground: #0f0f0f;
+    --secondary: #3a3a3a;
+    --secondary-foreground: #f0f0f0;
+    --muted: #3a3a3a;
+    --muted-foreground: #a0a0a0;
+    --accent: #3a3a3a;
+    --accent-foreground: #f0f0f0;
+    --destructive: #f87171;
+    --destructive-foreground: #0f0f0f;
+    --positive: #16a34a;
+    --positive-foreground: #ffffff;
+    --neutral-status: #fb923c;
+    --neutral-status-foreground: #0f0f0f;
+    --border: #2a2a2a;
+    --input: #2a2a2a;
+    --ring: #ffffff;
+    
+    /* Shadcn defaults for charts and sidebar */
+    --chart-1: oklch(0.87 0 0);
+    --chart-2: oklch(0.556 0 0);
+    --chart-3: oklch(0.439 0 0);
+    --chart-4: oklch(0.371 0 0);
+    --chart-5: oklch(0.269 0 0);
+    --sidebar: oklch(0.205 0 0);
+    --sidebar-foreground: oklch(0.985 0 0);
+    --sidebar-primary: oklch(0.488 0.243 264.376);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.269 0 0);
+    --sidebar-accent-foreground: oklch(0.985 0 0);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.556 0 0);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    font-size: 90%;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  /* 🌫️ Light Noise Overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.02'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.4;
+  }
+
+  /* 📺 Subtle Scanlines */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.01) 2px,
+      rgba(0,0,0,0.01) 4px
+    );
+    pointer-events: none;
+    z-index: 0;
+  }
+  
+  .dark body::before {
+    opacity: 0.2;
+  }
+  
+  .dark body::after {
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(255,255,255,0.01) 2px,
+      rgba(255,255,255,0.01) 4px
+    );
+  }
+}
+
+@layer utilities {
+  /* 👆 Active Click Compression */
+  .press {
+    transition: transform 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .press:active {
+    transform: scale(0.97);
+  }
+
+  /* 👆 Soft Card Lift */
+  .lift {
+    transition: transform 200ms ease, box-shadow 200ms ease;
+  }
+  .lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+  }
+  
+  /* Skeleton Shimmer Gradient */
+  .shimmer-bg {
+    background: linear-gradient(90deg, var(--muted) 0%, var(--border) 50%, var(--muted) 100%);
+    background-size: 200% 100%;
+  }
+}
