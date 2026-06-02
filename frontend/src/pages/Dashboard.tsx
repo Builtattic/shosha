@@ -1,17 +1,14 @@
 import { useAuth } from '@/providers/AuthProvider';
-import { logout } from '@/lib/firebase';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 
 export default function Dashboard() {
-  const { profile } = useAuth();
+  const { profile, logout } = useAuth();
+  const navigate = useNavigate();
 
   const handleLogout = async () => {
-    if (import.meta.env.VITE_USE_MOCKS !== 'false') {
-      localStorage.removeItem('mock_fb_user');
-      window.location.reload();
-      return;
-    }
     await logout();
+    navigate('/sign-in', { replace: true });
   };
 
   return (

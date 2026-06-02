@@ -43,6 +43,7 @@ export const router = createBrowserRouter([
 
   // Auth
   { path: '/sign-in', element: <SignIn /> },
+  { path: '/sign-up', element: <Navigate to="/sign-in" replace /> },
   { path: '/login', element: <Navigate to="/sign-in" replace /> },
 
   // Onboarding (auth required, onboarding guard NOT applied here to avoid loop)
