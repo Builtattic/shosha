@@ -1,89 +1,102 @@
-# Shosha Feature Inventory (Migration Baseline)
+# Shosha Feature Inventory (Scaffold Phase Alignment)
 
-This document captures the functional inventory for the rebuild effort, based on the current planning artifact and legacy behavior analysis.
+This inventory is aligned to the initial implementation phase, which is setup-only scaffolding.
 
-## Purpose
+## Phase Intent
 
-- Establish a single migration baseline of "what the product does."
-- Separate MVP-critical features from later phases.
-- Help sequence implementation across `frontend/`, `backend/`, and `docs/`.
+- Start implementation with clean monorepo scaffold.
+- Lock stack/tooling choices.
+- Prepare local development workflow.
+- Avoid domain feature implementation in this phase.
 
-## Product Core
+## Stack Inventory (Approved)
 
-- Reputation and dossier platform centered on social/web identities.
-- Evidence-backed community reporting for positive/negative deeds.
-- Deterministic score movement through admin-governed adjudication.
-- AI-assisted pre-review before human approval.
+### Frontend
 
-## Domain Inventory
+- React
+- Vite
+- TypeScript
+- React Router
+- TanStack Query
+- Tailwind CSS
+- shadcn/ui
 
-### Critical
+### Backend
 
-- Authentication and role-based authorization
-- Users and onboarding profile
-- Accounts/dossiers (tracked identities)
-- Reports (filing, review lifecycle, evidence)
-- Scoring and immutable ledger replay
-- Admin tribunal and moderation queues
-- Media upload and serving pipeline
+- FastAPI
+- Uvicorn
+- SQLAlchemy 2
+- Alembic
+- Pydantic v2
 
-### High
+### Platform
 
-- Feed and discovery
-- Report interactions (align/oppose, comments, bookmarks)
-- Notifications
-- Claims and ownership workflows
-- Disputes and score reversal handling
+- PostgreSQL
+- Firebase Auth
+- AWS S3
 
-### Medium
+## Repository Inventory (Current Target)
 
-- Trust Badge workflow
-- Moderation requests
-- Impact/ranks/leaderboards
-- Site settings and policy controls
-- Compliance and safety workflows
+```text
+frontend/
+backend/
+docs/
+```
 
-### Low / Deferred
+## Deliverable Inventory For This Phase
 
-- Evidence proposals
-- Bubbles (groups)
-- People discovery deck + swipes
-- Live social ingestion and enrichment extras
-- Generic admin data center
+### 1) Frontend Scaffold
 
-## MVP Scope Buckets (21-Day Target)
+- Project skeleton and base `src` directories.
+- Tooling config (`vite`, `typescript`, lint/format setup if included).
+- Dependency declarations only.
 
-### Must Have
+### 2) Backend Scaffold
 
-- Auth, user profile, onboarding minimums
-- Account search/create/track + dossier
-- Report filing with required media
-- AI adjudication + admin approve/reject
-- Score/ledger application and replay
-- Feed (approved reports) + align/oppose
-- Core notifications
-- Basic admin roles and settings
-- AWS deployability + legal pages
+- FastAPI app bootstrap structure only.
+- SQLAlchemy/Alembic scaffolding only.
+- Dependency declarations only.
 
-### Should Have
+### 3) Dependency Manifests
 
-- Claims flow (bio code + screenshot path)
-- Disputes + resolution path
-- Comments and bookmarks
-- Reporter reputation updates
-- Admin abuse view + activity log
+- `frontend/package.json`
+- `backend/pyproject.toml`
 
-### Nice To Have
+### 4) Environment Templates
 
-- Audit requests and full AI audit
-- Trust Badge paid automation
-- Bubbles, People deck, live ingestion
-- Additional compliance/support tooling
+- `frontend/.env.example`
+- `backend/.env.example`
+
+### 5) Local Setup
+
+- Commands to run Postgres, backend, and frontend locally.
+- No feature code.
+
+### 6) Docker Compose
+
+- PostgreSQL service only.
+- No application containers.
+
+### 7) Setup Documentation
+
+- README instructions for installation and local run.
+
+## Explicitly Out Of Scope In This Phase
+
+- Business logic
+- API endpoints
+- Database tables/migrations for domain schema
+- Feature workflows (reports, feeds, scoring, disputes, etc.)
+
+## Next Phase Preview (Not Implemented Now)
+
+- API route design
+- Domain model/table definitions
+- Auth flow integration behavior
+- S3 upload and media workflow behavior
 
 ## Canonical Plan Link
 
-The detailed architecture, database, and phased schedule lives in:
+Detailed scaffold execution baseline:
 
 - `docs/REBUILD_PLAN.md`
-
-Use this inventory for quick scoping and planning conversations; use the rebuild plan for implementation sequencing.

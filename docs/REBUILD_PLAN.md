@@ -1,157 +1,173 @@
-# Shosha Rebuild Plan
+# Shosha Initial Implementation Scaffold Plan
 
-Status: Architecture and execution plan only - no implementation code, SQL, or migration scripts.
+Status: This document is now aligned to scaffolding-only implementation start.
 
-Context: This repository is a copy of the legacy app and is being used as the first migration workspace. The original repository remains the source of truth for latest behavior and history.
+This phase generates project structure and setup only.
 
-## Repository Sources
+## Hard Constraints
 
-- Copy repo: `C:\Others\project\Builtattic\shosha`
-- Original repo: `C:\Others\project\Builtattic\Shoshaaahhh`
+- Do not generate business logic.
+- Do not generate API endpoints.
+- Do not generate database tables.
+- Do not add domain models beyond placeholders.
 
-If behavior differs, reconcile against the original repository before final implementation decisions.
+## Target Stack
 
-## System Overview
+### Frontend
 
-Shosha is a mobile-first reputation and investigative dossier platform. It lets users:
+- React
+- Vite
+- TypeScript
+- React Router
+- TanStack Query
+- Tailwind CSS
+- shadcn/ui
 
-1. Identify public social/web accounts across platforms.
-2. File evidence-backed positive or negative reports.
-3. See deterministic score impact after AI pre-review and admin adjudication.
+### Backend
 
-Governance is core: AI flags and structures incoming filings, while admins approve/reject and trigger ledger-backed score updates.
+- FastAPI
+- Uvicorn
+- SQLAlchemy 2
+- Alembic
+- Pydantic v2
 
-## Core Domains
+### Platform
 
-- Authentication
-- Users
-- Accounts
-- Reports
-- Scoring and Ledger
-- Feed
-- Report Interactions
-- Notifications
-- Trust Badge
-- Admin / Tribunal
-- Claims and Ownership
-- Audits
-- Disputes
-- Moderation Requests
-- Evidence Proposals
-- Payments and Subscriptions
-- AI Services
-- Media
-- Bubbles
-- People / Discovery
-- Impact, Ranks, Leaderboard
-- Site Settings and Policy
-- Compliance and Safety
+- Database: PostgreSQL
+- Auth provider: Firebase Auth
+- Storage: AWS S3
 
-## MVP Scope (21 Days)
+## Repository Structure
 
-### Must Have
+```text
+frontend/
+backend/
+docs/
+```
 
-- Auth and verification gates
-- User onboarding profile
-- Account search/create + dossier
-- Report filing with media
-- AI adjudication on submit
-- Admin queue review and decisioning
-- Score movement via ledger replay
-- Feed and align/oppose
-- Notifications
-- Basic admin role controls
-- Site settings baseline
-- AWS deployability and legal pages
+## Scaffolding Deliverables
 
-### Should Have
+1. Folder structure for frontend.
+2. Folder structure for backend.
+3. `package.json` dependencies for frontend tooling/runtime.
+4. `pyproject.toml` dependencies for backend tooling/runtime.
+5. Environment variable structure (`.env.example` style templates only).
+6. Local development setup scripts and instructions.
+7. `docker-compose.yml` for PostgreSQL only.
+8. README setup instructions for running frontend/backend locally.
 
-- Claim request flow
-- Disputes with admin resolution
-- Comments and bookmarks
-- Reporter reputation updates
-- Admin abuse panel and activity log
+## Frontend Scaffold Shape
 
-### Nice To Have
+```text
+frontend/
+├── package.json
+├── tsconfig.json
+├── vite.config.ts
+├── index.html
+├── .env.example
+├── src/
+│   ├── main.tsx
+│   ├── app/
+│   │   ├── router.tsx
+│   │   └── providers.tsx
+│   ├── pages/
+│   ├── components/
+│   │   └── ui/
+│   ├── lib/
+│   │   ├── queryClient.ts
+│   │   └── env.ts
+│   ├── services/
+│   ├── hooks/
+│   ├── styles/
+│   └── types/
+└── ...
+```
 
-- Audit requests
-- Trust Badge payment automation
-- Evidence proposals
-- Moderation requests
-- Bubbles and People deck
-- Live social ingestion
+Notes:
+- `components/ui` is reserved for shadcn/ui components.
+- No feature/business modules are implemented in this phase.
 
-## PostgreSQL Design (Conceptual)
+## Backend Scaffold Shape
 
-Primary entity groups:
+```text
+backend/
+├── pyproject.toml
+├── alembic.ini
+├── .env.example
+├── app/
+│   ├── main.py
+│   ├── core/
+│   │   ├── config.py
+│   │   ├── db.py
+│   │   └── logging.py
+│   ├── api/
+│   ├── schemas/
+│   ├── services/
+│   └── integrations/
+│       ├── firebase_auth.py
+│       └── s3.py
+├── alembic/
+│   ├── env.py
+│   └── versions/
+└── tests/
+```
 
-- Identity: `users`, `sessions`/`refresh_tokens`
-- Subjects: `accounts`, `account_social_links`, `account_posts`
-- Reporting: `reports`, `report_media`, `report_comments`, `report_votes`, `report_bookmarks`
-- Scoring: `ledger_entries`, `user_ledger_entries`, `account_score_snapshots`
-- Governance: `claim_requests`, `audit_requests`, `disputes`, `moderation_requests`, `evidence_proposals`, `admin_actions`
-- Platform: `notifications`, `subscriptions`, `trust_badge_submissions`, `payment_events`, `site_settings`, `deletion_requests`, `issue_reports`
-- Optional social: `bubbles`, `bubble_members`, `bubble_join_requests`, `account_swipes`, `user_follows`
+Notes:
+- `api/` exists for future routers but no endpoints are created now.
+- Alembic is configured only as tooling scaffold; no table migrations are created.
 
-## Backend Shape (FastAPI)
+## Environment Variable Structure
 
-Suggested top-level modules:
+### Frontend (`frontend/.env.example`)
 
-- `core/` config, security, DB, exception handling
-- `api/v1/` routers by domain (`auth`, `users`, `accounts`, `reports`, `feed`, `interactions`, `notifications`, `claims`, `audits`, `disputes`, `media`, `admin`, `webhooks`)
-- `services/` business logic (`scoring`, `adjudication`, `ai`, `notifications`, `media`, `feed_ranking`)
-- `models/`, `schemas/`, optional `repositories/`
+- `VITE_API_BASE_URL`
+- `VITE_FIREBASE_API_KEY`
+- `VITE_FIREBASE_AUTH_DOMAIN`
+- `VITE_FIREBASE_PROJECT_ID`
+- `VITE_FIREBASE_APP_ID`
 
-## Frontend Shape (React + Vite)
+### Backend (`backend/.env.example`)
 
-Suggested top-level app structure:
+- `APP_ENV`
+- `APP_HOST`
+- `APP_PORT`
+- `DATABASE_URL`
+- `FIREBASE_PROJECT_ID`
+- `AWS_REGION`
+- `AWS_S3_BUCKET`
+- `AWS_ACCESS_KEY_ID` (local only)
+- `AWS_SECRET_ACCESS_KEY` (local only)
 
-- `src/routes/` route trees and guards
-- `src/pages/` route-level pages
-- `src/features/` domain UI/hooks
-- `src/components/ui/` reusable primitives
-- `src/components/viz/` score visualizations
-- `src/services/` typed API clients
-- `src/hooks/`, `src/lib/`, `src/types/`, `src/styles/`
+## Local Development Setup
 
-## Build Order (3 Weeks)
+- Backend runs with Uvicorn (dev reload enabled).
+- Frontend runs with Vite dev server.
+- PostgreSQL runs via Docker Compose only.
+- Each app reads from its own `.env` file derived from `.env.example`.
 
-### Week 1
+## Docker Compose Scope
 
-- Infra/skeleton
-- Auth/users
-- Accounts and dossier
-- Media upload
-- Report create flow
-- AI adjudication
-- Admin queue read path
+- Single PostgreSQL service.
+- Named volume for persistence.
+- Exposed local port (default `5432`).
+- No backend/frontend containers in this phase.
 
-### Week 2
+## Documentation Requirements
 
-- Scoring engine and replay
-- Admin approve/reject with score impact
-- Onboarding gates
-- Feed + align/oppose
-- Notifications
-- Claims and disputes MVP
+- Root `README.md` must explain:
+  - prerequisites
+  - environment setup
+  - starting PostgreSQL
+  - starting backend
+  - starting frontend
+  - scaffold-only scope and non-goals
 
-### Week 3
+## Non-Goals For This Phase
 
-- Comments/bookmarks
-- Abuse/safety controls
-- Impact dashboard basics
-- Admin operations pages and logs
-- Legal/public pages
-- Hardening, smoke tests, launch
+- Route handlers
+- Domain services and workflows
+- DB schema/table definitions
+- Auth/session business behavior
+- S3 upload logic implementation
 
-## Risks
-
-- Scoring complexity can delay MVP -> freeze workbook early and prioritize replay path.
-- AI latency can slow filing -> keep async fallback and status polling.
-- Scope creep in low-priority social features -> strict feature flags and deferment.
-
-## Notes
-
-- Consolidate legacy parallel "events" concepts into `reports` + `ledger_entries`.
-- Keep scoring auditable and replayable as a first-class requirement.
-- Use this file as the migration blueprint for initial monorepo setup.
+This plan is the execution baseline for initial project scaffolding only.
