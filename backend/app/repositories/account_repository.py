@@ -1,0 +1,145 @@
+from __future__ import annotations
+
+from uuid import UUID
+
+from sqlalchemy import or_, select
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from app.models.account import Account, AccountSocialLink
+from app.models.enums import AccountStatus
+from app.repositories._pagination import (
+    apply_created_at_cursor,
+    build_next_cursor,
+    decode_cursor,
+)
+
+_ACCOUNT_LOAD_OPTIONS = (selectinload(Account.social_links),)
+
+
+async def get_by_id(db: AsyncSession, account_id: UUID) -> Account | None:
+    result = await db.execute(
+        select(Account)
+        .where(Account.id == account_id)
+        .options(*_ACCOUNT_LOAD_OPTIONS)
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_by_platform_handle(
+    db: AsyncSession,
+    platform: str,
+    handle: str,
+) -> Account | None:
+    result = await db.execute(
+        select(Account)
+        .where(Account.platform == platform, Account.handle == handle)
+        .options(*_ACCOUNT_LOAD_OPTIONS)
+    )
+    return result.scalar_one_or_none()
+
+
+async def list_accounts(
+    db: AsyncSession,
+    platform: str | None,
+    status: AccountStatus | None,
+    limit: int,
+    cursor: str | None,
+) -> tuple[list[Account], str | None]:
+    stmt = select(Account)
+    if platform is not None:
+        stmt = stmt.where(Account.platform == platform)
+    if status is not None:
+        stmt = stmt.where(Account.status == status)
+    stmt = apply_created_at_cursor(
+        stmt, Account.created_at, decode_cursor(cursor), descending=True
+    )
+    stmt = stmt.order_by(Account.created_at.desc(), Account.id.desc()).limit(limit + 1)
+    result = await db.execute(stmt)
+    return build_next_cursor(list(result.scalars().all()), limit)
+
+
+async def search(
+    db: AsyncSession,
+    q: str,
+    platform: str | None,
+    limit: int,
+    cursor: str | None,
+) -> tuple[list[Account], str | None]:
+    pattern = f"%{q}%"
+    stmt = select(Account).where(
+        or_(Account.handle.ilike(pattern), Account.display_name.ilike(pattern))
+    )
+    if platform is not None:
+        stmt = stmt.where(Account.platform == platform)
+    stmt = apply_created_at_cursor(
+        stmt, Account.created_at, decode_cursor(cursor), descending=True
+    )
+    stmt = stmt.order_by(Account.created_at.desc(), Account.id.desc()).limit(limit + 1)
+    result = await db.execute(stmt)
+    return build_next_cursor(list(result.scalars().all()), limit)
+
+
+async def create(
+    db: AsyncSession,
+    platform: str,
+    handle: str,
+    display_name: str | None,
+    bio: str | None,
+) -> Account:
+    account = Account(
+        platform=platform,
+        handle=handle,
+        display_name=display_name,
+        bio=bio,
+    )
+    db.add(account)
+    await db.flush()
+    await db.refresh(account)
+    return account
+
+
+async def update(db: AsyncSession, account: Account, **fields: object) -> Account:
+    for key, value in fields.items():
+        setattr(account, key, value)
+    await db.flush()
+    await db.refresh(account)
+    return account
+
+
+async def get_social_links(db: AsyncSession, account_id: UUID) -> list[AccountSocialLink]:
+    result = await db.execute(
+        select(AccountSocialLink)
+        .where(AccountSocialLink.account_id == account_id)
+        .order_by(AccountSocialLink.platform)
+    )
+    return list(result.scalars().all())
+
+
+async def upsert_social_link(
+    db: AsyncSession,
+    account_id: UUID,
+    platform: str,
+    url: str,
+    is_verified: bool,
+) -> AccountSocialLink:
+    stmt = (
+        insert(AccountSocialLink)
+        .values(
+            account_id=account_id,
+            platform=platform,
+            url=url,
+            is_verified=is_verified,
+        )
+        .on_conflict_do_update(
+            constraint="uq_account_social_links_account_platform",
+            set_={"url": url, "is_verified": is_verified},
+        )
+        .returning(AccountSocialLink)
+    )
+    result = await db.execute(stmt)
+    link = result.scalar_one()
+    await db.flush()
+    await db.refresh(link)
+    return link
