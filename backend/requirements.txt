@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+sqlalchemy[asyncio]
+asyncpg
+alembic
+pydantic-settings
+pydantic[email]
+firebase-admin
+python-multipart
+boto3
+python-jose
+httpx

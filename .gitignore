@@ -12,6 +12,16 @@ test-results
 .emulator-data
 public/uploads/
 .env.*
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+.venv/
+venv/
 # clerk configuration (can include secrets)
 /.clerk/
 .env.example

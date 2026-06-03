@@ -31,7 +31,11 @@ class User(Base, BaseModelMixin):
     report_votes = relationship("ReportVote", back_populates="user")
     report_comments = relationship("ReportComment", back_populates="user")
     notifications = relationship("Notification", back_populates="user")
-    claim_requests = relationship("ClaimRequest", back_populates="requester")
+    claim_requests = relationship(
+        "ClaimRequest",
+        back_populates="requester",
+        foreign_keys="ClaimRequest.requester_user_id",
+    )
     reviewed_claim_requests = relationship("ClaimRequest", back_populates="reviewer", foreign_keys="ClaimRequest.reviewed_by")
     disputes = relationship("Dispute", back_populates="requester", foreign_keys="Dispute.requester_user_id")
     reviewed_disputes = relationship("Dispute", back_populates="reviewer", foreign_keys="Dispute.reviewed_by")
