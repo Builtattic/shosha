@@ -4,22 +4,30 @@ import { apiClient } from '@/lib/apiClient';
 import type { UserProfile, UpdateUserPayload } from '@/types/user';
 import type { ApiResponse } from '@/types/common';
 
+function formatApiError(error: unknown): string {
+  if (error && typeof error === 'object' && 'message' in error) {
+    return String((error as { message: string }).message);
+  }
+  if (error instanceof Error) return error.message;
+  return 'Request failed';
+}
+
 const real = {
   getCurrentUser: async (): Promise<ApiResponse<UserProfile>> => {
     try {
-      const response = await apiClient.get('/users/me');
-      return { ok: true, data: response.data };
-    } catch (error: any) {
-      return { ok: false, error: error.message };
+      const { data } = await apiClient.get<{ user: UserProfile }>('/users/me');
+      return { ok: true, data: data.user };
+    } catch (error: unknown) {
+      return { ok: false, error: formatApiError(error) };
     }
   },
 
   updateCurrentUser: async (payload: UpdateUserPayload): Promise<ApiResponse<UserProfile>> => {
     try {
-      const response = await apiClient.patch('/users/me', payload);
-      return { ok: true, data: response.data };
-    } catch (error: any) {
-      return { ok: false, error: error.message };
+      const { data } = await apiClient.patch<{ user: UserProfile }>('/users/me', payload);
+      return { ok: true, data: data.user };
+    } catch (error: unknown) {
+      return { ok: false, error: formatApiError(error) };
     }
   },
 };

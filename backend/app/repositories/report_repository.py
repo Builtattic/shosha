@@ -110,12 +110,19 @@ async def create(
     reporter_user_id: UUID | None,
     title: str,
     description: str,
+    *,
+    report_type: str | None = None,
+    is_irl: bool = False,
+    evidence_source_url: str | None = None,
 ) -> Report:
     report = Report(
         account_id=account_id,
         reporter_user_id=reporter_user_id,
         title=title,
         description=description,
+        report_type=report_type,
+        is_irl=is_irl,
+        evidence_source_url=evidence_source_url,
     )
     db.add(report)
     await db.flush()

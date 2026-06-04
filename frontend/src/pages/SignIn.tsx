@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/providers/AuthProvider';
 import { getCurrentUser } from '@/api/auth';
 import { sanitizeRedirectPath } from '@/lib/sanitizeRedirectPath';
+import { formatAuthError } from '@/lib/formatAuthError';
 import {
   Mail,
   Phone,
@@ -24,7 +25,7 @@ async function resolveRedirect(fallback: string): Promise<string> {
   try {
     const res = await getCurrentUser();
     if (res.ok && res.data) {
-      if (!res.data.onboarding_complete) return '/onboard';
+      if (res.data.username == null) return '/onboard';
     }
   } catch {
     // fall through
@@ -41,7 +42,7 @@ const slideVariants = {
 export default function SignIn() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { firebaseUser, isLoading: authLoading, signIn, signUp, signInWithGoogle, sendPhoneOtp } = useAuth();
+  const { firebaseUser, isLoading: authLoading, sessionReady, sessionError, signIn, signUp, signInWithGoogle, sendPhoneOtp } = useAuth();
 
   // Honour ?redirect= param (e.g. when ProtectedRoute bounced the user here)
   const redirectParam = new URLSearchParams(location.search).get('redirect');
@@ -70,13 +71,28 @@ export default function SignIn() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  // If already signed in, skip straight to routing decision
+  // After Firebase + backend session sync, route away from sign-in
   useEffect(() => {
-    if (!authLoading && firebaseUser && mode !== 'loading') {
+    if (!authLoading && firebaseUser && sessionReady && (mode === 'choose' || mode === 'loading')) {
       setMode('loading');
-      resolveRedirect(safeRedirect).then(dest => navigate(dest, { replace: true }));
+      resolveRedirect(safeRedirect)
+        .then((dest) => navigate(dest, { replace: true }))
+        .catch(() => {
+          setMode('choose');
+          setError('Could not load your profile. Please try again.');
+        });
     }
-  }, [firebaseUser, authLoading, mode]); // eslint-disable-line
+  }, [firebaseUser, authLoading, sessionReady, mode]); // eslint-disable-line
+
+  // Surface session sync errors from AuthProvider
+  useEffect(() => {
+    if (sessionError && mode === 'loading') {
+      setError(sessionError);
+      setMode('choose');
+      setGoogleLoading(false);
+      setLoading(false);
+    }
+  }, [sessionError, mode]);
 
   // Cold-start guard: if loading hangs > 5 s, surface an error
   useEffect(() => {
@@ -107,11 +123,10 @@ export default function SignIn() {
       if (result === 'cancelled') { setGoogleLoading(false); return; }
       if (result === 'signed-in' || result === 'redirecting') {
         setMode('loading');
-        const dest = await resolveRedirect(safeRedirect);
-        navigate(dest, { replace: true });
+        // Navigation runs in useEffect once sessionReady (session/sync succeeded)
       }
-    } catch (err: any) {
-      setError(err.message?.replace('Firebase: ', '').replace(/\(auth\/.*\)/, '').trim() || 'Google sign-in failed.');
+    } catch (err: unknown) {
+      setError(formatAuthError(err, 'Google sign-in failed.'));
       setGoogleLoading(false);
       setMode('choose');
     }
@@ -129,11 +144,11 @@ export default function SignIn() {
         await signIn(email, password);
       }
       setMode('loading');
-      const dest = await resolveRedirect(safeRedirect);
-      navigate(dest, { replace: true });
-    } catch (err: any) {
-      setError(err.message?.replace('Firebase: ', '').replace(/\(auth\/.*\)/, '').trim() || 'Something went wrong.');
+      // Navigation runs in useEffect once sessionReady
+    } catch (err: unknown) {
+      setError(formatAuthError(err, 'Something went wrong.'));
       setLoading(false);
+      setMode('choose');
     }
   }
 
@@ -150,7 +165,7 @@ export default function SignIn() {
       setOtpPhone(full);
       setMode('otp');
     } catch (err: any) {
-      setError(err.message?.replace('Firebase: ', '') || 'Could not send OTP.');
+      setError(formatAuthError(err, 'Could not send OTP.'));
     } finally {
       setLoading(false);
     }
@@ -163,8 +178,7 @@ export default function SignIn() {
     try {
       await confirmResult.confirm(otp.join(''));
       setMode('loading');
-      const dest = await resolveRedirect(safeRedirect);
-      navigate(dest, { replace: true });
+      // Navigation runs in useEffect once sessionReady
     } catch {
       setError('Invalid OTP. Please try again.');
       setLoading(false);

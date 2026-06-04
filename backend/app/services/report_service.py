@@ -13,6 +13,11 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import raise_api_error
+from app.integrations.gemini import (
+    adjudicate_report,
+    heuristic_adjudication,
+    verdict_to_dict,
+)
 from app.models.enums import ReportStatus
 from app.models.report import Report, ReportComment, ReportVote
 from app.models.user import User
@@ -78,6 +83,9 @@ async def create_report(
         current_user.id,
         data.title,
         data.description,
+        report_type=data.type,
+        is_irl=data.is_irl,
+        evidence_source_url=data.evidence_source_url,
     )
     for item in data.media:
         await add_media(
@@ -87,6 +95,22 @@ async def create_report(
             item.url,
             item.thumbnail_url,
         )
+
+    first_media = data.media[0] if data.media else None
+    try:
+        verdict = await adjudicate_report(
+            description=data.description,
+            report_type=data.type,
+            account_display_name=account.display_name or account.handle,
+            platform=account.platform,
+            media_url=first_media.url if first_media else None,
+            media_type=first_media.media_type if first_media else None,
+        )
+        report.ai_verdict = verdict_to_dict(verdict)
+    except Exception:
+        fallback = heuristic_adjudication(data.description, data.type)
+        fallback.used_heuristic = True
+        report.ai_verdict = verdict_to_dict(fallback)
 
     await db.commit()
     loaded = await get_report_by_id(db, report.id)

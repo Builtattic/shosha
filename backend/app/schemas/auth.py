@@ -15,7 +15,12 @@ class SessionSyncRequest(BaseModel):
     def validate_photo_url(cls, value: str | None) -> str | None:
         if value is None:
             return value
-        return validate_http_url(value)
+        trimmed = value.strip()
+        if not trimmed:
+            return None
+        if len(trimmed) > 1024:
+            trimmed = trimmed[:1024]
+        return validate_http_url(trimmed)
 
 
 class SessionSyncResponse(BaseModel):

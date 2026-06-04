@@ -14,13 +14,17 @@ import { onAuthStateChanged } from 'firebase/auth';
 import type { User as FirebaseUser, ConfirmationResult } from 'firebase/auth';
 import { getCurrentUser } from '@/api/auth';
 import type { UserProfile } from '@/types/user';
-import { USE_MOCKS } from '@/lib/apiClient';
+import { USE_MOCKS, apiClient } from '@/lib/apiClient';
+import { router } from '@/routes';
+import axios from 'axios';
 
 // ─── Context shape ─────────────────────────────────────────────────────────────
 interface AuthContextType {
   firebaseUser: FirebaseUser | null;
   profile: UserProfile | null;
   isLoading: boolean;
+  sessionReady: boolean;
+  sessionError: string | null;
   refetchProfile: () => void;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, displayName: string) => Promise<void>;
@@ -33,6 +37,8 @@ const AuthContext = createContext<AuthContextType>({
   firebaseUser: null,
   profile: null,
   isLoading: true,
+  sessionReady: false,
+  sessionError: null,
   refetchProfile: () => {},
   signIn: async () => {},
   signUp: async () => {},
@@ -57,6 +63,48 @@ function writeMockUser(user: FirebaseUser | null) {
   }
 }
 
+interface SessionSyncData {
+  user: UserProfile;
+  is_new_user: boolean;
+}
+
+function sessionSyncPayload(user: FirebaseUser) {
+  const displayName = user.displayName?.trim();
+  const photo = user.photoURL?.trim();
+  const photoOk =
+    photo && /^https?:\/\//i.test(photo) && photo.length <= 1024 ? photo : null;
+  return {
+    display_name: displayName || null,
+    photo_url: photoOk,
+  };
+}
+
+async function postSessionSync(user: FirebaseUser, token: string) {
+  return apiClient.post<SessionSyncData>(
+    '/auth/session/sync',
+    sessionSyncPayload(user),
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+}
+
+function formatSessionSyncError(err: unknown): string {
+  if (axios.isAxiosError(err)) {
+    const data = err.response?.data as { error?: { message?: string } } | undefined;
+    if (data?.error?.message) return data.error.message;
+    if (err.response?.status === 401) {
+      return 'Server rejected the Firebase token (401). Sign out, restart the backend, and try again.';
+    }
+    if (err.response?.status === 422) {
+      return data?.error?.message ?? 'Invalid profile data sent to server (422).';
+    }
+    if (err.response?.status === 500) {
+      return data?.error?.message ?? 'Server error during session sync (500).';
+    }
+  }
+  if (err instanceof Error) return err.message;
+  return 'Session sync failed';
+}
+
 // ─── Provider ──────────────────────────────────────────────────────────────────
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const queryClient = useQueryClient();
@@ -66,6 +114,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     USE_MOCKS ? readMockUser() : null
   );
   const [isFirebaseLoading, setIsFirebaseLoading] = useState(!USE_MOCKS);
+  const [sessionReady, setSessionReady] = useState(false);
+  const [sessionError, setSessionError] = useState<string | null>(null);
 
   // Keep mock user in sync with localStorage
   const setMockUser = (user: FirebaseUser | null) => {
@@ -77,12 +127,40 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     if (USE_MOCKS) return; // real Firebase listener not needed in mock mode
 
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setFirebaseUser(user);
-      setIsFirebaseLoading(false);
+      setSessionReady(false);
+      setSessionError(null);
+
+      if (!user) {
+        queryClient.removeQueries({ queryKey: ['profile'] });
+        setIsFirebaseLoading(false);
+        return;
+      }
+
+      setIsFirebaseLoading(true);
+      try {
+        const token = await user.getIdToken(true);
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
+        const { data } = await postSessionSync(user, token);
+        queryClient.setQueryData(['profile', user.uid], data.user);
+        setSessionReady(true);
+        setSessionError(null);
+
+        if (data.is_new_user || data.user.username == null) {
+          router.navigate('/onboard', { replace: true });
+        }
+      } catch (err) {
+        console.error('Session sync failed:', err);
+        setSessionReady(false);
+        setSessionError(formatSessionSyncError(err));
+      } finally {
+        setIsFirebaseLoading(false);
+      }
     });
     return () => unsubscribe();
-  }, []);
+  }, [queryClient]);
 
   // ─── Profile fetch (TanStack Query) ────────────────────────────────────────
   const {
@@ -93,10 +171,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     queryKey: ['profile', firebaseUser?.uid],
     queryFn: async () => {
       const res = await getCurrentUser();
-      if (!res.ok) throw new Error(res.error || 'Failed to fetch profile');
+      if (!res.ok) {
+        throw new Error(
+          typeof res.error === 'string' ? res.error : 'Failed to fetch profile',
+        );
+      }
       return res.data ?? null;
     },
-    enabled: !!firebaseUser,
+    enabled: !!firebaseUser && (USE_MOCKS || sessionReady),
     staleTime: 1000 * 60 * 5,
   });
 
@@ -134,7 +216,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const logout = async () => {
     await firebaseSignOut();
     if (USE_MOCKS) setMockUser(null);
-    else setFirebaseUser(null);
+    else {
+      setFirebaseUser(null);
+      setSessionReady(false);
+      setSessionError(null);
+    }
     queryClient.removeQueries({ queryKey: ['profile'] });
   };
 
@@ -143,6 +229,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       firebaseUser,
       profile,
       isLoading,
+      sessionReady: USE_MOCKS ? !!firebaseUser : sessionReady,
+      sessionError,
       refetchProfile,
       signIn,
       signUp,
