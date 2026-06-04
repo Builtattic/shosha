@@ -1,14 +1,20 @@
 import type { UserProfile, UpdateUserPayload } from '@/types/user';
 import type { ApiResponse } from '@/types/common';
+import {
+  DEV_DUMMY_PROFILE,
+  MOCK_PROFILE_PATCH_KEY,
+  clearMockProfilePatch,
+} from '@/mocks/devUser';
 
-export const MOCK_SCENARIO: 'new_user' | 'returning_user' = 'new_user';
+/** Use `returning_user` or dev preview to browse the app without onboarding. */
+export const MOCK_SCENARIO: 'new_user' | 'returning_user' = 'returning_user';
 
 // ── Persisted mock profile state ───────────────────────────────────────────────
 // We use sessionStorage so that updateCurrentUser's changes survive the
 // navigate() call and are visible to the next getCurrentUser() invocation
 // (which runs inside TanStack Query when refetchProfile() invalidates the cache).
 
-const STORAGE_KEY = 'mock_profile_patch';
+const STORAGE_KEY = MOCK_PROFILE_PATCH_KEY;
 
 function readPatch(): Partial<UserProfile> {
   try {
@@ -37,20 +43,16 @@ const BASE_NEW_USER: UserProfile = {
   created_at: new Date().toISOString(),
 };
 
-const BASE_RETURNING_USER: UserProfile = {
-  id: 'usr_mock456',
-  firebase_uid: 'fb_mock456',
-  username: 'shosha_admin',
-  display_name: 'Shosha Admin',
-  photo_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=shosha',
-  onboarding_complete: true,
-  created_at: new Date().toISOString(),
-};
+const BASE_RETURNING_USER: UserProfile = DEV_DUMMY_PROFILE;
+
+function getBaseProfile(): UserProfile {
+  return MOCK_SCENARIO === 'new_user' ? BASE_NEW_USER : BASE_RETURNING_USER;
+}
 
 export async function getCurrentUser(): Promise<ApiResponse<UserProfile>> {
-  await new Promise(resolve => setTimeout(resolve, 800));
+  await new Promise(resolve => setTimeout(resolve, 300));
 
-  const base = MOCK_SCENARIO === 'new_user' ? BASE_NEW_USER : BASE_RETURNING_USER;
+  const base = getBaseProfile();
   const patch = readPatch();
 
   return {
@@ -59,10 +61,12 @@ export async function getCurrentUser(): Promise<ApiResponse<UserProfile>> {
   };
 }
 
+export { clearMockProfilePatch };
+
 export async function updateCurrentUser(payload: UpdateUserPayload): Promise<ApiResponse<UserProfile>> {
   await new Promise(resolve => setTimeout(resolve, 600));
 
-  const base = MOCK_SCENARIO === 'new_user' ? BASE_NEW_USER : BASE_RETURNING_USER;
+  const base = getBaseProfile();
 
   // Build the updated profile and persist it so getCurrentUser() sees it next time
   const updated: UserProfile = {

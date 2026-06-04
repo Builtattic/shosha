@@ -17,6 +17,8 @@ import type { UserProfile } from '@/types/user';
 import { USE_MOCKS, apiClient } from '@/lib/apiClient';
 import { router } from '@/routes';
 import axios from 'axios';
+import { MOCK_SCENARIO, clearMockProfilePatch } from '@/mocks/auth';
+import { DEV_MOCK_FIREBASE_USER } from '@/mocks/devUser';
 
 // ─── Context shape ─────────────────────────────────────────────────────────────
 interface AuthContextType {
@@ -30,7 +32,10 @@ interface AuthContextType {
   signUp: (email: string, password: string, displayName: string) => Promise<void>;
   signInWithGoogle: () => Promise<GoogleSignInResult>;
   sendPhoneOtp: (phone: string, recaptchaContainerId: string) => Promise<ConfirmationResult>;
+  signInWithPhoneOtp: (confirmation: ConfirmationResult, code: string) => Promise<void>;
   logout: () => Promise<void>;
+  /** Mock-only: one-click fully onboarded user for UI preview */
+  devPreviewLogin: () => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -44,7 +49,9 @@ const AuthContext = createContext<AuthContextType>({
   signUp: async () => {},
   signInWithGoogle: async () => 'cancelled',
   sendPhoneOtp: async () => { throw new Error('Not implemented'); },
+  signInWithPhoneOtp: async () => {},
   logout: async () => {},
+  devPreviewLogin: () => {},
 });
 
 // ─── Mock user store ───────────────────────────────────────────────────────────
@@ -119,10 +126,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Keep mock user in sync with localStorage
   const setMockUser = (user: FirebaseUser | null) => {
+    if (user && MOCK_SCENARIO !== 'new_user') {
+      clearMockProfilePatch();
+    }
     writeMockUser(user);
     setFirebaseUser(user);
     queryClient.invalidateQueries({ queryKey: ['profile'] });
   };
+
+  const devPreviewLogin = () => {
+    if (!USE_MOCKS) return;
+    clearMockProfilePatch();
+    setMockUser(DEV_MOCK_FIREBASE_USER as unknown as FirebaseUser);
+    router.navigate('/dashboard', { replace: true });
+  };
+
+  useEffect(() => {
+    if (!USE_MOCKS || import.meta.env.VITE_DEV_AUTO_LOGIN !== 'true') return;
+    if (!readMockUser()) {
+      clearMockProfilePatch();
+      writeMockUser(DEV_MOCK_FIREBASE_USER as unknown as FirebaseUser);
+      setFirebaseUser(DEV_MOCK_FIREBASE_USER as unknown as FirebaseUser);
+    }
+  }, []);
 
   useEffect(() => {
     if (USE_MOCKS) return; // real Firebase listener not needed in mock mode
@@ -213,9 +239,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return firebaseSendPhoneOtp(phone, recaptchaContainerId);
   };
 
+  const signInWithPhoneOtp = async (
+    confirmation: ConfirmationResult,
+    code: string,
+  ): Promise<void> => {
+    const cred = await confirmation.confirm(code);
+    if (USE_MOCKS && cred.user) {
+      setMockUser({
+        uid: cred.user.uid,
+        email: cred.user.email,
+        displayName: cred.user.displayName,
+        phoneNumber: cred.user.phoneNumber,
+      } as FirebaseUser);
+    }
+  };
+
   const logout = async () => {
     await firebaseSignOut();
-    if (USE_MOCKS) setMockUser(null);
+    if (USE_MOCKS) {
+      clearMockProfilePatch();
+      setMockUser(null);
+    }
     else {
       setFirebaseUser(null);
       setSessionReady(false);
@@ -236,7 +280,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       signUp,
       signInWithGoogle,
       sendPhoneOtp,
+      signInWithPhoneOtp,
       logout,
+      devPreviewLogin,
     }}>
       {children}
     </AuthContext.Provider>

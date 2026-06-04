@@ -5,6 +5,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { getCurrentUser } from '@/api/auth';
 import { sanitizeRedirectPath } from '@/lib/sanitizeRedirectPath';
 import { formatAuthError } from '@/lib/formatAuthError';
+import { USE_MOCKS } from '@/lib/apiClient';
 import {
   Mail,
   Phone,
@@ -25,7 +26,7 @@ async function resolveRedirect(fallback: string): Promise<string> {
   try {
     const res = await getCurrentUser();
     if (res.ok && res.data) {
-      if (res.data.username == null) return '/onboard';
+      if (!res.data.onboarding_complete || res.data.username == null) return '/onboard';
     }
   } catch {
     // fall through
@@ -42,7 +43,7 @@ const slideVariants = {
 export default function SignIn() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { firebaseUser, isLoading: authLoading, sessionReady, sessionError, signIn, signUp, signInWithGoogle, sendPhoneOtp } = useAuth();
+  const { firebaseUser, isLoading: authLoading, sessionReady, sessionError, signIn, signUp, signInWithGoogle, sendPhoneOtp, signInWithPhoneOtp, devPreviewLogin } = useAuth();
 
   // Honour ?redirect= param (e.g. when ProtectedRoute bounced the user here)
   const redirectParam = new URLSearchParams(location.search).get('redirect');
@@ -176,7 +177,7 @@ export default function SignIn() {
     setError('');
     setLoading(true);
     try {
-      await confirmResult.confirm(otp.join(''));
+      await signInWithPhoneOtp(confirmResult, otp.join(''));
       setMode('loading');
       // Navigation runs in useEffect once sessionReady
     } catch {
@@ -270,6 +271,24 @@ export default function SignIn() {
                     <ArrowRight size={16} className="ml-auto text-muted-foreground" />
                   </button>
                 </div>
+
+                {USE_MOCKS && (
+                  <div className="mt-6 pt-6 border-t border-border">
+                    <p className="text-xs text-muted-foreground text-center mb-3">
+                      UI preview — no backend or Firebase required
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => devPreviewLogin()}
+                      className="w-full rounded-2xl bg-primary text-primary-foreground py-3 px-4 font-semibold hover:opacity-90 transition-opacity press"
+                    >
+                      Enter as Dev Preview User
+                    </button>
+                    <p className="text-[11px] text-muted-foreground text-center mt-2">
+                      Email/password also work in mock mode · OTP: <span className="font-mono">123456</span>
+                    </p>
+                  </div>
+                )}
               </motion.div>
             )}
 

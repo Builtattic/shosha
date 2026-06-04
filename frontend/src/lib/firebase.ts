@@ -12,6 +12,7 @@ import {
 } from 'firebase/auth';
 import type { ConfirmationResult } from 'firebase/auth';
 import { USE_MOCKS } from './apiClient';
+import { DEV_MOCK_FIREBASE_USER } from '@/mocks/devUser';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'mock-key',
@@ -25,7 +26,7 @@ export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
 // ─── Mock helpers ─────────────────────────────────────────────────────────────
-const MOCK_GOOGLE_USER = { uid: 'fb_mock_google', email: 'mock.google@shosha.local', displayName: 'Mock User' };
+const MOCK_GOOGLE_USER = { ...DEV_MOCK_FIREBASE_USER };
 
 /** Returns a fake ConfirmationResult for mock mode. Accepts "123456" as the valid OTP. */
 function mockConfirmationResult(phone: string): ConfirmationResult {
