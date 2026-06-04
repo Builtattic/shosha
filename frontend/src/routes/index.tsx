@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from './ProtectedRoute';
 import { OnboardingGuard } from './OnboardingGuard';
+import { AppShell } from '@/components/nav/AppShell';
 
 // Public pages
 import Landing from '@/pages/Landing';
@@ -30,10 +31,12 @@ import TrustBadge from '@/pages/TrustBadge';
 import Subscribe from '@/pages/Subscribe';
 import Billing from '@/pages/Billing';
 
-// Wraps all authenticated + onboarded routes
+// Wraps all authenticated + onboarded routes with chrome (Sidebar + MobileAppHeader)
 const AppRoute = ({ children }: { children: React.ReactNode }) => (
   <ProtectedRoute>
-    <OnboardingGuard>{children}</OnboardingGuard>
+    <OnboardingGuard>
+      <AppShell>{children}</AppShell>
+    </OnboardingGuard>
   </ProtectedRoute>
 );
 

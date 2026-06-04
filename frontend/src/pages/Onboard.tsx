@@ -738,7 +738,7 @@ export default function Onboard() {
                     to="/trust-badge"
                     className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-[12px] font-bold text-background transition-opacity hover:opacity-90"
                   >
-                    Get Trust Badge · $2
+                    Get Trust Badge · $1
                   </Link>
                 )}
               </div>
