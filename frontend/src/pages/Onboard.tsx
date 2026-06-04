@@ -10,6 +10,7 @@ import {
 } from '@/lib/credibility';
 import type { CredibilityInput } from '@/lib/credibility';
 import { ClaimProfileSearchModal } from '@/components/profile/ClaimProfileSearchModal';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
   ShieldCheck, CheckCircle2, Camera, Upload,
@@ -319,7 +320,12 @@ function calcAge(dob?: string): number | null {
 
 export default function Onboard() {
   const navigate = useNavigate();
-  const { firebaseUser, isLoading, refetchProfile } = useAuth();
+  const { firebaseUser, isLoading, sessionReady, refetchProfile, logout } = useAuth();
+
+  const handleSignOut = async () => {
+    await logout();
+    navigate('/sign-in', { replace: true });
+  };
 
   const [form, setForm] = useState<FormState>(EMPTY);
   const [saving, setSaving] = useState(false);
@@ -335,7 +341,7 @@ export default function Onboard() {
 
   // Pre-fill form from API profile + Firebase user
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || !sessionReady) return;
     if (!firebaseUser) {
       navigate('/sign-in?redirect=/onboard', { replace: true });
       return;
@@ -490,12 +496,17 @@ export default function Onboard() {
           <Link to="/" className="font-serif text-[20px] font-black tracking-tight">
             Sho<span className="font-normal italic text-muted-foreground">शा</span>
           </Link>
-          <div className="hidden sm:flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5">
-            <div className={cn(
-              'h-2 w-2 rounded-full',
-              credibility.total >= 80 ? 'bg-foreground' : 'bg-primary animate-pulse',
-            )} />
-            <span className="text-[11px] font-bold tabular-nums">{credibility.total}% complete</span>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="hidden sm:flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5">
+              <div className={cn(
+                'h-2 w-2 rounded-full',
+                credibility.total >= 80 ? 'bg-foreground' : 'bg-primary animate-pulse',
+              )} />
+              <span className="text-[11px] font-bold tabular-nums">{credibility.total}% complete</span>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleSignOut} className="press text-xs">
+              Sign out
+            </Button>
           </div>
         </div>
       </header>
@@ -738,7 +749,7 @@ export default function Onboard() {
                     to="/trust-badge"
                     className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-[12px] font-bold text-background transition-opacity hover:opacity-90"
                   >
-                    Get Trust Badge · $2
+                    Get Trust Badge · $1
                   </Link>
                 )}
               </div>

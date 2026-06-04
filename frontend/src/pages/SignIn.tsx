@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/providers/AuthProvider';
 import { getCurrentUser } from '@/api/auth';
 import { sanitizeRedirectPath } from '@/lib/sanitizeRedirectPath';
+import { formatAuthError } from '@/lib/formatAuthError';
+import { USE_MOCKS } from '@/lib/apiClient';
 import {
   Mail,
   Phone,
@@ -24,7 +26,7 @@ async function resolveRedirect(fallback: string): Promise<string> {
   try {
     const res = await getCurrentUser();
     if (res.ok && res.data) {
-      if (!res.data.onboarding_complete) return '/onboard';
+      if (!res.data.onboarding_complete || res.data.username == null) return '/onboard';
     }
   } catch {
     // fall through
@@ -41,7 +43,7 @@ const slideVariants = {
 export default function SignIn() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { firebaseUser, isLoading: authLoading, signIn, signUp, signInWithGoogle, sendPhoneOtp } = useAuth();
+  const { firebaseUser, isLoading: authLoading, sessionReady, sessionError, signIn, signUp, signInWithGoogle, sendPhoneOtp, signInWithPhoneOtp, devPreviewLogin } = useAuth();
 
   // Honour ?redirect= param (e.g. when ProtectedRoute bounced the user here)
   const redirectParam = new URLSearchParams(location.search).get('redirect');
@@ -70,13 +72,28 @@ export default function SignIn() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  // If already signed in, skip straight to routing decision
+  // After Firebase + backend session sync, route away from sign-in
   useEffect(() => {
-    if (!authLoading && firebaseUser && mode !== 'loading') {
+    if (!authLoading && firebaseUser && sessionReady && (mode === 'choose' || mode === 'loading')) {
       setMode('loading');
-      resolveRedirect(safeRedirect).then(dest => navigate(dest, { replace: true }));
+      resolveRedirect(safeRedirect)
+        .then((dest) => navigate(dest, { replace: true }))
+        .catch(() => {
+          setMode('choose');
+          setError('Could not load your profile. Please try again.');
+        });
     }
-  }, [firebaseUser, authLoading, mode]); // eslint-disable-line
+  }, [firebaseUser, authLoading, sessionReady, mode]); // eslint-disable-line
+
+  // Surface session sync errors from AuthProvider
+  useEffect(() => {
+    if (sessionError && mode === 'loading') {
+      setError(sessionError);
+      setMode('choose');
+      setGoogleLoading(false);
+      setLoading(false);
+    }
+  }, [sessionError, mode]);
 
   // Cold-start guard: if loading hangs > 5 s, surface an error
   useEffect(() => {
@@ -107,11 +124,10 @@ export default function SignIn() {
       if (result === 'cancelled') { setGoogleLoading(false); return; }
       if (result === 'signed-in' || result === 'redirecting') {
         setMode('loading');
-        const dest = await resolveRedirect(safeRedirect);
-        navigate(dest, { replace: true });
+        // Navigation runs in useEffect once sessionReady (session/sync succeeded)
       }
-    } catch (err: any) {
-      setError(err.message?.replace('Firebase: ', '').replace(/\(auth\/.*\)/, '').trim() || 'Google sign-in failed.');
+    } catch (err: unknown) {
+      setError(formatAuthError(err, 'Google sign-in failed.'));
       setGoogleLoading(false);
       setMode('choose');
     }
@@ -129,11 +145,11 @@ export default function SignIn() {
         await signIn(email, password);
       }
       setMode('loading');
-      const dest = await resolveRedirect(safeRedirect);
-      navigate(dest, { replace: true });
-    } catch (err: any) {
-      setError(err.message?.replace('Firebase: ', '').replace(/\(auth\/.*\)/, '').trim() || 'Something went wrong.');
+      // Navigation runs in useEffect once sessionReady
+    } catch (err: unknown) {
+      setError(formatAuthError(err, 'Something went wrong.'));
       setLoading(false);
+      setMode('choose');
     }
   }
 
@@ -150,7 +166,7 @@ export default function SignIn() {
       setOtpPhone(full);
       setMode('otp');
     } catch (err: any) {
-      setError(err.message?.replace('Firebase: ', '') || 'Could not send OTP.');
+      setError(formatAuthError(err, 'Could not send OTP.'));
     } finally {
       setLoading(false);
     }
@@ -161,10 +177,9 @@ export default function SignIn() {
     setError('');
     setLoading(true);
     try {
-      await confirmResult.confirm(otp.join(''));
+      await signInWithPhoneOtp(confirmResult, otp.join(''));
       setMode('loading');
-      const dest = await resolveRedirect(safeRedirect);
-      navigate(dest, { replace: true });
+      // Navigation runs in useEffect once sessionReady
     } catch {
       setError('Invalid OTP. Please try again.');
       setLoading(false);
@@ -256,6 +271,24 @@ export default function SignIn() {
                     <ArrowRight size={16} className="ml-auto text-muted-foreground" />
                   </button>
                 </div>
+
+                {USE_MOCKS && (
+                  <div className="mt-6 pt-6 border-t border-border">
+                    <p className="text-xs text-muted-foreground text-center mb-3">
+                      UI preview — no backend or Firebase required
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => devPreviewLogin()}
+                      className="w-full rounded-2xl bg-primary text-primary-foreground py-3 px-4 font-semibold hover:opacity-90 transition-opacity press"
+                    >
+                      Enter as Dev Preview User
+                    </button>
+                    <p className="text-[11px] text-muted-foreground text-center mt-2">
+                      Email/password also work in mock mode · OTP: <span className="font-mono">123456</span>
+                    </p>
+                  </div>
+                )}
               </motion.div>
             )}
 

@@ -24,7 +24,7 @@ class ReportMediaOut(BaseModel):
 
 
 class ReportOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     id: UUID
     account_id: UUID
@@ -32,6 +32,12 @@ class ReportOut(BaseModel):
     status: ReportStatus
     title: str
     description: str
+    type: Literal["positive", "negative"] | None = Field(
+        default=None, validation_alias="report_type"
+    )
+    is_irl: bool = False
+    evidence_source_url: str | None = None
+    ai_verdict: dict | None = None
     reviewed_by: UUID | None
     reviewed_at: datetime | None
     created_at: datetime
