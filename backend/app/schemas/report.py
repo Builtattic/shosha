@@ -23,6 +23,16 @@ class ReportMediaOut(BaseModel):
     thumbnail_url: str | None
 
 
+class AccountSummary(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    platform: str
+    handle: str
+    display_name: str | None
+    score: float = 1000.0
+
+
 class ReportOut(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
@@ -42,6 +52,7 @@ class ReportOut(BaseModel):
     reviewed_at: datetime | None
     created_at: datetime
     media_items: list[ReportMediaOut] = Field(default_factory=list)
+    account: AccountSummary | None = None
 
 
 class ReportMediaCreate(BaseModel):

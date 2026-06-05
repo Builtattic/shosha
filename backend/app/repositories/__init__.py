@@ -24,10 +24,19 @@ from app.repositories.report_repository import (
     create as create_report,
     get_by_id as get_report_by_id,
     list_comments,
+    list_feed,
     list_moderation_queue,
     list_reports,
     update_status,
     upsert_vote,
+)
+from app.repositories.notification_repository import (
+    count_unread as count_unread_notifications,
+    create as create_notification,
+    get_by_id as get_notification_by_id,
+    list_for_user as list_notifications_for_user,
+    mark_all_read as mark_all_notifications_read,
+    mark_read as mark_notification_read,
 )
 
 __all__ = [
@@ -47,6 +56,7 @@ __all__ = [
     "upsert_social_link",
     "get_report_by_id",
     "list_reports",
+    "list_feed",
     "list_moderation_queue",
     "create_report",
     "add_media",
@@ -54,4 +64,10 @@ __all__ = [
     "add_comment",
     "list_comments",
     "update_status",
+    "list_notifications_for_user",
+    "get_notification_by_id",
+    "create_notification",
+    "mark_notification_read",
+    "mark_all_notifications_read",
+    "count_unread_notifications",
 ]

@@ -13,6 +13,7 @@ from app.schemas.account import (
 from app.schemas.auth import SessionSyncRequest, SessionSyncResponse
 from app.schemas.common import ErrorDetail, PaginatedResponse, SuccessEnvelope
 from app.schemas.report import (
+    AccountSummary,
     CommentCreateRequest,
     CommentData,
     CommentOut,
@@ -29,6 +30,7 @@ from app.schemas.report import (
     VoteRequest,
     VoteResponse,
 )
+from app.schemas.notification import NotificationOut
 from app.schemas.user import (
     UserPrivate,
     UserProfileData,
@@ -42,6 +44,7 @@ __all__ = [
     "AccountCreateRequest",
     "AccountData",
     "AccountOut",
+    "AccountSummary",
     "AccountUpdateRequest",
     "CommentCreateRequest",
     "CommentData",
@@ -50,6 +53,7 @@ __all__ = [
     "ModerationDecisionRequest",
     "ModerationRequestData",
     "ModerationRequestRequest",
+    "NotificationOut",
     "PaginatedResponse",
     "ReportCreateRequest",
     "ReportData",

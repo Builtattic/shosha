@@ -1,15 +1,12 @@
 from __future__ import annotations
 
 import json
-import logging
 
 import firebase_admin
 from fastapi import HTTPException
 from firebase_admin import auth, credentials
 
 from app.core.config import settings
-
-logger = logging.getLogger(__name__)
 
 
 def _service_account_info() -> dict | None:
@@ -40,14 +37,10 @@ def _ensure_firebase_initialized() -> None:
 
 def verify_firebase_token(token: str) -> dict:
     _ensure_firebase_initialized()
-    logger.warning(f"[firebase] verifying token starting with: {token[:20]}...")
-    logger.warning(f"[firebase] project_id: {settings.FIREBASE_PROJECT_ID}")
     try:
         decoded = auth.verify_id_token(token, clock_skew_seconds=5)
-        logger.warning(f"[firebase] token verified ok, uid={decoded['uid']}")
         return decoded
     except Exception as exc:
-        logger.warning(f"[firebase] verification failed: {type(exc).__name__}: {exc}")
         raise HTTPException(
             status_code=401,
             detail="Invalid or expired authentication token",
