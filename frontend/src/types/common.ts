@@ -5,18 +5,20 @@ export interface ApiResponse<T> {
   message?: string;
 }
 
+/** Cursor-based pagination — matches API spec §Global Conventions */
+export interface CursorPage<T> {
+  items: T[];
+  next_cursor: string | null;
+}
+
+/** Legacy page-based pagination shape (kept for compat) */
 export interface PaginatedResponse<T> {
-  ok: boolean;
-  data: {
-    items: T[];
-    total: number;
-    page: number;
-    per_page: number;
-    has_next: boolean;
-  };
+  items: T[];
+  next_cursor: string | null;
 }
 
 export interface PaginationParams {
-  page?: number;
-  per_page?: number;
+  limit?: number;
+  cursor?: string;
 }
+
