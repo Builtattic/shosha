@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     GEMINI_MODEL: str = "gemini-1.5-pro-latest"
     GEMINI_DISCOVERY_MODEL: str = "gemini-3-pro-preview"
 
+    AWS_ACCESS_KEY_ID: str | None = None
+    AWS_SECRET_ACCESS_KEY: str | None = None
+    AWS_S3_BUCKET: str | None = None
+    AWS_REGION: str = "ap-south-1"
+
     @computed_field
     @property
     def origins_list(self) -> list[str]:
