@@ -78,6 +78,30 @@ async def list_reports(
     return build_next_cursor(list(result.scalars().all()), limit)
 
 
+async def list_feed(
+    db: AsyncSession,
+    limit: int = 20,
+    cursor: str | None = None,
+    platform: str | None = None,
+) -> tuple[list[Report], str | None]:
+    stmt = (
+        select(Report)
+        .where(Report.status == ReportStatus.APPROVED)
+        .options(
+            selectinload(Report.media_items),
+            selectinload(Report.account),
+        )
+    )
+    if platform is not None:
+        stmt = stmt.join(Account).where(Account.platform == platform)
+    stmt = apply_created_at_cursor(
+        stmt, Report.created_at, decode_cursor(cursor), descending=True
+    )
+    stmt = stmt.order_by(Report.created_at.desc(), Report.id.desc()).limit(limit + 1)
+    result = await db.execute(stmt)
+    return build_next_cursor(list(result.scalars().all()), limit)
+
+
 async def list_moderation_queue(
     db: AsyncSession,
     status: ReportStatus | None,

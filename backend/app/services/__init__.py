@@ -19,6 +19,7 @@ from app.services.account_service import (
 from app.services.report_service import (
     add_comment,
     create_report,
+    get_feed,
     get_moderation_queue,
     get_report,
     list_comments,
@@ -26,6 +27,12 @@ from app.services.report_service import (
     moderate_report,
     request_moderation,
     vote_on_report,
+)
+from app.services.notification_service import (
+    get_notifications,
+    get_unread_count,
+    mark_all_notifications_read,
+    mark_notification_read,
 )
 
 __all__ = [
@@ -50,4 +57,9 @@ __all__ = [
     "request_moderation",
     "moderate_report",
     "get_moderation_queue",
+    "get_feed",
+    "get_notifications",
+    "mark_notification_read",
+    "mark_all_notifications_read",
+    "get_unread_count",
 ]

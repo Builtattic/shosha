@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import Boolean, Enum, ForeignKey, Index, String, UniqueConstraint
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Boolean, Enum, Float, ForeignKey, Index, String, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, BaseModelMixin
@@ -28,6 +28,8 @@ class Account(Base, BaseModelMixin):
         nullable=False,
         default=AccountStatus.ACTIVE,
     )
+    score: Mapped[float] = mapped_column(Float, nullable=False, default=1000.0)
+    score_breakdown: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     owner = relationship("User", back_populates="owned_accounts", foreign_keys=[owner_user_id])
     social_links = relationship("AccountSocialLink", back_populates="account", cascade="all, delete-orphan")

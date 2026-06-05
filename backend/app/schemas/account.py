@@ -28,6 +28,8 @@ class AccountOut(BaseModel):
     status: AccountStatus
     owner_user_id: UUID | None
     created_at: datetime
+    score: float = 1000.0
+    score_breakdown: dict | None = None
     social_links: list[SocialLinkOut] = Field(default_factory=list)
 
 

@@ -28,6 +28,7 @@ from app.repositories import (
     get_account_by_id,
     get_report_by_id,
     list_comments as repo_list_comments,
+    list_feed as repo_list_feed,
     list_moderation_queue as repo_list_moderation_queue,
     list_reports as repo_list_reports,
     update_status,
@@ -41,6 +42,12 @@ from app.schemas.report import (
     VoteRequest,
 )
 from app.services._helpers import is_moderator_plus
+from app.services.notification_service import emit_report_notification
+from app.services.scoring_service import (
+    DEFAULT_MULTIPLIERS,
+    apply_report_score,
+    reverse_report_score,
+)
 
 _ALLOWED_TRANSITIONS: dict[ReportStatus, set[ReportStatus]] = {
     ReportStatus.PENDING: {
@@ -54,6 +61,22 @@ _ALLOWED_TRANSITIONS: dict[ReportStatus, set[ReportStatus]] = {
 }
 
 _VALID_REPORT_TYPES = frozenset({"positive", "negative"})
+
+
+def _apply_ai_scoring_fields(report: Report) -> None:
+    """Derive deed and base_score from the AI verdict for later scoring.
+
+    deed -> first category tag; base_score -> proposedImpact scaled to the
+    workbook range (proposedImpact is bounded -10..10, base scores are -100..100
+    at that magnitude).
+    """
+    verdict = report.ai_verdict or {}
+    tags = verdict.get("categoryTags")
+    if isinstance(tags, list) and tags:
+        report.deed = str(tags[0])[:256]
+    proposed_impact = verdict.get("proposedImpact")
+    if proposed_impact is not None:
+        report.base_score = float(proposed_impact) * 10.0
 
 
 def _validate_report_create(data: ReportCreateRequest) -> None:
@@ -111,6 +134,8 @@ async def create_report(
         fallback = heuristic_adjudication(data.description, data.type)
         fallback.used_heuristic = True
         report.ai_verdict = verdict_to_dict(fallback)
+
+    _apply_ai_scoring_fields(report)
 
     await db.commit()
     loaded = await get_report_by_id(db, report.id)
@@ -231,6 +256,7 @@ async def moderate_report(
             f"Cannot transition report from {report.status.value} to {data.decision.value}",
         )
 
+    old_status = report.status
     report = await update_status(
         db,
         report,
@@ -238,7 +264,30 @@ async def moderate_report(
         current_user.id,
         datetime.now(timezone.utc),
     )
+    new_status = report.status
+    account = await get_account_by_id(db, report.account_id)
+    if new_status == ReportStatus.APPROVED and old_status != ReportStatus.APPROVED:
+        if account is not None:
+            # scoring_service owns its own commit; notification commit follows below.
+            await apply_report_score(db, report, account, dict(DEFAULT_MULTIPLIERS))
+    elif new_status == ReportStatus.REJECTED and old_status == ReportStatus.APPROVED:
+        if account is not None:
+            await reverse_report_score(db, report, account)
+
+    if account is not None and new_status in {
+        ReportStatus.APPROVED,
+        ReportStatus.REJECTED,
+    }:
+        await emit_report_notification(
+            db=db,
+            report=report,
+            account=account,
+            new_status=new_status,
+            reviewer=current_user,
+        )
+
     await db.commit()
+
     loaded = await get_report_by_id(db, report.id)
     assert loaded is not None
     return loaded
@@ -253,3 +302,13 @@ async def get_moderation_queue(
     cursor: str | None,
 ) -> tuple[list[Report], str | None]:
     return await repo_list_moderation_queue(db, status, platform, sort, limit, cursor)
+
+
+async def get_feed(
+    db: AsyncSession,
+    limit: int = 20,
+    cursor: str | None = None,
+    platform: str | None = None,
+    current_user=None,
+) -> tuple[list[Report], str | None]:
+    return await repo_list_feed(db, limit, cursor, platform)
