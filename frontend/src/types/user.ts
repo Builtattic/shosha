@@ -6,6 +6,7 @@ export interface UserProfile {
   photo_url: string | null;
   onboarding_complete: boolean;
   created_at: string;
+  role?: string;
   // Onboarding fields
   name?: string | null;
   phone?: string | null;

@@ -31,7 +31,7 @@ import TrustBadge from '@/pages/TrustBadge';
 import Subscribe from '@/pages/Subscribe';
 import Billing from '@/pages/Billing';
 
-// Wraps all authenticated + onboarded routes with chrome (Sidebar + MobileAppHeader)
+// Wraps all authenticated + onboarded routes with chrome (Sidebar + MobileAppHeader + BottomNav)
 const AppRoute = ({ children }: { children: React.ReactNode }) => (
   <ProtectedRoute>
     <OnboardingGuard>
@@ -47,49 +47,48 @@ export const router = createBrowserRouter([
   // Auth
   { path: '/sign-in', element: <SignIn /> },
   { path: '/sign-up', element: <Navigate to="/sign-in" replace /> },
-  { path: '/login', element: <Navigate to="/sign-in" replace /> },
+  { path: '/login',   element: <Navigate to="/sign-in" replace /> },
 
   // Onboarding (auth required, onboarding guard NOT applied here to avoid loop)
-  {
-    path: '/onboard',
-    element: <ProtectedRoute><Onboard /></ProtectedRoute>,
-  },
+  { path: '/onboard',    element: <ProtectedRoute><Onboard /></ProtectedRoute> },
   { path: '/onboarding', element: <Navigate to="/onboard" replace /> },
 
-  // Phase 2–9: All app routes
+  // Dashboard
   { path: '/dashboard', element: <AppRoute><Dashboard /></AppRoute> },
-  { path: '/feed', element: <AppRoute><Feed /></AppRoute> },
+  { path: '/feed',      element: <AppRoute><Feed /></AppRoute> },
 
-  // Profile (Phase 3)
-  { path: '/profile', element: <AppRoute><Profile /></AppRoute> },
+  // Profile
+  { path: '/profile',      element: <AppRoute><Profile /></AppRoute> },
   { path: '/profile/edit', element: <AppRoute><EditProfile /></AppRoute> },
 
-  // Accounts (Phase 4)
-  { path: '/accounts', element: <AppRoute><Accounts /></AppRoute> },
+  // Accounts
+  { path: '/accounts',        element: <AppRoute><Accounts /></AppRoute> },
   { path: '/accounts/search', element: <AppRoute><AccountSearch /></AppRoute> },
-  { path: '/accounts/new', element: <AppRoute><AccountNew /></AppRoute> },
-  { path: '/accounts/:id', element: <AppRoute><AccountDetail /></AppRoute> },
+  { path: '/accounts/new',    element: <AppRoute><AccountNew /></AppRoute> },
+  { path: '/accounts/:id',    element: <AppRoute><AccountDetail /></AppRoute> },
 
-  // Reports (Phase 5)
+  // Reports
   { path: '/reports/new', element: <AppRoute><ReportNew /></AppRoute> },
   { path: '/reports/:id', element: <AppRoute><ReportDetail /></AppRoute> },
 
-  // Bubbles (Phase 7)
-  { path: '/bubbles', element: <AppRoute><Bubbles /></AppRoute> },
+  // Bubbles
+  { path: '/bubbles',     element: <AppRoute><Bubbles /></AppRoute> },
   { path: '/bubbles/new', element: <AppRoute><BubbleNew /></AppRoute> },
   { path: '/bubbles/:id', element: <AppRoute><BubbleDetail /></AppRoute> },
 
-  // People (Phase 8)
+  // People
   { path: '/people', element: <AppRoute><People /></AppRoute> },
 
-  // Payments / Trust (Phase 9)
+  // Payments / Trust
   { path: '/trust-badge', element: <AppRoute><TrustBadge /></AppRoute> },
-  { path: '/subscribe', element: <AppRoute><Subscribe /></AppRoute> },
-  { path: '/billing', element: <AppRoute><Billing /></AppRoute> },
+  { path: '/subscribe',   element: <AppRoute><Subscribe /></AppRoute> },
+  { path: '/billing',     element: <AppRoute><Billing /></AppRoute> },
 
-  // Out of scope — placeholder redirects (never dead links)
-  { path: '/notifications', element: <AppRoute><Dashboard /></AppRoute> },
-  { path: '/impact', element: <AppRoute><Dashboard /></AppRoute> },
-  { path: '/ranks', element: <AppRoute><Dashboard /></AppRoute> },
+  // Admin (deferred — out of scope for current MVP sprint; placeholder until scoped)
   { path: '/admin', element: <AppRoute><Dashboard /></AppRoute> },
+
+  // Placeholder redirects — prevent dead links in sidebar/nav
+  { path: '/notifications', element: <AppRoute><Dashboard /></AppRoute> },
+  { path: '/impact',        element: <AppRoute><Dashboard /></AppRoute> },
+  { path: '/ranks',         element: <AppRoute><Dashboard /></AppRoute> },
 ]);

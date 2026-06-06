@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/providers/AuthProvider';
+import { isAdminRole } from '@/lib/roles';
 import { useReportModal } from '@/contexts/ReportModalContext';
 
 type MobileMenuProps = {
@@ -73,9 +74,9 @@ const groups: NavGroup[] = [
 export function MobileMenu({ open, onClose }: MobileMenuProps) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const { firebaseUser, logout } = useAuth();
+  const { firebaseUser, profile, logout } = useAuth();
   const reportModal = useReportModal();
-  const [isAdmin, setIsAdmin] = useState(false);
+  const isAdmin = isAdminRole(profile?.role);
   const [me, setMe] = useState<{ name?: string; username?: string; photoUrl?: string; score?: number } | null>(null);
 
   useEffect(() => {
@@ -90,9 +91,6 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
           photoUrl: d.data?.user?.photoUrl,
           score: d.data?.user?.score,
         });
-        if (['moderator', 'editor', 'admin', 'super_admin'].includes(d.data?.user?.role)) {
-          setIsAdmin(true);
-        }
       })
       .catch(() => {});
   }, [open]);
