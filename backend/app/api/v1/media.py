@@ -10,6 +10,7 @@ from PIL import Image
 from pydantic import BaseModel
 
 from app.core.dependencies import get_current_user
+from app.core.ratelimit import check_rate_limit, get_upload_limiter
 from app.core.responses import error, success
 from app.integrations.s3 import (
     _is_aws_configured,
@@ -74,6 +75,7 @@ async def post_media_upload(
     file: UploadFile | None = File(default=None),
     current_user: User = Depends(get_current_user),
 ):
+    await check_rate_limit(f"upload:{current_user.id}", get_upload_limiter())
     if not _is_aws_configured():
         return error("service_unavailable", "Media upload not configured", 503)
 

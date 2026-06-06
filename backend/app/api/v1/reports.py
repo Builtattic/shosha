@@ -11,6 +11,7 @@ from app.core.dependencies import (
     get_current_user_optional,
     require_moderator,
 )
+from app.core.ratelimit import check_rate_limit, get_report_limiter
 from app.core.responses import success
 from app.models.enums import ReportStatus
 from app.models.user import User
@@ -78,6 +79,7 @@ async def post_report(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    await check_rate_limit(f"report:{current_user.id}", get_report_limiter())
     report = await create_report(db, body, current_user)
     return success(
         {"report": ReportOut.model_validate(report).model_dump(mode="json")}

@@ -11,3 +11,5 @@ boto3
 python-jose
 httpx
 Pillow
+upstash-ratelimit
+upstash-redis
