@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -143,3 +143,18 @@ async def upsert_social_link(
     await db.flush()
     await db.refresh(link)
     return link
+
+
+async def count_accounts(db: AsyncSession) -> int:
+    result = await db.execute(select(func.count()).select_from(Account))
+    return result.scalar_one()
+
+
+async def count_by_status(db: AsyncSession) -> dict[str, int]:
+    counts = {s.value: 0 for s in AccountStatus}
+    result = await db.execute(
+        select(Account.status, func.count()).group_by(Account.status)
+    )
+    for status, count in result.all():
+        counts[status.value] = count
+    return counts

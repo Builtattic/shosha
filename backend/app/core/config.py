@@ -31,6 +31,11 @@ class Settings(BaseSettings):
     AWS_S3_BUCKET: str | None = None
     AWS_REGION: str = "ap-south-1"
 
+    # UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN
+    # from Upstash console — used for rate limiting
+    UPSTASH_REDIS_REST_URL: str | None = None
+    UPSTASH_REDIS_REST_TOKEN: str | None = None
+
     @computed_field
     @property
     def origins_list(self) -> list[str]:

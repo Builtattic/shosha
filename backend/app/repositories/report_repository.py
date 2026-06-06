@@ -253,3 +253,13 @@ async def update_status(
     await db.flush()
     await db.refresh(report)
     return report
+
+
+async def count_by_status(db: AsyncSession) -> dict[str, int]:
+    counts = {s.value: 0 for s in ReportStatus}
+    result = await db.execute(
+        select(Report.status, func.count()).group_by(Report.status)
+    )
+    for status, count in result.all():
+        counts[status.value] = count
+    return counts

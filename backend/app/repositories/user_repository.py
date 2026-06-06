@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
@@ -56,3 +56,15 @@ async def update_last_login(db: AsyncSession, user: User) -> User:
     await db.flush()
     await db.refresh(user)
     return user
+
+
+async def count_users(db: AsyncSession) -> int:
+    result = await db.execute(select(func.count()).select_from(User))
+    return result.scalar_one()
+
+
+async def count_active_users(db: AsyncSession) -> int:
+    result = await db.execute(
+        select(func.count()).select_from(User).where(User.is_active.is_(True))
+    )
+    return result.scalar_one()
