@@ -38,6 +38,24 @@ from app.repositories.notification_repository import (
     mark_all_read as mark_all_notifications_read,
     mark_read as mark_notification_read,
 )
+from app.repositories.claim_repository import (
+    create as create_claim,
+    get_any_by_account_and_user as get_any_claim_by_account_and_user,
+    get_by_account_and_user as get_claim_by_account_and_user,
+    get_by_id as get_claim_by_id,
+    list_for_user as list_claims_for_user,
+    list_pending as list_pending_claims,
+    update_status as update_claim_status,
+)
+from app.repositories.dispute_repository import (
+    create as create_dispute,
+    get_by_id as get_dispute_by_id,
+    get_by_report_and_user as get_dispute_by_report_and_user,
+    list_for_user as list_disputes_for_user,
+    list_pending as list_pending_disputes,
+    update_status as update_dispute_status,
+    withdraw as withdraw_dispute,
+)
 
 __all__ = [
     "get_user_by_id",
@@ -70,4 +88,18 @@ __all__ = [
     "mark_notification_read",
     "mark_all_notifications_read",
     "count_unread_notifications",
+    "get_claim_by_id",
+    "get_claim_by_account_and_user",
+    "get_any_claim_by_account_and_user",
+    "list_claims_for_user",
+    "list_pending_claims",
+    "create_claim",
+    "update_claim_status",
+    "get_dispute_by_id",
+    "get_dispute_by_report_and_user",
+    "list_disputes_for_user",
+    "list_pending_disputes",
+    "create_dispute",
+    "update_dispute_status",
+    "withdraw_dispute",
 ]
