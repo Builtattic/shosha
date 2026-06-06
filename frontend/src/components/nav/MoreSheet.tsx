@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -20,8 +20,8 @@ import {
 } from 'lucide-react';
 import { useReportModal } from '@/contexts/ReportModalContext';
 import { useNotifications } from '@/contexts/NotificationsContext';
-
-const ADMIN_ROLES = ['moderator', 'editor', 'admin', 'super_admin'];
+import { useAuth } from '@/providers/AuthProvider';
+import { isAdminRole } from '@/lib/roles';
 
 type NavItem = {
   href: string;
@@ -52,18 +52,8 @@ type MoreSheetProps = {
 export function MoreSheet({ open, onClose }: MoreSheetProps) {
   const { open: openReportModal } = useReportModal();
   const { unreadCount } = useNotifications();
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  useEffect(() => {
-    fetch('/api/me', { cache: 'no-store' })
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.ok && ADMIN_ROLES.includes(d.data?.user?.role)) {
-          setIsAdmin(true);
-        }
-      })
-      .catch(() => {});
-  }, []);
+  const { profile } = useAuth();
+  const isAdmin = isAdminRole(profile?.role);
 
   useEffect(() => {
     if (!open) return;

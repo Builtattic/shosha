@@ -30,7 +30,6 @@ import People from '@/pages/People';
 import TrustBadge from '@/pages/TrustBadge';
 import Subscribe from '@/pages/Subscribe';
 import Billing from '@/pages/Billing';
-import Admin from '@/pages/Admin';
 
 // Wraps all authenticated + onboarded routes with chrome (Sidebar + MobileAppHeader + BottomNav)
 const AppRoute = ({ children }: { children: React.ReactNode }) => (
@@ -85,8 +84,8 @@ export const router = createBrowserRouter([
   { path: '/subscribe',   element: <AppRoute><Subscribe /></AppRoute> },
   { path: '/billing',     element: <AppRoute><Billing /></AppRoute> },
 
-  // Admin (role-gated inside the page component itself)
-  { path: '/admin', element: <AppRoute><Admin /></AppRoute> },
+  // Admin (deferred — out of scope for current MVP sprint; placeholder until scoped)
+  { path: '/admin', element: <AppRoute><Dashboard /></AppRoute> },
 
   // Placeholder redirects — prevent dead links in sidebar/nav
   { path: '/notifications', element: <AppRoute><Dashboard /></AppRoute> },

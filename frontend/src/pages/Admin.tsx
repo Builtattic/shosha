@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShieldCheck, CheckCircle2, XCircle, Trash2, ChevronDown, ExternalLink, Filter } from 'lucide-react';
 import { useAuth } from '@/providers/AuthProvider';
+import { isAdminRole } from '@/lib/roles';
 import { getModerationQueue, moderateReport, type ModerationQueueItem } from '@/api/reports';
 import { cn, formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ui/Toast';
@@ -22,7 +23,7 @@ export default function Admin() {
   const [processingId, setProcessingId] = useState<string | null>(null);
 
   // Check auth
-  const isMod = profile?.role === 'MODERATOR' || profile?.role === 'ADMIN' || profile?.role === 'SUPER_ADMIN';
+  const isMod = isAdminRole(profile?.role);
 
   useEffect(() => {
     if (!isMod) return;

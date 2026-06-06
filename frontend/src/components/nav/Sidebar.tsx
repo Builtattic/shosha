@@ -8,6 +8,8 @@ import {
 import { cn } from '@/lib/utils';
 import { useReportModal } from '@/contexts/ReportModalContext';
 import { RANK_SCOPE_OPTIONS, resolveRankScope, type RankScopeValue } from '@/lib/rankScope';
+import { useAuth } from '@/providers/AuthProvider';
+import { isAdminRole } from '@/lib/roles';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -43,10 +45,11 @@ export function Sidebar() {
   const navigate  = useNavigate();
   const [searchParams] = useSearchParams();
   const { open: openReportModal } = useReportModal();
+  const { profile } = useAuth();
 
   const [scopeOpen, setScopeOpen]   = useState(false);
   const [stats, setStats]           = useState<LiveStats | null>(null);
-  const [isAdmin, setIsAdmin]       = useState(false);
+  const isAdmin = isAdminRole(profile?.role);
 
   const pathname    = location.pathname;
   const activeScope = pathname === '/ranks' ? resolveRankScope(searchParams.get('scope')) : 'global';
@@ -70,18 +73,6 @@ export function Sidebar() {
     load();
     const id = window.setInterval(load, 60_000);
     return () => { cancelled = true; window.clearInterval(id); };
-  }, []);
-
-  // Admin role check — silent no-op until /api/me returns role
-  useEffect(() => {
-    fetch('/api/me', { cache: 'no-store' })
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.ok && ['moderator', 'editor', 'admin', 'super_admin'].includes(d.data?.user?.role)) {
-          setIsAdmin(true);
-        }
-      })
-      .catch(() => {});
   }, []);
 
   function chooseScope(value: RankScopeValue) {

@@ -7,7 +7,6 @@ import { FeedItem } from '@/components/feed/FeedItem';
 import { toFeedItem } from '@/lib/feed';
 import type { FeedReport } from '@/types/feed';
 import { cn } from '@/lib/utils';
-import { FollowButton } from '@/components/profile/FollowButton';
 
 export default function AccountDetailView() {
   const { id } = useParams<{ id: string }>();
@@ -155,10 +154,7 @@ export default function AccountDetailView() {
             </p>
           )}
 
-          <div className="flex items-center space-x-3 pt-2">
-            <div className="w-32">
-              <FollowButton targetUserId={account.id} />
-            </div>
+          <div className="flex items-center justify-center space-x-3 pt-2">
             <button 
               onClick={() => navigate(`/reports/new?account_id=${account.id}`)}
               className="flex items-center justify-center px-4 py-1.5 rounded-full bg-destructive/10 text-destructive text-[11px] font-bold hover:bg-destructive/20 transition-colors"

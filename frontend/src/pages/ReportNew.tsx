@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, ChevronRight, X, Image as ImageIcon, CheckCircle2, AlertTriangle, Info } from 'lucide-react';
 import { useAuth } from '@/providers/AuthProvider';
-import { searchAccounts } from '@/api/accounts';
+import { searchAccounts, getAccount } from '@/api/accounts';
 import type { SearchAccount } from '@/mocks/accounts';
 import { submitReport } from '@/api/reports';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -42,17 +42,24 @@ export default function ReportNew() {
   // Auto-select account if provided in query params
   useEffect(() => {
     const aid = searchParams.get('account_id');
-    if (aid && !selectedAccount && step === 1) {
-      // If we had a direct getAccount minimal mock we'd use it. For now, we mock selection.
-      // A real flow would fetch the account detail and set it.
-      setSelectedAccount({
-        _id: aid,
-        username: 'selected_account',
-        displayName: 'Account from URL',
-        platform: 'X',
-      });
-      setStep(2);
-    }
+    if (!aid || selectedAccount || step !== 1) return;
+
+    let mounted = true;
+    (async () => {
+      const res = await getAccount(aid);
+      if (!mounted) return;
+      if (res.ok && res.data) {
+        const acc = res.data.account;
+        setSelectedAccount({
+          _id: acc.id,
+          username: acc.handle,
+          displayName: acc.display_name ?? acc.handle,
+          platform: acc.platform,
+        });
+        setStep(2);
+      }
+    })();
+    return () => { mounted = false; };
   }, [searchParams, selectedAccount, step]);
 
   // Handle Search
