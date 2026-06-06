@@ -34,6 +34,21 @@ from app.services.notification_service import (
     mark_all_notifications_read,
     mark_notification_read,
 )
+from app.services.claim_service import (
+    decide_claim,
+    get_claim,
+    get_my_claims,
+    get_pending_claims,
+    submit_claim,
+)
+from app.services.dispute_service import (
+    decide_dispute,
+    file_dispute,
+    get_dispute,
+    get_my_disputes,
+    get_pending_disputes,
+    withdraw_dispute,
+)
 
 __all__ = [
     "sync_session",
@@ -62,4 +77,15 @@ __all__ = [
     "mark_notification_read",
     "mark_all_notifications_read",
     "get_unread_count",
+    "submit_claim",
+    "get_my_claims",
+    "get_claim",
+    "get_pending_claims",
+    "decide_claim",
+    "file_dispute",
+    "get_my_disputes",
+    "get_dispute",
+    "get_pending_disputes",
+    "decide_dispute",
+    "withdraw_dispute",
 ]

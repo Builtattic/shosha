@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1 import accounts, auth, feed, media, notifications, reports, users
+from app.api.v1 import accounts, auth, claims, disputes, feed, media, notifications, reports, users
 
 api_router = APIRouter()
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
@@ -11,4 +11,6 @@ api_router.include_router(feed.router, prefix="/feed", tags=["feed"])
 api_router.include_router(
     notifications.router, prefix="/notifications", tags=["notifications"]
 )
+api_router.include_router(claims.router, prefix="/claims", tags=["claims"])
+api_router.include_router(disputes.router, prefix="/disputes", tags=["disputes"])
 api_router.include_router(media.router, prefix="/media", tags=["media"])

@@ -31,6 +31,12 @@ from app.schemas.report import (
     VoteResponse,
 )
 from app.schemas.notification import NotificationOut
+from app.schemas.claim import ClaimCreateRequest, ClaimDecisionRequest, ClaimOut
+from app.schemas.dispute import (
+    DisputeCreateRequest,
+    DisputeDecisionRequest,
+    DisputeOut,
+)
 from app.schemas.user import (
     UserPrivate,
     UserProfileData,
@@ -54,6 +60,12 @@ __all__ = [
     "ModerationRequestData",
     "ModerationRequestRequest",
     "NotificationOut",
+    "ClaimOut",
+    "ClaimCreateRequest",
+    "ClaimDecisionRequest",
+    "DisputeOut",
+    "DisputeCreateRequest",
+    "DisputeDecisionRequest",
     "PaginatedResponse",
     "ReportCreateRequest",
     "ReportData",
