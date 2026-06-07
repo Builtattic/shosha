@@ -31,7 +31,23 @@ from app.schemas.report import (
     VoteResponse,
 )
 from app.schemas.notification import NotificationOut
+from app.schemas.people import (
+    DeckAccountOut,
+    DeckResponse,
+    SwipeRequest,
+    SwipeResponse,
+    TrendingAccountOut,
+    TrendingResponse,
+)
 from app.schemas.claim import ClaimCreateRequest, ClaimDecisionRequest, ClaimOut
+from app.schemas.bubble import (
+    BubbleCreateRequest,
+    BubbleDetailOut,
+    BubbleMemberOut,
+    BubbleOut,
+    JoinRequestOut,
+    VoteRequest,
+)
 from app.schemas.dispute import (
     DisputeCreateRequest,
     DisputeDecisionRequest,
@@ -60,6 +76,18 @@ __all__ = [
     "ModerationRequestData",
     "ModerationRequestRequest",
     "NotificationOut",
+    "DeckAccountOut",
+    "DeckResponse",
+    "SwipeRequest",
+    "SwipeResponse",
+    "TrendingAccountOut",
+    "TrendingResponse",
+    "BubbleOut",
+    "BubbleDetailOut",
+    "BubbleMemberOut",
+    "BubbleCreateRequest",
+    "JoinRequestOut",
+    "VoteRequest",
     "ClaimOut",
     "ClaimCreateRequest",
     "ClaimDecisionRequest",

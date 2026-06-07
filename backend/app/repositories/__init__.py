@@ -14,6 +14,8 @@ from app.repositories.account_repository import (
     get_by_platform_handle,
     get_social_links,
     list_accounts,
+    list_top_accounts,
+    list_trending_accounts,
     search as search_accounts,
     update as update_account,
     upsert_social_link,
@@ -56,6 +58,24 @@ from app.repositories.dispute_repository import (
     update_status as update_dispute_status,
     withdraw as withdraw_dispute,
 )
+from app.repositories.swipe_repository import (
+    get_by_user_and_account as get_swipe_by_user_and_account,
+    list_for_user as list_swipes_for_user,
+    upsert_swipe,
+)
+from app.repositories.bubble_repository import (
+    add_member as add_bubble_member,
+    create as create_bubble,
+    create_join_request as create_bubble_join_request,
+    get_by_id as get_bubble_by_id,
+    get_join_request as get_bubble_join_request,
+    get_member as get_bubble_member,
+    list_bubbles as repo_list_bubbles,
+    list_for_user as list_bubbles_for_user,
+    list_join_requests as list_bubble_join_requests,
+    list_members as list_bubble_members,
+    update_join_request as update_bubble_join_request,
+)
 
 __all__ = [
     "get_user_by_id",
@@ -67,6 +87,8 @@ __all__ = [
     "get_account_by_id",
     "get_by_platform_handle",
     "list_accounts",
+    "list_top_accounts",
+    "list_trending_accounts",
     "search_accounts",
     "create_account",
     "update_account",
@@ -102,4 +124,18 @@ __all__ = [
     "create_dispute",
     "update_dispute_status",
     "withdraw_dispute",
+    "get_swipe_by_user_and_account",
+    "list_swipes_for_user",
+    "upsert_swipe",
+    "get_bubble_by_id",
+    "repo_list_bubbles",
+    "list_bubbles_for_user",
+    "create_bubble",
+    "get_bubble_member",
+    "list_bubble_members",
+    "add_bubble_member",
+    "get_bubble_join_request",
+    "list_bubble_join_requests",
+    "create_bubble_join_request",
+    "update_bubble_join_request",
 ]

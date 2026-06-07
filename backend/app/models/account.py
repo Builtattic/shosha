@@ -36,6 +36,7 @@ class Account(Base, BaseModelMixin):
     reports = relationship("Report", back_populates="account")
     claim_requests = relationship("ClaimRequest", back_populates="account")
     disputes = relationship("Dispute", back_populates="account")
+    swipe_records = relationship("SwipeRecord", back_populates="account")
 
     __table_args__ = (
         UniqueConstraint("platform", "handle", name="uq_accounts_platform_handle"),

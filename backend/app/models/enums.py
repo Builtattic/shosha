@@ -56,3 +56,35 @@ class AdminActionType(str, Enum):
     DISPUTE_REVIEW = "DISPUTE_REVIEW"
     ACCOUNT_MODERATION = "ACCOUNT_MODERATION"
     USER_ROLE_UPDATE = "USER_ROLE_UPDATE"
+
+
+class BubbleType(str, Enum):
+    FAMILY = "FAMILY"
+    FRIEND_GROUP = "FRIEND_GROUP"
+    COLLEGE_GROUP = "COLLEGE_GROUP"
+    WORK_GROUP = "WORK_GROUP"
+    COMPANY = "COMPANY"
+    SPORTS_GROUP = "SPORTS_GROUP"
+    OTHER = "OTHER"
+
+
+class BubbleVisibility(str, Enum):
+    PUBLIC = "PUBLIC"
+    PRIVATE = "PRIVATE"
+
+
+class BubbleMemberRole(str, Enum):
+    OWNER = "OWNER"
+    ADMIN = "ADMIN"
+    MEMBER = "MEMBER"
+
+
+class BubbleJoinStatus(str, Enum):
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+
+
+class SwipeDirection(str, Enum):
+    ALIGN = "ALIGN"
+    OPPOSE = "OPPOSE"
