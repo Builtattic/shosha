@@ -9,6 +9,7 @@ from sqlalchemy.orm import selectinload
 
 from app.models.account import Account, AccountSocialLink
 from app.models.enums import AccountStatus
+from app.services.scoring_service import BASE_SCORE
 from app.repositories._pagination import (
     apply_created_at_cursor,
     build_next_cursor,
@@ -158,3 +159,33 @@ async def count_by_status(db: AsyncSession) -> dict[str, int]:
     for status, count in result.all():
         counts[status.value] = count
     return counts
+
+
+async def list_top_accounts(
+    db: AsyncSession,
+    limit: int = 60,
+) -> list[Account]:
+    result = await db.execute(
+        select(Account)
+        .where(Account.status == AccountStatus.ACTIVE)
+        .options(*_ACCOUNT_LOAD_OPTIONS)
+        .order_by(Account.score.desc(), Account.created_at.desc())
+        .limit(limit)
+    )
+    return list(result.scalars().all())
+
+
+async def list_trending_accounts(
+    db: AsyncSession,
+    limit: int = 10,
+) -> list[Account]:
+    result = await db.execute(
+        select(Account)
+        .where(
+            Account.status == AccountStatus.ACTIVE,
+            Account.score > BASE_SCORE,
+        )
+        .order_by(Account.score.desc())
+        .limit(limit)
+    )
+    return list(result.scalars().all())

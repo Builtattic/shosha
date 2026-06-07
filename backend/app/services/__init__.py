@@ -49,6 +49,16 @@ from app.services.dispute_service import (
     get_pending_disputes,
     withdraw_dispute,
 )
+from app.services.people_service import get_deck, get_trending, record_swipe
+from app.services.bubble_service import (
+    create_bubble,
+    get_bubble,
+    get_my_bubbles,
+    join_bubble,
+    list_bubbles,
+    list_join_requests,
+    vote_join_request,
+)
 
 __all__ = [
     "sync_session",
@@ -88,4 +98,14 @@ __all__ = [
     "get_pending_disputes",
     "decide_dispute",
     "withdraw_dispute",
+    "get_trending",
+    "get_deck",
+    "record_swipe",
+    "list_bubbles",
+    "get_bubble",
+    "create_bubble",
+    "get_my_bubbles",
+    "join_bubble",
+    "vote_join_request",
+    "list_join_requests",
 ]

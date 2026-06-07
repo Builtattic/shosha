@@ -40,6 +40,10 @@ class User(Base, BaseModelMixin):
     disputes = relationship("Dispute", back_populates="requester", foreign_keys="Dispute.requester_user_id")
     reviewed_disputes = relationship("Dispute", back_populates="reviewer", foreign_keys="Dispute.reviewed_by")
     admin_actions = relationship("AdminAction", back_populates="actor")
+    swipe_records = relationship("SwipeRecord", back_populates="user")
+    bubbles_created = relationship("Bubble", back_populates="creator", foreign_keys="Bubble.created_by")
+    bubble_memberships = relationship("BubbleMember", back_populates="user")
+    bubble_join_requests = relationship("BubbleJoinRequest", back_populates="user")
 
     __table_args__ = (
         Index("ix_users_role", "role"),
