@@ -255,6 +255,14 @@ async def update_status(
     return report
 
 
+async def update(db: AsyncSession, report: Report, **kwargs) -> Report:
+    for key, value in kwargs.items():
+        setattr(report, key, value)
+    await db.flush()
+    await db.refresh(report)
+    return report
+
+
 async def count_by_status(db: AsyncSession) -> dict[str, int]:
     counts = {s.value: 0 for s in ReportStatus}
     result = await db.execute(

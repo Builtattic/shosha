@@ -9,6 +9,7 @@ _CODE_TO_STATUS: dict[str, int] = {
     "forbidden": 403,
     "not_found": 404,
     "conflict": 409,
+    "already_decided": 409,
     "validation_error": 422,
     "rate_limited": 429,
     "internal_error": 500,
