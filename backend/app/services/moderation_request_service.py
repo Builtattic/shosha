@@ -6,9 +6,14 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import raise_api_error
-from app.models.enums import ModerationRequestStatus
+from app.models.enums import AdminActionType, ModerationRequestStatus, NotificationType
 from app.models.moderation_request import ModerationRequest
-from app.repositories import moderation_request_repository as repo
+from app.repositories import (
+    moderation_request_repository as repo,
+    notification_repository,
+    report_repository,
+)
+from app.services import admin_action_service
 
 _DECISION_STATUSES = (ModerationRequestStatus.APPROVED, ModerationRequestStatus.REJECTED)
 
@@ -61,7 +66,11 @@ async def decide_moderation_request(
         raise_api_error("not_found", "Moderation request not found")
 
     if moderation_request.status != ModerationRequestStatus.PENDING:
-        raise_api_error("conflict", "Moderation request has already been decided")
+        raise_api_error("already_decided", "Moderation request has already been decided")
+
+    report = await report_repository.get_by_id(db, moderation_request.report_id)
+    if status == ModerationRequestStatus.APPROVED and report is not None:
+        await report_repository.update(db, report, visibility="hidden")
 
     updated = await repo.update(
         db,
@@ -73,4 +82,42 @@ async def decide_moderation_request(
     )
     await db.commit()
     await db.refresh(updated)
+
+    if updated.requested_by is not None:
+        if status == ModerationRequestStatus.APPROVED:
+            title = "Moderation request approved"
+            message = review_note or "Your filing was hidden after moderator review."
+        else:
+            title = "Moderation request rejected"
+            message = (
+                review_note
+                or "A moderator reviewed your request and kept the filing visible."
+            )
+        await notification_repository.create(
+            db,
+            user_id=updated.requested_by,
+            notification_type=NotificationType.MODERATION,
+            title=title,
+            message=message,
+            metadata_json={
+                "moderation_request_id": str(updated.id),
+                "report_id": str(updated.report_id),
+                "account_id": str(updated.account_id),
+            },
+        )
+        await db.commit()
+
+    await admin_action_service.log_action(
+        db,
+        actor_user_id=reviewer_id,
+        action_type=AdminActionType.MODERATION_DECIDE,
+        target_type="moderation_request",
+        target_id=updated.id,
+        reason=review_note,
+        metadata_json={
+            "verdict": status.value,
+            "report_id": str(updated.report_id),
+        },
+    )
+
     return updated
