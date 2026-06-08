@@ -88,3 +88,46 @@ class BubbleJoinStatus(str, Enum):
 class SwipeDirection(str, Enum):
     ALIGN = "ALIGN"
     OPPOSE = "OPPOSE"
+
+
+class ModerationRequestStatus(str, Enum):
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+
+
+class EvidenceProposalStatus(str, Enum):
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+
+
+class AuditRequestStatus(str, Enum):
+    PENDING = "PENDING"
+    IN_PROGRESS = "IN_PROGRESS"
+    COMPLETED = "COMPLETED"
+    REJECTED = "REJECTED"
+
+
+class DeletionRequestStatus(str, Enum):
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+    COMPLETED = "COMPLETED"
+
+
+class IssueReportStatus(str, Enum):
+    OPEN = "OPEN"
+    IN_PROGRESS = "IN_PROGRESS"
+    RESOLVED = "RESOLVED"
+    DISMISSED = "DISMISSED"
+
+
+class SubscriptionTier(str, Enum):
+    FREE = "FREE"
+    PRO = "PRO"
+
+
+class FeedRankingMode(str, Enum):
+    SMART = "SMART"
+    RECENT = "RECENT"

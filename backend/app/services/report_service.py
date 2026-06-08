@@ -41,6 +41,7 @@ from app.schemas.report import (
     ReportCreateRequest,
     VoteRequest,
 )
+from app.services import moderation_request_service
 from app.services._helpers import is_moderator_plus
 from app.services.notification_service import emit_report_notification
 from app.services.scoring_service import (
@@ -226,8 +227,6 @@ async def request_moderation(
     data: ModerationRequestRequest,
     current_user: User,
 ) -> dict:
-    # TODO Phase 2: moderation_requests table, dedupe pending, admin notifications.
-    _ = data
     report = await get_report_by_id(db, report_id)
     if report is None:
         raise_api_error("not_found", "Report not found")
@@ -235,6 +234,16 @@ async def request_moderation(
     is_reporter = report.reporter_user_id == current_user.id
     if not is_reporter and not is_moderator_plus(current_user):
         raise_api_error("forbidden", "Not authorized to request moderation for this report")
+
+    evidence_links = [data.evidence_url] if data.evidence_url else []
+    await moderation_request_service.create_moderation_request(
+        db,
+        report_id=report.id,
+        account_id=report.account_id,
+        requested_by=current_user.id,
+        reason=data.reason or "",
+        evidence_links=evidence_links,
+    )
 
     return {"queued": True, "report_status": report.status.value}
 
