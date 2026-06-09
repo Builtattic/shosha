@@ -98,6 +98,25 @@ async def get_bubbles_mine(
     return success({"items": _serialize_bubbles(items), "next_cursor": next_cursor})
 
 
+# TODO: add denormalized score/member_count to bubbles table for proper leaderboard
+@router.get(
+    "/leaderboard",
+    response_model=SuccessEnvelope[dict],
+    summary="Bubble leaderboard",
+)
+async def get_bubbles_leaderboard(
+    limit: int = Query(default=10, ge=1, le=50),
+    sort_by: str = Query(default="score"),
+    db: AsyncSession = Depends(get_db),
+):
+    items, _ = await list_bubbles(db, limit=100, cursor=None)
+    if sort_by == "members":
+        items.sort(key=lambda b: len(b.members), reverse=True)
+    else:
+        items.sort(key=lambda b: b.created_at, reverse=True)
+    return success({"items": _serialize_bubbles(items[:limit])})
+
+
 @router.get(
     "/{bubble_id}",
     response_model=SuccessEnvelope[dict],

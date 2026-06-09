@@ -18,8 +18,12 @@ from app.models.report_metadata import ReportMetadata
 from app.models.site_setting import SiteSetting
 from app.models.subscription import Subscription
 from app.models.swipe_record import SwipeRecord
+from app.models.import_record import ImportRecord
 from app.models.user import User
+from app.models.user_follow import UserFollow
 
+# UserFollow — follow/connection graph (V1: users.followers/following arrays)
+# ImportRecord — contacts/links import staging (V1: RTDB imports collection)
 # NOTE: V1 RTDB `counters/reportCount` is not modeled here.
 # Report numbering in V2 uses Postgres COUNT queries or sequences instead.
 
@@ -52,4 +56,6 @@ __all__ = [
     "Subscription",
     "Event",
     "ReportMetadata",
+    "UserFollow",
+    "ImportRecord",
 ]

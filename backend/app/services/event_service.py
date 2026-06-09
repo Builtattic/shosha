@@ -8,7 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import raise_api_error
 from app.models.enums import ReportStatus
 from app.models.event import Event
+from app.repositories import account_repository
 from app.repositories import event_repository as repo
+from app.services import scoring_service
 
 _DECISION_STATUSES = (ReportStatus.APPROVED, ReportStatus.REJECTED)
 
@@ -32,6 +34,13 @@ async def create_event(
         description=description,
         **kwargs,
     )
+    account = await account_repository.get_by_id(db, subject_account_id)
+    if account is None:
+        raise_api_error("not_found", "Account not found")
+    score_before = account.score
+    score, breakdown = await scoring_service.rebuild_account_score(db, account.id)
+    await account_repository.update(db, account, score=score, score_breakdown=breakdown)
+    await repo.update(db, event, score_before=score_before, score_after=score)
     await db.commit()
     await db.refresh(event)
     return event
