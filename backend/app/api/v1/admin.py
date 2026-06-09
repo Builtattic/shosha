@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Body, Depends
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
@@ -22,20 +22,27 @@ from app.core.responses import success
 from app.models.claim_request import ClaimRequest
 from app.models.dispute import Dispute
 from app.models.enums import (
+    AccountStatus,
     AdminActionType,
     ClaimRequestStatus,
     DisputeStatus,
     EvidenceProposalStatus,
     ModerationRequestStatus,
     ReportStatus,
+    UserRole,
 )
 from app.models.user import User
 from app.repositories import account_repository, report_repository, user_repository
 from app.schemas.common import SuccessEnvelope
 from app.services import (
+    admin_account_service,
     admin_action_service,
+    admin_ownership_service,
+    admin_score_service,
+    admin_user_service,
     evidence_proposal_service,
     moderation_request_service,
+    site_setting_service,
 )
 from app.services.scoring_service import DEFAULT_MULTIPLIERS, apply_report_score
 
@@ -180,6 +187,104 @@ class AdminUpdateReportRequest(BaseModel):
     visibility: Literal["public", "hidden"] | None = None
     pinned: bool | None = None
     featured: bool | None = None
+
+
+def serialize_user(u) -> dict:
+    return {
+        "id": str(u.id),
+        "username": u.username,
+        "display_name": u.display_name,
+        "email": u.email,
+        "photo_url": u.photo_url,
+        "role": u.role.value,
+        "is_active": u.is_active,
+        "last_login_at": u.last_login_at.isoformat() if u.last_login_at else None,
+        "created_at": u.created_at.isoformat(),
+    }
+
+
+def serialize_account(a) -> dict:
+    return {
+        "id": str(a.id),
+        "platform": a.platform,
+        "handle": a.handle,
+        "display_name": a.display_name,
+        "bio": a.bio,
+        "status": a.status.value,
+        "score": a.score,
+        "owner_user_id": str(a.owner_user_id) if a.owner_user_id else None,
+        "created_at": a.created_at.isoformat(),
+    }
+
+
+class AdminUserUpdateRequest(BaseModel):
+    role: str | None = None
+    is_active: bool | None = None
+    email: str | None = None
+    username: str | None = None
+    display_name: str | None = None
+    photo_url: str | None = None
+
+
+class AdminAccountCreateRequest(BaseModel):
+    platform: str
+    handle: str
+    display_name: str | None = None
+    bio: str | None = None
+
+
+class AdminAccountUpdateRequest(BaseModel):
+    display_name: str | None = None
+    bio: str | None = None
+    status: str | None = None
+    score: float | None = None
+    owner_user_id: UUID | None = None
+
+
+class AdminSettingsPatchRequest(BaseModel):
+    allow_ai_reviewed_in_feed: bool | None = None
+    allow_flagged_in_feed: bool | None = None
+    feed_ranking_mode: str | None = None
+    enabled_platforms: list[str] | None = None
+    score_impact_min: float | None = None
+    score_impact_max: float | None = None
+    upload_max_bytes: int | None = None
+    live_feed_enabled: bool | None = None
+    dispute_threshold: int | None = None
+    duplicate_threshold: float | None = None
+    single_report_delta_cap: float | None = None
+    daily_profile_delta_cap: float | None = None
+    report_cooldown_hours: int | None = None
+
+
+class AdminOwnershipAssignRequest(BaseModel):
+    account_id: UUID
+    user_id: UUID
+
+
+class AdminOwnershipRevokeRequest(BaseModel):
+    account_id: UUID
+
+
+class AdminScoreReplayRequest(BaseModel):
+    account_id: UUID | None = None
+
+
+_SETTINGS_SNAKE_TO_CAMEL = {
+    "allow_ai_reviewed_in_feed": "allowAiReviewedInFeed",
+    "allow_flagged_in_feed": "allowFlaggedInFeed",
+    "feed_ranking_mode": "feedRankingMode",
+    "enabled_platforms": "enabledPlatforms",
+    "score_impact_min": "scoreImpactMin",
+    "score_impact_max": "scoreImpactMax",
+    "upload_max_bytes": "uploadMaxBytes",
+    "live_feed_enabled": "liveFeedEnabled",
+    "dispute_threshold": "disputeThreshold",
+    "duplicate_threshold": "duplicateThreshold",
+    "single_report_delta_cap": "singleReportDeltaCap",
+    "daily_profile_delta_cap": "dailyProfileDeltaCap",
+    "report_cooldown_hours": "reportCooldownHours",
+}
 
 
 async def _count_pending_claims(db: AsyncSession) -> int:
@@ -470,3 +575,182 @@ async def list_admin_actions(
 ):
     actions = await admin_action_service.list_recent(db, limit=300)
     return success({"actions": [_serialize_admin_action(a) for a in actions]})
+
+
+@router.get("/users")
+async def admin_list_users(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_moderator),
+):
+    users = await admin_user_service.list_users(db)
+    return success({"users": [serialize_user(u) for u in users]})
+
+
+@router.patch("/users/{user_id}")
+async def admin_update_user(
+    user_id: UUID,
+    data: AdminUserUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    fields = {k: v for k, v in data.model_dump(exclude_none=True).items()}
+    if not fields:
+        raise_api_error("no_fields", "No fields to update")
+    if "role" in fields:
+        try:
+            fields["role"] = UserRole(fields["role"])
+        except ValueError:
+            raise_api_error("validation_error", "Invalid role value")
+    updated = await admin_user_service.update_user(
+        db, user_id, current_user, **fields
+    )
+    return success({"user": serialize_user(updated)})
+
+
+@router.delete("/users/{user_id}")
+async def admin_delete_user(
+    user_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_super_admin),
+):
+    await admin_user_service.delete_user(db, user_id, current_user)
+    return success({"deleted": str(user_id)})
+
+
+@router.get("/accounts")
+async def admin_list_accounts(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_moderator),
+):
+    accounts = await admin_account_service.list_accounts(db)
+    return success({"accounts": [serialize_account(a) for a in accounts]})
+
+
+@router.post("/accounts", status_code=201)
+async def admin_create_account(
+    data: AdminAccountCreateRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    account = await admin_account_service.create_account(
+        db,
+        current_user.id,
+        data.platform,
+        data.handle,
+        data.display_name,
+        data.bio,
+    )
+    return JSONResponse(
+        status_code=201,
+        content=success({"account": serialize_account(account)}),
+    )
+
+
+@router.patch("/accounts/{account_id}")
+async def admin_update_account(
+    account_id: UUID,
+    data: AdminAccountUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    fields = {k: v for k, v in data.model_dump(exclude_none=True).items()}
+    if not fields:
+        raise_api_error("no_fields", "No fields to update")
+    if "status" in fields:
+        try:
+            fields["status"] = AccountStatus(fields["status"])
+        except ValueError:
+            raise_api_error("validation_error", "Invalid status value")
+    updated = await admin_account_service.update_account(
+        db, account_id, current_user.id, **fields
+    )
+    return success({"account": serialize_account(updated)})
+
+
+@router.delete("/accounts/{account_id}")
+async def admin_delete_account(
+    account_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_super_admin),
+):
+    await admin_account_service.delete_account(db, account_id, current_user.id)
+    return success({"deleted": str(account_id)})
+
+
+@router.get("/settings")
+async def admin_get_settings(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_moderator),
+):
+    settings = await site_setting_service.get_settings(db)
+    return success({"settings": settings})
+
+
+@router.patch("/settings")
+async def admin_update_settings(
+    data: AdminSettingsPatchRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_super_admin),
+):
+    partial = {k: v for k, v in data.model_dump(exclude_none=True).items()}
+    if not partial:
+        raise_api_error("no_fields", "No settings to update")
+    camel_partial = {
+        _SETTINGS_SNAKE_TO_CAMEL[k]: v for k, v in partial.items()
+    }
+    updated = await site_setting_service.update_settings(db, camel_partial)
+    await admin_action_service.log_action(
+        db,
+        actor_user_id=current_user.id,
+        action_type=AdminActionType.SETTINGS_UPDATE,
+        target_type="site_settings",
+        target_id=current_user.id,
+        metadata_json={"fields_changed": list(partial.keys())},
+    )
+    return success({"settings": updated})
+
+
+@router.post("/ownership")
+async def admin_assign_ownership(
+    data: AdminOwnershipAssignRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_super_admin),
+):
+    result = await admin_ownership_service.assign_ownership(
+        db, data.account_id, data.user_id, current_user.id
+    )
+    return success(
+        {
+            "account": serialize_account(result["account"]),
+            "user": serialize_user(result["user"]),
+        }
+    )
+
+
+@router.delete("/ownership")
+async def admin_revoke_ownership(
+    data: AdminOwnershipRevokeRequest = Body(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_super_admin),
+):
+    result = await admin_ownership_service.revoke_ownership(
+        db, data.account_id, current_user.id
+    )
+    return success({"account": serialize_account(result["account"])})
+
+
+@router.post("/score/replay")
+async def admin_score_replay(
+    data: AdminScoreReplayRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_super_admin),
+):
+    if data.account_id is not None:
+        result = await admin_score_service.replay_account(
+            db, data.account_id, current_user.id
+        )
+        return success({"account_results": [result], "user_results": []})
+    result = await admin_score_service.replay_all(db, current_user.id)
+    return success(
+        {"account_results": result["account_results"], "user_results": []}
+    )
