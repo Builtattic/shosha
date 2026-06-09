@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, Enum, Index, String, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, BaseModelMixin
@@ -33,6 +34,7 @@ class User(Base, BaseModelMixin):
     trust_badge_doc_type: Mapped[str | None] = mapped_column(String(32), nullable=True)
     trust_badge_rejected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     trust_badge_rejection_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    fcm_tokens: Mapped[list | None] = mapped_column(JSONB, nullable=True)
 
     owned_accounts = relationship("Account", back_populates="owner", foreign_keys="Account.owner_user_id")
     reports = relationship("Report", back_populates="reporter", foreign_keys="Report.reporter_user_id")

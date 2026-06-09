@@ -199,3 +199,18 @@ async def list_all_admin(db: AsyncSession, limit: int = 500) -> list[Account]:
         .limit(limit)
     )
     return list(result.scalars().all())
+
+
+async def list_by_owner(
+    db: AsyncSession,
+    owner_user_id: UUID,
+    limit: int = 50,
+) -> list[Account]:
+    result = await db.execute(
+        select(Account)
+        .where(Account.owner_user_id == owner_user_id)
+        .options(*_ACCOUNT_LOAD_OPTIONS)
+        .order_by(Account.created_at.desc())
+        .limit(limit)
+    )
+    return list(result.scalars().all())

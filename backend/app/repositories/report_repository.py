@@ -271,3 +271,62 @@ async def count_by_status(db: AsyncSession) -> dict[str, int]:
     for status, count in result.all():
         counts[status.value] = count
     return counts
+
+
+async def search_reports(
+    db: AsyncSession,
+    query: str,
+    limit: int = 30,
+) -> list[Report]:
+    pattern = f"%{query.strip()}%"
+    result = await db.execute(
+        select(Report)
+        .where(
+            Report.status == ReportStatus.APPROVED,
+            (
+                Report.description.ilike(pattern)
+                | Report.deed.ilike(pattern)
+                | Report.title.ilike(pattern)
+            ),
+        )
+        .order_by(Report.created_at.desc())
+        .limit(limit)
+    )
+    return list(result.scalars().all())
+
+
+async def list_by_reporter(
+    db: AsyncSession,
+    reporter_user_id: UUID,
+    limit: int = 50,
+) -> list[Report]:
+    result = await db.execute(
+        select(Report)
+        .where(Report.reporter_user_id == reporter_user_id)
+        .order_by(Report.created_at.desc())
+        .limit(limit)
+    )
+    return list(result.scalars().all())
+
+
+async def count_reports(db: AsyncSession) -> int:
+    result = await db.execute(select(func.count()).select_from(Report))
+    return result.scalar_one()
+
+
+async def count_reports_since(db: AsyncSession, since: datetime) -> int:
+    result = await db.execute(
+        select(func.count())
+        .select_from(Report)
+        .where(Report.created_at >= since)
+    )
+    return result.scalar_one()
+
+
+async def count_approved(db: AsyncSession) -> int:
+    result = await db.execute(
+        select(func.count())
+        .select_from(Report)
+        .where(Report.status == ReportStatus.APPROVED)
+    )
+    return result.scalar_one()

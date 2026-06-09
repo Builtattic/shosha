@@ -399,3 +399,104 @@ async def run_full_audit(
     except Exception as exc:
         logger.warning("Gemini audit error: %s", exc)
         return _audit_fallback(account)
+
+
+CLASSIFICATION_SYSTEM_PROMPT = """You are a social media analyst. Given a description of an incident, classify the Intent and Repetition Pattern.
+Return strict JSON only:
+{
+  "intent": "0.5" | "1" | "1.5" | "2" | "2.5" | "3",
+  "pattern": "0.5" | "1" | "1.5" | "2" | "2.5" | "3"
+}
+
+Intent (IN) Guidance:
+- "0.5": Didn't mean to (Accidental, unintentional)
+- "1": Not Aware (Didn't realize the impact)
+- "1.5": Not Careful (Negligent)
+- "2": Meant to (Intentional)
+- "2.5": Thought Through (Deliberate)
+- "3": Fully Planned (Premeditated)
+
+Pattern (RP) Guidance:
+- "0.5": No Clear Pattern
+- "1": Balanced
+- "1.5": Mixed Signals
+- "2": Leaning Off
+- "2.5": Pattern Forming
+- "3": Consistent Pattern"""
+
+
+def _heuristic_classification(description: str) -> dict:
+    text = description.lower()
+    repeated = bool(
+        re.search(
+            r"(again|repeated|pattern|multiple|often|regularly|history|every time)",
+            text,
+        )
+    )
+    planned = bool(
+        re.search(
+            r"(planned|deliberate|intentional|knowingly|threatened|premeditated|organized)",
+            text,
+        )
+    )
+    accidental = bool(
+        re.search(
+            r"(accident|mistake|unintended|without knowing|unaware)",
+            text,
+        )
+    )
+    return {
+        "pattern": "2.5" if repeated else "1",
+        "intent": "2.5" if planned else ("0.5" if accidental else "1.5"),
+    }
+
+
+async def classify_description(description: str, api_key: str | None = None) -> dict:
+    """
+    Classify a report description into intent and pattern multipliers.
+    Returns {"intent": str, "pattern": str} — multiplier key strings.
+    Fallback: {"intent": "1", "pattern": "1"}
+    """
+    settings = get_settings()
+    key = api_key or settings.GEMINI_API_KEY
+    if not key:
+        return _heuristic_classification(description)
+
+    prompt_text = f"{CLASSIFICATION_SYSTEM_PROMPT}\n\nDescription: {description}"
+    url = (
+        f"https://generativelanguage.googleapis.com/v1beta/models/"
+        f"{settings.GEMINI_MODEL}:generateContent"
+    )
+    body = {"contents": [{"parts": [{"text": prompt_text}]}]}
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.post(
+                url,
+                headers={
+                    "Content-Type": "application/json",
+                    "x-goog-api-key": key,
+                },
+                json=body,
+            )
+        if not response.is_success:
+            return _heuristic_classification(description)
+
+        payload = response.json()
+        candidates = payload.get("candidates") or []
+        parts = (
+            (candidates[0].get("content") or {}).get("parts") or []
+            if candidates
+            else []
+        )
+        text = "".join(
+            str(part.get("text") or "") for part in parts if isinstance(part, dict)
+        )
+        json_obj = extract_json_object(text)
+        return {
+            "intent": str(json_obj.get("intent") or "1"),
+            "pattern": str(json_obj.get("pattern") or "1"),
+        }
+    except Exception as exc:
+        logger.warning("Gemini classification error: %s", exc)
+        return {"intent": "1", "pattern": "1"}
