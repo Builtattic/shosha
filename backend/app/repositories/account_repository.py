@@ -189,3 +189,13 @@ async def list_trending_accounts(
         .limit(limit)
     )
     return list(result.scalars().all())
+
+
+async def list_all_admin(db: AsyncSession, limit: int = 500) -> list[Account]:
+    result = await db.execute(
+        select(Account)
+        .options(*_ACCOUNT_LOAD_OPTIONS)
+        .order_by(Account.score.desc().nulls_last())
+        .limit(limit)
+    )
+    return list(result.scalars().all())

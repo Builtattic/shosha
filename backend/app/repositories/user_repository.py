@@ -58,6 +58,18 @@ async def update_last_login(db: AsyncSession, user: User) -> User:
     return user
 
 
+async def list_all(db: AsyncSession, limit: int = 500) -> list[User]:
+    result = await db.execute(
+        select(User).order_by(User.created_at.desc()).limit(limit)
+    )
+    return list(result.scalars().all())
+
+
+async def delete_user(db: AsyncSession, user: User) -> None:
+    await db.delete(user)
+    await db.flush()
+
+
 async def count_users(db: AsyncSession) -> int:
     result = await db.execute(select(func.count()).select_from(User))
     return result.scalar_one()
