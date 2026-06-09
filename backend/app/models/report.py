@@ -46,6 +46,7 @@ class Report(Base, BaseModelMixin):
         index=True,
     )
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    reported_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     visibility: Mapped[str] = mapped_column(String(16), nullable=False, default="public")
     pinned: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     featured: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

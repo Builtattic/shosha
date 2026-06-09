@@ -93,6 +93,7 @@ def _serialize_report(report) -> dict | None:
         "featured": report.featured,
         "report_type": report.report_type,
         "created_at": _iso(report.created_at),
+        "reported_at": _iso(report.reported_at),
     }
 
 
@@ -187,6 +188,7 @@ class AdminUpdateReportRequest(BaseModel):
     visibility: Literal["public", "hidden"] | None = None
     pinned: bool | None = None
     featured: bool | None = None
+    reported_at: datetime | None = None
 
 
 def serialize_user(u) -> dict:
