@@ -9,9 +9,7 @@ import { ReportModalProvider } from './contexts/ReportModalContext'
 import { NotificationsProvider } from './contexts/NotificationsContext'
 import { router } from './routes'
 import './index.css'
-
-const devModules = import.meta.glob('./DevElementResizer*.tsx', { eager: true });
-const DevToggle = Object.values(devModules)[0] ? (Object.values(devModules)[0] as any).default : null;
+import DevElementResizer from './DevElementResizer'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -31,7 +29,7 @@ createRoot(document.getElementById('root')!).render(
             <ReportModalProvider>
               <ToastProvider>
                 <RouterProvider router={router} />
-                {DevToggle && <DevToggle />}
+                {import.meta.env.DEV && <DevElementResizer />}
               </ToastProvider>
             </ReportModalProvider>
           </NotificationsProvider>

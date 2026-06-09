@@ -37,7 +37,7 @@ export function DesktopTopBar() {
 
   return (
     <header className="sticky top-0 z-40 hidden h-16 shrink-0 border-b border-border bg-background lg:flex">
-      <div className="flex  w-full items-center justify-end gap-2 px-6">
+      <div className="flex w-full items-center justify-end gap-2 px-6">
         {searchOpen ? (
           <form onSubmit={handleSearchSubmit} className="mr-2 flex min-w-0 flex-1 max-w-md items-center gap-2">
             <input
