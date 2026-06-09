@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Enum, Index, String
+from sqlalchemy import Boolean, DateTime, Enum, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, BaseModelMixin
@@ -24,6 +24,15 @@ class User(Base, BaseModelMixin):
     )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    trust_badge: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    trust_badge_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    trust_badge_pending: Mapped[bool | None] = mapped_column(Boolean, nullable=True, default=False)
+    trust_badge_submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    trust_badge_selfie_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    trust_badge_doc_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    trust_badge_doc_type: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    trust_badge_rejected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    trust_badge_rejection_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     owned_accounts = relationship("Account", back_populates="owner", foreign_keys="Account.owner_user_id")
     reports = relationship("Report", back_populates="reporter", foreign_keys="Report.reporter_user_id")

@@ -299,3 +299,103 @@ Media: {media_desc or "Media proof was supplied."}"""
         fallback = heuristic_adjudication(description, report_type)
         fallback.used_heuristic = True
         return fallback
+
+
+AUDIT_SYSTEM_PROMPT = """You audit a social media account's reputation holistically for Shosha. Given approved filings and recent posts, return a rebalanced Shosha Score and trait breakdown. Weight recent events more than old ones. Do not move score more than +/- 15 from current score in a single audit.
+
+Return strict JSON only:
+{
+  "newScore": 60,
+  "breakdown": {
+    "authenticity": 60,
+    "engagement": 60,
+    "community": 60,
+    "content": 60,
+    "impact": 60
+  },
+  "summary": "brief summary"
+}"""
+
+_AUDIT_TRAITS = ("authenticity", "engagement", "community", "content", "impact")
+# V1 clamps final score to 0–100; V2 Account.score uses a 1000 base.
+_AUDIT_SCORE_MIN = 0.0
+_AUDIT_SCORE_MAX = 1000.0
+
+
+def _audit_fallback(account: dict) -> dict:
+    return {
+        "newScore": account["score"],
+        "breakdown": account.get("breakdown") or {},
+        "summary": "Shosha heuristic fallback. No material score movement was applied.",
+    }
+
+
+def _parse_audit_result(json_obj: dict, account: dict) -> dict:
+    current_score = float(account["score"])
+    bounded = _clamp(float(json_obj.get("newScore", current_score)), current_score - 15, current_score + 15)
+    breakdown_raw = json_obj.get("breakdown") or {}
+    if not isinstance(breakdown_raw, dict):
+        breakdown_raw = {}
+
+    return {
+        "newScore": round(_clamp(bounded, _AUDIT_SCORE_MIN, _AUDIT_SCORE_MAX)),
+        "breakdown": {
+            trait: round(_clamp(float(breakdown_raw.get(trait, 0))))
+            for trait in _AUDIT_TRAITS
+        },
+        "summary": str(json_obj.get("summary") or "")[:500],
+    }
+
+
+async def run_full_audit(
+    account: dict,
+    approved_reports: list,
+    recent_posts: list | None = None,
+) -> dict:
+    settings = get_settings()
+    if not settings.GEMINI_API_KEY:
+        return _audit_fallback(account)
+
+    payload = {
+        "account": account,
+        "approvedReports": approved_reports,
+        "recentPosts": recent_posts or [],
+    }
+    prompt_text = f"{AUDIT_SYSTEM_PROMPT}\n\n{json.dumps(payload)}"
+    url = (
+        f"https://generativelanguage.googleapis.com/v1beta/models/"
+        f"{settings.GEMINI_MODEL}:generateContent"
+    )
+    body = {"contents": [{"parts": [{"text": prompt_text}]}]}
+
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            response = await client.post(
+                url,
+                headers={
+                    "Content-Type": "application/json",
+                    "x-goog-api-key": settings.GEMINI_API_KEY,
+                },
+                json=body,
+            )
+        if not response.is_success:
+            logger.warning(
+                "Gemini audit failed with status %s", response.status_code
+            )
+            return _audit_fallback(account)
+
+        response_payload = response.json()
+        candidates = response_payload.get("candidates") or []
+        parts = (
+            (candidates[0].get("content") or {}).get("parts") or []
+            if candidates
+            else []
+        )
+        text = "".join(
+            str(part.get("text") or "") for part in parts if isinstance(part, dict)
+        )
+        json_obj = extract_json_object(text)
+        return _parse_audit_result(json_obj, account)
+    except Exception as exc:
+        logger.warning("Gemini audit error: %s", exc)
+        return _audit_fallback(account)
