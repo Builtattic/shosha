@@ -9,6 +9,7 @@ import { ReportModalProvider } from './contexts/ReportModalContext'
 import { NotificationsProvider } from './contexts/NotificationsContext'
 import { router } from './routes'
 import './index.css'
+import DevElementResizer from './DevElementResizer'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -28,6 +29,7 @@ createRoot(document.getElementById('root')!).render(
             <ReportModalProvider>
               <ToastProvider>
                 <RouterProvider router={router} />
+                {import.meta.env.DEV && <DevElementResizer />}
               </ToastProvider>
             </ReportModalProvider>
           </NotificationsProvider>
