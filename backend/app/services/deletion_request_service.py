@@ -7,8 +7,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import raise_api_error
 from app.models.deletion_request import DeletionRequest
-from app.models.enums import DeletionRequestStatus
+from app.models.enums import (
+    AdminActionType,
+    DeletionRequestStatus,
+    NotificationType,
+)
 from app.repositories import deletion_request_repository as repo
+from app.repositories import notification_repository, user_repository
+from app.services import admin_action_service
 
 _DECISION_STATUSES = (
     DeletionRequestStatus.APPROVED,
@@ -73,6 +79,8 @@ async def decide_deletion_request(
     deletion_request = await repo.get_by_id(db, deletion_request_id)
     if deletion_request is None:
         raise_api_error("not_found", "Deletion request not found")
+    if deletion_request.status != DeletionRequestStatus.PENDING:
+        raise_api_error("already_decided", "This deletion request is already decided")
 
     updated = await repo.update(
         db,
@@ -84,4 +92,56 @@ async def decide_deletion_request(
     )
     await db.commit()
     await db.refresh(updated)
+
+    if status == DeletionRequestStatus.APPROVED:
+        user = await user_repository.get_by_id(db, updated.user_id)
+        if user is not None:
+            await user_repository.update(
+                db,
+                user,
+                display_name="Deleted User",
+                username=f"deleted_{str(updated.user_id)[:8]}",
+                email=f"deleted_{updated.user_id}@noshosha.com",
+                photo_url=None,
+            )
+            await db.commit()
+
+    if status == DeletionRequestStatus.APPROVED:
+        title = "Account deletion approved"
+        message = (
+            "Your account deletion request has been approved. "
+            "Your data has been anonymized."
+        )
+    else:
+        title = "Account deletion rejected"
+        message = (
+            review_note
+            or "Your account deletion request has been reviewed and rejected."
+        )
+
+    await notification_repository.create(
+        db,
+        user_id=updated.user_id,
+        notification_type=NotificationType.SYSTEM,
+        title=title,
+        message=message,
+        metadata_json={
+            "deletion_request_id": str(updated.id),
+            "verdict": status.value.lower(),
+        },
+    )
+    await db.commit()
+
+    await admin_action_service.log_action(
+        db,
+        actor_user_id=reviewer_id,
+        action_type=AdminActionType.DELETION_REQUEST_DECIDE,
+        target_type="deletion_request",
+        target_id=updated.id,
+        metadata_json={
+            "verdict": status.value,
+            "user_id": str(updated.user_id),
+        },
+    )
+
     return updated

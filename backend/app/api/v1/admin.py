@@ -25,8 +25,10 @@ from app.models.enums import (
     AccountStatus,
     AdminActionType,
     ClaimRequestStatus,
+    DeletionRequestStatus,
     DisputeStatus,
     EvidenceProposalStatus,
+    IssueReportStatus,
     ModerationRequestStatus,
     ReportStatus,
     UserRole,
@@ -35,14 +37,19 @@ from app.models.user import User
 from app.repositories import account_repository, report_repository, user_repository
 from app.schemas.common import SuccessEnvelope
 from app.services import (
+    admin_abuse_service,
     admin_account_service,
     admin_action_service,
+    admin_audit_service,
     admin_ownership_service,
     admin_score_service,
     admin_user_service,
+    deletion_request_service,
     evidence_proposal_service,
+    issue_report_service,
     moderation_request_service,
     site_setting_service,
+    trust_badge_service,
 )
 from app.services.scoring_service import DEFAULT_MULTIPLIERS, apply_report_score
 
@@ -205,6 +212,27 @@ def serialize_user(u) -> dict:
     }
 
 
+def _serialize_trust_badge_user(u) -> dict:
+    return {
+        **serialize_user(u),
+        "trust_badge": u.trust_badge,
+        "trust_badge_at": u.trust_badge_at.isoformat() if u.trust_badge_at else None,
+        "trust_badge_pending": u.trust_badge_pending,
+        "trust_badge_submitted_at": (
+            u.trust_badge_submitted_at.isoformat()
+            if u.trust_badge_submitted_at
+            else None
+        ),
+        "trust_badge_selfie_url": u.trust_badge_selfie_url,
+        "trust_badge_doc_url": u.trust_badge_doc_url,
+        "trust_badge_doc_type": u.trust_badge_doc_type,
+        "trust_badge_rejected_at": (
+            u.trust_badge_rejected_at.isoformat() if u.trust_badge_rejected_at else None
+        ),
+        "trust_badge_rejection_reason": u.trust_badge_rejection_reason,
+    }
+
+
 def serialize_account(a) -> dict:
     return {
         "id": str(a.id),
@@ -270,6 +298,25 @@ class AdminOwnershipRevokeRequest(BaseModel):
 
 class AdminScoreReplayRequest(BaseModel):
     account_id: UUID | None = None
+
+
+class TrustBadgeDecideRequest(BaseModel):
+    verdict: Literal["approved", "rejected"]
+    note: str | None = None
+
+
+class AuditDecideRequest(BaseModel):
+    verdict: Literal["completed", "rejected"]
+    note: str | None = None
+
+
+class DeletionRequestDecideRequest(BaseModel):
+    verdict: Literal["approved", "rejected"]
+    note: str = Field(default="", max_length=500)
+
+
+class IssueStatusUpdateRequest(BaseModel):
+    status: str
 
 
 _SETTINGS_SNAKE_TO_CAMEL = {
@@ -588,6 +635,16 @@ async def admin_list_users(
     return success({"users": [serialize_user(u) for u in users]})
 
 
+@router.get("/users/{user_id}")
+async def admin_get_user(
+    user_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_moderator),
+):
+    user = await admin_user_service.get_user(db, user_id)
+    return success({"user": serialize_user(user)})
+
+
 @router.patch("/users/{user_id}")
 async def admin_update_user(
     user_id: UUID,
@@ -646,6 +703,16 @@ async def admin_create_account(
         status_code=201,
         content=success({"account": serialize_account(account)}),
     )
+
+
+@router.get("/accounts/{account_id}")
+async def admin_get_account(
+    account_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_moderator),
+):
+    account = await admin_account_service.get_account(db, account_id)
+    return success({"account": serialize_account(account)})
 
 
 @router.patch("/accounts/{account_id}")
@@ -755,4 +822,258 @@ async def admin_score_replay(
     result = await admin_score_service.replay_all(db, current_user.id)
     return success(
         {"account_results": result["account_results"], "user_results": []}
+    )
+
+
+@router.get("/audits")
+async def admin_list_audits(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_moderator),
+):
+    items = await admin_audit_service.list_pending(db)
+    return success({"audits": items})
+
+
+@router.post("/audits/{audit_id}/run")
+async def admin_run_audit(
+    audit_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_moderator),
+):
+    result = await admin_audit_service.run_audit(db, audit_id, current_user.id)
+    return success(result)
+
+
+@router.post("/audits/{audit_id}/decide")
+async def admin_decide_audit(
+    audit_id: UUID,
+    data: AuditDecideRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_moderator),
+):
+    audit = await admin_audit_service.decide_audit(
+        db, audit_id, current_user.id, data.verdict, data.note
+    )
+    return success(
+        {
+            "audit": {
+                "id": str(audit.id),
+                "status": audit.status.value,
+                "updated_at": audit.updated_at.isoformat(),
+            }
+        }
+    )
+
+
+@router.get("/abuse")
+async def admin_list_abuse(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_moderator),
+):
+    items = await admin_abuse_service.list_flagged(db)
+    return success({"reports": items})
+
+
+@router.post("/abuse/{report_id}/dismiss")
+async def admin_dismiss_abuse(
+    report_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_moderator),
+):
+    report = await admin_abuse_service.dismiss_abuse(db, report_id, current_user.id)
+    return success(
+        {
+            "report": {
+                "id": str(report.id),
+                "ai_verdict": report.ai_verdict,
+                "status": report.status.value,
+            }
+        }
+    )
+
+
+@router.get("/trust-badge")
+async def admin_list_trust_badge_pending(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_moderator),
+):
+    users = await trust_badge_service.list_pending(db)
+    return success({"items": [_serialize_trust_badge_user(u) for u in users]})
+
+
+@router.post("/trust-badge/{user_id}/decide")
+async def admin_decide_trust_badge(
+    user_id: UUID,
+    data: TrustBadgeDecideRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_moderator),
+):
+    result = await trust_badge_service.decide(
+        db, user_id, current_user.id, data.verdict, data.note
+    )
+    return success(result)
+
+
+@router.get("/deletion-requests")
+async def admin_list_deletion_requests(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_moderator),
+):
+    items, _cursor = await deletion_request_service.list_all(db, limit=100, cursor=None)
+    return success(
+        {
+            "deletion_requests": [
+                {
+                    "id": str(r.id),
+                    "user_id": str(r.user_id),
+                    "reason": r.reason,
+                    "status": r.status.value,
+                    "created_at": r.created_at.isoformat(),
+                    "reviewed_at": r.reviewed_at.isoformat() if r.reviewed_at else None,
+                }
+                for r in items
+            ]
+        }
+    )
+
+
+@router.post("/deletion-requests/{deletion_request_id}/decide")
+async def admin_decide_deletion_request(
+    deletion_request_id: UUID,
+    data: DeletionRequestDecideRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_moderator),
+):
+    status_enum = DeletionRequestStatus[data.verdict.upper()]
+    await deletion_request_service.decide_deletion_request(
+        db,
+        deletion_request_id,
+        current_user.id,
+        status_enum,
+        data.note or None,
+    )
+    return success({"success": True})
+
+
+@router.get("/issues")
+async def admin_list_issues(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_moderator),
+):
+    items, _cursor = await issue_report_service.list_all(db, limit=100, cursor=None)
+    return success(
+        {
+            "issues": [
+                {
+                    "id": str(r.id),
+                    "name": r.name,
+                    "email": r.email,
+                    "issue_type": r.issue_type,
+                    "title": r.title,
+                    "status": r.status.value,
+                    "severity": r.severity,
+                    "created_at": r.created_at.isoformat(),
+                }
+                for r in items
+            ]
+        }
+    )
+
+
+@router.post("/issues/{issue_id}/status")
+async def admin_update_issue_status(
+    issue_id: UUID,
+    data: IssueStatusUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_moderator),
+):
+    try:
+        status_enum = IssueReportStatus(data.status)
+    except ValueError:
+        raise_api_error("validation_error", f"Invalid status: {data.status}")
+    await issue_report_service.update_status(
+        db, issue_id, current_user.id, status_enum
+    )
+    return success({"success": True})
+
+
+@router.get("/data")
+async def admin_data_collections(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_moderator),
+):
+    _ = db
+    collections = [
+        {"id": "reports", "label": "Reports", "description": "User filed reports"},
+        {"id": "accounts", "label": "Accounts", "description": "Tracked accounts"},
+        {"id": "users", "label": "Users", "description": "Registered users"},
+        {
+            "id": "deletion_requests",
+            "label": "Deletion Requests",
+            "description": "GDPR deletion requests",
+        },
+        {
+            "id": "audit_requests",
+            "label": "Audit Requests",
+            "description": "Account audit queue",
+        },
+        {
+            "id": "issue_reports",
+            "label": "Issue Reports",
+            "description": "User-submitted bug reports",
+        },
+        {
+            "id": "moderation_requests",
+            "label": "Moderation Requests",
+            "description": "Report moderation queue",
+        },
+        {
+            "id": "evidence_proposals",
+            "label": "Evidence Proposals",
+            "description": "Admin evidence queue",
+        },
+    ]
+    can_write = current_user.role.value in ("ADMIN", "SUPER_ADMIN")
+    return success({"collections": collections, "can_write": can_write})
+
+
+@router.get("/data/{collection}/{record_id}")
+async def admin_data_get_record(
+    collection: str,
+    record_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_moderator),
+):
+    _ = collection, record_id, db, current_user
+    raise_api_error(
+        "not_implemented",
+        "Generic data browser not yet implemented. Use dedicated admin endpoints.",
+    )
+
+
+@router.patch("/data/{collection}/{record_id}")
+async def admin_data_patch_record(
+    collection: str,
+    record_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_super_admin),
+):
+    _ = collection, record_id, db, current_user
+    raise_api_error(
+        "not_implemented",
+        "Generic data browser not yet implemented.",
+    )
+
+
+@router.delete("/data/{collection}/{record_id}")
+async def admin_data_delete_record(
+    collection: str,
+    record_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_super_admin),
+):
+    _ = collection, record_id, db, current_user
+    raise_api_error(
+        "not_implemented",
+        "Generic data browser not yet implemented.",
     )
