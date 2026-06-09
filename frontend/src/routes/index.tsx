@@ -5,6 +5,8 @@ import { AppShell } from '@/components/nav/AppShell';
 
 // Public pages
 import Landing from '@/pages/Landing';
+import Notifications from '@/pages/Notifications';
+import Admin from '@/pages/Admin';
 
 // Auth screens
 import SignIn from '@/pages/SignIn';
@@ -84,11 +86,13 @@ export const router = createBrowserRouter([
   { path: '/subscribe',   element: <AppRoute><Subscribe /></AppRoute> },
   { path: '/billing',     element: <AppRoute><Billing /></AppRoute> },
 
-  // Admin (deferred — out of scope for current MVP sprint; placeholder until scoped)
-  { path: '/admin', element: <AppRoute><Dashboard /></AppRoute> },
+  // Admin
+  { path: '/admin', element: <AppRoute><Admin /></AppRoute> },
+
+  // Settings / Notifications
+  { path: '/notifications', element: <AppRoute><Notifications /></AppRoute> },
 
   // Placeholder redirects — prevent dead links in sidebar/nav
-  { path: '/notifications', element: <AppRoute><Dashboard /></AppRoute> },
   { path: '/impact',        element: <AppRoute><Dashboard /></AppRoute> },
   { path: '/ranks',         element: <AppRoute><Dashboard /></AppRoute> },
 ]);

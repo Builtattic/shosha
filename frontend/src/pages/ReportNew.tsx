@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, ChevronRight, X, Image as ImageIcon, CheckCircle2, AlertTriangle, Info } from 'lucide-react';
+import { Search, ChevronRight, X, Image as ImageIcon, CheckCircle2, AlertTriangle, Info, UploadCloud } from 'lucide-react';
 import { useAuth } from '@/providers/AuthProvider';
 import { searchAccounts, getAccount } from '@/api/accounts';
 import type { SearchAccount } from '@/mocks/accounts';
 import { submitReport } from '@/api/reports';
+import { uploadMedia } from '@/api/media';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useToast } from '@/components/ui/Toast';
 import { cn } from '@/lib/utils';
@@ -35,6 +36,7 @@ export default function ReportNew() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('Other');
+  const [mediaFile, setMediaFile] = useState<File | null>(null);
   
   // Submit state
   const [submitting, setSubmitting] = useState(false);
@@ -90,11 +92,21 @@ export default function ReportNew() {
 
     setSubmitting(true);
     try {
+      let mediaData;
+      if (mediaFile) {
+        const uploadRes = await uploadMedia(mediaFile);
+        if (uploadRes.ok && uploadRes.data) {
+          mediaData = [uploadRes.data];
+        } else {
+          throw new Error('Media upload failed');
+        }
+      }
+
       const res = await submitReport({
         account_id: selectedAccount._id,
         title,
         description,
-        // Media is skipped for MVP blocker
+        media: mediaData ? mediaData.map(m => ({ ...m, thumbnail_url: m.thumbnail_url ?? undefined })) : undefined,
       });
       
       if (res.ok && res.data) {
@@ -283,14 +295,37 @@ export default function ReportNew() {
                     </select>
                   </div>
 
-                  {/* Media Upload Placeholder */}
+                  {/* Media Upload */}
                   <div>
                     <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Evidence (Optional)</label>
-                    <div className="border-2 border-dashed border-border/50 rounded-2xl p-8 text-center bg-muted/20">
-                      <ImageIcon className="w-8 h-8 text-muted-foreground mx-auto mb-3 opacity-50" />
-                      <div className="text-sm font-medium">Media upload coming soon</div>
-                      <p className="text-xs text-muted-foreground mt-1">Video and image evidence will be supported in a future update.</p>
-                    </div>
+                    <label className={cn(
+                      "flex flex-col items-center justify-center border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-colors",
+                      mediaFile ? "border-primary/50 bg-primary/5" : "border-border/50 bg-muted/20 hover:bg-muted/30"
+                    )}>
+                      <input 
+                        type="file" 
+                        accept="image/*,video/*" 
+                        className="hidden" 
+                        onChange={e => {
+                          if (e.target.files && e.target.files[0]) {
+                            setMediaFile(e.target.files[0]);
+                          }
+                        }}
+                      />
+                      {mediaFile ? (
+                        <>
+                          <CheckCircle2 className="w-8 h-8 text-primary mx-auto mb-3" />
+                          <div className="text-sm font-medium text-foreground">{mediaFile.name}</div>
+                          <p className="text-xs text-muted-foreground mt-1">{(mediaFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                        </>
+                      ) : (
+                        <>
+                          <UploadCloud className="w-8 h-8 text-muted-foreground mx-auto mb-3 opacity-50" />
+                          <div className="text-sm font-medium">Click to upload evidence</div>
+                          <p className="text-xs text-muted-foreground mt-1">Supports Images & Videos up to 50MB</p>
+                        </>
+                      )}
+                    </label>
                   </div>
                 </div>
               </div>
@@ -350,6 +385,12 @@ export default function ReportNew() {
                     <div>
                       <p className="text-sm text-foreground/80 whitespace-pre-wrap">{description}</p>
                     </div>
+                    {mediaFile && (
+                      <div className="flex items-center text-xs font-medium text-primary bg-primary/10 w-fit px-3 py-1.5 rounded-lg mt-2">
+                        <ImageIcon className="w-4 h-4 mr-2" />
+                        Evidence Attached: {mediaFile.name}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

@@ -2,10 +2,10 @@
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, LogOut, Plus, Search, User, X } from 'lucide-react';
+import { LogOut, Plus, Search, User, X } from 'lucide-react';
 import { useReportModal } from '@/contexts/ReportModalContext';
-import { useNotifications } from '@/contexts/NotificationsContext';
 import { useAuth } from '@/providers/AuthProvider';
+import { NotificationsDropdown } from './NotificationsDropdown';
 
 const iconButtonClass =
   'p-2 rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground';
@@ -13,7 +13,6 @@ const iconButtonClass =
 export function DesktopTopBar() {
   const navigate = useNavigate();
   const reportModal = useReportModal();
-  const { unreadCount } = useNotifications();
   const { firebaseUser, logout } = useAuth();
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -37,8 +36,8 @@ export function DesktopTopBar() {
   }
 
   return (
-    <header className="sticky top-0 z-40 hidden h-14 shrink-0 border-b border-border bg-background/80 backdrop-blur-xl lg:flex">
-      <div className="flex w-full items-center justify-end gap-2 px-6">
+    <header className="sticky top-0 z-40 hidden h-16 shrink-0 border-b border-border bg-background lg:flex">
+      <div className="flex  w-full items-center justify-end gap-2 px-6">
         {searchOpen ? (
           <form onSubmit={handleSearchSubmit} className="mr-2 flex min-w-0 flex-1 max-w-md items-center gap-2">
             <input
@@ -77,21 +76,7 @@ export function DesktopTopBar() {
           <Plus size={22} />
         </button>
 
-        <button
-          type="button"
-          onClick={() => navigate('/notifications')}
-          className={`relative ${iconButtonClass}`}
-          aria-label="Notifications"
-        >
-          <Bell size={22} />
-          {unreadCount > 0 && (
-            <span className="pointer-events-none absolute right-0.5 top-0 flex h-4 min-w-4 items-center justify-center rounded-full border border-background bg-destructive px-1 text-[9px] font-bold text-background">
-              {unreadCount > 9 ? '9+' : unreadCount}
-            </span>
-          )}
-        </button>
-
-      
+        <NotificationsDropdown iconButtonClass={iconButtonClass} />
 
         <button
           type="button"
