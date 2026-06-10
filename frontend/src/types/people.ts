@@ -1,15 +1,25 @@
-import type { AccountSummary } from './account';
+export type SwipeDirection = 'ALIGN' | 'OPPOSE';
 
-export type SwipeDirection = 'follow' | 'skip';
-
-export interface PersonCard extends AccountSummary {
-  mutual_count: number;
-  occupation_role: string | null;
-  location: string | null;
-  tags: string[];
+export interface DeckItem {
+  id: string;
+  platform: string;
+  handle: string;
+  display_name: string | null;
+  bio: string | null;
+  score: number;
+  owner_user_id: string | null;
+  status: string;
 }
 
-export interface SwipePayload {
+export interface DeckResponse {
+  items: DeckItem[];
+  next_cursor: number;
+  has_more: boolean;
+}
+
+export interface SwipeResult {
   account_id: string;
   direction: SwipeDirection;
+  delta: number;
+  new_account_score: number;
 }
