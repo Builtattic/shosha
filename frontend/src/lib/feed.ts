@@ -1,14 +1,22 @@
-// lib/feed.ts
-// Shared feed utilities: type re-exports, timestamp helper, toFeedItem mapper.
-// Imported by Dashboard, PostDetailModal, and any other page that renders feeds.
-
-import type { FeedReport, FeedItemProps } from '@/types/feed';
+import type { FeedFilter, FeedReport, FeedItemProps } from '@/types/feed';
 
 export type { FeedReport };
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+export function filterFeedReports(reports: FeedReport[], filter: FeedFilter): FeedReport[] {
+  switch (filter) {
+    case 'top':
+      return [...reports].sort((a, b) => Math.abs(b.base_score ?? 0) - Math.abs(a.base_score ?? 0));
+    case 'following':
+      // TODO: filter by followed accounts when follow graph is exposed in feed
+      return reports;
+    case 'near':
+      return [];
+    case 'for_you':
+    default:
+      return reports;
+  }
+}
 
-/** Convert an ISO date string to a compact relative time label. */
 export function timestamp(value?: string): string {
   if (!value) return 'just now';
   const diff = Date.now() - new Date(value).getTime();
@@ -20,44 +28,65 @@ export function timestamp(value?: string): string {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-/**
- * Map a raw FeedReport (API/mock shape) to the FeedItemProps expected by
- * the <FeedItem> component.
- */
+function mapViewerVote(vote: 'ALIGN' | 'OPPOSE' | null | undefined): 'align' | 'oppose' | null {
+  if (vote === 'ALIGN') return 'align';
+  if (vote === 'OPPOSE') return 'oppose';
+  return null;
+}
+
 export function toFeedItem(report: FeedReport): FeedItemProps {
+  const account = report.account;
+  const firstMedia = report.media[0];
+  const proposedImpact =
+    typeof report.ai_verdict?.proposed_impact === 'number'
+      ? report.ai_verdict.proposed_impact
+      : typeof report.ai_verdict?.proposedImpact === 'number'
+        ? report.ai_verdict.proposedImpact
+        : 0;
+
   return {
-    id: report._id,
+    id: report.id,
     user: {
-      name: report.account.displayName.replace(/^@/, ''),
-      handle: report.account.username.replace(/^@/, ''),
-      avatar: report.account.avatarUrl ?? '',
-      isVerified: Boolean(report.account.verified),
-      accountId: report.account._id,
-      platform: report.account.platform,
+      name: (account?.display_name ?? account?.handle ?? 'Unknown').replace(/^@/, ''),
+      handle: (account?.handle ?? '').replace(/^@/, ''),
+      avatar: '',
+      isVerified: false,
+      accountId: account?.id,
+      platform: account?.platform,
     },
     reporter: report.reporter
       ? {
-          name: report.reporter.name || report.reporter.username.replace(/^@/, ''),
+          name: report.reporter.display_name || report.reporter.username.replace(/^@/, ''),
           handle: report.reporter.username.replace(/^@/, ''),
-          avatar: report.reporter.photoUrl ?? '',
-          isVerified:
-            report.reporter.role === 'admin' || report.reporter.role === 'moderator',
+          avatar: report.reporter.photo_url ?? '',
+          isVerified: false,
         }
       : undefined,
-    timestamp: timestamp(report.createdAt),
+    timestamp: timestamp(report.created_at),
     type: report.type,
-    title: report.description,
-    location: 'Global',
-    media: report.media
-      ? { type: report.media.type, url: report.media.url, thumbUrl: report.media.thumbUrl }
+    title: report.title || report.description,
+    description: report.description,
+    evidenceSourceUrl: report.evidence_source_url ?? undefined,
+    media: firstMedia
+      ? {
+          type: firstMedia.media_type,
+          url: firstMedia.url,
+          thumbUrl: firstMedia.thumbnail_url ?? undefined,
+          count: report.media.length > 1 ? report.media.length : undefined,
+        }
       : undefined,
     category: report.category,
-    deed: report.deed,
-    disputeStatus: report.disputeStatus,
-    reportScore: report.reportScore ?? report.baseScore,
-    stats: report.stats ?? { aligns: 0, opposes: 0, comments: 0, shares: 0 },
-    delta: report.adminDecision?.finalImpact ?? report.aiVerdict?.proposedImpact ?? 0,
-    viewer: report.viewer,
-    canRequestModeration: report.canRequestModeration,
+    deed: report.deed ?? undefined,
+    reportScore: report.report_score ?? report.base_score ?? undefined,
+    stats: report.stats,
+    delta: proposedImpact,
+    viewer: report.viewer
+      ? {
+          vote: mapViewerVote(report.viewer.vote),
+          bookmarked: report.viewer.bookmarked,
+        }
+      : undefined,
+    canRequestModeration: report.can_request_moderation,
+    publicAnonymous: report.public_anonymous,
   };
 }

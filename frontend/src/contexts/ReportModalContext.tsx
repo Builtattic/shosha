@@ -17,9 +17,6 @@ const ReportModalContext = createContext<ReportModalContextType>({
 });
 
 // ── Provider ───────────────────────────────────────────────────────────────────
-// Stub — the full <ReportModal> will be mounted here once the Reports module
-// is ported. For now the context is wired so MobileAppHeader compiles and the
-// (+) button won't crash.
 export function ReportModalProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const [accountId, setAccountId] = useState<string | undefined>();
@@ -32,7 +29,6 @@ export function ReportModalProvider({ children }: { children: React.ReactNode })
       close: () => { setIsOpen(false); setAccountId(undefined); },
     }}>
       {children}
-      {/* TODO: <ReportModal open={isOpen} onClose={close} accountId={accountId} /> */}
     </ReportModalContext.Provider>
   );
 }

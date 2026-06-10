@@ -4,7 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, ChevronRight, X, Image as ImageIcon, CheckCircle2, AlertTriangle, Info, UploadCloud } from 'lucide-react';
 import { useAuth } from '@/providers/AuthProvider';
 import { searchAccounts, getAccount } from '@/api/accounts';
-import type { SearchAccount } from '@/mocks/accounts';
+import type { Account } from '@/types/account';
+import type { ReportCreatePayload } from '@/types/report';
 import { submitReport } from '@/api/reports';
 import { uploadMedia } from '@/api/media';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -27,15 +28,17 @@ export default function ReportNew() {
   // Step 1 State: Account Selection
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearch = useDebounce(searchQuery, 400);
-  const [searchResults, setSearchResults] = useState<SearchAccount[]>([]);
+  const [searchResults, setSearchResults] = useState<Account[]>([]);
   const [searching, setSearching] = useState(false);
-  const [selectedAccount, setSelectedAccount] = useState<SearchAccount | null>(null);
+  const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
 
   // Step 2 State: Report Details
   const [type, setType] = useState<'negative'|'positive'>('negative');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('Other');
+  const [isIrl, setIsIrl] = useState(false);
+  const [evidenceSourceUrl, setEvidenceSourceUrl] = useState('');
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   
   // Submit state
@@ -51,13 +54,7 @@ export default function ReportNew() {
       const res = await getAccount(aid);
       if (!mounted) return;
       if (res.ok && res.data) {
-        const acc = res.data.account;
-        setSelectedAccount({
-          _id: acc.id,
-          username: acc.handle,
-          displayName: acc.display_name ?? acc.handle,
-          platform: acc.platform,
-        });
+        setSelectedAccount(res.data.account);
         setStep(2);
       }
     })();
@@ -89,29 +86,42 @@ export default function ReportNew() {
       toast.push('Please complete all required fields');
       return;
     }
+    if (!isIrl && !evidenceSourceUrl.trim()) {
+      toast.push('Please provide an evidence source URL for online reports');
+      return;
+    }
 
     setSubmitting(true);
     try {
-      let mediaData;
+      let mediaPayload: ReportCreatePayload['media'];
       if (mediaFile) {
         const uploadRes = await uploadMedia(mediaFile);
         if (uploadRes.ok && uploadRes.data) {
-          mediaData = [uploadRes.data];
+          mediaPayload = [{
+            media_type: uploadRes.data.media_type,
+            url: uploadRes.data.url,
+            thumbnail_url: uploadRes.data.thumbnail_url ?? undefined,
+          }];
         } else {
           throw new Error('Media upload failed');
         }
       }
 
-      const res = await submitReport({
-        account_id: selectedAccount._id,
+      const payload: ReportCreatePayload = {
+        account_id: selectedAccount.id,
         title,
         description,
-        media: mediaData ? mediaData.map(m => ({ ...m, thumbnail_url: m.thumbnail_url ?? undefined })) : undefined,
-      });
+        type,
+        is_irl: isIrl,
+        evidence_source_url: isIrl ? undefined : evidenceSourceUrl.trim(),
+        media: mediaPayload,
+      };
+
+      const res = await submitReport(payload);
       
       if (res.ok && res.data) {
         toast.push('Report submitted successfully!');
-        navigate(`/reports/${res.data.report._id}`, { replace: true });
+        navigate(`/reports/${res.data.report.id}`, { replace: true });
       } else {
         throw new Error(res.error || 'Failed');
       }
@@ -186,17 +196,17 @@ export default function ReportNew() {
                 ) : searchResults.length > 0 ? (
                   searchResults.map(acc => (
                     <div 
-                      key={acc._id} 
+                      key={acc.id} 
                       onClick={() => { setSelectedAccount(acc); setStep(2); }}
                       className="bg-card border border-border/50 rounded-xl p-3 flex items-center justify-between cursor-pointer hover:border-primary/50 transition-colors"
                     >
                       <div className="flex items-center space-x-3">
-                        <img src={acc.avatarUrl || `https://api.dicebear.com/9.x/initials/svg?seed=${acc.username}`} alt="" className="w-10 h-10 rounded-full" />
+                        <img src={`https://api.dicebear.com/9.x/initials/svg?seed=${acc.handle}`} alt="" className="w-10 h-10 rounded-full" />
                         <div>
-                          <div className="font-bold text-sm">{acc.displayName}</div>
+                          <div className="font-bold text-sm">{acc.display_name ?? acc.handle}</div>
                           <div className="text-xs text-muted-foreground flex items-center gap-1">
                             <span className="bg-muted px-1 rounded uppercase text-[9px]">{acc.platform || 'General'}</span>
-                            @{acc.username}
+                            @{acc.handle}
                           </div>
                         </div>
                       </div>
@@ -206,7 +216,11 @@ export default function ReportNew() {
                 ) : searchQuery.trim() !== '' ? (
                   <div className="text-center py-8">
                     <p className="text-muted-foreground text-sm mb-4">No accounts found.</p>
-                    <button className="px-4 py-2 bg-secondary text-sm font-medium rounded-full">
+                    <button
+                      type="button"
+                      onClick={() => navigate('/accounts/new')}
+                      className="px-4 py-2 bg-secondary text-sm font-medium rounded-full"
+                    >
                       Create new dossier
                     </button>
                   </div>
@@ -227,10 +241,10 @@ export default function ReportNew() {
               {/* Selected Account Card */}
               <div className="bg-muted/30 border border-border/50 rounded-xl p-3 flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <img src={selectedAccount.avatarUrl || `https://api.dicebear.com/9.x/initials/svg?seed=${selectedAccount.username}`} alt="" className="w-8 h-8 rounded-full" />
+                  <img src={`https://api.dicebear.com/9.x/initials/svg?seed=${selectedAccount.handle}`} alt="" className="w-8 h-8 rounded-full" />
                   <div>
-                    <div className="font-bold text-sm">{selectedAccount.displayName}</div>
-                    <div className="text-xs text-muted-foreground">@{selectedAccount.username}</div>
+                    <div className="font-bold text-sm">{selectedAccount.display_name ?? selectedAccount.handle}</div>
+                    <div className="text-xs text-muted-foreground">@{selectedAccount.handle}</div>
                   </div>
                 </div>
                 <button onClick={() => setStep(1)} className="p-2 hover:bg-muted rounded-full">
@@ -283,6 +297,37 @@ export default function ReportNew() {
                     />
                   </div>
 
+                  {/* IRL vs Online */}
+                  <div className="flex bg-muted/50 p-1 rounded-xl">
+                    <button
+                      type="button"
+                      onClick={() => setIsIrl(false)}
+                      className={cn("flex-1 py-2.5 rounded-lg text-sm font-bold transition-all", !isIrl ? "bg-background shadow-sm" : "text-muted-foreground")}
+                    >
+                      Online / URL evidence
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsIrl(true)}
+                      className={cn("flex-1 py-2.5 rounded-lg text-sm font-bold transition-all", isIrl ? "bg-background shadow-sm" : "text-muted-foreground")}
+                    >
+                      In real life (IRL)
+                    </button>
+                  </div>
+
+                  {!isIrl && (
+                    <div>
+                      <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Evidence Source URL</label>
+                      <input
+                        type="url"
+                        value={evidenceSourceUrl}
+                        onChange={e => setEvidenceSourceUrl(e.target.value)}
+                        placeholder="https://..."
+                        className="w-full bg-card border border-border/50 rounded-xl px-4 py-3 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm"
+                      />
+                    </div>
+                  )}
+
                   {/* Category */}
                   <div>
                     <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Category</label>
@@ -332,7 +377,7 @@ export default function ReportNew() {
 
               <div className="pt-4">
                 <button 
-                  disabled={!title.trim() || !description.trim()}
+                  disabled={!title.trim() || !description.trim() || (!isIrl && !evidenceSourceUrl.trim())}
                   onClick={() => setStep(3)}
                   className="w-full py-4 bg-primary text-primary-foreground rounded-2xl font-bold disabled:opacity-50 transition-opacity"
                 >
@@ -360,10 +405,10 @@ export default function ReportNew() {
                     <button onClick={() => setStep(1)} className="text-xs text-primary font-medium">Edit</button>
                   </div>
                   <div className="p-4 flex items-center space-x-3">
-                    <img src={selectedAccount.avatarUrl || `https://api.dicebear.com/9.x/initials/svg?seed=${selectedAccount.username}`} alt="" className="w-10 h-10 rounded-full" />
+                    <img src={`https://api.dicebear.com/9.x/initials/svg?seed=${selectedAccount.handle}`} alt="" className="w-10 h-10 rounded-full" />
                     <div>
-                      <div className="font-bold text-sm">{selectedAccount.displayName}</div>
-                      <div className="text-xs text-muted-foreground">@{selectedAccount.username}</div>
+                      <div className="font-bold text-sm">{selectedAccount.display_name ?? selectedAccount.handle}</div>
+                      <div className="text-xs text-muted-foreground">@{selectedAccount.handle}</div>
                     </div>
                   </div>
                 </div>

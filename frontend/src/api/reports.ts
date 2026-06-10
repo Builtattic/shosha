@@ -1,7 +1,9 @@
 import { USE_MOCKS, apiClient } from '@/lib/apiClient';
+import { toFeedReport } from '@/api/feed';
 import * as mock from '@/mocks/reports';
 import type { ApiResponse, PaginatedResponse } from '@/types/common';
 import type { FeedReport } from '@/types/feed';
+import type { ReportCreatePayload, ReportOut } from '@/types/report';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -43,10 +45,10 @@ export type ModerationDecision = 'APPROVED' | 'REJECTED' | 'REMOVED';
 const real = {
   getReport: async (id: string): Promise<ApiResponse<FeedReport>> => {
     try {
-      const response = await apiClient.get(`/reports/${id}`);
-      return { ok: true, data: response.data };
-    } catch (error: any) {
-      return { ok: false, error: error.message };
+      const response = await apiClient.get<{ report: ReportOut }>(`/reports/${id}`);
+      return { ok: true, data: toFeedReport(response.data.report) };
+    } catch (error: unknown) {
+      return { ok: false, error: error instanceof Error ? error.message : 'Request failed' };
     }
   },
 
@@ -64,24 +66,29 @@ const real = {
       if (params.status) qp.set('status', params.status);
       qp.set('limit', String(params.limit ?? 20));
       if (params.cursor) qp.set('cursor', params.cursor);
-      const response = await apiClient.get(`/reports?${qp}`);
-      return { ok: true, data: response.data };
-    } catch (error: any) {
-      return { ok: false, error: error.message };
+      const response = await apiClient.get<{ items: ReportOut[]; next_cursor: string | null }>(
+        `/reports?${qp}`,
+      );
+      return {
+        ok: true,
+        data: {
+          items: response.data.items.map(toFeedReport),
+          next_cursor: response.data.next_cursor,
+        },
+      };
+    } catch (error: unknown) {
+      return { ok: false, error: error instanceof Error ? error.message : 'Request failed' };
     }
   },
 
-  submitReport: async (payload: {
-    account_id: string;
-    title: string;
-    description: string;
-    media?: Array<{ media_type: string; url: string; thumbnail_url?: string }>;
-  }): Promise<ApiResponse<{ report: FeedReport }>> => {
+  submitReport: async (
+    payload: ReportCreatePayload,
+  ): Promise<ApiResponse<{ report: ReportOut }>> => {
     try {
-      const response = await apiClient.post('/reports', payload);
+      const response = await apiClient.post<{ report: ReportOut }>('/reports', payload);
       return { ok: true, data: response.data };
-    } catch (error: any) {
-      return { ok: false, error: error.message };
+    } catch (error: unknown) {
+      return { ok: false, error: error instanceof Error ? error.message : 'Request failed' };
     }
   },
 
@@ -162,10 +169,16 @@ const real = {
     note?: string,
   ): Promise<ApiResponse<{ report: FeedReport }>> => {
     try {
-      const response = await apiClient.post(`/reports/${reportId}/moderate`, { decision, note });
-      return { ok: true, data: response.data };
-    } catch (error: any) {
-      return { ok: false, error: error.message };
+      const response = await apiClient.post<{ report: ReportOut }>(`/reports/${reportId}/moderate`, {
+        decision,
+        note,
+      });
+      return {
+        ok: true,
+        data: { report: toFeedReport(response.data.report) },
+      };
+    } catch (error: unknown) {
+      return { ok: false, error: error instanceof Error ? error.message : 'Request failed' };
     }
   },
 

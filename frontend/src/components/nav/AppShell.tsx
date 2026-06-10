@@ -2,6 +2,7 @@ import { Sidebar } from '@/components/nav/Sidebar';
 import { MobileAppHeader } from '@/components/nav/MobileAppHeader';
 import { DesktopTopBar } from '@/components/nav/DesktopTopBar';
 import { BottomNav } from '@/components/nav/BottomNav';
+import { ReportModalHost } from '@/components/report/ReportModalHost';
 
 /**
  * AppShell — wraps all authenticated + onboarded pages.
@@ -29,6 +30,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {/* Mobile bottom nav (fixed, hidden on lg) */}
         <BottomNav />
       </div>
+      <ReportModalHost />
     </div>
   );
 }

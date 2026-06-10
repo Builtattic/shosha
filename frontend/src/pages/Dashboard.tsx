@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils';
 // Types
 import type { FeedFilter, FeedReport } from '@/types/feed';
 import type { TrendingPerson, MeWithAccountsData } from '@/types/dashboard';
-import { toFeedItem, timestamp } from '@/lib/feed';
+import { toFeedItem, timestamp, filterFeedReports } from '@/lib/feed';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -39,7 +39,6 @@ export default function Dashboard() {
   const { firebaseUser } = useAuth();
 
   const [activeTab, setActiveTab] = useState<FeedFilter>('for_you');
-  const [feed, setFeed] = useState<FeedReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [myReportHref, setMyReportHref] = useState('/profile');
@@ -57,22 +56,32 @@ export default function Dashboard() {
     });
   }, [rawTrendingPeople, meData]);
 
-  const [topStories, setTopStories] = useState<FeedReport[]>([]);
+  const [allFeed, setAllFeed] = useState<FeedReport[]>([]);
   const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null);
   const [storyDetailOpen, setStoryDetailOpen] = useState(false);
+
+  const feed = useMemo(
+    () => filterFeedReports(allFeed, activeTab),
+    [allFeed, activeTab],
+  );
+
+  const topStories = useMemo(
+    () => filterFeedReports(allFeed, 'top').slice(0, 5),
+    [allFeed],
+  );
 
   // ── Feed + trending fetch ────────────────────────────────────────────────
   useEffect(() => {
     let active = true;
     setLoading(true);
 
-    // Active tab feed
-    getFeed(activeTab)
-      .then((res) => { if (active && res.ok) setFeed(res.data ?? []); })
+    getFeed(30)
+      .then((res) => {
+        if (active && res.ok && res.data) setAllFeed(res.data.items);
+      })
       .catch(() => undefined)
       .finally(() => { if (active) setLoading(false); });
 
-    // Trending people
     getTrendingPeople()
       .then((res) => {
         if (!active || !res.ok) return;
@@ -82,13 +91,8 @@ export default function Dashboard() {
       })
       .catch(() => undefined);
 
-    // Top stories strip (separate fetch so it doesn't flicker on tab change)
-    getFeed('top')
-      .then((res) => { if (active && res.ok) setTopStories((res.data ?? []).slice(0, 5)); })
-      .catch(() => undefined);
-
     return () => { active = false; };
-  }, [activeTab]);
+  }, []);
 
   // ── /me polling ─────────────────────────────────────────────────────────
   const loadMe = useCallback(async () => {
@@ -124,7 +128,7 @@ export default function Dashboard() {
     const cleaned = query.trim().toLowerCase();
     if (!cleaned) return feed;
     return feed.filter((r) =>
-      `${r.description} ${r.account.displayName} ${r.account.username}`.toLowerCase().includes(cleaned)
+      `${r.description} ${r.account?.display_name ?? ''} ${r.account?.handle ?? ''}`.toLowerCase().includes(cleaned)
     );
   }, [feed, query]);
 
@@ -319,15 +323,15 @@ export default function Dashboard() {
             <div className="horizontal-strip-scroll no-scrollbar flex gap-4 pb-4">
               {topStories.map((story) => (
                 <button
-                  key={story._id}
+                  key={story.id}
                   type="button"
-                  onClick={() => { setSelectedStoryId(story._id); setStoryDetailOpen(true); }}
+                  onClick={() => { setSelectedStoryId(story.id); setStoryDetailOpen(true); }}
                   className="flex-shrink-0 w-[280px] rounded-[20px] border border-border bg-card p-4 text-left transition-all hover:border-primary/30"
                 >
                   <div className="mb-3 flex items-start gap-2.5">
                     <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full border border-border bg-muted">
                       <img
-                        src={story.reporter?.photoUrl || `https://api.dicebear.com/9.x/initials/svg?seed=anonymous`}
+                        src={story.reporter?.photo_url || `https://api.dicebear.com/9.x/initials/svg?seed=anonymous`}
                         alt="avatar"
                         className="h-full w-full object-cover"
                       />
@@ -349,11 +353,11 @@ export default function Dashboard() {
                       <div className="truncate text-[11px] text-muted-foreground">
                         reported{' '}
                         <Link
-                          to={`/account/${story.account._id}`}
+                          to={`/accounts/${story.account?.id}`}
                           className="font-semibold text-foreground hover:underline"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          {story.account.displayName}
+                          {story.account?.display_name}
                         </Link>
                       </div>
                     </div>
@@ -366,10 +370,10 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between border-t border-border pt-3 text-[11px] font-bold">
                     <span className={story.type === 'positive' ? 'text-green-500' : 'text-red-500'}>
                       Impact: {story.type === 'positive' ? '+' : ''}
-                      {story.adminDecision?.finalImpact ?? story.reportScore ?? story.baseScore ?? 0}
+                      {story.report_score ?? story.base_score ?? 0}
                     </span>
                     <span className="font-normal text-muted-foreground">
-                      {timestamp(story.createdAt)}
+                      {timestamp(story.created_at)}
                     </span>
                   </div>
                 </button>
@@ -449,7 +453,7 @@ export default function Dashboard() {
           )}
 
           {!loading && visibleFeed.map((item) => (
-            <FeedItem key={item._id} {...toFeedItem(item)} />
+            <FeedItem key={item.id} {...toFeedItem(item)} />
           ))}
 
           {!loading && visibleFeed.length === 0 && (

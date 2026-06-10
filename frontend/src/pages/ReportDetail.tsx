@@ -81,14 +81,14 @@ export default function ReportDetailView() {
       const isOppose = type === 'OPPOSE';
       
       // Remove old vote if exists
-      if (prevVote === 'align') next.stats.aligns = Math.max(0, next.stats.aligns - 1);
-      if (prevVote === 'oppose') next.stats.opposes = Math.max(0, next.stats.opposes - 1);
+      if (prevVote === 'ALIGN') next.stats.aligns = Math.max(0, next.stats.aligns - 1);
+      if (prevVote === 'OPPOSE') next.stats.opposes = Math.max(0, next.stats.opposes - 1);
       
       // Apply new vote (toggle off if clicking same vote)
-      if (prevVote === (isAlign ? 'align' : 'oppose')) {
+      if (prevVote === (isAlign ? 'ALIGN' : 'OPPOSE')) {
         next.viewer.vote = null;
       } else {
-        next.viewer.vote = isAlign ? 'align' : 'oppose';
+        next.viewer.vote = isAlign ? 'ALIGN' : 'OPPOSE';
         if (isAlign) next.stats.aligns++;
         if (isOppose) next.stats.opposes++;
       }
@@ -96,7 +96,7 @@ export default function ReportDetailView() {
     });
 
     try {
-      const res = await postVote(report._id, type);
+      const res = await postVote(report.id, type);
       if (res.ok && res.data) {
         // Sync with server aggregates
         setReport(prev => {
@@ -109,7 +109,7 @@ export default function ReportDetailView() {
               comments: prev.stats?.comments ?? 0,
               shares: prev.stats?.shares ?? 0
             },
-            viewer: { ...prev.viewer, vote: res.data!.vote.vote_type.toLowerCase() as any, bookmarked: prev.viewer?.bookmarked ?? false }
+            viewer: { vote: res.data!.vote.vote_type, bookmarked: prev.viewer?.bookmarked ?? false }
           };
         });
       }
@@ -131,7 +131,7 @@ export default function ReportDetailView() {
     
     setSubmittingComment(true);
     try {
-      const res = await postComment(report._id, commentInput);
+      const res = await postComment(report.id, commentInput);
       if (res.ok && res.data) {
         setComments(prev => [res.data as Comment, ...prev]);
         setCommentInput('');
@@ -150,11 +150,11 @@ export default function ReportDetailView() {
     if (!report) return;
     setRequestingMod(true);
     try {
-      const res = await requestModeration(report._id, { reason: modReason });
+      const res = await requestModeration(report.id, { reason: modReason });
       if (res.ok) {
         toast.push('Moderation requested');
         setShowModConfirm(false);
-        setReport(prev => prev ? { ...prev, canRequestModeration: false } : prev);
+        setReport(prev => prev ? { ...prev, can_request_moderation: false } : prev);
       } else {
         throw new Error('Failed');
       }
@@ -188,7 +188,7 @@ export default function ReportDetailView() {
   }
 
   const isPositive = report.type === 'positive';
-  const score = report.reportScore || report.baseScore || 0;
+  const score = report.report_score ?? report.base_score ?? 0;
 
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-8">
@@ -208,16 +208,22 @@ export default function ReportDetailView() {
 
       <div className="max-w-2xl mx-auto p-4 space-y-6">
         {/* Account Subject Chip */}
-        <div 
-          onClick={() => navigate(`/accounts/${report.account._id}`)}
-          className="inline-flex items-center space-x-2 bg-card border border-border/50 hover:bg-muted/50 transition-colors p-1.5 pr-4 rounded-full cursor-pointer"
-        >
-          <img src={report.account.avatarUrl || `https://api.dicebear.com/9.x/initials/svg?seed=${report.account.username}`} alt="" className="w-8 h-8 rounded-full bg-background" />
-          <div className="flex flex-col">
-            <span className="text-sm font-bold leading-tight">{report.account.displayName}</span>
-            <span className="text-xs text-muted-foreground leading-tight">@{report.account.username}</span>
+        {report.account && (
+          <div 
+            onClick={() => navigate(`/accounts/${report.account.id}`)}
+            className="inline-flex items-center space-x-2 bg-card border border-border/50 hover:bg-muted/50 transition-colors p-1.5 pr-4 rounded-full cursor-pointer"
+          >
+            <img
+              src={`https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(report.account.display_name ?? report.account.handle)}`}
+              alt=""
+              className="w-8 h-8 rounded-full bg-background"
+            />
+            <div className="flex flex-col">
+              <span className="text-sm font-bold leading-tight">{report.account.display_name ?? report.account.handle}</span>
+              <span className="text-xs text-muted-foreground leading-tight">@{report.account.handle.replace(/^@/, '')}</span>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Hero Info */}
         <div>
@@ -244,11 +250,11 @@ export default function ReportDetailView() {
           </p>
           
           <div className="flex items-center justify-between mt-4">
-            <span className="text-xs text-muted-foreground">{formatDate(report.createdAt || '')}</span>
+            <span className="text-xs text-muted-foreground">{formatDate(report.created_at || '')}</span>
             {report.reporter ? (
               <div className="flex items-center text-xs text-muted-foreground">
-                By <img src={report.reporter.photoUrl || `https://api.dicebear.com/9.x/initials/svg?seed=${report.reporter.username}`} alt="" className="w-4 h-4 rounded-full mx-1.5" /> 
-                <span className="font-medium">{report.reporter.name || report.reporter.username}</span>
+                By <img src={report.reporter.photo_url || `https://api.dicebear.com/9.x/initials/svg?seed=${report.reporter.username}`} alt="" className="w-4 h-4 rounded-full mx-1.5" /> 
+                <span className="font-medium">{report.reporter.display_name || report.reporter.username}</span>
               </div>
             ) : (
               <span className="text-xs text-muted-foreground font-medium bg-muted px-2 py-0.5 rounded">Anonymous Report</span>
@@ -257,9 +263,17 @@ export default function ReportDetailView() {
         </div>
 
         {/* Media */}
-        {report.media && (
-          <div className="rounded-2xl overflow-hidden border border-border/50 bg-black/5">
-            <img src={report.media.url} alt="Evidence" className="w-full h-auto object-cover max-h-[500px]" />
+        {report.media.length > 0 && (
+          <div className="space-y-2">
+            {report.media.map((item, index) => (
+              <div key={index} className="rounded-2xl overflow-hidden border border-border/50 bg-black/5">
+                {item.media_type === 'video' ? (
+                  <video src={item.url} controls className="w-full h-auto object-cover max-h-[500px]" />
+                ) : (
+                  <img src={item.url} alt="Evidence" className="w-full h-auto object-cover max-h-[500px]" />
+                )}
+              </div>
+            ))}
           </div>
         )}
 
@@ -268,29 +282,29 @@ export default function ReportDetailView() {
           <button
             onClick={() => handleVote('ALIGN')}
             className={cn("flex-1 flex justify-center items-center py-2.5 rounded-xl font-bold transition-all",
-              report.viewer?.vote === 'align' 
+              report.viewer?.vote === 'ALIGN' 
                 ? "bg-emerald-500 text-white" 
                 : "bg-muted/50 hover:bg-muted text-foreground"
             )}
           >
-            <ThumbsUp className={cn("w-4 h-4 mr-2", report.viewer?.vote === 'align' ? "fill-current" : "")} />
+            <ThumbsUp className={cn("w-4 h-4 mr-2", report.viewer?.vote === 'ALIGN' ? "fill-current" : "")} />
             {report.stats?.aligns || 0}
           </button>
           <button
             onClick={() => handleVote('OPPOSE')}
             className={cn("flex-1 flex justify-center items-center py-2.5 rounded-xl font-bold transition-all",
-              report.viewer?.vote === 'oppose' 
+              report.viewer?.vote === 'OPPOSE' 
                 ? "bg-destructive text-white" 
                 : "bg-muted/50 hover:bg-muted text-foreground"
             )}
           >
-            <ThumbsDown className={cn("w-4 h-4 mr-2", report.viewer?.vote === 'oppose' ? "fill-current" : "")} />
+            <ThumbsDown className={cn("w-4 h-4 mr-2", report.viewer?.vote === 'OPPOSE' ? "fill-current" : "")} />
             {report.stats?.opposes || 0}
           </button>
         </div>
 
         {/* Mod Request */}
-        {report.canRequestModeration && (
+        {report.can_request_moderation && (
           <div className="bg-destructive/5 border border-destructive/20 rounded-2xl p-4">
             {!showModConfirm ? (
               <div className="flex items-center justify-between">

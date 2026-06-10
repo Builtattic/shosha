@@ -24,6 +24,7 @@ import { cn, formatDate } from '@/lib/utils';
 import { siteUrl } from '@/lib/seo';
 import { handleAvatarError, resolveAvatarUrl } from '@/lib/media';
 import { useToast } from '@/components/ui/Toast';
+import { postVote, getComments, postComment, requestModeration } from '@/api/reports';
 import { FeedShareCard } from './FeedShareCard';
 import type { FeedItemProps } from '@/types/feed';
 
@@ -123,11 +124,7 @@ export function FeedItem({
     e?.stopPropagation();
     setGeneratingImage(true);
     try {
-      fetch(`/api/reports/${id}/interactions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'share' }),
-      }).catch(console.error);
+      setLocalStats((cur) => ({ ...cur, shares: cur.shares + 1 }));
 
       await new Promise((r) => setTimeout(r, 200));
 
@@ -194,13 +191,25 @@ export function FeedItem({
   async function loadComments() {
     setCommentsLoading(true);
     try {
-      const response = await fetch(`/api/reports/${id}/comments`);
-      const payload = await response.json();
-      if (!payload.ok) throw new Error(payload.error?.message ?? 'Failed to load comments.');
-      setComments(payload.data ?? []);
+      const res = await getComments(id);
+      if (!res.ok) throw new Error(res.error ?? 'Failed to load comments.');
+      const items = res.data?.items ?? [];
+      setComments(
+        items.map((c) => ({
+          id: c.id,
+          text: c.body,
+          createdAt: c.created_at,
+          author: {
+            id: c.author.id,
+            name: c.author.display_name ?? c.author.username,
+            username: c.author.username,
+            avatar: c.author.photo_url ?? '',
+          },
+        })),
+      );
     } catch (error) {
       toast.push(error instanceof Error ? error.message : 'Failed to load comments.');
-      setComments([]); // show empty state rather than infinite spinner
+      setComments([]);
     } finally {
       setCommentsLoading(false);
     }
@@ -218,17 +227,12 @@ export function FeedItem({
     if (!text) return;
     setBusy('comment');
     try {
-      const response = await fetch(`/api/reports/${id}/interactions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'comment', text }),
-      });
-      const payload = await response.json();
-      if (!payload.ok) {
-        if (response.status === 401) { navigate('/sign-in'); return; }
-        throw new Error(payload.error?.message ?? 'Comment failed.');
+      const res = await postComment(id, text);
+      if (!res.ok) {
+        if (res.error?.includes('401')) { navigate('/sign-in'); return; }
+        throw new Error(res.error ?? 'Comment failed.');
       }
-      if (payload.data.stats) setLocalStats(payload.data.stats);
+      setLocalStats((cur) => ({ ...cur, comments: cur.comments + 1 }));
       setCommentDraft('');
       await loadComments();
     } catch (error) {
@@ -245,27 +249,41 @@ export function FeedItem({
     e?: React.MouseEvent,
   ) {
     e?.stopPropagation();
+
+    if (action === 'bookmark') {
+      // TODO: bookmark API when backend exposes report bookmarks
+      setViewerState((cur) => ({ ...cur, bookmarked: !cur.bookmarked }));
+      return;
+    }
+
+    if (action === 'share') {
+      await navigator.clipboard?.writeText(`${siteUrl()}/reports/${id}`);
+      setLocalStats((cur) => ({ ...cur, shares: cur.shares + 1 }));
+      toast.push('Link copied to clipboard.');
+      return;
+    }
+
     setBusy(action);
     try {
-      const response = await fetch(`/api/reports/${id}/interactions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action }),
-      });
-      const payload = await response.json();
-      if (!payload.ok) {
-        if (response.status === 401) { navigate('/sign-in'); return; }
-        throw new Error(payload.error?.message ?? 'Action failed.');
+      const voteType = action === 'align' ? 'ALIGN' : 'OPPOSE';
+      const res = await postVote(id, voteType);
+      if (!res.ok) {
+        if (res.error?.includes('401')) { navigate('/sign-in'); return; }
+        throw new Error(res.error ?? 'Action failed.');
       }
-      if (payload.data.stats) setLocalStats(payload.data.stats);
-      if (payload.data.vote !== undefined)
-        setViewerState((cur) => ({ ...cur, vote: payload.data.vote }));
-      if (payload.data.bookmarked !== undefined)
-        setViewerState((cur) => ({ ...cur, bookmarked: payload.data.bookmarked }));
-      if (action === 'share') {
-        await navigator.clipboard?.writeText(window.location.href);
-        toast.push('Share counted and link copied.');
+      if (res.data?.aggregates) {
+        setLocalStats((cur) => ({
+          ...cur,
+          aligns: res.data!.aggregates.align_count,
+          opposes: res.data!.aggregates.oppose_count,
+        }));
       }
+      const nextVote = res.data?.vote.vote_type === 'ALIGN'
+        ? 'align'
+        : res.data?.vote.vote_type === 'OPPOSE'
+          ? 'oppose'
+          : null;
+      setViewerState((cur) => ({ ...cur, vote: nextVote }));
     } catch (error) {
       toast.push(error instanceof Error ? error.message : 'Action failed.');
     } finally {
@@ -283,15 +301,13 @@ export function FeedItem({
     }
     setModerationSubmitting(true);
     try {
-      const response = await fetch(`/api/reports/${id}/moderation`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason, evidenceUrl: moderationEvidenceUrl.trim() || undefined }),
+      const res = await requestModeration(id, {
+        reason,
+        evidence_url: moderationEvidenceUrl.trim() || undefined,
       });
-      const payload = await response.json();
-      if (!payload.ok) {
-        if (response.status === 401) { navigate('/sign-in'); return; }
-        throw new Error(payload.error?.message ?? 'Could not submit moderation request.');
+      if (!res.ok) {
+        if (res.error?.includes('401')) { navigate('/sign-in'); return; }
+        throw new Error(res.error ?? 'Could not submit moderation request.');
       }
       toast.push('Moderation request sent.');
       setModerationOpen(false);
