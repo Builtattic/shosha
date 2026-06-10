@@ -1,8 +1,22 @@
+import { useEffect, useState } from 'react';
+import BubblesPanel from '@/components/bubbles/BubblesPanel';
+import { listBubbles } from '@/api/bubbles';
+import type { Bubble } from '@/types/bubble';
+
 export default function Bubbles() {
-  return (
-    <div className="min-h-screen p-6">
-      <h1 className="font-serif text-2xl font-bold">Bubbles</h1>
-      <p className="text-muted-foreground mt-2">[Placeholder — coming soon]</p>
-    </div>
-  );
+  const [bubbles, setBubbles] = useState<Bubble[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    listBubbles(60)
+      .then(setBubbles)
+      .catch(() => setBubbles([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return <div className="flex h-64 items-center justify-center">Loading…</div>;
+  }
+
+  return <BubblesPanel initialBubbles={bubbles} />;
 }
