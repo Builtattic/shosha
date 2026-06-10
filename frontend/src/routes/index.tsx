@@ -16,6 +16,19 @@ import AdminModeration from '@/pages/admin/AdminModeration';
 import AdminReview from '@/pages/admin/AdminReview';
 import AdminClaims from '@/pages/admin/AdminClaims';
 import AdminDisputes from '@/pages/admin/AdminDisputes';
+import AdminEvidence from '@/pages/admin/AdminEvidence';
+import AdminAudits from '@/pages/admin/AdminAudits';
+import AdminAbuse from '@/pages/admin/AdminAbuse';
+import AdminUsers from '@/pages/admin/AdminUsers';
+import AdminAccounts from '@/pages/admin/AdminAccounts';
+import AdminDeletionRequests from '@/pages/admin/AdminDeletionRequests';
+import AdminTrustBadge from '@/pages/admin/AdminTrustBadge';
+import AdminIssues from '@/pages/admin/AdminIssues';
+import AdminActivity from '@/pages/admin/AdminActivity';
+import AdminSettings from '@/pages/admin/AdminSettings';
+import AdminData from '@/pages/admin/AdminData';
+import AdminCreate from '@/pages/admin/AdminCreate';
+import AdminFeed from '@/pages/admin/AdminFeed';
 
 // Auth screens
 import SignIn from '@/pages/SignIn';
@@ -136,6 +149,19 @@ export const router = createBrowserRouter([
   { path: '/admin/review/:reportId', element: <AdminPageRoute><AdminReview /></AdminPageRoute> },
   { path: '/admin/claims', element: <AdminPageRoute><AdminClaims /></AdminPageRoute> },
   { path: '/admin/disputes', element: <AdminPageRoute><AdminDisputes /></AdminPageRoute> },
+  { path: '/admin/evidence', element: <AdminPageRoute><AdminEvidence /></AdminPageRoute> },
+  { path: '/admin/audits', element: <AdminPageRoute><AdminAudits /></AdminPageRoute> },
+  { path: '/admin/abuse', element: <AdminPageRoute><AdminAbuse /></AdminPageRoute> },
+  { path: '/admin/users', element: <AdminPageRoute><AdminUsers /></AdminPageRoute> },
+  { path: '/admin/accounts', element: <AdminPageRoute><AdminAccounts /></AdminPageRoute> },
+  { path: '/admin/deletion-requests', element: <AdminPageRoute><AdminDeletionRequests /></AdminPageRoute> },
+  { path: '/admin/trust-badge', element: <AdminPageRoute><AdminTrustBadge /></AdminPageRoute> },
+  { path: '/admin/issues', element: <AdminPageRoute><AdminIssues /></AdminPageRoute> },
+  { path: '/admin/activity', element: <AdminPageRoute><AdminActivity /></AdminPageRoute> },
+  { path: '/admin/settings', element: <AdminPageRoute><AdminSettings /></AdminPageRoute> },
+  { path: '/admin/data', element: <AdminPageRoute><AdminData /></AdminPageRoute> },
+  { path: '/admin/create', element: <AdminPageRoute><AdminCreate /></AdminPageRoute> },
+  { path: '/admin/feed', element: <AdminPageRoute><AdminFeed /></AdminPageRoute> },
 
   // Settings / Notifications
   { path: '/notifications', element: <AppRoute><Notifications /></AppRoute> },
