@@ -2,11 +2,20 @@ import { createBrowserRouter, Navigate, useParams } from 'react-router-dom';
 import { ProtectedRoute } from './ProtectedRoute';
 import { OnboardingGuard } from './OnboardingGuard';
 import { AppShell } from '@/components/nav/AppShell';
+import AdminRoute from '@/components/nav/AdminRoute';
+import AdminLayout from '@/components/admin/AdminLayout';
 
 // Public pages
 import Landing from '@/pages/Landing';
 import Notifications from '@/pages/Notifications';
-import Admin from '@/pages/Admin';
+
+// Admin pages
+import AdminDashboard from '@/pages/admin/AdminDashboard';
+import AdminQueue from '@/pages/admin/AdminQueue';
+import AdminModeration from '@/pages/admin/AdminModeration';
+import AdminReview from '@/pages/admin/AdminReview';
+import AdminClaims from '@/pages/admin/AdminClaims';
+import AdminDisputes from '@/pages/admin/AdminDisputes';
 
 // Auth screens
 import SignIn from '@/pages/SignIn';
@@ -55,6 +64,16 @@ const AppRoute = ({ children }: { children: React.ReactNode }) => (
   <ProtectedRoute>
     <OnboardingGuard>
       <AppShell>{children}</AppShell>
+    </OnboardingGuard>
+  </ProtectedRoute>
+);
+
+const AdminPageRoute = ({ children }: { children: React.ReactNode }) => (
+  <ProtectedRoute>
+    <OnboardingGuard>
+      <AdminRoute>
+        <AdminLayout>{children}</AdminLayout>
+      </AdminRoute>
     </OnboardingGuard>
   </ProtectedRoute>
 );
@@ -111,7 +130,12 @@ export const router = createBrowserRouter([
   { path: '/billing',     element: <AppRoute><Billing /></AppRoute> },
 
   // Admin
-  { path: '/admin', element: <AppRoute><Admin /></AppRoute> },
+  { path: '/admin', element: <AdminPageRoute><AdminDashboard /></AdminPageRoute> },
+  { path: '/admin/queue', element: <AdminPageRoute><AdminQueue /></AdminPageRoute> },
+  { path: '/admin/moderation', element: <AdminPageRoute><AdminModeration /></AdminPageRoute> },
+  { path: '/admin/review/:reportId', element: <AdminPageRoute><AdminReview /></AdminPageRoute> },
+  { path: '/admin/claims', element: <AdminPageRoute><AdminClaims /></AdminPageRoute> },
+  { path: '/admin/disputes', element: <AdminPageRoute><AdminDisputes /></AdminPageRoute> },
 
   // Settings / Notifications
   { path: '/notifications', element: <AppRoute><Notifications /></AppRoute> },
