@@ -3,6 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/providers/AuthProvider';
 import { getCurrentUser, updateCurrentUser } from '@/api/auth';
+import { USE_MOCKS } from '@/lib/apiClient';
+import { setMockOnboardingComplete } from '@/mocks/auth';
 import {
   calcCredibility,
   CRED_SECTIONS,
@@ -419,35 +421,17 @@ export default function Onboard() {
     setSaving(true);
     try {
       const res = await updateCurrentUser({
-        name: form.name,
-        username: form.username,
-        phone: form.phone,
-        dob: form.dob,
-        city: form.city,
-        country: form.country,
-        occupation_role: form.occupationRole,
-        network_size: form.networkSize,
-        education: form.education,
-        specialized_field: form.specializedField,
-        manages_money_people_system: form.managesMoneyPeopleSystem,
-        physical_intellectual_limitations: form.physicalIntellectualLimitations,
-        ig_url: form.igUrl,
-        tiktok_url: form.tiktokUrl,
-        x_url: form.xUrl,
-        linkedin_url: form.linkedinUrl,
-        reddit_url: form.redditUrl,
-        yt_url: form.ytUrl,
-        fb_url: form.fbUrl,
-        snapchat_url: form.snapchatUrl,
-        photo_url: form.photoUrl,
-        bio: form.bio,
-        quote: form.quote,
-        ...(markComplete ? { onboarding_complete: true } : {}),
+        username: form.username || undefined,
+        display_name: form.name || undefined,
+        photo_url: form.photoUrl || undefined,
+        bio: form.bio || undefined,
+        city: form.city || undefined,
       });
 
       if (!res.ok) throw new Error(res.error || 'Failed to save profile');
 
       if (markComplete) {
+        if (USE_MOCKS) setMockOnboardingComplete(true);
         refetchProfile();
         setDone(true);
         setTimeout(() => navigate('/dashboard', { replace: true }), 1500);

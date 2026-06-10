@@ -76,7 +76,7 @@ export default function ReportNew() {
       setSearching(true);
       const res = await searchAccounts(debouncedSearch);
       if (mounted) {
-        if (res.ok && res.data) setSearchResults(res.data.accounts);
+        if (res.ok && res.data) setSearchResults(res.data.items);
         setSearching(false);
       }
     };

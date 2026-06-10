@@ -1,40 +1,47 @@
 import type { ApiResponse, PaginatedResponse } from '@/types/common';
 
+export type NotificationType =
+  | 'CLAIM'
+  | 'REPORT'
+  | 'DISPUTE'
+  | 'TRUST_BADGE'
+  | 'MODERATION'
+  | 'SYSTEM';
+
 export interface NotificationItem {
   id: string;
-  type: 'REPORT_VOTED' | 'REPORT_COMMENTED' | 'MODERATION_DECISION' | 'SYSTEM';
+  notification_type: NotificationType;
   title: string;
-  body: string;
-  read: boolean;
+  message: string;
+  is_read: boolean;
   created_at: string;
-  link?: string;
-  metadata?: Record<string, any>;
+  metadata_json?: Record<string, unknown> | null;
 }
 
 const MOCK_NOTIFICATIONS: NotificationItem[] = [
   {
     id: 'not_1',
-    type: 'REPORT_VOTED',
+    notification_type: 'REPORT',
     title: 'New align on your report',
-    body: 'Someone aligned with your report against @satyanadella.',
-    read: false,
+    message: 'Someone aligned with your report against @satyanadella.',
+    is_read: false,
     created_at: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
-    link: '/reports/rep_001',
   },
   {
     id: 'not_2',
-    type: 'MODERATION_DECISION',
+    notification_type: 'MODERATION',
     title: 'Report Approved',
-    body: 'Your report on @elonmusk has been reviewed and approved.',
-    read: true,
+    message: 'Your report on @elonmusk has been reviewed and approved.',
+    is_read: true,
     created_at: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-    link: '/reports/rep_002',
   },
 ];
 
-let unreadCount = MOCK_NOTIFICATIONS.filter(n => !n.read).length;
+let unreadCount = MOCK_NOTIFICATIONS.filter((n) => !n.is_read).length;
 
-export async function getNotifications(_cursor?: string): Promise<ApiResponse<PaginatedResponse<NotificationItem>>> {
+export async function getNotifications(
+  _cursor?: string,
+): Promise<ApiResponse<PaginatedResponse<NotificationItem>>> {
   await new Promise((resolve) => setTimeout(resolve, 400));
   return { ok: true, data: { items: MOCK_NOTIFICATIONS, next_cursor: null } };
 }
@@ -46,9 +53,9 @@ export async function getUnreadCount(): Promise<ApiResponse<{ count: number }>> 
 
 export async function markAsRead(id: string): Promise<ApiResponse<{ success: boolean }>> {
   await new Promise((resolve) => setTimeout(resolve, 200));
-  const notif = MOCK_NOTIFICATIONS.find(n => n.id === id);
-  if (notif && !notif.read) {
-    notif.read = true;
+  const notif = MOCK_NOTIFICATIONS.find((n) => n.id === id);
+  if (notif && !notif.is_read) {
+    notif.is_read = true;
     unreadCount = Math.max(0, unreadCount - 1);
   }
   return { ok: true, data: { success: true } };
@@ -56,7 +63,9 @@ export async function markAsRead(id: string): Promise<ApiResponse<{ success: boo
 
 export async function markAllAsRead(): Promise<ApiResponse<{ success: boolean }>> {
   await new Promise((resolve) => setTimeout(resolve, 400));
-  MOCK_NOTIFICATIONS.forEach(n => { n.read = true; });
+  MOCK_NOTIFICATIONS.forEach((n) => {
+    n.is_read = true;
+  });
   unreadCount = 0;
   return { ok: true, data: { success: true } };
 }

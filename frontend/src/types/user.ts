@@ -15,6 +15,8 @@ export interface UserProfile {
   country?: string | null;
   email?: string | null;
   bio?: string | null;
+  headline?: string | null;
+  website_url?: string | null;
   quote?: string | null;
   trust_badge?: boolean;
   occupation_role?: string | null;
@@ -34,28 +36,11 @@ export interface UserProfile {
 }
 
 export interface UpdateUserPayload {
-  name?: string;
   username?: string;
-  phone?: string;
-  dob?: string;
-  city?: string;
-  country?: string;
-  bio?: string;
-  quote?: string;
+  display_name?: string;
   photo_url?: string;
-  occupation_role?: string;
-  network_size?: string;
-  education?: string;
-  specialized_field?: string;
-  manages_money_people_system?: string;
-  physical_intellectual_limitations?: string;
-  ig_url?: string;
-  tiktok_url?: string;
-  x_url?: string;
-  linkedin_url?: string;
-  reddit_url?: string;
-  yt_url?: string;
-  fb_url?: string;
-  snapchat_url?: string;
-  onboarding_complete?: boolean;
+  bio?: string;
+  headline?: string;
+  city?: string;
+  website_url?: string;
 }

@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { createBrowserRouter, Navigate, useParams } from 'react-router-dom';
 import { ProtectedRoute } from './ProtectedRoute';
 import { OnboardingGuard } from './OnboardingGuard';
 import { AppShell } from '@/components/nav/AppShell';
@@ -32,6 +32,19 @@ import People from '@/pages/People';
 import TrustBadge from '@/pages/TrustBadge';
 import Subscribe from '@/pages/Subscribe';
 import Billing from '@/pages/Billing';
+import Bookmarks from '@/pages/Bookmarks';
+import Disputes from '@/pages/Disputes';
+import Search from '@/pages/Search';
+import Impact from '@/pages/Impact';
+import Ranks from '@/pages/Ranks';
+import Settings from '@/pages/Settings';
+import Access from '@/pages/Access';
+import HowItWorks from '@/pages/HowItWorks';
+
+function AccountRedirect() {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={`/accounts/${id}`} replace />;
+}
 
 // Wraps all authenticated + onboarded routes with chrome (Sidebar + MobileAppHeader + BottomNav)
 const AppRoute = ({ children }: { children: React.ReactNode }) => (
@@ -63,11 +76,12 @@ export const router = createBrowserRouter([
   { path: '/profile',      element: <AppRoute><Profile /></AppRoute> },
   { path: '/profile/edit', element: <AppRoute><EditProfile /></AppRoute> },
 
-  // Accounts
-  { path: '/accounts',        element: <AppRoute><Accounts /></AppRoute> },
+  // Accounts (static routes before :id)
   { path: '/accounts/search', element: <AppRoute><AccountSearch /></AppRoute> },
   { path: '/accounts/new',    element: <AppRoute><AccountNew /></AppRoute> },
   { path: '/accounts/:id',    element: <AppRoute><AccountDetail /></AppRoute> },
+  { path: '/accounts',        element: <AppRoute><Accounts /></AppRoute> },
+  { path: '/account/:id',   element: <AppRoute><AccountRedirect /></AppRoute> },
 
   // Reports
   { path: '/reports/new', element: <AppRoute><ReportNew /></AppRoute> },
@@ -91,8 +105,13 @@ export const router = createBrowserRouter([
 
   // Settings / Notifications
   { path: '/notifications', element: <AppRoute><Notifications /></AppRoute> },
-
-  // Placeholder redirects — prevent dead links in sidebar/nav
-  { path: '/impact',        element: <AppRoute><Dashboard /></AppRoute> },
-  { path: '/ranks',         element: <AppRoute><Dashboard /></AppRoute> },
+  { path: '/bookmarks',     element: <AppRoute><Bookmarks /></AppRoute> },
+  { path: '/disputes',      element: <AppRoute><Disputes /></AppRoute> },
+  { path: '/search',        element: <AppRoute><Search /></AppRoute> },
+  { path: '/settings',      element: <AppRoute><Settings /></AppRoute> },
+  { path: '/access',        element: <AppRoute><Access /></AppRoute> },
+  { path: '/how-it-works',  element: <AppRoute><HowItWorks /></AppRoute> },
+  { path: '/impact',        element: <AppRoute><Impact /></AppRoute> },
+  { path: '/ranks',         element: <AppRoute><Ranks /></AppRoute> },
+  { path: '/ranking',       element: <Navigate to="/ranks" replace /> },
 ]);

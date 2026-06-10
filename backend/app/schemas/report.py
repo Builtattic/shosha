@@ -42,6 +42,8 @@ class ReportOut(BaseModel):
     status: ReportStatus
     title: str
     description: str
+    deed: str | None = None
+    base_score: float | None = None
     type: Literal["positive", "negative"] | None = Field(
         default=None, validation_alias="report_type"
     )
