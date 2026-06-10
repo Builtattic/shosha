@@ -1,10 +1,8 @@
-import type { ApiResponse } from '@/types/common';
+import type { ApiResponse, PaginatedResponse } from '@/types/common';
 import type { FeedReport } from '@/types/feed';
+import type { ReportCreatePayload, ReportOut } from '@/types/report';
 import type { Comment, VoteType, ModerationQueueItem, VoteAggregates } from '@/api/reports';
-import type { PaginatedResponse } from '@/types/common';
 import { MOCK_FEED_REPORTS } from '@/mocks/feed';
-
-// ── Mock comments ──────────────────────────────────────────────────────────────
 
 const MOCK_COMMENTS: Comment[] = [
   {
@@ -13,7 +11,12 @@ const MOCK_COMMENTS: Comment[] = [
     user_id: 'usr_001',
     body: 'This is exactly the kind of accountability Shosha is built for. Verified this myself — the clean-up happened over three consecutive weekends.',
     created_at: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
-    author: { id: 'usr_001', username: 'nitya_v', display_name: 'Nitya Verma', photo_url: 'https://api.dicebear.com/9.x/avataaars/svg?seed=Nitya' },
+    author: {
+      id: 'usr_001',
+      username: 'nitya_v',
+      display_name: 'Nitya Verma',
+      photo_url: 'https://api.dicebear.com/9.x/avataaars/svg?seed=Nitya',
+    },
   },
   {
     id: 'cmt_002',
@@ -25,31 +28,37 @@ const MOCK_COMMENTS: Comment[] = [
   },
 ];
 
-// ── Mock queue ─────────────────────────────────────────────────────────────────
-
 const MOCK_QUEUE: ModerationQueueItem[] = MOCK_FEED_REPORTS.slice(0, 3).map((r, i) => ({
-  id: r._id,
+  id: r.id,
   title: `Report #${i + 1}: ${r.deed ?? r.category ?? 'Uncategorised'}`,
   description: r.description,
   status: 'PENDING',
-  created_at: r.createdAt ?? new Date().toISOString(),
-  media: r.media ? { media_type: r.media.type, url: r.media.url, thumbnail_url: r.media.thumbUrl } : null,
+  created_at: r.created_at,
+  media: r.media[0]
+    ? {
+        media_type: r.media[0].media_type,
+        url: r.media[0].url,
+        thumbnail_url: r.media[0].thumbnail_url ?? undefined,
+      }
+    : null,
   account: {
-    id: r.account._id,
-    platform: r.account.platform ?? 'X',
-    handle: r.account.username,
-    display_name: r.account.displayName,
+    id: r.account?.id ?? '',
+    platform: r.account?.platform ?? 'X',
+    handle: r.account?.handle ?? '',
+    display_name: r.account?.display_name ?? null,
   },
   reporter: r.reporter
-    ? { id: 'usr_sys', username: r.reporter.username, display_name: r.reporter.name ?? null }
+    ? {
+        id: r.reporter.id,
+        username: r.reporter.username,
+        display_name: r.reporter.display_name,
+      }
     : null,
 }));
 
-// ── Mock functions ─────────────────────────────────────────────────────────────
-
 export async function getReport(id: string): Promise<ApiResponse<FeedReport>> {
   await new Promise((resolve) => setTimeout(resolve, 500));
-  const report = MOCK_FEED_REPORTS.find((r) => r._id === id);
+  const report = MOCK_FEED_REPORTS.find((r) => r.id === id);
   if (!report) return { ok: false, error: 'Report not found' };
   return { ok: true, data: report };
 }
@@ -63,25 +72,45 @@ export async function listReports(params: {
 }): Promise<ApiResponse<PaginatedResponse<FeedReport>>> {
   await new Promise((resolve) => setTimeout(resolve, 600));
   let items = [...MOCK_FEED_REPORTS];
-  if (params.account_id) items = items.filter((r) => r.account._id === params.account_id);
+  if (params.account_id) {
+    items = items.filter((r) => r.account?.id === params.account_id);
+  }
   return { ok: true, data: { items: items.slice(0, params.limit ?? 20), next_cursor: null } };
 }
 
-export async function submitReport(payload: {
-  account_id: string;
-  title: string;
-  description: string;
-  media?: Array<{ media_type: string; url: string; thumbnail_url?: string }>;
-}): Promise<ApiResponse<{ report: FeedReport }>> {
+export async function submitReport(
+  payload: ReportCreatePayload,
+): Promise<ApiResponse<{ report: ReportOut }>> {
   await new Promise((resolve) => setTimeout(resolve, 1200));
-  const fake: FeedReport = {
-    _id: `rep_new_${Date.now()}`,
-    type: 'negative',
+  const fake: ReportOut = {
+    id: `rep_new_${Date.now()}`,
+    account_id: payload.account_id,
+    reporter_user_id: 'usr_mock',
+    status: 'PENDING',
+    title: payload.title,
     description: payload.description,
-    createdAt: new Date().toISOString(),
-    stats: { aligns: 0, opposes: 0, comments: 0, shares: 0 },
-    account: { _id: payload.account_id, displayName: 'Account', username: 'account', score: 1000 },
-    reporter: null,
+    deed: payload.title,
+    base_score: null,
+    type: payload.type,
+    is_irl: payload.is_irl,
+    evidence_source_url: payload.evidence_source_url ?? null,
+    ai_verdict: null,
+    reviewed_by: null,
+    reviewed_at: null,
+    created_at: new Date().toISOString(),
+    media_items: (payload.media ?? []).map((m, i) => ({
+      id: `media_${i}`,
+      media_type: m.media_type,
+      url: m.url,
+      thumbnail_url: m.thumbnail_url ?? null,
+    })),
+    account: {
+      id: payload.account_id,
+      platform: 'website',
+      handle: 'account',
+      display_name: 'Account',
+      score: 1000,
+    },
   };
   return { ok: true, data: { report: fake } };
 }
@@ -138,7 +167,13 @@ export async function requestModeration(
 }
 
 export async function getModerationQueue(
-  _params?: { status?: string; platform?: string; sort?: string; limit?: number; cursor?: string },
+  _params?: {
+    status?: string;
+    platform?: string;
+    sort?: string;
+    limit?: number;
+    cursor?: string;
+  },
 ): Promise<ApiResponse<PaginatedResponse<ModerationQueueItem>>> {
   await new Promise((resolve) => setTimeout(resolve, 700));
   return { ok: true, data: { items: MOCK_QUEUE, next_cursor: null } };
@@ -150,11 +185,10 @@ export async function moderateReport(
   _note?: string,
 ): Promise<ApiResponse<{ report: FeedReport }>> {
   await new Promise((resolve) => setTimeout(resolve, 800));
-  const report = MOCK_FEED_REPORTS.find((r) => r._id === reportId) ?? MOCK_FEED_REPORTS[0];
+  const report = MOCK_FEED_REPORTS.find((r) => r.id === reportId) ?? MOCK_FEED_REPORTS[0];
   return { ok: true, data: { report } };
 }
 
-// Legacy compat
 export async function postInteraction(
   _reportId: string,
   _action: 'align' | 'oppose' | 'share' | 'bookmark' | 'comment',

@@ -1,35 +1,49 @@
-export type ReportStatus = 'open' | 'under_review' | 'resolved' | 'dismissed';
-export type VoteDirection = 'up' | 'down';
+export type ReportType = 'positive' | 'negative';
+export type ReportStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'REMOVED';
 
-export interface Report {
+export interface ReportMediaItem {
+  id: string;
+  media_type: string;
+  url: string;
+  thumbnail_url: string | null;
+}
+
+export interface ReportOut {
   id: string;
   account_id: string;
-  reporter_id: string;
-  title: string;
-  description: string;
-  evidence_urls: string[];
+  reporter_user_id: string | null;
   status: ReportStatus;
-  upvotes: number;
-  downvotes: number;
-  comment_count: number;
-  my_vote?: VoteDirection | null;
+  title: string;
+  description: string;
+  deed: string | null;
+  base_score: number | null;
+  type: ReportType | null;
+  is_irl: boolean;
+  evidence_source_url: string | null;
+  ai_verdict: Record<string, unknown> | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
   created_at: string;
-  updated_at: string;
+  media_items: ReportMediaItem[];
+  account: {
+    id: string;
+    platform: string;
+    handle: string;
+    display_name: string | null;
+    score: number;
+  } | null;
 }
 
-export interface ReportComment {
-  id: string;
-  report_id: string;
-  author_id: string;
-  author_display_name: string;
-  author_photo_url: string | null;
-  body: string;
-  created_at: string;
-}
-
-export interface CreateReportPayload {
+export interface ReportCreatePayload {
   account_id: string;
   title: string;
   description: string;
-  evidence_urls?: string[];
+  type: ReportType;
+  is_irl: boolean;
+  evidence_source_url?: string;
+  media?: Array<{
+    media_type: 'image' | 'video';
+    url: string;
+    thumbnail_url?: string;
+  }>;
 }

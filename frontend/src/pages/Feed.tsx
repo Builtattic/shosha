@@ -6,7 +6,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { FeedItem } from '@/components/feed/FeedItem';
 import { PostDetailModal } from '@/components/feed/PostDetailModal';
 import { getFeed } from '@/api/feed';
-import { toFeedItem } from '@/lib/feed';
+import { toFeedItem, filterFeedReports } from '@/lib/feed';
 import type { FeedReport, FeedFilter } from '@/types/feed';
 import { cn } from '@/lib/utils';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -30,24 +30,25 @@ export default function Feed() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let mounted = true;
-    
+
     const fetchFeed = async () => {
       setLoading(true);
       setError(null);
       try {
-        const res = await getFeed(filter);
+        const res = await getFeed(30);
         if (mounted) {
           if (res.ok && res.data) {
-            setReports(res.data);
+            setReports(res.data.items);
           } else {
             setError(res.error || 'Failed to load feed');
           }
         }
-      } catch (err: any) {
-        if (mounted) setError(err.message || 'An error occurred');
+      } catch (err: unknown) {
+        if (mounted) setError(err instanceof Error ? err.message : 'An error occurred');
       } finally {
         if (mounted) setLoading(false);
       }
@@ -55,17 +56,22 @@ export default function Feed() {
 
     fetchFeed();
     return () => { mounted = false; };
-  }, [filter]);
+  }, [reloadKey]);
+
+  const tabbedReports = useMemo(
+    () => filterFeedReports(reports, filter),
+    [reports, filter],
+  );
 
   const filteredReports = useMemo(() => {
-    if (!debouncedSearch) return reports;
+    if (!debouncedSearch) return tabbedReports;
     const q = debouncedSearch.toLowerCase();
-    return reports.filter(r => 
+    return tabbedReports.filter((r) =>
       r.description?.toLowerCase().includes(q) ||
-      r.account?.displayName?.toLowerCase().includes(q) ||
-      r.account?.username?.toLowerCase().includes(q)
+      r.account?.display_name?.toLowerCase().includes(q) ||
+      r.account?.handle?.toLowerCase().includes(q),
     );
-  }, [reports, debouncedSearch]);
+  }, [tabbedReports, debouncedSearch]);
 
 
 
@@ -150,7 +156,7 @@ export default function Feed() {
               <h3 className="text-lg font-medium text-foreground mb-2">Failed to load feed</h3>
               <p className="text-muted-foreground text-sm">{error}</p>
               <button 
-                onClick={() => setFilter(filter)} 
+                onClick={() => setReloadKey((k) => k + 1)} 
                 className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-full text-sm font-medium"
               >
                 Try Again
@@ -203,7 +209,7 @@ export default function Feed() {
               className="space-y-6"
             >
               {filteredReports.map((report) => (
-                <div key={report._id} onClick={() => navigate(`/reports/${report._id}`)} className="cursor-pointer">
+                <div key={report.id} onClick={() => navigate(`/reports/${report.id}`)} className="cursor-pointer">
                   <FeedItem {...toFeedItem(report)} />
                 </div>
               ))}

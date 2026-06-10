@@ -1,3 +1,5 @@
+import type { ReportStatus, ReportType } from '@/types/report';
+
 export interface FeedItemViewer {
   vote: 'align' | 'oppose' | null;
   bookmarked: boolean;
@@ -52,36 +54,50 @@ export interface FeedItemProps {
 
 export type FeedFilter = 'for_you' | 'following' | 'top' | 'near';
 
-/** Raw report shape returned by the /api/feed endpoint */
+/** V2 adapter shape for feed/report list items */
 export interface FeedReport {
-  _id: string;
-  type: 'positive' | 'negative';
+  id: string;
+  type: ReportType;
+  title: string;
   description: string;
-  media?: { type: 'image' | 'video'; url: string; thumbUrl?: string };
-  createdAt?: string;
-  stats?: { aligns: number; opposes: number; comments: number; shares: number };
-  aiVerdict?: { proposedImpact?: number } | null;
-  adminDecision?: { finalImpact?: number } | null;
-  category?: string;
-  deed?: string;
-  disputeStatus?: string;
-  reportScore?: number;
-  baseScore?: number;
-  canRequestModeration?: boolean;
-  viewer?: FeedItemViewer;
-  account: {
-    _id: string;
-    displayName: string;
-    username: string;
-    avatarUrl?: string;
-    verified?: boolean;
-    score: number;
-    platform?: string;
+  deed: string | null;
+  base_score: number | null;
+  status: ReportStatus;
+  created_at: string;
+  is_irl: boolean;
+  evidence_source_url: string | null;
+  public_anonymous: boolean;
+  media: Array<{
+    url: string;
+    thumbnail_url: string | null;
+    media_type: 'image' | 'video';
+  }>;
+  stats: {
+    aligns: number;
+    opposes: number;
+    comments: number;
+    shares: number;
   };
-  reporter?: {
-    username: string;
-    name?: string;
-    photoUrl?: string;
-    role?: string;
+  viewer: {
+    vote: 'ALIGN' | 'OPPOSE' | null;
+    bookmarked: boolean;
   } | null;
+  account: {
+    id: string;
+    platform: string;
+    handle: string;
+    display_name: string | null;
+    score: number;
+  } | null;
+  reporter: {
+    id: string;
+    username: string;
+    display_name: string | null;
+    photo_url: string | null;
+  } | null;
+  can_request_moderation: boolean;
+  category?: string;
+  dispute_status?: string;
+  report_score?: number | null;
+  ai_verdict?: Record<string, unknown> | null;
 }

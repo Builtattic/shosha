@@ -40,6 +40,10 @@ import Ranks from '@/pages/Ranks';
 import Settings from '@/pages/Settings';
 import Access from '@/pages/Access';
 import HowItWorks from '@/pages/HowItWorks';
+import Leaderboard from '@/pages/Leaderboard';
+import ReportIssue from '@/pages/ReportIssue';
+import PublicProfile from '@/pages/PublicProfile';
+import SlugPage from '@/pages/SlugPage';
 
 function AccountRedirect() {
   const { id } = useParams<{ id: string }>();
@@ -68,13 +72,19 @@ export const router = createBrowserRouter([
   { path: '/onboard',    element: <ProtectedRoute><Onboard /></ProtectedRoute> },
   { path: '/onboarding', element: <Navigate to="/onboard" replace /> },
 
+  // Public informational pages
+  { path: '/how-it-works', element: <HowItWorks /> },
+  { path: '/leaderboard',  element: <Leaderboard /> },
+  { path: '/report-issue', element: <ReportIssue /> },
+
   // Dashboard
   { path: '/dashboard', element: <AppRoute><Dashboard /></AppRoute> },
   { path: '/feed',      element: <AppRoute><Feed /></AppRoute> },
 
   // Profile
-  { path: '/profile',      element: <AppRoute><Profile /></AppRoute> },
   { path: '/profile/edit', element: <AppRoute><EditProfile /></AppRoute> },
+  { path: '/profile/:id',  element: <PublicProfile /> },
+  { path: '/profile',      element: <AppRoute><Profile /></AppRoute> },
 
   // Accounts (static routes before :id)
   { path: '/accounts/search', element: <AppRoute><AccountSearch /></AppRoute> },
@@ -110,8 +120,10 @@ export const router = createBrowserRouter([
   { path: '/search',        element: <AppRoute><Search /></AppRoute> },
   { path: '/settings',      element: <AppRoute><Settings /></AppRoute> },
   { path: '/access',        element: <AppRoute><Access /></AppRoute> },
-  { path: '/how-it-works',  element: <AppRoute><HowItWorks /></AppRoute> },
   { path: '/impact',        element: <AppRoute><Impact /></AppRoute> },
   { path: '/ranks',         element: <AppRoute><Ranks /></AppRoute> },
   { path: '/ranking',       element: <Navigate to="/ranks" replace /> },
+
+  // Public slug catch-all — MUST be last
+  { path: '/:slug', element: <SlugPage /> },
 ]);

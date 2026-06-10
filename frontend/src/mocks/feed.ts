@@ -1,127 +1,164 @@
 import type { ApiResponse } from '@/types/common';
-import type { FeedReport, FeedFilter } from '@/types/feed';
+import type { FeedReport } from '@/types/feed';
 
 const MOCK_REPORTER = {
+  id: 'usr_sys',
   username: 'shosha_verified',
-  name: 'Shosha Verified',
-  photoUrl: 'https://api.dicebear.com/9.x/initials/svg?seed=SV',
-  role: 'admin',
+  display_name: 'Shosha Verified',
+  photo_url: 'https://api.dicebear.com/9.x/initials/svg?seed=SV',
 };
 
 const MOCK_FEED_REPORTS: FeedReport[] = [
   {
-    _id: 'rep_001',
+    id: 'rep_001',
     type: 'positive',
-    description: 'Led community clean-up drive removing 2 tonnes of waste from local riverbank. Coordinated 80+ volunteers over three weekends.',
-    createdAt: new Date(Date.now() - 1000 * 60 * 32).toISOString(),
+    title: 'Environmental Action',
+    description:
+      'Led community clean-up drive removing 2 tonnes of waste from local riverbank. Coordinated 80+ volunteers over three weekends.',
+    deed: 'Environmental action (cleanup, planting)',
+    base_score: 12,
+    status: 'APPROVED',
+    created_at: new Date(Date.now() - 1000 * 60 * 32).toISOString(),
+    is_irl: false,
+    evidence_source_url: 'https://example.com/cleanup',
+    public_anonymous: false,
+    media: [],
     category: 'Community',
-    deed: 'Environmental Action',
     stats: { aligns: 142, opposes: 3, comments: 18, shares: 27 },
-    reportScore: 14,
-    baseScore: 12,
-    adminDecision: { finalImpact: 14 },
+    report_score: 14,
+    viewer: null,
     account: {
-      _id: 'acc_p001',
-      displayName: 'Priya Sharma',
-      username: 'priyasharma',
-      avatarUrl: 'https://api.dicebear.com/9.x/avataaars/svg?seed=Priya',
-      verified: true,
-      score: 1240,
+      id: 'acc_p001',
+      display_name: 'Priya Sharma',
+      handle: 'priyasharma',
       platform: 'website',
+      score: 1240,
     },
     reporter: MOCK_REPORTER,
+    can_request_moderation: false,
   },
   {
-    _id: 'rep_002',
+    id: 'rep_002',
     type: 'negative',
-    description: 'Multiple credible sources confirm deliberate data misrepresentation in quarterly investor filings. Internal whistleblower corroborates.',
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
+    title: 'Fraud',
+    description:
+      'Multiple credible sources confirm deliberate data misrepresentation in quarterly investor filings. Internal whistleblower corroborates.',
+    deed: 'Scamming / fraud',
+    base_score: -18,
+    status: 'APPROVED',
+    created_at: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
+    is_irl: false,
+    evidence_source_url: 'https://example.com/filing',
+    public_anonymous: false,
+    media: [],
     category: 'Finance',
-    deed: 'Fraud',
     stats: { aligns: 89, opposes: 12, comments: 44, shares: 61 },
-    reportScore: -22,
-    baseScore: -18,
-    adminDecision: { finalImpact: -22 },
+    report_score: -22,
+    viewer: null,
     account: {
-      _id: 'acc_p002',
-      displayName: 'Marcus Webb',
-      username: 'marcuswebb',
-      avatarUrl: 'https://api.dicebear.com/9.x/avataaars/svg?seed=Marcus',
-      verified: false,
+      id: 'acc_p002',
+      display_name: 'Marcus Webb',
+      handle: 'marcuswebb',
+      platform: 'X',
       score: 620,
     },
     reporter: MOCK_REPORTER,
-    canRequestModeration: true,
+    can_request_moderation: true,
   },
   {
-    _id: 'rep_003',
+    id: 'rep_003',
     type: 'positive',
-    description: 'Published open-source library that reduces ML model inference time by 40%. Adopted by 3 Fortune 500 companies within 6 months of release.',
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 8).toISOString(),
+    title: 'Open Source Contribution',
+    description:
+      'Published open-source library that reduces ML model inference time by 40%. Adopted by 3 Fortune 500 companies within 6 months of release.',
+    deed: 'Building useful products',
+    base_score: 19,
+    status: 'APPROVED',
+    created_at: new Date(Date.now() - 1000 * 60 * 60 * 8).toISOString(),
+    is_irl: false,
+    evidence_source_url: 'https://example.com/oss',
+    public_anonymous: false,
+    media: [],
     category: 'Technology',
-    deed: 'Open Source Contribution',
     stats: { aligns: 310, opposes: 7, comments: 55, shares: 120 },
-    reportScore: 19,
-    adminDecision: { finalImpact: 19 },
+    report_score: 19,
+    viewer: null,
     account: {
-      _id: 'acc_p003',
-      displayName: 'Aiden Park',
-      username: 'aidenpark',
-      avatarUrl: 'https://api.dicebear.com/9.x/avataaars/svg?seed=Aiden',
-      verified: true,
+      id: 'acc_p003',
+      display_name: 'Aiden Park',
+      handle: 'aidenpark',
+      platform: 'linkedin',
       score: 1780,
-      platform: 'LinkedIn',
     },
     reporter: MOCK_REPORTER,
+    can_request_moderation: false,
   },
   {
-    _id: 'rep_004',
+    id: 'rep_004',
     type: 'negative',
-    description: 'Repeatedly failed to disclose undeclared conflicts of interest on advisory board positions while writing public policy recommendations.',
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
+    title: 'Conflict of Interest',
+    description:
+      'Repeatedly failed to disclose undeclared conflicts of interest on advisory board positions while writing public policy recommendations.',
+    deed: 'Corruption',
+    base_score: -12,
+    status: 'APPROVED',
+    created_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
+    is_irl: false,
+    evidence_source_url: 'https://example.com/conflict',
+    public_anonymous: true,
+    media: [],
     category: 'Governance',
-    deed: 'Conflict of Interest',
     stats: { aligns: 57, opposes: 22, comments: 30, shares: 14 },
-    reportScore: -12,
-    adminDecision: { finalImpact: -12 },
+    report_score: -12,
+    viewer: null,
     account: {
-      _id: 'acc_p004',
-      displayName: 'Helena Cross',
-      username: 'helenacross',
-      avatarUrl: 'https://api.dicebear.com/9.x/avataaars/svg?seed=Helena',
-      verified: false,
+      id: 'acc_p004',
+      display_name: 'Helena Cross',
+      handle: 'helenacross',
+      platform: 'website',
       score: 490,
     },
     reporter: null,
+    can_request_moderation: false,
   },
   {
-    _id: 'rep_005',
+    id: 'rep_005',
     type: 'positive',
-    description: 'Donated 30% of annual salary to establish scholarship fund for first-generation university students in rural districts.',
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 36).toISOString(),
+    title: 'Philanthropy',
+    description:
+      'Donated 30% of annual salary to establish scholarship fund for first-generation university students in rural districts.',
+    deed: 'Funding education / causes',
+    base_score: 17,
+    status: 'APPROVED',
+    created_at: new Date(Date.now() - 1000 * 60 * 60 * 36).toISOString(),
+    is_irl: false,
+    evidence_source_url: 'https://example.com/scholarship',
+    public_anonymous: false,
+    media: [],
     category: 'Education',
-    deed: 'Philanthropy',
     stats: { aligns: 204, opposes: 1, comments: 22, shares: 88 },
-    reportScore: 17,
-    adminDecision: { finalImpact: 17 },
+    report_score: 17,
+    viewer: null,
     account: {
-      _id: 'acc_p005',
-      displayName: 'David Nwosu',
-      username: 'davidnwosu',
-      avatarUrl: 'https://api.dicebear.com/9.x/avataaars/svg?seed=David',
-      verified: true,
+      id: 'acc_p005',
+      display_name: 'David Nwosu',
+      handle: 'davidnwosu',
+      platform: 'website',
       score: 1540,
     },
     reporter: MOCK_REPORTER,
+    can_request_moderation: false,
   },
 ];
 
-function filterFeed(reports: FeedReport[], filter: FeedFilter): FeedReport[] {
+function filterFeed(reports: FeedReport[], filter: string): FeedReport[] {
   switch (filter) {
     case 'top':
-      return [...reports].sort((a, b) => Math.abs(b.reportScore ?? 0) - Math.abs(a.reportScore ?? 0));
+      return [...reports].sort(
+        (a, b) => Math.abs(b.base_score ?? 0) - Math.abs(a.base_score ?? 0),
+      );
     case 'following':
-      return []; // No following in mock mode
+      return [];
     case 'near':
       return reports.slice(0, 2);
     case 'for_you':
@@ -130,12 +167,23 @@ function filterFeed(reports: FeedReport[], filter: FeedFilter): FeedReport[] {
   }
 }
 
-export async function getFeed(filter: FeedFilter): Promise<ApiResponse<FeedReport[]>> {
+export async function getFeed(
+  limit = 30,
+  _cursor?: string,
+): Promise<ApiResponse<{ items: FeedReport[]; next_cursor: string | null }>> {
   await new Promise((resolve) => setTimeout(resolve, 900));
+  const items = MOCK_FEED_REPORTS.slice(0, limit);
   return {
     ok: true,
-    data: filterFeed(MOCK_FEED_REPORTS, filter),
+    data: { items, next_cursor: null },
   };
+}
+
+export async function getFeedByFilter(
+  filter: string,
+): Promise<ApiResponse<FeedReport[]>> {
+  await new Promise((resolve) => setTimeout(resolve, 900));
+  return { ok: true, data: filterFeed(MOCK_FEED_REPORTS, filter) };
 }
 
 export { MOCK_FEED_REPORTS };
