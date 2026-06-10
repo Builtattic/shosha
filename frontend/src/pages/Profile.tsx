@@ -1,203 +1,237 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Edit2, MapPin, Briefcase, Calendar } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { MapPin, Pencil } from 'lucide-react';
 import { useAuth } from '@/providers/AuthProvider';
-import { D3ScoreGauge } from '@/components/viz/D3ScoreGauge';
-import { FeedItem } from '@/components/feed/FeedItem';
-import { toFeedItem } from '@/lib/feed';
-import { listReports } from '@/api/reports';
-import type { FeedReport } from '@/types/feed';
-import { formatDate } from '@/lib/utils';
+import { getMyFilings, replayMyScore, type MeFiling, type ScoreReplayResult } from '@/api/me';
+import FilingsList from '@/components/profile/FilingsList';
+import SwipeScoreBreakdownCard from '@/components/profile/SwipeScoreBreakdownCard';
+import {
+  ConnectionListModal,
+  type ConnectionListModalRef,
+} from '@/components/profile/ConnectionListModal';
+import { cn } from '@/lib/utils';
 
-export default function Profile() {
+type Tab = 'overview' | 'filings' | 'activity';
+
+export default function ProfilePage() {
   const navigate = useNavigate();
-  const { profile, isLoading } = useAuth();
-  
-  const [reports, setReports] = useState<FeedReport[]>([]);
-  const [reportsLoading, setReportsLoading] = useState(true);
+  const { profile, firebaseUser, isLoading } = useAuth();
+  const connectionListModalRef = useRef<ConnectionListModalRef>(null);
+
+  const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [filings, setFilings] = useState<MeFiling[]>([]);
+  const [score, setScore] = useState(1000);
+  const [replayResults, setReplayResults] = useState<ScoreReplayResult['account_results']>([]);
+  const [loadingExtras, setLoadingExtras] = useState(true);
 
   useEffect(() => {
     if (!profile?.id) return;
     let mounted = true;
-    
-    const fetchReports = async () => {
-      setReportsLoading(true);
+
+    async function load() {
+      setLoadingExtras(true);
       try {
-        const res = await listReports({ reporter_user_id: profile.id });
-        if (mounted && res.ok && res.data) {
-          setReports(res.data.items);
-        }
-      } catch (err) {
-        console.error('Failed to load user reports:', err);
+        void replayMyScore()
+          .then((result) => {
+            if (!mounted) return;
+            setReplayResults(result.account_results ?? []);
+            const first = result.account_results?.[0]?.final_score;
+            if (typeof first === 'number') setScore(first);
+          })
+          .catch(() => null);
+
+        const filingsRes = await getMyFilings();
+        if (mounted) setFilings(filingsRes.filings ?? []);
       } finally {
-        if (mounted) setReportsLoading(false);
+        if (mounted) setLoadingExtras(false);
       }
+    }
+
+    load();
+    return () => {
+      mounted = false;
     };
-    
-    fetchReports();
-    return () => { mounted = false; };
   }, [profile?.id]);
 
-  if (isLoading) {
+  if (isLoading || !profile) {
     return (
-      <div className="min-h-screen bg-background p-4 md:p-8 animate-pulse">
-        <div className="max-w-2xl mx-auto space-y-8">
-          <div className="flex justify-between items-start">
-            <div className="w-24 h-24 bg-muted rounded-full" />
-            <div className="w-32 h-10 bg-muted rounded-full" />
-          </div>
-          <div className="space-y-4">
-            <div className="w-48 h-8 bg-muted rounded" />
-            <div className="w-32 h-4 bg-muted rounded" />
-          </div>
-          <div className="h-40 bg-muted rounded-2xl" />
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-foreground border-t-transparent" />
       </div>
     );
   }
 
-  if (!profile) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-muted-foreground">Please sign in to view your profile.</p>
-      </div>
-    );
-  }
+  const displayName =
+    profile.display_name ??
+    firebaseUser?.displayName ??
+    profile.username ??
+    'User';
+  const username = profile.username ?? 'user';
+  const avatarSeed = displayName.replace(/^@/, '');
+
+  const tabs: { id: Tab; label: string }[] = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'filings', label: 'Filings' },
+    { id: 'activity', label: 'Activity' },
+  ];
 
   return (
-    <div className="min-h-screen bg-background pb-20 md:pb-8">
-      <div className="max-w-2xl mx-auto p-4 md:p-8 space-y-8">
-        
-        {/* Header Section */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="relative"
-        >
-          <div className="flex justify-between items-start">
-            <div className="w-24 h-24 md:w-32 md:h-32 rounded-full overflow-hidden border-4 border-background bg-muted shadow-xl relative z-10">
-              {profile.photo_url ? (
-                <img src={profile.photo_url} alt={profile.display_name || ''} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full bg-primary/10 flex items-center justify-center text-4xl font-bold text-primary uppercase">
-                  {profile.display_name?.charAt(0) || profile.username?.charAt(0) || '?'}
-                </div>
-              )}
+    <div className="min-h-screen bg-background pb-20">
+      <div className="mx-auto max-w-2xl px-4 py-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-4">
+            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-primary/10 text-3xl font-bold text-primary uppercase">
+              {avatarSeed.charAt(0)}
             </div>
-            <button 
-              onClick={() => navigate('/profile/edit')}
-              className="px-4 py-2 bg-secondary text-secondary-foreground rounded-full text-sm font-medium flex items-center hover:bg-secondary/80 transition-colors"
-            >
-              <Edit2 className="w-4 h-4 mr-2" />
-              Edit Profile
-            </button>
-          </div>
-
-          <div className="mt-4 space-y-2">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-                {profile.display_name || profile.username || 'Anonymous User'}
-              </h1>
-              {profile.username && (
-                <p className="text-muted-foreground font-medium">@{profile.username}</p>
-              )}
+              <h1 className="text-[22px] font-bold">{displayName}</h1>
+              <p className="text-[13px] text-muted-foreground">@{username}</p>
+              {profile.headline ? (
+                <p className="mt-1 text-[13px] text-muted-foreground">{profile.headline}</p>
+              ) : null}
+              {profile.city ? (
+                <p className="mt-1 flex items-center gap-1 text-[13px] text-muted-foreground">
+                  <MapPin size={12} /> {profile.city}
+                </p>
+              ) : null}
             </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate('/profile/edit')}
+            className="flex shrink-0 items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[12px] font-semibold hover:bg-muted"
+          >
+            <Pencil size={12} />
+            Edit
+          </button>
+        </div>
 
-            {profile.bio && (
-              <p className="text-foreground/90 max-w-md text-sm leading-relaxed pt-2">
-                {profile.bio}
-              </p>
+        <div className="mt-8 text-center">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            Shosha Score
+          </p>
+          <p className="mt-1 text-[44px] font-black tabular-nums">{score.toLocaleString()}</p>
+        </div>
+
+        {profile.id ? (
+          <ConnectionListModal
+            ref={connectionListModalRef}
+            targetUserId={profile.id}
+            followersCount={0}
+            followingCount={0}
+            showInlineTriggers={false}
+          />
+        ) : null}
+
+        <div className="mt-6 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            disabled={!profile.id}
+            onClick={() => connectionListModalRef.current?.open('followers')}
+            className="rounded-2xl border border-border py-3 text-center text-[12px] font-bold disabled:opacity-50"
+          >
+            0 Followers
+            {/* TODO: wire follower counts when available */}
+          </button>
+          <button
+            type="button"
+            disabled={!profile.id}
+            onClick={() => connectionListModalRef.current?.open('following')}
+            className="rounded-2xl border border-border py-3 text-center text-[12px] font-bold disabled:opacity-50"
+          >
+            0 Following
+          </button>
+        </div>
+
+        <div className="mt-8 flex border-b border-border">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                'flex-1 border-b-2 py-3 text-[13px] font-semibold',
+                activeTab === tab.id
+                  ? 'border-foreground text-foreground'
+                  : 'border-transparent text-muted-foreground',
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-6">
+          <AnimatePresence mode="wait">
+            {activeTab === 'overview' && (
+              <motion.div
+                key="overview"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 8 }}
+                className="space-y-4"
+              >
+                {profile.bio ? (
+                  <div className="rounded-2xl border border-border p-4">
+                    <h3 className="mb-2 text-[13px] font-bold uppercase text-muted-foreground">Bio</h3>
+                    <p className="text-[14px] leading-relaxed">{profile.bio}</p>
+                  </div>
+                ) : null}
+                <SwipeScoreBreakdownCard swipeAggregate={null} totalScore={score} />
+              </motion.div>
             )}
 
-            <div className="flex flex-wrap gap-4 pt-4 text-sm text-muted-foreground">
-              {profile.city && (
-                <div className="flex items-center">
-                  <MapPin className="w-4 h-4 mr-1.5 opacity-70" />
-                  {profile.city}{profile.country ? `, ${profile.country}` : ''}
-                </div>
-              )}
-              {profile.occupation_role && (
-                <div className="flex items-center">
-                  <Briefcase className="w-4 h-4 mr-1.5 opacity-70" />
-                  {profile.occupation_role}
-                </div>
-              )}
-              <div className="flex items-center">
-                <Calendar className="w-4 h-4 mr-1.5 opacity-70" />
-                Joined {formatDate(profile.created_at)}
-              </div>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Dashboard Score Area */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-card border border-border/50 rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between shadow-sm overflow-hidden relative"
-        >
-          <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent pointer-events-none" />
-          
-          <div className="space-y-2 text-center md:text-left mb-6 md:mb-0 relative z-10">
-            <h2 className="text-xl font-bold">Your Credibility</h2>
-            <p className="text-muted-foreground text-sm max-w-[250px]">
-              Your score represents your accuracy and trustworthiness when filing reports.
-            </p>
-          </div>
-          
-          <div className="relative z-10">
-            <D3ScoreGauge score={1000} size={140} />
-          </div>
-        </motion.div>
-
-        {/* My Reports */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="space-y-6 pt-4"
-        >
-          <div className="border-b border-border/50 pb-2 flex items-center justify-between">
-            <h2 className="text-lg font-bold">My Reports</h2>
-            <span className="bg-muted px-2 py-1 rounded text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              {reports.length} Filed
-            </span>
-          </div>
-
-          {reportsLoading ? (
-            <div className="space-y-4">
-              {[1, 2].map(i => (
-                <div key={i} className="h-40 bg-card rounded-2xl animate-pulse border border-border/50" />
-              ))}
-            </div>
-          ) : reports.length === 0 ? (
-            <div className="text-center py-12 bg-card border border-border/50 rounded-2xl border-dashed">
-              <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                <Edit2 className="w-6 h-6 text-muted-foreground opacity-50" />
-              </div>
-              <h3 className="text-lg font-medium mb-1">No reports filed yet</h3>
-              <p className="text-muted-foreground text-sm mb-4">
-                You haven't submitted any reports against accounts.
-              </p>
-              <button 
-                onClick={() => navigate('/accounts/search')}
-                className="px-6 py-2 bg-primary text-primary-foreground rounded-full text-sm font-medium"
+            {activeTab === 'filings' && (
+              <motion.div
+                key="filings"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 8 }}
+                className="rounded-2xl border border-border p-4"
               >
-                Find an account to report
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {reports.map((report) => (
-                <div key={report._id} onClick={() => navigate(`/reports/${report._id}`)} className="cursor-pointer">
-                  <FeedItem {...toFeedItem(report)} />
-                </div>
-              ))}
-            </div>
-          )}
-        </motion.div>
+                {loadingExtras ? (
+                  <p className="py-8 text-center text-muted-foreground">Loading filings…</p>
+                ) : (
+                  <FilingsList filings={filings} />
+                )}
+              </motion.div>
+            )}
+
+            {activeTab === 'activity' && (
+              <motion.div
+                key="activity"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 8 }}
+                className="space-y-3"
+              >
+                {replayResults.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-border p-8 text-center text-[13px] text-muted-foreground">
+                    No owned accounts yet.
+                  </div>
+                ) : (
+                  replayResults.map((row) => (
+                    <div
+                      key={row.account_id}
+                      className="flex items-center justify-between rounded-xl border border-border p-4"
+                    >
+                      <div>
+                        <p className="text-[14px] font-bold">
+                          {row.platform} · @{row.handle}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">Score replay</p>
+                      </div>
+                      <span className="rounded-full bg-muted px-3 py-1 text-[13px] font-bold tabular-nums">
+                        {row.final_score.toLocaleString()}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
       </div>
     </div>

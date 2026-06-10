@@ -1,50 +1,42 @@
 import { USE_MOCKS, apiClient } from '@/lib/apiClient';
 import * as mock from '@/mocks/accounts';
 import type { ApiResponse, PaginatedResponse } from '@/types/common';
-import type { SearchAccount } from '@/mocks/accounts';
-import type { FeedReport } from '@/types/feed';
+import type {
+  Account,
+  AccountCreatePayload,
+  AccountUpdatePayload,
+  SocialLink,
+} from '@/types/account';
 
-// ── Types ──────────────────────────────────────────────────────────────────────
-
-export interface AccountDetail {
+export interface ReportListItem {
   id: string;
-  platform: string;
-  handle: string;
-  display_name: string | null;
-  bio: string | null;
+  title: string;
+  description: string;
+  deed: string | null;
+  base_score: number | null;
+  type: 'positive' | 'negative' | null;
   status: string;
-  owner_user_id: string | null;
   created_at: string;
-  report_count?: number;
-  align_count?: number;
-  oppose_count?: number;
-  shosha_score?: number;
-}
-
-export interface SocialLink {
-  platform: string;
-  url: string;
-  is_verified: boolean;
 }
 
 // ── Real API ───────────────────────────────────────────────────────────────────
 
 const real = {
-  searchAccounts: async (q: string): Promise<ApiResponse<{ accounts: SearchAccount[] }>> => {
+  searchAccounts: async (q: string): Promise<ApiResponse<{ items: Account[] }>> => {
     try {
       const response = await apiClient.get(`/accounts/search?q=${encodeURIComponent(q)}`);
-      return { ok: true, data: response.data };
-    } catch (error: any) {
-      return { ok: false, error: error.message };
+      return { ok: true, data: { items: response.data.items ?? [] } };
+    } catch (error: unknown) {
+      return { ok: false, error: error instanceof Error ? error.message : 'Request failed' };
     }
   },
 
-  getAccount: async (id: string): Promise<ApiResponse<{ account: AccountDetail }>> => {
+  getAccount: async (id: string): Promise<ApiResponse<{ account: Account }>> => {
     try {
       const response = await apiClient.get(`/accounts/${id}`);
       return { ok: true, data: response.data };
-    } catch (error: any) {
-      return { ok: false, error: error.message };
+    } catch (error: unknown) {
+      return { ok: false, error: error instanceof Error ? error.message : 'Request failed' };
     }
   },
 
@@ -52,44 +44,72 @@ const real = {
     try {
       const response = await apiClient.get(`/accounts/${id}/social-links`);
       return { ok: true, data: response.data };
-    } catch (error: any) {
-      return { ok: false, error: error.message };
+    } catch (error: unknown) {
+      return { ok: false, error: error instanceof Error ? error.message : 'Request failed' };
     }
   },
 
   listAccountReports: async (
     accountId: string,
     cursor?: string,
-  ): Promise<ApiResponse<PaginatedResponse<FeedReport>>> => {
+  ): Promise<ApiResponse<PaginatedResponse<ReportListItem>>> => {
     try {
       const params = new URLSearchParams({ account_id: accountId, status: 'APPROVED', limit: '20' });
       if (cursor) params.set('cursor', cursor);
       const response = await apiClient.get(`/reports?${params}`);
       return { ok: true, data: response.data };
-    } catch (error: any) {
-      return { ok: false, error: error.message };
+    } catch (error: unknown) {
+      return { ok: false, error: error instanceof Error ? error.message : 'Request failed' };
     }
   },
 
-  createAccount: async (payload: {
-    platform: string;
-    handle: string;
-    display_name?: string;
-    bio?: string;
-  }): Promise<ApiResponse<{ account: AccountDetail }>> => {
+  createAccount: async (
+    payload: AccountCreatePayload,
+  ): Promise<ApiResponse<{ account: Account }>> => {
     try {
       const response = await apiClient.post('/accounts', payload);
       return { ok: true, data: response.data };
-    } catch (error: any) {
-      return { ok: false, error: error.message };
+    } catch (error: unknown) {
+      return { ok: false, error: error instanceof Error ? error.message : 'Request failed' };
     }
+  },
+
+  listAccounts: async (
+    limit = 50,
+    cursor?: string,
+  ): Promise<{ items: Account[]; next_cursor: string | null }> => {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (cursor) params.set('cursor', cursor);
+    const res = await apiClient.get(`/accounts/?${params}`);
+    return res.data;
+  },
+
+  updateAccount: async (accountId: string, payload: AccountUpdatePayload): Promise<Account> => {
+    const res = await apiClient.patch(`/accounts/${accountId}`, payload);
+    return res.data.account;
+  },
+
+  addSocialLink: async (
+    accountId: string,
+    platform: string,
+    url: string,
+  ): Promise<SocialLink> => {
+    const res = await apiClient.post(`/accounts/${accountId}/social-links`, {
+      platform,
+      url,
+      is_verified: false,
+    });
+    return res.data.link;
   },
 };
 
 // ── Exports ────────────────────────────────────────────────────────────────────
 
-export const searchAccounts   = USE_MOCKS ? mock.searchAccounts   : real.searchAccounts;
-export const getAccount       = USE_MOCKS ? mock.getAccount       : real.getAccount;
+export const searchAccounts = USE_MOCKS ? mock.searchAccounts : real.searchAccounts;
+export const getAccount = USE_MOCKS ? mock.getAccount : real.getAccount;
 export const getAccountSocialLinks = USE_MOCKS ? mock.getAccountSocialLinks : real.getAccountSocialLinks;
-export const listAccountReports    = USE_MOCKS ? mock.listAccountReports    : real.listAccountReports;
-export const createAccount    = USE_MOCKS ? mock.createAccount    : real.createAccount;
+export const listAccountReports = USE_MOCKS ? mock.listAccountReports : real.listAccountReports;
+export const createAccount = USE_MOCKS ? mock.createAccount : real.createAccount;
+export const listAccounts = USE_MOCKS ? mock.listAccounts : real.listAccounts;
+export const updateAccount = USE_MOCKS ? mock.updateAccount : real.updateAccount;
+export const addSocialLink = USE_MOCKS ? mock.addSocialLink : real.addSocialLink;

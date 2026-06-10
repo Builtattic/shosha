@@ -18,6 +18,10 @@ class UserPublic(BaseModel):
     username: str | None
     display_name: str | None
     photo_url: str | None
+    bio: str | None = None
+    headline: str | None = None
+    city: str | None = None
+    website_url: str | None = None
     role: UserRole
     created_at: datetime
 
@@ -37,10 +41,14 @@ class UserUpdateRequest(BaseModel):
     )
     display_name: str | None = Field(default=None, max_length=128)
     photo_url: str | None = Field(default=None, max_length=1024)
+    bio: str | None = Field(default=None, max_length=500)
+    headline: str | None = Field(default=None, max_length=128)
+    city: str | None = Field(default=None, max_length=64)
+    website_url: str | None = Field(default=None, max_length=1024)
 
-    @field_validator("photo_url")
+    @field_validator("photo_url", "website_url")
     @classmethod
-    def validate_photo_url(cls, value: str | None) -> str | None:
+    def validate_http_fields(cls, value: str | None) -> str | None:
         if value is None:
             return value
         return validate_http_url(value)

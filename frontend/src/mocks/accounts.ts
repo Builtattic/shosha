@@ -1,58 +1,65 @@
-import type { ApiResponse } from '@/types/common';
-import type { FeedReport } from '@/types/feed';
-import type { AccountDetail, SocialLink } from '@/api/accounts';
-import type { PaginatedResponse } from '@/types/common';
-import { MOCK_FEED_REPORTS } from '@/mocks/feed';
+import type { ApiResponse, PaginatedResponse } from '@/types/common';
+import type { Account, AccountCreatePayload, AccountUpdatePayload, SocialLink } from '@/types/account';
+import type { ReportListItem } from '@/api/accounts';
 
-export type SearchAccount = {
-  _id: string;
-  platform?: string;
-  username: string;
-  displayName: string;
-  avatarUrl?: string;
-  bio?: string;
-  followers?: string;
-  verified?: boolean;
+export type SearchAccount = Account & {
   claimed?: boolean;
   claimable?: boolean;
+  verified?: boolean;
 };
-
-// ── Mock data ──────────────────────────────────────────────────────────────────
 
 const MOCK_ACCOUNTS: SearchAccount[] = [
   {
-    _id: 'acc_1',
-    username: 'elonmusk',
-    displayName: 'Elon Musk',
-    avatarUrl: 'https://api.dicebear.com/9.x/initials/svg?seed=ElonMusk',
+    id: 'acc_1',
+    platform: 'X',
+    handle: 'elonmusk',
+    display_name: 'Elon Musk',
+    bio: null,
+    status: 'ACTIVE',
+    owner_user_id: null,
+    created_at: new Date().toISOString(),
+    score: 1000,
+    score_breakdown: null,
+    social_links: [],
     verified: true,
     claimed: true,
     claimable: false,
-    platform: 'X',
   },
   {
-    _id: 'acc_2',
-    username: 'satyanadella',
-    displayName: 'Satya Nadella',
-    avatarUrl: 'https://api.dicebear.com/9.x/initials/svg?seed=SatyaNadella',
+    id: 'acc_2',
+    platform: 'LinkedIn',
+    handle: 'satyanadella',
+    display_name: 'Satya Nadella',
+    bio: null,
+    status: 'ACTIVE',
+    owner_user_id: null,
+    created_at: new Date().toISOString(),
+    score: 1000,
+    score_breakdown: null,
+    social_links: [],
     verified: true,
     claimed: false,
     claimable: true,
-    platform: 'LinkedIn',
   },
   {
-    _id: 'acc_3',
-    username: 'samaltman',
-    displayName: 'Sam Altman',
-    avatarUrl: 'https://api.dicebear.com/9.x/initials/svg?seed=SamAltman',
+    id: 'acc_3',
+    platform: 'X',
+    handle: 'samaltman',
+    display_name: 'Sam Altman',
+    bio: null,
+    status: 'ACTIVE',
+    owner_user_id: null,
+    created_at: new Date().toISOString(),
+    score: 1000,
+    score_breakdown: null,
+    social_links: [],
     verified: false,
     claimed: false,
     claimable: true,
-    platform: 'X',
   },
 ];
 
-const MOCK_ACCOUNT_DETAIL: AccountDetail = {
+const MOCK_ACCOUNT_DETAIL: Account = {
   id: 'acc_p002',
   platform: 'X',
   handle: 'marcuswebb',
@@ -61,10 +68,9 @@ const MOCK_ACCOUNT_DETAIL: AccountDetail = {
   status: 'ACTIVE',
   owner_user_id: null,
   created_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 120).toISOString(),
-  report_count: 4,
-  align_count: 247,
-  oppose_count: 34,
-  shosha_score: 620,
+  score: 620,
+  score_breakdown: null,
+  social_links: [],
 };
 
 const MOCK_SOCIAL_LINKS: SocialLink[] = [
@@ -72,48 +78,49 @@ const MOCK_SOCIAL_LINKS: SocialLink[] = [
   { platform: 'LinkedIn', url: 'https://linkedin.com/in/marcuswebb', is_verified: false },
 ];
 
-// ── Mock functions ─────────────────────────────────────────────────────────────
+const MOCK_REPORTS: ReportListItem[] = [
+  {
+    id: 'rep_1',
+    title: 'Corporate governance concern',
+    description: 'Filed regarding financial disclosures.',
+    deed: 'Financial transparency',
+    base_score: 45,
+    type: 'negative',
+    status: 'APPROVED',
+    created_at: new Date(Date.now() - 86400000).toISOString(),
+  },
+  {
+    id: 'rep_2',
+    title: 'Community outreach',
+    description: 'Positive community engagement noted.',
+    deed: 'Community support',
+    base_score: 30,
+    type: 'positive',
+    status: 'APPROVED',
+    created_at: new Date(Date.now() - 172800000).toISOString(),
+  },
+];
 
-export async function searchAccounts(q: string): Promise<ApiResponse<{ accounts: SearchAccount[] }>> {
+export async function searchAccounts(q: string): Promise<ApiResponse<{ items: Account[] }>> {
   await new Promise((resolve) => setTimeout(resolve, 600));
   const query = q.toLowerCase();
   const results = MOCK_ACCOUNTS.filter(
     (acc) =>
-      acc.username.toLowerCase().includes(query) ||
-      acc.displayName.toLowerCase().includes(query),
+      acc.handle.toLowerCase().includes(query) ||
+      (acc.display_name ?? '').toLowerCase().includes(query),
   );
-  return { ok: true, data: { accounts: results } };
+  return { ok: true, data: { items: results } };
 }
 
-export async function getAccount(id: string): Promise<ApiResponse<{ account: AccountDetail }>> {
+export async function getAccount(id: string): Promise<ApiResponse<{ account: Account }>> {
   await new Promise((resolve) => setTimeout(resolve, 600));
-  // Try to match against a feed report's account to make it feel real
-  const report = MOCK_FEED_REPORTS.find((r) => r.account._id === id);
-  if (report) {
-    return {
-      ok: true,
-      data: {
-        account: {
-          id,
-          platform: report.account.platform ?? 'X',
-          handle: report.account.username,
-          display_name: report.account.displayName,
-          bio: 'This account has been reported on Shosha.',
-          status: 'ACTIVE',
-          owner_user_id: null,
-          created_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 60).toISOString(),
-          report_count: 2,
-          align_count: report.stats?.aligns,
-          oppose_count: report.stats?.opposes,
-          shosha_score: report.account.score,
-        },
-      },
-    };
-  }
-  return { ok: true, data: { account: MOCK_ACCOUNT_DETAIL } };
+  const found = MOCK_ACCOUNTS.find((a) => a.id === id);
+  return { ok: true, data: { account: found ?? MOCK_ACCOUNT_DETAIL } };
 }
 
-export async function getAccountSocialLinks(id: string): Promise<ApiResponse<{ links: SocialLink[] }>> {
+export async function getAccountSocialLinks(
+  id: string,
+): Promise<ApiResponse<{ links: SocialLink[] }>> {
   await new Promise((resolve) => setTimeout(resolve, 400));
   void id;
   return { ok: true, data: { links: MOCK_SOCIAL_LINKS } };
@@ -122,22 +129,15 @@ export async function getAccountSocialLinks(id: string): Promise<ApiResponse<{ l
 export async function listAccountReports(
   accountId: string,
   _cursor?: string,
-): Promise<ApiResponse<PaginatedResponse<FeedReport>>> {
+): Promise<ApiResponse<PaginatedResponse<ReportListItem>>> {
   await new Promise((resolve) => setTimeout(resolve, 700));
-  const items = MOCK_FEED_REPORTS.filter((r) => r.account._id === accountId);
-  // If no exact match, return a couple as sample data
-  return {
-    ok: true,
-    data: { items: items.length ? items : MOCK_FEED_REPORTS.slice(0, 2), next_cursor: null },
-  };
+  void accountId;
+  return { ok: true, data: { items: MOCK_REPORTS, next_cursor: null } };
 }
 
-export async function createAccount(payload: {
-  platform: string;
-  handle: string;
-  display_name?: string;
-  bio?: string;
-}): Promise<ApiResponse<{ account: AccountDetail }>> {
+export async function createAccount(
+  payload: AccountCreatePayload,
+): Promise<ApiResponse<{ account: Account }>> {
   await new Promise((resolve) => setTimeout(resolve, 800));
   return {
     ok: true,
@@ -151,11 +151,36 @@ export async function createAccount(payload: {
         status: 'ACTIVE',
         owner_user_id: 'usr_mock123',
         created_at: new Date().toISOString(),
-        report_count: 0,
-        align_count: 0,
-        oppose_count: 0,
-        shosha_score: 1000,
+        score: 1000,
+        score_breakdown: null,
+        social_links: [],
       },
     },
   };
+}
+
+export async function listAccounts(
+  limit = 50,
+  _cursor?: string,
+): Promise<{ items: Account[]; next_cursor: string | null }> {
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  return { items: MOCK_ACCOUNTS.slice(0, limit), next_cursor: null };
+}
+
+export async function updateAccount(
+  accountId: string,
+  payload: AccountUpdatePayload,
+): Promise<Account> {
+  await new Promise((resolve) => setTimeout(resolve, 400));
+  return { ...MOCK_ACCOUNT_DETAIL, id: accountId, ...payload };
+}
+
+export async function addSocialLink(
+  accountId: string,
+  platform: string,
+  url: string,
+): Promise<SocialLink> {
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  void accountId;
+  return { platform, url, is_verified: false };
 }

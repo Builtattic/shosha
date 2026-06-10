@@ -1,17 +1,43 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, CheckCircle2, Circle, AlertTriangle, MessageSquare, ThumbsUp } from 'lucide-react';
+import {
+  Bell,
+  CheckCircle2,
+  Circle,
+  AlertTriangle,
+  UserCheck,
+  ClipboardList,
+  Scale,
+  BadgeCheck,
+  Shield,
+} from 'lucide-react';
 import { getNotifications, markAsRead, markAllAsRead, type NotificationItem } from '@/api/notifications';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { cn, formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ui/Toast';
 
+function getIcon(type: NotificationItem['notification_type']) {
+  switch (type) {
+    case 'CLAIM':
+      return <UserCheck className="w-5 h-5 text-primary" />;
+    case 'REPORT':
+      return <ClipboardList className="w-5 h-5 text-emerald-500" />;
+    case 'DISPUTE':
+      return <Scale className="w-5 h-5 text-amber-500" />;
+    case 'TRUST_BADGE':
+      return <BadgeCheck className="w-5 h-5 text-primary" />;
+    case 'MODERATION':
+      return <Shield className="w-5 h-5 text-destructive" />;
+    case 'SYSTEM':
+    default:
+      return <Bell className="w-5 h-5 text-muted-foreground" />;
+  }
+}
+
 export default function Notifications() {
-  const navigate = useNavigate();
   const toast = useToast();
   const { markAllRead: contextMarkAllRead, refreshCount } = useNotifications();
-  
+
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -25,19 +51,25 @@ export default function Notifications() {
         if (mounted && res.ok && res.data) {
           setNotifications(res.data.items);
         }
-      } catch (err: any) {
-        if (mounted) setError(err.message || 'Failed to load notifications');
+      } catch (err: unknown) {
+        if (mounted) {
+          setError(err instanceof Error ? err.message : 'Failed to load notifications');
+        }
       } finally {
         if (mounted) setLoading(false);
       }
     };
     fetchNotifs();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const handleNotificationClick = async (notif: NotificationItem) => {
-    if (!notif.read) {
-      setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, read: true } : n));
+    if (!notif.is_read) {
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notif.id ? { ...n, is_read: true } : n)),
+      );
       try {
         await markAsRead(notif.id);
         refreshCount();
@@ -45,15 +77,11 @@ export default function Notifications() {
         // silently fail read state
       }
     }
-    
-    if (notif.link) {
-      navigate(notif.link);
-    }
   };
 
   const handleMarkAllRead = async () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    contextMarkAllRead(); // optimistic UI update
+    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+    contextMarkAllRead();
     try {
       await markAllAsRead();
       toast.push('All notifications marked as read');
@@ -62,27 +90,20 @@ export default function Notifications() {
     }
   };
 
-  const getIcon = (type: string) => {
-    switch (type) {
-      case 'REPORT_VOTED': return <ThumbsUp className="w-5 h-5 text-emerald-500" />;
-      case 'REPORT_COMMENTED': return <MessageSquare className="w-5 h-5 text-primary" />;
-      case 'MODERATION_DECISION': return <AlertTriangle className="w-5 h-5 text-destructive" />;
-      default: return <Bell className="w-5 h-5 text-muted-foreground" />;
-    }
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-background pb-20 md:pb-8">
         <div className="max-w-2xl mx-auto p-4 md:py-8 space-y-4 animate-pulse">
           <div className="h-8 w-40 bg-muted rounded mb-8" />
-          {[1,2,3,4].map(i => <div key={i} className="h-24 bg-card rounded-2xl border border-border/50" />)}
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-24 bg-card rounded-2xl border border-border/50" />
+          ))}
         </div>
       </div>
     );
   }
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-8">
@@ -97,7 +118,7 @@ export default function Notifications() {
             )}
           </div>
           {unreadCount > 0 && (
-            <button 
+            <button
               onClick={handleMarkAllRead}
               className="text-sm font-medium text-primary hover:text-primary/80 transition-colors"
             >
@@ -133,27 +154,32 @@ export default function Notifications() {
                   animate={{ opacity: 1, y: 0 }}
                   onClick={() => handleNotificationClick(notif)}
                   className={cn(
-                    "p-4 rounded-2xl border transition-all cursor-pointer hover:bg-muted/30",
-                    notif.read ? "bg-card border-border/50 opacity-80" : "bg-card border-primary/20 shadow-sm"
+                    'p-4 rounded-2xl border transition-all cursor-pointer hover:bg-muted/30',
+                    notif.is_read
+                      ? 'bg-card border-border/50 opacity-80'
+                      : 'bg-card border-primary/20 shadow-sm',
                   )}
                 >
                   <div className="flex gap-4">
-                    <div className="shrink-0 mt-1">
-                      {getIcon(notif.type)}
-                    </div>
+                    <div className="shrink-0 mt-1">{getIcon(notif.notification_type)}</div>
                     <div className="flex-1 space-y-1">
                       <div className="flex items-start justify-between gap-2">
-                        <h4 className={cn("font-bold text-sm", !notif.read && "text-foreground")}>
+                        <h4
+                          className={cn(
+                            'font-bold text-sm',
+                            !notif.is_read && 'text-foreground',
+                          )}
+                        >
                           {notif.title}
                         </h4>
-                        {!notif.read ? (
+                        {!notif.is_read ? (
                           <Circle className="w-2.5 h-2.5 fill-primary text-primary shrink-0 mt-1" />
                         ) : (
                           <CheckCircle2 className="w-3 h-3 text-muted-foreground shrink-0 mt-1 opacity-50" />
                         )}
                       </div>
                       <p className="text-sm text-foreground/80 leading-relaxed">
-                        {notif.body}
+                        {notif.message}
                       </p>
                       <div className="text-xs text-muted-foreground pt-1 font-medium">
                         {formatDate(notif.created_at)}

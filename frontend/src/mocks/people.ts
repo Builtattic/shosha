@@ -122,9 +122,9 @@ export async function updateCurrentUser(payload: UpdateUserPayload): Promise<Api
       id: 'usr_mock123',
       firebase_uid: 'fb_mock123',
       username: payload.username ?? null,
-      display_name: payload.name ?? null,
+      display_name: payload.display_name ?? null,
       photo_url: payload.photo_url ?? null,
-      onboarding_complete: payload.onboarding_complete ?? false,
+      onboarding_complete: false,
       created_at: new Date().toISOString(),
     },
   };

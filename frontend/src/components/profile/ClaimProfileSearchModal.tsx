@@ -5,6 +5,10 @@ import { ClaimProfileModal } from '@/components/profile/ClaimProfileModal';
 import { searchAccounts } from '@/api/accounts';
 import type { SearchAccount } from '@/mocks/accounts';
 
+function accountAvatar(acc: SearchAccount) {
+  return `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(acc.display_name ?? acc.handle)}`;
+}
+
 export function ClaimProfileSearchModal({
   open,
   onClose,
@@ -49,7 +53,7 @@ export function ClaimProfileSearchModal({
           setError(payload.error ?? 'Search failed');
           setResults([]);
         } else {
-          setResults(payload.data?.accounts ?? []);
+          setResults(payload.data?.items ?? []);
           setError('');
         }
       } catch {
@@ -150,24 +154,24 @@ export function ClaimProfileSearchModal({
                     Claimable
                   </li>
                   {claimable.map((acc) => (
-                    <li key={acc._id}>
+                    <li key={acc.id}>
                       <button
                         type="button"
                         onClick={() => setPicked(acc)}
                         className="group flex w-full items-center gap-3 rounded-2xl border border-border bg-card px-3 py-2.5 text-left transition-all hover:border-primary/50 hover:bg-primary/5"
                       >
                         <img
-                          src={acc.avatarUrl || `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(acc.displayName)}`}
-                          alt={acc.displayName}
+                          src={accountAvatar(acc)}
+                          alt={acc.display_name ?? acc.handle}
                           className="h-10 w-10 rounded-full object-cover bg-muted"
                         />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5">
-                            <p className="text-[13px] font-bold truncate">{acc.displayName}</p>
+                            <p className="text-[13px] font-bold truncate">{acc.display_name ?? acc.handle}</p>
                             {acc.verified && <BadgeCheck size={13} className="text-primary shrink-0" />}
                           </div>
                           <p className="text-[11px] text-muted-foreground truncate">
-                            @{acc.username}
+                            @{acc.handle}
                             {acc.platform && acc.platform !== 'website' ? ` · ${acc.platform}` : ''}
                           </p>
                         </div>
@@ -184,19 +188,19 @@ export function ClaimProfileSearchModal({
                     Already claimed / locked
                   </li>
                   {locked.map((acc) => (
-                    <li key={acc._id}>
+                    <li key={acc.id}>
                       <div className="flex items-center gap-3 rounded-2xl border border-border bg-muted/20 px-3 py-2.5 opacity-70">
                         <img
-                          src={acc.avatarUrl || `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(acc.displayName)}`}
-                          alt={acc.displayName}
+                          src={accountAvatar(acc)}
+                          alt={acc.display_name ?? acc.handle}
                           className="h-10 w-10 rounded-full object-cover bg-muted"
                         />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5">
-                            <p className="text-[13px] font-bold truncate">{acc.displayName}</p>
+                            <p className="text-[13px] font-bold truncate">{acc.display_name ?? acc.handle}</p>
                             {acc.verified && <BadgeCheck size={13} className="text-primary shrink-0" />}
                           </div>
-                          <p className="text-[11px] text-muted-foreground truncate">@{acc.username}</p>
+                          <p className="text-[11px] text-muted-foreground truncate">@{acc.handle}</p>
                         </div>
                         <span className="shrink-0 rounded-full border border-border bg-background px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                           {acc.claimed ? 'Claimed' : 'Locked'}
@@ -215,12 +219,11 @@ export function ClaimProfileSearchModal({
         <ClaimProfileModal
           open={Boolean(picked)}
           onClose={() => { setPicked(null); onClose(); }}
-          accountId={picked._id}
+          accountId={picked.id}
           targetUser={{
-            name: picked.displayName,
-            handle: picked.username,
-            avatar: picked.avatarUrl
-              || `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(picked.displayName)}`,
+            name: picked.display_name ?? picked.handle,
+            handle: picked.handle,
+            avatar: accountAvatar(picked),
           }}
         />
       )}

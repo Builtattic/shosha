@@ -63,6 +63,11 @@ export async function getCurrentUser(): Promise<ApiResponse<UserProfile>> {
 
 export { clearMockProfilePatch };
 
+/** Mock-only: mark onboarding complete (no backend field in Day 12). */
+export function setMockOnboardingComplete(complete: boolean) {
+  writePatch({ ...readPatch(), onboarding_complete: complete });
+}
+
 export async function updateCurrentUser(payload: UpdateUserPayload): Promise<ApiResponse<UserProfile>> {
   await new Promise(resolve => setTimeout(resolve, 600));
 
@@ -73,16 +78,22 @@ export async function updateCurrentUser(payload: UpdateUserPayload): Promise<Api
     ...base,
     ...readPatch(),
     username: payload.username ?? base.username,
-    display_name: payload.name ?? base.display_name,
+    display_name: payload.display_name ?? base.display_name,
     photo_url: payload.photo_url ?? base.photo_url,
-    onboarding_complete: payload.onboarding_complete ?? base.onboarding_complete,
+    bio: payload.bio ?? base.bio,
+    headline: payload.headline ?? base.headline,
+    city: payload.city ?? base.city,
+    website_url: payload.website_url ?? base.website_url,
   };
 
   writePatch({
     username: updated.username,
     display_name: updated.display_name,
     photo_url: updated.photo_url,
-    onboarding_complete: updated.onboarding_complete,
+    bio: updated.bio,
+    headline: updated.headline,
+    city: updated.city,
+    website_url: updated.website_url,
   });
 
   return { ok: true, data: updated };

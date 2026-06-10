@@ -1,32 +1,33 @@
-export type AccountType = 'individual' | 'business';
-export type AccountStatus = 'active' | 'suspended' | 'pending';
+export type AccountStatus = 'ACTIVE' | 'UNDER_REVIEW' | 'DISPUTED' | 'REMOVED';
+
+export interface SocialLink {
+  platform: string;
+  url: string;
+  is_verified: boolean;
+}
 
 export interface Account {
   id: string;
-  slug: string;
-  owner_user_id: string;
-  type: AccountType;
-  display_name: string;
-  username: string;
+  platform: string;
+  handle: string;
+  display_name: string | null;
   bio: string | null;
-  photo_url: string | null;
-  cover_url: string | null;
-  reputation_score: number;
-  trust_badge: boolean;
   status: AccountStatus;
-  is_following?: boolean;
-  follower_count: number;
-  following_count: number;
-  report_count: number;
+  owner_user_id: string | null;
   created_at: string;
+  score: number;
+  score_breakdown: Record<string, unknown> | null;
+  social_links: SocialLink[];
 }
 
-export interface AccountSummary {
-  id: string;
-  slug: string;
-  display_name: string;
-  username: string;
-  photo_url: string | null;
-  reputation_score: number;
-  trust_badge: boolean;
+export interface AccountCreatePayload {
+  platform: string;
+  handle: string;
+  display_name?: string;
+  bio?: string;
+}
+
+export interface AccountUpdatePayload {
+  display_name?: string;
+  bio?: string;
 }

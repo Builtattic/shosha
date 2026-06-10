@@ -18,6 +18,10 @@ class User(Base, BaseModelMixin):
     username: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
     display_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
     photo_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    bio: Mapped[str | None] = mapped_column(Text, nullable=True)
+    headline: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    city: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    website_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     role: Mapped[UserRole] = mapped_column(
         Enum(UserRole, name="user_role"),
         nullable=False,
