@@ -1,18 +1,21 @@
 # Shosha V2 API Spec (MVP Contract)
 
-This document defines the **stable MVP API contract** for implementation.
+> **Status (Day 19):** This document originated as the MVP contract. Implementation has **exceeded** this scope — notifications, claims, disputes, admin, bubbles, people, impact, events, AI, imports, and payments are live. For the current endpoint inventory and gaps vs V1, see **[PARITY_STATUS.md](./PARITY_STATUS.md)**.
 
-Current scope is **Phase 1 only**:
+This document defines the **original MVP API contract** for implementation.
+
+**Originally Phase 1 only:**
 - Auth
 - Users
 - Accounts
 - Reports
 
-Deferred modules (Phase 2 and Phase 3):
+**Originally deferred (now implemented in V2):**
 - Notifications
 - Claims
 - Disputes
 - Admin
+- Bubbles, People, Feed, Impact, Events, AI, Imports, Payments
 
 ## Guardrails
 

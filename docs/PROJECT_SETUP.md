@@ -1,6 +1,8 @@
 # Shosha V2 Project Setup
 
-This document defines the greenfield foundation for Shosha V2. It intentionally focuses on scaffolding, architecture boundaries, and local development setup only.
+> **Migration status (Day 19):** Scaffold and core implementation are complete. For parity tracking and next steps, see [PARITY_STATUS.md](./PARITY_STATUS.md) and [PHASE_2_PLAN.md](./PHASE_2_PLAN.md). Documentation index: [README.md](./README.md).
+
+This document defines the greenfield foundation for Shosha V2. It covers scaffolding, architecture boundaries, and local development setup.
 
 ## 1) Frontend Foundation Structure
 

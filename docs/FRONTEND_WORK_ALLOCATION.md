@@ -10,23 +10,28 @@ Do NOT wait for backend completion.
 
 ---
 
-# Current Backend Status (Important)
+# Current Backend Status (Updated Day 19)
 
-Backend API endpoints are **not implemented yet** in the current repository state.
+Backend API endpoints are **largely implemented**.
 
 What exists now:
 
-- Backend scaffold structure
-- SQLAlchemy model files under `backend/app/models/`
-- API contract documentation in `docs/API_SPEC.md`
+- **108 route handlers** under `/api/v1` (see `docs/PARITY_STATUS.md`)
+- SQLAlchemy models + Alembic migrations
+- Services for reports, scoring, claims, disputes, admin, bubbles, notifications, etc.
+- Live API responses; frontend `api/*.ts` clients wired for core flows
 
-What does not exist yet:
+What is still partial:
 
-- FastAPI routers
-- Route handlers (`GET/POST/PATCH/...`)
-- Live endpoint responses
+- Bookmark toggle route (service exists, no router)
+- Score history / window scores / swipe aggregate endpoints
+- Admin adjudicate scoring fields on moderate
+- Evidence scan stub, generic admin data CRUD
+- Weekly-momentum cron
 
-Frontend must proceed using mock handlers based on API spec.
+Frontend should prefer **live API** (`VITE_USE_MOCKS=false`). Mocks remain for local dev fallback only.
+
+See `docs/PHASE_2_PLAN.md` for remaining frontend wiring tasks.
 
 ---
 
