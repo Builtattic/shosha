@@ -30,6 +30,13 @@ class UserPrivate(UserPublic):
     email: str | None
     is_active: bool
     last_login_at: datetime | None
+    trust_badge: bool | None = None
+    trust_badge_pending: bool | None = None
+    trust_badge_at: datetime | None = None
+    trust_badge_submitted_at: datetime | None = None
+    trust_badge_rejected_at: datetime | None = None
+    trust_badge_rejection_reason: str | None = None
+    trust_badge_doc_type: str | None = None
 
 
 class UserUpdateRequest(BaseModel):

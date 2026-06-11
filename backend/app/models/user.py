@@ -38,6 +38,10 @@ class User(Base, BaseModelMixin):
     trust_badge_doc_type: Mapped[str | None] = mapped_column(String(32), nullable=True)
     trust_badge_rejected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     trust_badge_rejection_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    trust_badge_subscription_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    trust_badge_payment_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    trust_badge_subscription_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    trust_badge_subscription_currency: Mapped[str | None] = mapped_column(String(8), nullable=True)
     fcm_tokens: Mapped[list | None] = mapped_column(JSONB, nullable=True)
 
     owned_accounts = relationship("Account", back_populates="owner", foreign_keys="Account.owner_user_id")

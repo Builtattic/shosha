@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 import app.models  # noqa: F401 — register all models on Base.metadata
+from app.api.webhooks import router as webhooks_router
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.database import engine
@@ -63,6 +64,7 @@ app.add_middleware(
 )
 
 app.include_router(api_router, prefix="/api/v1")
+app.include_router(webhooks_router)
 
 _STATUS_TO_CODE = {
     401: "unauthorized",
