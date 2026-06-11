@@ -3,8 +3,13 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, MapPin, Shield } from 'lucide-react';
 import { useAuth } from '@/providers/AuthProvider';
-import { getAccount, listAccountReports } from '@/api/accounts';
+import { getAccount, listAccountReports, listAccounts } from '@/api/accounts';
 import type { Account } from '@/types/account';
+import ScoreLedgerPanel from '@/components/profile/ScoreLedgerPanel';
+import ProfileImpactAnalytics from '@/components/profile/ProfileImpactAnalytics';
+import SimilarProfiles from '@/components/profile/SimilarProfiles';
+import AccountShareButton from '@/components/profile/AccountShareButton';
+import { isAdminRole } from '@/lib/roles';
 import type { MeFiling } from '@/api/me';
 import { reportToMeFiling } from '@/lib/reportToMeFiling';
 import LiveAccountScorePanel from '@/components/profile/LiveAccountScorePanel';
@@ -13,7 +18,7 @@ import FilingsList from '@/components/profile/FilingsList';
 import { FollowButton } from '@/components/profile/FollowButton';
 import { cn } from '@/lib/utils';
 
-type Tab = 'overview' | 'activity' | 'about';
+type Tab = 'overview' | 'activity' | 'about' | 'impact';
 
 export default function AccountDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -25,6 +30,7 @@ export default function AccountDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [similarAccounts, setSimilarAccounts] = useState<Account[]>([]);
 
   useEffect(() => {
     if (!id) return;
@@ -34,17 +40,25 @@ export default function AccountDetailPage() {
       setLoading(true);
       setError(null);
       try {
-        const [accRes, repRes] = await Promise.all([
+        const [accRes, repRes, allRes] = await Promise.all([
           getAccount(id),
           listAccountReports(id),
+          listAccounts(6),
         ]);
         if (!mounted) return;
         if (!accRes.ok || !accRes.data?.account) {
           throw new Error(accRes.error || 'Account not found');
         }
-        setAccount(accRes.data.account);
+        const loadedAccount = accRes.data.account;
+        setAccount(loadedAccount);
         const items = repRes.ok && repRes.data ? repRes.data.items : [];
         setFilings(items.map(reportToMeFiling));
+        const allItems = allRes.items ?? [];
+        const similar = allItems
+          .filter((a) => a.id !== loadedAccount.id)
+          .filter((a) => !loadedAccount.platform || a.platform === loadedAccount.platform)
+          .slice(0, 5);
+        setSimilarAccounts(similar.length > 0 ? similar : allItems.filter((a) => a.id !== loadedAccount.id).slice(0, 5));
       } catch (err: unknown) {
         if (mounted) {
           setError(err instanceof Error ? err.message : 'Failed to load account');
@@ -94,8 +108,19 @@ export default function AccountDetailPage() {
   const tabs: { id: Tab; label: string }[] = [
     { id: 'overview', label: 'Overview' },
     { id: 'activity', label: 'Activity' },
+    { id: 'impact', label: 'Impact' },
     { id: 'about', label: 'About' },
   ];
+
+  const impactFilings = filings.map((r) => ({
+    id: r.id,
+    title: r.title ?? '',
+    category: r.category ?? 'General',
+    delta: r.delta,
+    type: r.type as 'positive' | 'negative',
+    status: r.status,
+    created_at: r.created_at,
+  }));
 
   const socialLinks =
     account.social_links?.length > 0 ? account.social_links : [];
@@ -137,12 +162,21 @@ export default function AccountDetailPage() {
             </div>
           </div>
           <div className="flex flex-col items-end gap-2">
-            {account.owner_user_id ? (
-              <FollowButton
-                targetUserId={account.owner_user_id}
-                initialFollowing={false}
+            <div className="flex items-center gap-1">
+              <AccountShareButton
+                displayName={account.display_name}
+                username={account.handle}
+                score={account.score}
+                platform={account.platform}
+                bio={account.bio}
               />
-            ) : null}
+              {account.owner_user_id ? (
+                <FollowButton
+                  targetUserId={account.owner_user_id}
+                  initialFollowing={false}
+                />
+              ) : null}
+            </div>
             <DossierActions
               accountId={account.id}
               ownerId={account.owner_user_id}
@@ -157,6 +191,12 @@ export default function AccountDetailPage() {
           accountId={account.id}
           initialScore={account.score}
           linkedUserId={account.owner_user_id}
+        />
+
+        <ScoreLedgerPanel
+          windowScores={null}
+          globalScore={account.score}
+          viewerIsAdmin={isAdminRole(profile?.role)}
         />
 
         <div className="mt-8 flex border-b border-border">
@@ -191,6 +231,7 @@ export default function AccountDetailPage() {
                   <h3 className="mb-3 text-[15px] font-bold">Recent Filings</h3>
                   <FilingsList filings={filings.slice(0, 3)} />
                 </div>
+                <SimilarProfiles accounts={similarAccounts} />
               </motion.div>
             )}
 
@@ -204,6 +245,24 @@ export default function AccountDetailPage() {
               >
                 <h3 className="mb-4 text-[15px] font-bold">Filings on Record</h3>
                 <FilingsList filings={filings} />
+              </motion.div>
+            )}
+
+            {activeTab === 'impact' && (
+              <motion.div
+                key="impact"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 8 }}
+              >
+                <ProfileImpactAnalytics
+                  history={[]}
+                  filings={impactFilings}
+                  showGraph={false}
+                  showImpactDetails
+                  totalScore={account.score}
+                />
+                {/* TODO: wire history[] when /accounts/{id}/score-history endpoint exists */}
               </motion.div>
             )}
 

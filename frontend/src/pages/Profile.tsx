@@ -6,6 +6,8 @@ import { useAuth } from '@/providers/AuthProvider';
 import { getMyFilings, replayMyScore, type MeFiling, type ScoreReplayResult } from '@/api/me';
 import FilingsList from '@/components/profile/FilingsList';
 import SwipeScoreBreakdownCard from '@/components/profile/SwipeScoreBreakdownCard';
+import ProfileImpactAnalytics from '@/components/profile/ProfileImpactAnalytics';
+import ShareCardModal from '@/components/profile/ShareCardModal';
 import {
   ConnectionListModal,
   type ConnectionListModalRef,
@@ -24,6 +26,7 @@ export default function ProfilePage() {
   const [score, setScore] = useState(1000);
   const [replayResults, setReplayResults] = useState<ScoreReplayResult['account_results']>([]);
   const [loadingExtras, setLoadingExtras] = useState(true);
+  const [shareOpen, setShareOpen] = useState(false);
 
   useEffect(() => {
     if (!profile?.id) return;
@@ -97,14 +100,23 @@ export default function ProfilePage() {
               ) : null}
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => navigate('/profile/edit')}
-            className="flex shrink-0 items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[12px] font-semibold hover:bg-muted"
-          >
-            <Pencil size={12} />
-            Edit
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShareOpen(true)}
+              className="rounded-full border border-border px-3 py-1.5 text-[12px] font-semibold hover:bg-muted"
+            >
+              Share
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/profile/edit')}
+              className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[12px] font-semibold hover:bg-muted"
+            >
+              <Pencil size={12} />
+              Edit
+            </button>
+          </div>
         </div>
 
         <div className="mt-8 text-center">
@@ -204,29 +216,43 @@ export default function ProfilePage() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 8 }}
-                className="space-y-3"
+                className="space-y-4"
               >
-                {replayResults.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-border p-8 text-center text-[13px] text-muted-foreground">
-                    No owned accounts yet.
-                  </div>
-                ) : (
-                  replayResults.map((row) => (
-                    <div
-                      key={row.account_id}
-                      className="flex items-center justify-between rounded-xl border border-border p-4"
-                    >
-                      <div>
-                        <p className="text-[14px] font-bold">
-                          {row.platform} · @{row.handle}
-                        </p>
-                        <p className="text-[11px] text-muted-foreground">Score replay</p>
+                <ProfileImpactAnalytics
+                  history={[]}
+                  filings={filings.map((f) => ({
+                    id: f.id,
+                    title: f.title ?? '',
+                    category: f.category ?? 'General',
+                    delta: f.delta,
+                    type: (f.type === 'positive' ? 'positive' : 'negative') as 'positive' | 'negative',
+                    status: f.status,
+                    created_at: f.created_at,
+                  }))}
+                  showGraph
+                  showImpactDetails
+                  swipeAggregate={null}
+                  totalScore={score}
+                />
+                {replayResults.length > 0 && (
+                  <div className="space-y-2">
+                    {replayResults.map((row) => (
+                      <div
+                        key={row.account_id}
+                        className="flex items-center justify-between rounded-xl border border-border p-4"
+                      >
+                        <div>
+                          <p className="text-[14px] font-bold">
+                            {row.platform} · @{row.handle}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground">Score replay</p>
+                        </div>
+                        <span className="rounded-full bg-muted px-3 py-1 text-[13px] font-bold tabular-nums">
+                          {row.final_score.toLocaleString()}
+                        </span>
                       </div>
-                      <span className="rounded-full bg-muted px-3 py-1 text-[13px] font-bold tabular-nums">
-                        {row.final_score.toLocaleString()}
-                      </span>
-                    </div>
-                  ))
+                    ))}
+                  </div>
                 )}
               </motion.div>
             )}
@@ -234,6 +260,15 @@ export default function ProfilePage() {
         </div>
 
       </div>
+
+      <ShareCardModal
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        displayName={profile.display_name}
+        username={username}
+        score={score}
+        totalFilings={filings.length}
+      />
     </div>
   );
 }

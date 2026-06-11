@@ -23,6 +23,7 @@ class UserPublic(BaseModel):
     city: str | None = None
     website_url: str | None = None
     role: UserRole
+    onboarding_complete: bool = False
     created_at: datetime
 
 
@@ -52,6 +53,7 @@ class UserUpdateRequest(BaseModel):
     headline: str | None = Field(default=None, max_length=128)
     city: str | None = Field(default=None, max_length=64)
     website_url: str | None = Field(default=None, max_length=1024)
+    onboarding_complete: bool | None = None
 
     @field_validator("photo_url", "website_url")
     @classmethod

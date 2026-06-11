@@ -77,9 +77,11 @@ const real = {
   listAccounts: async (
     limit = 50,
     cursor?: string,
+    ownerUserId?: string,
   ): Promise<{ items: Account[]; next_cursor: string | null }> => {
     const params = new URLSearchParams({ limit: String(limit) });
     if (cursor) params.set('cursor', cursor);
+    if (ownerUserId) params.set('owner_user_id', ownerUserId);
     const res = await apiClient.get(`/accounts/?${params}`);
     return res.data;
   },

@@ -79,9 +79,12 @@ async def list_accounts(
     limit: int,
     cursor: str | None,
     current_user: User | None,
+    owner_user_id: UUID | None = None,
 ) -> tuple[list[Account], str | None]:
     effective_status = _resolve_list_status(current_user, status)
-    return await repo_list_accounts(db, platform, effective_status, limit, cursor)
+    return await repo_list_accounts(
+        db, platform, effective_status, limit, cursor, owner_user_id
+    )
 
 
 async def search_accounts(

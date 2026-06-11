@@ -1,40 +1,13 @@
-export interface DashboardUser {
-  _id: string;
-  name: string | null;
-  username: string | null;
-  photoUrl: string | null;
-  score: number;
-  onboardingComplete: boolean;
-  occupationRole?: string | null;
-  networkSize?: string | null;
-  education?: string | null;
-  specializedField?: string | null;
-  managesMoneyPeopleSystem?: string | null;
-  physicalIntellectualLimitations?: string | null;
-  phone?: string | null;
-  dob?: string | null;
-  city?: string | null;
-  country?: string | null;
-  igUrl?: string | null;
-  tiktokUrl?: string | null;
-  xUrl?: string | null;
-  linkedinUrl?: string | null;
-  redditUrl?: string | null;
-  ytUrl?: string | null;
-  fbUrl?: string | null;
-  snapchatUrl?: string | null;
-  bio?: string | null;
-  quote?: string | null;
-  trustBadge?: boolean;
-  following: string[];
-  followingAccounts: string[];
-}
+import type { Account } from '@/types/account';
 
-export interface ClaimedAccount {
-  _id: string;
-  displayName: string;
-  avatarUrl?: string | null;
-  platform?: string;
+/** User slice returned by GET /users/me (UserPrivate, snake_case). */
+export interface DashboardMeUser {
+  id: string;
+  username: string | null;
+  display_name: string | null;
+  photo_url: string | null;
+  bio?: string | null;
+  role?: string;
 }
 
 export interface TrendingPerson {
@@ -48,6 +21,6 @@ export interface TrendingPerson {
 }
 
 export interface MeWithAccountsData {
-  user: DashboardUser;
-  claimedAccounts: ClaimedAccount[];
+  user: DashboardMeUser;
+  claimedAccounts: Account[];
 }

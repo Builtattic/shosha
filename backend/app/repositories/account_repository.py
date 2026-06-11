@@ -47,12 +47,15 @@ async def list_accounts(
     status: AccountStatus | None,
     limit: int,
     cursor: str | None,
+    owner_user_id: UUID | None = None,
 ) -> tuple[list[Account], str | None]:
     stmt = select(Account)
     if platform is not None:
         stmt = stmt.where(Account.platform == platform)
     if status is not None:
         stmt = stmt.where(Account.status == status)
+    if owner_user_id is not None:
+        stmt = stmt.where(Account.owner_user_id == owner_user_id)
     stmt = apply_created_at_cursor(
         stmt, Account.created_at, decode_cursor(cursor), descending=True
     )

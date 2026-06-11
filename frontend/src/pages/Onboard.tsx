@@ -11,6 +11,7 @@ import {
   SOCIAL_LINKS_GATE,
 } from '@/lib/credibility';
 import type { CredibilityInput } from '@/lib/credibility';
+import type { UpdateUserPayload } from '@/types/user';
 import { ClaimProfileSearchModal } from '@/components/profile/ClaimProfileSearchModal';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -420,13 +421,18 @@ export default function Onboard() {
 
     setSaving(true);
     try {
-      const res = await updateCurrentUser({
-        username: form.username || undefined,
-        display_name: form.name || undefined,
-        photo_url: form.photoUrl || undefined,
-        bio: form.bio || undefined,
-        city: form.city || undefined,
-      });
+      // TODO: send credibility fields (occupationRole, education, etc.)
+      // when backend UserUpdateRequest is expanded
+      const payload: UpdateUserPayload = {
+        ...(form.username?.trim() && { username: form.username.trim() }),
+        ...(form.name?.trim() && { display_name: form.name.trim() }),
+        ...(form.photoUrl?.trim() && { photo_url: form.photoUrl.trim() }),
+        ...(form.bio?.trim() && { bio: form.bio.trim() }),
+        ...(form.city?.trim() && { city: form.city.trim() }),
+        ...(markComplete && { onboarding_complete: true }),
+      };
+
+      const res = await updateCurrentUser(payload);
 
       if (!res.ok) throw new Error(res.error || 'Failed to save profile');
 
