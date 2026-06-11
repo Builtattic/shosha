@@ -84,6 +84,8 @@ export async function updateCurrentUser(payload: UpdateUserPayload): Promise<Api
     headline: payload.headline ?? base.headline,
     city: payload.city ?? base.city,
     website_url: payload.website_url ?? base.website_url,
+    onboarding_complete:
+      payload.onboarding_complete ?? readPatch().onboarding_complete ?? base.onboarding_complete,
   };
 
   writePatch({
@@ -94,6 +96,7 @@ export async function updateCurrentUser(payload: UpdateUserPayload): Promise<Api
     headline: updated.headline,
     city: updated.city,
     website_url: updated.website_url,
+    onboarding_complete: updated.onboarding_complete,
   });
 
   return { ok: true, data: updated };

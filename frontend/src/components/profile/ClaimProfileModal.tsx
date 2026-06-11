@@ -5,8 +5,8 @@ import {
   Loader2, Camera, Video,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-// We don't have the Toast component yet, using a simple mock for now
-const useToast = () => ({ push: (msg: string) => alert(msg) });
+import { useToast } from '@/components/ui/Toast';
+import { createClaim } from '@/api/claims';
 
 type UploadedMedia = {
   url: string;
@@ -68,7 +68,7 @@ export function ClaimProfileModal({
     if (!file || !uploadTarget) return;
     setUploading(true);
     try {
-      // Mock upload process
+      // TODO: replace with uploadMedia (S3) when wiring evidence file upload
       await new Promise(resolve => setTimeout(resolve, 1500));
       const media: UploadedMedia = {
         url: URL.createObjectURL(file), // Mock URL
@@ -94,11 +94,20 @@ export function ClaimProfileModal({
     }
     setSubmitting(true);
     try {
-      // Mock submit process
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await createClaim({
+        account_id: accountId,
+        evidence_type: selectedIdType,
+        evidence_payload: {
+          email,
+          idType: selectedIdType,
+          idMedia,
+          livenessMedia,
+        },
+      });
       setStep(4);
-    } catch {
-      toast.push('Claim could not be submitted.');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Claim could not be submitted.';
+      toast.push(message);
     } finally {
       setSubmitting(false);
     }

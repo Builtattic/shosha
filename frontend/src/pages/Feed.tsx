@@ -172,23 +172,17 @@ export default function Feed() {
               {filter === 'following' ? (
                 <>
                   <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-                  <h3 className="text-xl font-medium text-foreground mb-2">No active following</h3>
-                  <p className="text-muted-foreground max-w-sm mx-auto mb-6">
-                    You aren't following anyone yet, or the people you follow haven't posted any reports.
+                  <h3 className="text-xl font-medium text-foreground mb-2">Following feed coming soon</h3>
+                  <p className="text-muted-foreground max-w-sm mx-auto">
+                    Following feed coming soon — follow accounts to see their reports here.
                   </p>
-                  <button 
-                    onClick={() => navigate('/accounts/search')}
-                    className="px-6 py-2 bg-primary text-primary-foreground rounded-full font-medium"
-                  >
-                    Find accounts to follow
-                  </button>
                 </>
               ) : filter === 'near' ? (
                 <>
                   <MapPin className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-                  <h3 className="text-xl font-medium text-foreground mb-2">Location features coming soon</h3>
+                  <h3 className="text-xl font-medium text-foreground mb-2">Near You feed coming soon</h3>
                   <p className="text-muted-foreground max-w-sm mx-auto">
-                    We're working on bringing you hyper-local reports. Check back later!
+                    Near You feed coming soon — location-based reports will appear here.
                   </p>
                 </>
               ) : (

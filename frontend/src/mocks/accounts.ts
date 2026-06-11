@@ -162,9 +162,13 @@ export async function createAccount(
 export async function listAccounts(
   limit = 50,
   _cursor?: string,
+  ownerUserId?: string,
 ): Promise<{ items: Account[]; next_cursor: string | null }> {
   await new Promise((resolve) => setTimeout(resolve, 500));
-  return { items: MOCK_ACCOUNTS.slice(0, limit), next_cursor: null };
+  const items = ownerUserId
+    ? MOCK_ACCOUNTS.filter((a) => a.owner_user_id === ownerUserId)
+    : MOCK_ACCOUNTS;
+  return { items: items.slice(0, limit), next_cursor: null };
 }
 
 export async function updateAccount(

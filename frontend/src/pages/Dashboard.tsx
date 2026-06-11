@@ -12,9 +12,9 @@ import { D3ScoreGauge } from '@/components/viz/D3ScoreGauge';
 // API
 import { getFeed } from '@/api/feed';
 import { getTrendingPeople, getDashboardMe } from '@/api/people';
+import { replayMyScore } from '@/api/me';
 
 // Lib
-import { calcProfileScores, calcShoshaScore } from '@/lib/scoring';
 import { useAuth } from '@/providers/AuthProvider';
 import { cn } from '@/lib/utils';
 
@@ -43,18 +43,11 @@ export default function Dashboard() {
   const [query, setQuery] = useState('');
   const [myReportHref, setMyReportHref] = useState('/profile');
   const [meData, setMeData] = useState<MeWithAccountsData | null>(null);
+  const [myScore, setMyScore] = useState(1000);
   const [heroImgError, setHeroImgError] = useState(false);
 
   const [rawTrendingPeople, setRawTrendingPeople] = useState<TrendingPerson[]>([]);
-  const trendingPeople = useMemo(() => {
-    const followingUsers = meData?.user?.following ?? [];
-    const followingAccounts = meData?.user?.followingAccounts ?? [];
-    return rawTrendingPeople.filter((person) => {
-      const followedAsUser = person.followUserId && followingUsers.includes(person.followUserId);
-      const followedAsAccount = followingAccounts.includes(person.id);
-      return !followedAsUser && !followedAsAccount;
-    });
-  }, [rawTrendingPeople, meData]);
+  const trendingPeople = rawTrendingPeople;
 
   const [allFeed, setAllFeed] = useState<FeedReport[]>([]);
   const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null);
@@ -100,8 +93,8 @@ export default function Dashboard() {
       const res = await getDashboardMe();
       if (!res.ok || !res.data) return;
       setMeData(res.data);
-      const claimedId = res.data.claimedAccounts?.[0]?._id;
-      setMyReportHref(claimedId ? `/account/${claimedId}` : '/profile');
+      const claimedId = res.data.claimedAccounts?.[0]?.id;
+      setMyReportHref(claimedId ? `/accounts/${claimedId}` : '/profile');
     } catch {
       // keep current snapshot
     }
@@ -123,6 +116,16 @@ export default function Dashboard() {
     };
   }, [loadMe]);
 
+  useEffect(() => {
+    if (!firebaseUser) return;
+    replayMyScore()
+      .then((res) => {
+        const s = res.account_results?.[0]?.final_score;
+        if (typeof s === 'number') setMyScore(s);
+      })
+      .catch(() => undefined);
+  }, [firebaseUser]);
+
   // ── Derived values ────────────────────────────────────────────────────────
   const visibleFeed = useMemo(() => {
     const cleaned = query.trim().toLowerCase();
@@ -132,21 +135,18 @@ export default function Dashboard() {
     );
   }, [feed, query]);
 
-  const profileDims = meData?.user ? calcProfileScores(meData.user) : [];
-  const credibility = calcShoshaScore(profileDims);
-  const ledgerScore = meData?.user?.score ?? 1000;
-  const hasOnboarded = !!(meData?.user?.onboardingComplete || meData?.user?.name || meData?.user?.occupationRole);
+  // TODO: restore full credibility formula when onboarding fields are in UserPrivate
+  const credibility = Math.min(100, Math.max(0, Math.round((myScore / 10000) * 100)));
+  const ledgerScore = myScore;
+  const hasOnboarded = true;
   const displayName =
-    meData?.user?.name ||
-    firebaseUser?.displayName ||
-    firebaseUser?.email?.split('@')[0] ||
+    meData?.user?.display_name ??
+    meData?.user?.username ??
+    firebaseUser?.displayName ??
+    firebaseUser?.email?.split('@')[0] ??
     'You';
 
-  const accountAvatar = meData?.claimedAccounts?.find((a) => {
-    const av = a?.avatarUrl;
-    return Boolean(av && av !== 'null' && av !== 'undefined');
-  })?.avatarUrl;
-  const photo = meData?.user?.photoUrl || firebaseUser?.photoURL || accountAvatar;
+  const photo = meData?.user?.photo_url || firebaseUser?.photoURL;
   const avatarUrl = photo && photo !== 'null' && photo !== 'undefined' ? photo : null;
   const showHeroAvatar = Boolean(avatarUrl && !heroImgError);
 
@@ -289,7 +289,7 @@ export default function Dashboard() {
               {trendingPeople.map((person) => (
                 <Link
                   key={person.id}
-                  to={`/account/${person.id}`}
+                  to={`/accounts/${person.id}`}
                   className="flex-shrink-0 w-[140px] rounded-[20px] border border-border bg-card p-4 text-center transition-all hover:bg-muted"
                 >
                   <div className="mx-auto mb-3 h-16 w-16 overflow-hidden rounded-full border border-border bg-muted">
@@ -300,13 +300,11 @@ export default function Dashboard() {
                   <div className="mt-2 inline-block rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
                     {person.score.toLocaleString()} pts
                   </div>
-                  {person.followUserId && person.followUserId !== meData?.user?._id && (
+                  {person.followUserId && person.followUserId !== meData?.user?.id && (
                     <div className="mt-3" onClick={(e) => e.preventDefault()}>
                       <FollowButton
                         targetUserId={person.followUserId}
-                        initialFollowing={
-                          meData?.user?.following?.includes(person.followUserId) ?? false
-                        }
+                        initialFollowing={false}
                       />
                     </div>
                   )}
@@ -464,9 +462,16 @@ export default function Dashboard() {
             >
               {activeTab === 'following' ? (
                 <>
-                  <p className="text-[15px] font-bold text-foreground">No one followed yet.</p>
+                  <p className="text-[15px] font-bold text-foreground">Following feed coming soon</p>
                   <p className="mt-2 text-[13px] text-muted-foreground">
-                    Follow accounts from their dossier to see their activity here.
+                    Following feed coming soon — follow accounts to see their reports here.
+                  </p>
+                </>
+              ) : activeTab === 'near' ? (
+                <>
+                  <p className="text-[15px] font-bold text-foreground">Near You feed coming soon</p>
+                  <p className="mt-2 text-[13px] text-muted-foreground">
+                    Near You feed coming soon — location-based reports will appear here.
                   </p>
                 </>
               ) : (

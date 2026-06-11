@@ -46,4 +46,5 @@ export interface UpdateUserPayload {
   headline?: string;
   city?: string;
   website_url?: string;
+  onboarding_complete?: boolean;
 }

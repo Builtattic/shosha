@@ -62,13 +62,14 @@ async def post_account(
 async def get_accounts(
     platform: str | None = Query(default=None),
     status: AccountStatus | None = Query(default=None),
+    owner_user_id: UUID | None = Query(default=None),
     limit: int = Query(default=20, ge=1, le=100),
     cursor: str | None = Query(default=None),
     current_user: User | None = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db),
 ):
     items, next_cursor = await list_accounts(
-        db, platform, status, limit, cursor, current_user
+        db, platform, status, limit, cursor, current_user, owner_user_id
     )
     return success({"items": _serialize_accounts(items), "next_cursor": next_cursor})
 

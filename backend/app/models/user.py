@@ -28,6 +28,9 @@ class User(Base, BaseModelMixin):
         default=UserRole.USER,
     )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    onboarding_complete: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default="false", default=False
+    )
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     trust_badge: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     trust_badge_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

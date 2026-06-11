@@ -1,55 +1,42 @@
-import { cn } from '@/lib/utils';
+import { RadialBar, RadialBarChart, ResponsiveContainer } from 'recharts';
 
 interface D3ScoreGaugeProps {
-  score: number;   // 0..100
-  size?: number;   // px, default 180
+  score: number;
+  size?: number;
 }
 
-// Stub — SVG-based gauge (no D3 dep). Full D3ScoreGauge.tsx from V1 to be ported.
-export function D3ScoreGauge({ score, size = 180 }: D3ScoreGaugeProps) {
-  const clamped = Math.min(100, Math.max(0, score));
-  const radius = size * 0.38;
-  const cx = size / 2;
-  const cy = size / 2;
-  const circ = 2 * Math.PI * radius;
-  const dash = circ * (clamped / 100);
+function scoreToColor(s: number): string {
+  if (s >= 70) return '#22c55e';
+  if (s >= 40) return '#f59e0b';
+  return '#ef4444';
+}
 
-  const colorClass =
-    clamped >= 80 ? 'text-emerald-500'
-    : clamped >= 60 ? 'text-yellow-500'
-    : clamped >= 40 ? 'text-orange-500'
-    : 'text-red-500';
+export function D3ScoreGauge({ score, size = 180 }: D3ScoreGaugeProps) {
+  const clamped = Math.max(0, Math.min(100, score));
+  const data = [{ name: 'score', value: clamped, fill: scoreToColor(clamped) }];
 
   return (
-    <div className="relative" style={{ width: size, height: size }}>
-      <svg
-        viewBox={`0 0 ${size} ${size}`}
-        className="w-full h-full -rotate-90"
-        aria-label={`Score: ${clamped}`}
-      >
-        {/* Track */}
-        <circle
-          cx={cx}
-          cy={cy}
-          r={radius}
-          stroke="currentColor"
-          strokeWidth={size * 0.065}
-          fill="none"
-          className="text-muted/30"
-        />
-        {/* Fill */}
-        <circle
-          cx={cx}
-          cy={cy}
-          r={radius}
-          stroke="currentColor"
-          strokeWidth={size * 0.065}
-          fill="none"
-          strokeLinecap="round"
-          strokeDasharray={`${dash} ${circ}`}
-          className={cn('transition-all duration-700', colorClass)}
-        />
-      </svg>
+    <div className="relative" style={{ width: size, height: size / 2 + 20 }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <RadialBarChart
+          cx="50%"
+          cy="80%"
+          innerRadius="60%"
+          outerRadius="100%"
+          startAngle={180}
+          endAngle={0}
+          data={data}
+          barSize={12}
+        >
+          <RadialBar
+            dataKey="value"
+            cornerRadius={6}
+            background={{ fill: 'hsl(var(--muted))' }}
+          />
+        </RadialBarChart>
+      </ResponsiveContainer>
     </div>
   );
 }
+
+export default D3ScoreGauge;

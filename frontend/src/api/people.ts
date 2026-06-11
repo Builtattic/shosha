@@ -16,10 +16,21 @@ const real = {
 
   getDashboardMe: async (): Promise<ApiResponse<MeWithAccountsData>> => {
     try {
-      const response = await apiClient.get('/users/me/dashboard');
-      return { ok: true, data: response.data };
-    } catch (error: any) {
-      return { ok: false, error: error.message };
+      const meRes = await apiClient.get<{ user: MeWithAccountsData['user'] }>('/users/me');
+      const user = meRes.data.user;
+
+      const accountsRes = await apiClient.get<{ items: MeWithAccountsData['claimedAccounts'] }>(
+        '/accounts/',
+        { params: { limit: 10, owner_user_id: user.id } },
+      );
+      const claimedAccounts = accountsRes.data.items ?? [];
+
+      return { ok: true, data: { user, claimedAccounts } };
+    } catch (error: unknown) {
+      return {
+        ok: false,
+        error: error instanceof Error ? error.message : 'Request failed',
+      };
     }
   },
 };

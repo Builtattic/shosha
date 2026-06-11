@@ -5,7 +5,7 @@ import {
   ConnectionListModal,
   type ConnectionListModalRef,
 } from '@/components/profile/ConnectionListModal';
-import { cn } from '@/lib/utils';
+import D3ProfileGauge from '@/components/viz/D3ProfileGauge';
 
 interface LiveAccountScorePanelProps {
   accountId: string;
@@ -57,12 +57,7 @@ export default function LiveAccountScorePanel({
       ) : null}
 
       <div className="mt-6 flex flex-col items-center">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-          Shosha Score
-        </p>
-        <h2 className="mt-1 text-[44px] font-black leading-none text-foreground tabular-nums">
-          {score.toLocaleString()}
-        </h2>
+        <D3ProfileGauge score={score} size={280} />
         <p className="mt-2 text-[11px] text-muted-foreground">
           Live dossier score (refreshes every 10s)
         </p>

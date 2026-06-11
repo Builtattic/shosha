@@ -74,6 +74,11 @@ function AccountRedirect() {
   return <Navigate to={`/accounts/${id}`} replace />;
 }
 
+function PostRedirect() {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={`/reports/${id}`} replace />;
+}
+
 // Wraps all authenticated + onboarded routes with chrome (Sidebar + MobileAppHeader + BottomNav)
 const AppRoute = ({ children }: { children: React.ReactNode }) => (
   <ProtectedRoute>
@@ -178,6 +183,8 @@ export const router = createBrowserRouter([
   { path: '/impact',        element: <AppRoute><Impact /></AppRoute> },
   { path: '/ranks',         element: <AppRoute><Ranks /></AppRoute> },
   { path: '/ranking',       element: <Navigate to="/ranks" replace /> },
+
+  { path: '/post/:id', element: <PostRedirect /> },
 
   // Public slug catch-all — MUST be last
   { path: '/:slug', element: <SlugPage /> },

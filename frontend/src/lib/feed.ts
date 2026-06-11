@@ -7,9 +7,10 @@ export function filterFeedReports(reports: FeedReport[], filter: FeedFilter): Fe
     case 'top':
       return [...reports].sort((a, b) => Math.abs(b.base_score ?? 0) - Math.abs(a.base_score ?? 0));
     case 'following':
-      // TODO: filter by followed accounts when follow graph is exposed in feed
-      return reports;
+      // TODO: filter by followed accounts when follow graph is available in feed
+      return [];
     case 'near':
+      // TODO: filter by location when location data is available in feed
       return [];
     case 'for_you':
     default:

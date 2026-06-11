@@ -8,6 +8,9 @@ import {
   type ImpactReport,
   type RisingMaker,
 } from '@/api/impact';
+import { replayMyScore } from '@/api/me';
+import D3ProfileGauge from '@/components/viz/D3ProfileGauge';
+import { useAuth } from '@/providers/AuthProvider';
 import { cn } from '@/lib/utils';
 
 function truncate(text: string, max: number) {
@@ -57,7 +60,9 @@ function ReportCard({
 
 export default function Impact() {
   const navigate = useNavigate();
+  const { firebaseUser } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [myScore, setMyScore] = useState<number | null>(null);
   const [stats, setStats] = useState<{
     accounts_tracked: number;
     events_total: number;
@@ -102,6 +107,19 @@ export default function Impact() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!firebaseUser) {
+      setMyScore(null);
+      return;
+    }
+    replayMyScore()
+      .then((res) => {
+        const s = res.account_results?.[0]?.final_score;
+        setMyScore(typeof s === 'number' ? s : null);
+      })
+      .catch(() => setMyScore(null));
+  }, [firebaseUser]);
+
   const goToAccount = (accountId: string | undefined) => {
     if (accountId) navigate(`/accounts/${accountId}`);
   };
@@ -133,6 +151,19 @@ export default function Impact() {
             Top stories, rising profiles, and the latest filings across ShoSha.
           </p>
         </header>
+
+        {firebaseUser && myScore !== null && (
+          <section className="mb-4 rounded-xl border border-border bg-card p-4">
+            <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center">
+              <D3ProfileGauge score={myScore} size={160} />
+              <div className="text-center sm:text-left">
+                <p className="text-sm text-muted-foreground">Your Civil Impact Score</p>
+                <p className="text-3xl font-semibold tabular-nums">{myScore.toLocaleString()}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Global rank — coming soon</p>
+              </div>
+            </div>
+          </section>
+        )}
 
         {stats && (
           <section className="flex flex-wrap gap-3">
