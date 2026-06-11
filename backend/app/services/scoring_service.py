@@ -25,9 +25,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.account import Account
 from app.models.ledger_entry import LedgerEntry
 from app.models.report import Report
+from app.core.scoring_constants import BASE_SCORE
 from app.repositories import ledger_repository
-
-BASE_SCORE = 1000.0
 WORKBOOK_DECAY_DENOMINATOR = 1000.0
 WORKBOOK_FORMULA_VERSION = "workbook-v1"
 

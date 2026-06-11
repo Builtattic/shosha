@@ -9,7 +9,7 @@ from sqlalchemy.orm import selectinload
 
 from app.models.account import Account, AccountSocialLink
 from app.models.enums import AccountStatus
-from app.services.scoring_service import BASE_SCORE
+from app.core.scoring_constants import BASE_SCORE
 from app.repositories._pagination import (
     apply_created_at_cursor,
     build_next_cursor,

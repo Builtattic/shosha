@@ -13,6 +13,7 @@ export interface UserProfile {
   dob?: string | null;
   city?: string | null;
   country?: string | null;
+  region?: string | null;
   email?: string | null;
   bio?: string | null;
   headline?: string | null;
@@ -46,5 +47,24 @@ export interface UpdateUserPayload {
   headline?: string;
   city?: string;
   website_url?: string;
+  phone?: string;
+  dob?: string;
+  country?: string;
+  region?: string;
+  quote?: string;
+  occupation_role?: string;
+  network_size?: string;
+  education?: string;
+  specialized_field?: string;
+  manages_money_people_system?: string;
+  physical_intellectual_limitations?: string;
+  ig_url?: string;
+  tiktok_url?: string;
+  x_url?: string;
+  linkedin_url?: string;
+  reddit_url?: string;
+  yt_url?: string;
+  fb_url?: string;
+  snapchat_url?: string;
   onboarding_complete?: boolean;
 }
