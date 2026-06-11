@@ -222,6 +222,20 @@ uv run alembic revision --autogenerate -m "init schema"
 uv run alembic upgrade head
 ```
 
+### Dev Seed Data
+
+After migrations have been applied (`alembic upgrade head`), populate the dev database with realistic seed data (users, accounts, reports, ledger history, social graph, bubbles):
+
+```bash
+cd backend
+uv run python -m app.db.seed          # seed (idempotent, skips if exists)
+uv run python -m app.db.seed --reset  # delete seed-* rows and reseed
+```
+
+Requires `alembic upgrade head` to have been run first. The script is gated to non-production via the `ENVIRONMENT` setting — it exits immediately without touching the database when `ENVIRONMENT=production`.
+
+Admin marker user: `seed-admin@shosha.dev` (for mock-mode admin testing).
+
 ### PostgreSQL connection quick check
 
 Using Docker container shell:
