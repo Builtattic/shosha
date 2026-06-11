@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/providers/AuthProvider';
 import { getCurrentUser, updateCurrentUser } from '@/api/auth';
+import { checkUsernameAvailability } from '@/api/users';
 import { USE_MOCKS } from '@/lib/apiClient';
 import { setMockOnboardingComplete } from '@/mocks/auth';
 import {
@@ -12,6 +13,15 @@ import {
 } from '@/lib/credibility';
 import type { CredibilityInput } from '@/lib/credibility';
 import type { UpdateUserPayload } from '@/types/user';
+import {
+  OCCUPATION_ROLES,
+  NETWORK_SIZES,
+  EDUCATION_LEVELS,
+  SPECIALIZED_FIELDS,
+  MANAGEMENT_LEVELS,
+  LIMITATIONS,
+} from '@/lib/onboardingOptions';
+import { normalizeUsername, validateUsernameFormat } from '@/lib/usernameValidation';
 import { ClaimProfileSearchModal } from '@/components/profile/ClaimProfileSearchModal';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -20,57 +30,6 @@ import {
   Quote as QuoteIcon, Sparkles,
   ChevronDown, Loader2, AlertCircle, Lock, Link2,
 } from 'lucide-react';
-
-// ── Option maps ────────────────────────────────────────────────────────────────
-
-const ROLES = [
-  { value: 'student', label: 'Student' },
-  { value: 'unemployed', label: 'Unemployed' },
-  { value: 'individual_contributor', label: 'Individual Contributor / Job' },
-  { value: 'manager', label: 'Manager' },
-  { value: 'founder_business_owner', label: 'Founder / Business Owner' },
-  { value: 'public_figure_influencer', label: 'Public Figure / Influencer' },
-  { value: 'government_political', label: 'Government / Political Role' },
-];
-
-const NETWORK_SIZES = [
-  { value: 'none', label: 'None' },
-  { value: '<1k', label: '< 1K' },
-  { value: '1k-10k', label: '1K – 10K' },
-  { value: '10k-100k', label: '10K – 100K' },
-  { value: '100k-1m', label: '100K – 1M' },
-  { value: '1m-100m', label: '1M – 100M' },
-  { value: '100m+', label: '100M+' },
-];
-
-const EDUCATION_LEVELS = [
-  { value: 'no_formal', label: 'No Formal Education' },
-  { value: 'school', label: 'School' },
-  { value: 'undergraduate', label: 'Undergraduate' },
-  { value: 'postgraduate', label: 'Postgraduate' },
-  { value: 'doctorate_specialized', label: 'Doctorate / Specialized' },
-];
-
-const SPECIALIZED_FIELD = [
-  { value: 'no', label: 'No' },
-  { value: 'some_experience', label: 'Some Experience' },
-  { value: 'professional', label: 'Professional' },
-  { value: 'expert', label: 'Expert' },
-];
-
-const MANAGEMENT_LEVELS = [
-  { value: 'none', label: 'None' },
-  { value: 'small_team_limited_control', label: 'Small Team; Limited Control' },
-  { value: 'moderate_responsibility', label: 'Moderate Responsibility' },
-  { value: 'large_team_major_decisions', label: 'Large Team, Major Decisions' },
-  { value: 'organizational_institutional', label: 'Organizational / Institutional Control' },
-];
-
-const LIMITATIONS = [
-  { value: 'yes', label: 'Yes' },
-  { value: 'no', label: 'No' },
-  { value: 'prefer_not_to_say', label: 'Prefer not to say' },
-];
 
 // ── Form State ─────────────────────────────────────────────────────────────────
 
@@ -336,10 +295,46 @@ export default function Onboard() {
   const [done, setDone] = useState(false);
   const [checking, setChecking] = useState(true);
   const [claimSearchOpen, setClaimSearchOpen] = useState(false);
+  const [usernameError, setUsernameError] = useState<string | null>(null);
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const [usernameChecking, setUsernameChecking] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const usernameCheckRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm(f => ({ ...f, [key]: value }));
+  }
+
+  function handleUsernameChange(raw: string) {
+    const cleaned = normalizeUsername(raw);
+    set('username', cleaned);
+    setUsernameAvailable(null);
+
+    if (!cleaned) {
+      setUsernameError(null);
+      return;
+    }
+    const formatError = validateUsernameFormat(cleaned);
+    if (formatError) {
+      setUsernameError(formatError);
+      return;
+    }
+    setUsernameError(null);
+
+    if (usernameCheckRef.current) clearTimeout(usernameCheckRef.current);
+    setUsernameChecking(true);
+    usernameCheckRef.current = setTimeout(async () => {
+      const res = await checkUsernameAvailability(cleaned);
+      if (res.ok) {
+        setUsernameAvailable(res.data.available);
+        setUsernameError(res.data.available ? null : 'Username is already taken');
+      } else {
+        // Backend returns 422 for invalid format (not V1's { available, error } shape).
+        setUsernameAvailable(false);
+        setUsernameError(res.error || 'Invalid username');
+      }
+      setUsernameChecking(false);
+    }, 500);
   }
 
   // Pre-fill form from API profile + Firebase user
@@ -401,6 +396,12 @@ export default function Onboard() {
   async function handleSave({ markComplete }: { markComplete: boolean }) {
     setError('');
 
+    if (usernameError) {
+      setError('Please fix your username before continuing.');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
     if (markComplete) {
       const required: Array<[keyof FormState, string]> = [
         ['name', 'full name'], ['username', 'username'],
@@ -421,14 +422,34 @@ export default function Onboard() {
 
     setSaving(true);
     try {
-      // TODO: send credibility fields (occupationRole, education, etc.)
-      // when backend UserUpdateRequest is expanded
+      // Empty optional fields are sent as undefined (omitted) — never "" — so blank
+      // social URLs don't trip the backend URL validator. exclude_unset on the
+      // backend means omitted keys are simply skipped. region is intentionally not
+      // sent (no onboarding UI field for it yet — reserved for Day 2).
       const payload: UpdateUserPayload = {
-        ...(form.username?.trim() && { username: form.username.trim() }),
-        ...(form.name?.trim() && { display_name: form.name.trim() }),
-        ...(form.photoUrl?.trim() && { photo_url: form.photoUrl.trim() }),
-        ...(form.bio?.trim() && { bio: form.bio.trim() }),
-        ...(form.city?.trim() && { city: form.city.trim() }),
+        username: form.username?.trim() || undefined,
+        display_name: form.name?.trim() || undefined,
+        photo_url: form.photoUrl?.trim() || undefined,
+        bio: form.bio?.trim() || undefined,
+        city: form.city?.trim() || undefined,
+        phone: form.phone?.trim() || undefined,
+        dob: form.dob?.trim() || undefined,
+        country: form.country?.trim() || undefined,
+        quote: form.quote?.trim() || undefined,
+        occupation_role: form.occupationRole?.trim() || undefined,
+        network_size: form.networkSize?.trim() || undefined,
+        education: form.education?.trim() || undefined,
+        specialized_field: form.specializedField?.trim() || undefined,
+        manages_money_people_system: form.managesMoneyPeopleSystem?.trim() || undefined,
+        physical_intellectual_limitations: form.physicalIntellectualLimitations?.trim() || undefined,
+        ig_url: form.igUrl?.trim() || undefined,
+        tiktok_url: form.tiktokUrl?.trim() || undefined,
+        x_url: form.xUrl?.trim() || undefined,
+        linkedin_url: form.linkedinUrl?.trim() || undefined,
+        reddit_url: form.redditUrl?.trim() || undefined,
+        yt_url: form.ytUrl?.trim() || undefined,
+        fb_url: form.fbUrl?.trim() || undefined,
+        snapchat_url: form.snapchatUrl?.trim() || undefined,
         ...(markComplete && { onboarding_complete: true }),
       };
 
@@ -548,7 +569,31 @@ export default function Onboard() {
                 </div>
                 <div>
                   <FieldLabel>Username</FieldLabel>
-                  <TextField value={form.username ?? ''} onChange={v => set('username', v.toLowerCase())} placeholder="auto_handle" />
+                  <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-3.5 py-2.5">
+                    <span className="text-[13px] text-muted-foreground">@</span>
+                    <input
+                      value={form.username ?? ''}
+                      onChange={e => handleUsernameChange(e.target.value)}
+                      placeholder="your_handle"
+                      maxLength={64}
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      className="flex-1 bg-transparent text-[13px] outline-none"
+                    />
+                    {usernameChecking ? (
+                      <span className="text-[11px] text-muted-foreground">checking…</span>
+                    ) : usernameAvailable === true ? (
+                      <span className="text-[11px] text-green-600">available</span>
+                    ) : usernameAvailable === false ? (
+                      <span className="text-[11px] text-destructive">taken</span>
+                    ) : null}
+                  </div>
+                  {usernameError ? (
+                    <p className="mt-1 text-[11px] text-destructive">{usernameError}</p>
+                  ) : (
+                    <p className="mt-1 text-[10px] text-muted-foreground">Letters, numbers, underscores, periods. 3–64 chars.</p>
+                  )}
                 </div>
                 <div>
                   <FieldLabel>Phone Number</FieldLabel>
@@ -585,7 +630,7 @@ export default function Onboard() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <FieldLabel>Role</FieldLabel>
-                  <SelectField value={form.occupationRole ?? ''} onChange={v => set('occupationRole', v)} options={ROLES} />
+                  <SelectField value={form.occupationRole ?? ''} onChange={v => set('occupationRole', v)} options={OCCUPATION_ROLES} />
                 </div>
                 <div>
                   <FieldLabel>Network / Audience Size</FieldLabel>
@@ -597,7 +642,7 @@ export default function Onboard() {
                 </div>
                 <div>
                   <FieldLabel>Specialised Field</FieldLabel>
-                  <SelectField value={form.specializedField ?? ''} onChange={v => set('specializedField', v)} options={SPECIALIZED_FIELD} />
+                  <SelectField value={form.specializedField ?? ''} onChange={v => set('specializedField', v)} options={SPECIALIZED_FIELDS} />
                 </div>
                 <div>
                   <FieldLabel>Manage money / people / systems?</FieldLabel>

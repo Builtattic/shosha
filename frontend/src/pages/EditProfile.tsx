@@ -3,12 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Camera } from 'lucide-react';
 import { useAuth } from '@/providers/AuthProvider';
 import { getCurrentUser, updateCurrentUser } from '@/api/auth';
+import { checkUsernameAvailability } from '@/api/users';
 import { uploadMedia } from '@/api/media';
-import { apiClient } from '@/lib/apiClient';
 import type { UpdateUserPayload } from '@/types/user';
+import {
+  OCCUPATION_ROLES,
+  NETWORK_SIZES,
+  EDUCATION_LEVELS,
+  SPECIALIZED_FIELDS,
+  MANAGEMENT_LEVELS,
+  LIMITATIONS,
+} from '@/lib/onboardingOptions';
+import { normalizeUsername, validateUsernameFormat } from '@/lib/usernameValidation';
 import { useToast } from '@/components/ui/Toast';
-
-const USERNAME_PATTERN = /^[a-z0-9_]{3,64}$/;
 
 type FormState = {
   display_name: string;
@@ -18,6 +25,52 @@ type FormState = {
   headline: string;
   city: string;
   website_url: string;
+  phone: string;
+  dob: string;
+  country: string;
+  quote: string;
+  occupation_role: string;
+  network_size: string;
+  education: string;
+  specialized_field: string;
+  manages_money_people_system: string;
+  physical_intellectual_limitations: string;
+  ig_url: string;
+  tiktok_url: string;
+  x_url: string;
+  linkedin_url: string;
+  reddit_url: string;
+  yt_url: string;
+  fb_url: string;
+  snapchat_url: string;
+};
+
+const EMPTY_FORM: FormState = {
+  display_name: '',
+  username: '',
+  photo_url: '',
+  bio: '',
+  headline: '',
+  city: '',
+  website_url: '',
+  phone: '',
+  dob: '',
+  country: '',
+  quote: '',
+  occupation_role: '',
+  network_size: '',
+  education: '',
+  specialized_field: '',
+  manages_money_people_system: '',
+  physical_intellectual_limitations: '',
+  ig_url: '',
+  tiktok_url: '',
+  x_url: '',
+  linkedin_url: '',
+  reddit_url: '',
+  yt_url: '',
+  fb_url: '',
+  snapchat_url: '',
 };
 
 export default function EditProfilePage() {
@@ -32,15 +85,7 @@ export default function EditProfilePage() {
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const [usernameChecking, setUsernameChecking] = useState(false);
   const [initial, setInitial] = useState<FormState | null>(null);
-  const [form, setForm] = useState<FormState>({
-    display_name: '',
-    username: '',
-    photo_url: '',
-    bio: '',
-    headline: '',
-    city: '',
-    website_url: '',
-  });
+  const [form, setForm] = useState<FormState>(EMPTY_FORM);
 
   const usernameCheckRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -56,6 +101,24 @@ export default function EditProfilePage() {
           headline: u.headline ?? '',
           city: u.city ?? '',
           website_url: u.website_url ?? '',
+          phone: u.phone ?? '',
+          dob: u.dob ?? '',
+          country: u.country ?? '',
+          quote: u.quote ?? '',
+          occupation_role: u.occupation_role ?? '',
+          network_size: u.network_size ?? '',
+          education: u.education ?? '',
+          specialized_field: u.specialized_field ?? '',
+          manages_money_people_system: u.manages_money_people_system ?? '',
+          physical_intellectual_limitations: u.physical_intellectual_limitations ?? '',
+          ig_url: u.ig_url ?? '',
+          tiktok_url: u.tiktok_url ?? '',
+          x_url: u.x_url ?? '',
+          linkedin_url: u.linkedin_url ?? '',
+          reddit_url: u.reddit_url ?? '',
+          yt_url: u.yt_url ?? '',
+          fb_url: u.fb_url ?? '',
+          snapchat_url: u.snapchat_url ?? '',
         };
         setForm(loaded);
         setInitial(loaded);
@@ -69,7 +132,7 @@ export default function EditProfilePage() {
   }
 
   function handleUsernameChange(raw: string) {
-    const cleaned = raw.replace(/^@+/, '').toLowerCase();
+    const cleaned = normalizeUsername(raw);
     updateField('username', cleaned);
     setUsernameAvailable(null);
 
@@ -77,8 +140,9 @@ export default function EditProfilePage() {
       setUsernameError(null);
       return;
     }
-    if (!USERNAME_PATTERN.test(cleaned)) {
-      setUsernameError('Letters, numbers, underscores only. 3–64 chars.');
+    const formatError = validateUsernameFormat(cleaned);
+    if (formatError) {
+      setUsernameError(formatError);
       return;
     }
     setUsernameError(null);
@@ -86,19 +150,16 @@ export default function EditProfilePage() {
     if (usernameCheckRef.current) clearTimeout(usernameCheckRef.current);
     setUsernameChecking(true);
     usernameCheckRef.current = setTimeout(async () => {
-      try {
-        const res = await apiClient.get(
-          `/users/username-availability?username=${encodeURIComponent(cleaned)}`,
-        );
+      const res = await checkUsernameAvailability(cleaned);
+      if (res.ok) {
         setUsernameAvailable(res.data.available);
-        if (!res.data.available) {
-          setUsernameError('Username is already taken');
-        }
-      } catch {
-        // ignore
-      } finally {
-        setUsernameChecking(false);
+        setUsernameError(res.data.available ? null : 'Username is already taken');
+      } else {
+        // Backend returns 422 for invalid format (not V1's { available, error } shape).
+        setUsernameAvailable(false);
+        setUsernameError(res.error || 'Invalid username');
       }
+      setUsernameChecking(false);
     }, 500);
   }
 
@@ -129,15 +190,36 @@ export default function EditProfilePage() {
       return;
     }
 
-    const payload: UpdateUserPayload = {};
     if (!initial) return;
-    if (form.display_name !== initial.display_name) payload.display_name = form.display_name || undefined;
-    if (form.username !== initial.username) payload.username = form.username || undefined;
-    if (form.photo_url !== initial.photo_url) payload.photo_url = form.photo_url || undefined;
-    if (form.bio !== initial.bio) payload.bio = form.bio || undefined;
-    if (form.headline !== initial.headline) payload.headline = form.headline || undefined;
-    if (form.city !== initial.city) payload.city = form.city || undefined;
-    if (form.website_url !== initial.website_url) payload.website_url = form.website_url || undefined;
+    // Send only changed fields. Send the RAW value (including "") so that a field
+    // the user intentionally cleared is explicitly persisted as empty — the backend
+    // omits unset keys (exclude_unset), so `undefined` would leave the old value.
+    const payload: UpdateUserPayload = {};
+    if (form.display_name !== initial.display_name) payload.display_name = form.display_name;
+    if (form.username !== initial.username) payload.username = form.username;
+    if (form.photo_url !== initial.photo_url) payload.photo_url = form.photo_url;
+    if (form.bio !== initial.bio) payload.bio = form.bio;
+    if (form.headline !== initial.headline) payload.headline = form.headline;
+    if (form.city !== initial.city) payload.city = form.city;
+    if (form.website_url !== initial.website_url) payload.website_url = form.website_url;
+    if (form.phone !== initial.phone) payload.phone = form.phone;
+    if (form.dob !== initial.dob) payload.dob = form.dob;
+    if (form.country !== initial.country) payload.country = form.country;
+    if (form.quote !== initial.quote) payload.quote = form.quote;
+    if (form.occupation_role !== initial.occupation_role) payload.occupation_role = form.occupation_role;
+    if (form.network_size !== initial.network_size) payload.network_size = form.network_size;
+    if (form.education !== initial.education) payload.education = form.education;
+    if (form.specialized_field !== initial.specialized_field) payload.specialized_field = form.specialized_field;
+    if (form.manages_money_people_system !== initial.manages_money_people_system) payload.manages_money_people_system = form.manages_money_people_system;
+    if (form.physical_intellectual_limitations !== initial.physical_intellectual_limitations) payload.physical_intellectual_limitations = form.physical_intellectual_limitations;
+    if (form.ig_url !== initial.ig_url) payload.ig_url = form.ig_url;
+    if (form.tiktok_url !== initial.tiktok_url) payload.tiktok_url = form.tiktok_url;
+    if (form.x_url !== initial.x_url) payload.x_url = form.x_url;
+    if (form.linkedin_url !== initial.linkedin_url) payload.linkedin_url = form.linkedin_url;
+    if (form.reddit_url !== initial.reddit_url) payload.reddit_url = form.reddit_url;
+    if (form.yt_url !== initial.yt_url) payload.yt_url = form.yt_url;
+    if (form.fb_url !== initial.fb_url) payload.fb_url = form.fb_url;
+    if (form.snapchat_url !== initial.snapchat_url) payload.snapchat_url = form.snapchat_url;
 
     if (Object.keys(payload).length === 0) {
       navigate('/profile');
@@ -185,10 +267,6 @@ export default function EditProfilePage() {
       </header>
 
       <div className="mx-auto max-w-xl px-4">
-        <div className="mt-4 rounded-xl border border-dashed border-border bg-muted/30 p-3 text-[12px] text-muted-foreground">
-          More profile fields coming soon.
-        </div>
-
         {error ? (
           <p className="mt-4 rounded-xl bg-destructive/10 p-3 text-[13px] text-destructive">{error}</p>
         ) : null}
@@ -272,6 +350,76 @@ export default function EditProfilePage() {
               className="w-full bg-transparent text-[14px] outline-none"
             />
           </div>
+
+          {/* Basic extras */}
+          {(
+            [
+              ['phone', 'Phone Number', 'tel'],
+              ['dob', 'Date of Birth', 'date'],
+              ['country', 'Country', 'text'],
+              ['quote', 'Quote', 'text'],
+            ] as const
+          ).map(([key, label, type]) => (
+            <div key={key} className="rounded-xl border border-border p-3">
+              <label className="mb-1 block text-[11px] font-medium text-muted-foreground">{label}</label>
+              <input
+                type={type}
+                value={form[key]}
+                onChange={(e) => updateField(key, e.target.value)}
+                className="w-full bg-transparent text-[14px] outline-none"
+              />
+            </div>
+          ))}
+
+          {/* Profile questions */}
+          {(
+            [
+              ['occupation_role', 'Role', OCCUPATION_ROLES],
+              ['network_size', 'Network / Audience Size', NETWORK_SIZES],
+              ['education', 'Education', EDUCATION_LEVELS],
+              ['specialized_field', 'Specialised Field', SPECIALIZED_FIELDS],
+              ['manages_money_people_system', 'Manage money / people / systems?', MANAGEMENT_LEVELS],
+              ['physical_intellectual_limitations', 'Disability / Limitations', LIMITATIONS],
+            ] as const
+          ).map(([key, label, options]) => (
+            <div key={key} className="rounded-xl border border-border p-3">
+              <label className="mb-1 block text-[11px] font-medium text-muted-foreground">{label}</label>
+              <select
+                value={form[key]}
+                onChange={(e) => updateField(key, e.target.value)}
+                className="w-full bg-transparent text-[14px] outline-none"
+              >
+                <option value="">Select option</option>
+                {options.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+          ))}
+
+          {/* Social links */}
+          {(
+            [
+              ['ig_url', 'Instagram'],
+              ['tiktok_url', 'TikTok'],
+              ['x_url', 'X / Twitter'],
+              ['linkedin_url', 'LinkedIn'],
+              ['reddit_url', 'Reddit'],
+              ['yt_url', 'YouTube'],
+              ['fb_url', 'Facebook'],
+              ['snapchat_url', 'Snapchat'],
+            ] as const
+          ).map(([key, label]) => (
+            <div key={key} className="rounded-xl border border-border p-3">
+              <label className="mb-1 block text-[11px] font-medium text-muted-foreground">{label}</label>
+              <input
+                type="url"
+                value={form[key]}
+                onChange={(e) => updateField(key, e.target.value)}
+                className="w-full bg-transparent text-[14px] outline-none"
+              />
+            </div>
+          ))}
         </section>
       </div>
     </main>
