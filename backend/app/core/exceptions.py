@@ -14,6 +14,7 @@ _CODE_TO_STATUS: dict[str, int] = {
     "no_fields": 422,
     "rate_limited": 429,
     "internal_error": 500,
+    "service_unavailable": 503,
     "not_implemented": 501,
 }
 

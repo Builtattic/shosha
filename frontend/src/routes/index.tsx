@@ -52,8 +52,10 @@ import BubbleDetail from '@/pages/BubbleDetail';
 import BubbleNew from '@/pages/BubbleNew';
 import People from '@/pages/People';
 import TrustBadge from '@/pages/TrustBadge';
-import Subscribe from '@/pages/Subscribe';
+import ProfileUpgrade from '@/pages/ProfileUpgrade';
 import Billing from '@/pages/Billing';
+import LegalHub from '@/pages/legal/LegalHub';
+import LegalPage from '@/pages/legal/LegalPage';
 import Bookmarks from '@/pages/Bookmarks';
 import Disputes from '@/pages/Disputes';
 import Search from '@/pages/Search';
@@ -108,13 +110,17 @@ export const router = createBrowserRouter([
   { path: '/how-it-works', element: <HowItWorks /> },
   { path: '/leaderboard',  element: <Leaderboard /> },
   { path: '/report-issue', element: <ReportIssue /> },
+  { path: '/trust-badge', element: <TrustBadge /> },
+  { path: '/legal-policies', element: <LegalHub /> },
+  { path: '/legal-policies/:section/:slug', element: <LegalPage /> },
 
   // Dashboard
   { path: '/dashboard', element: <AppRoute><Dashboard /></AppRoute> },
   { path: '/feed',      element: <AppRoute><Feed /></AppRoute> },
 
-  // Profile
+  // Profile (static segments before :id)
   { path: '/profile/edit', element: <AppRoute><EditProfile /></AppRoute> },
+  { path: '/profile/upgrade', element: <AppRoute><ProfileUpgrade /></AppRoute> },
   { path: '/profile/:id',  element: <PublicProfile /> },
   { path: '/profile',      element: <AppRoute><Profile /></AppRoute> },
 
@@ -137,10 +143,9 @@ export const router = createBrowserRouter([
   // People
   { path: '/people', element: <AppRoute><People /></AppRoute> },
 
-  // Payments / Trust
-  { path: '/trust-badge', element: <AppRoute><TrustBadge /></AppRoute> },
-  { path: '/subscribe',   element: <AppRoute><Subscribe /></AppRoute> },
-  { path: '/billing',     element: <AppRoute><Billing /></AppRoute> },
+  // Payments
+  { path: '/subscribe', element: <Navigate to="/profile/upgrade" replace /> },
+  { path: '/billing',   element: <AppRoute><Billing /></AppRoute> },
 
   // Admin
   { path: '/admin', element: <AdminPageRoute><AdminDashboard /></AdminPageRoute> },

@@ -36,6 +36,12 @@ class Settings(BaseSettings):
     UPSTASH_REDIS_REST_URL: str | None = None
     UPSTASH_REDIS_REST_TOKEN: str | None = None
 
+    RAZORPAY_KEY_ID: str = ""
+    RAZORPAY_KEY_SECRET: str = ""
+    RAZORPAY_PLAN_ID_USD: str = ""
+    RAZORPAY_PLAN_ID_INR: str = ""
+    RAZORPAY_WEBHOOK_SECRET: str = ""
+
     @computed_field
     @property
     def origins_list(self) -> list[str]:

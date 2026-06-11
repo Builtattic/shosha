@@ -19,6 +19,9 @@ export interface UserProfile {
   website_url?: string | null;
   quote?: string | null;
   trust_badge?: boolean;
+  trust_badge_pending?: boolean;
+  trust_badge_rejected_at?: string | null;
+  trust_badge_rejection_reason?: string | null;
   occupation_role?: string | null;
   network_size?: string | null;
   education?: string | null;

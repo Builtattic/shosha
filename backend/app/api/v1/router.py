@@ -17,6 +17,7 @@ from app.api.v1 import (
     media,
     misc,
     notifications,
+    payments,
     people,
     reports,
     social,
@@ -28,6 +29,7 @@ api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 api_router.include_router(users.router, prefix="/users", tags=["users"])
 api_router.include_router(social.router, tags=["social"])
 api_router.include_router(me.router, tags=["me"])
+api_router.include_router(payments.router, tags=["payments"])
 api_router.include_router(accounts.router, prefix="/accounts", tags=["accounts"])
 api_router.include_router(reports.router, prefix="/reports", tags=["reports"])
 api_router.include_router(feed.router, prefix="/feed", tags=["feed"])
