@@ -1,6 +1,6 @@
 import type { ApiResponse, PaginatedResponse } from '@/types/common';
 import type { Account, AccountCreatePayload, AccountUpdatePayload, SocialLink } from '@/types/account';
-import type { ReportListItem } from '@/api/accounts';
+import type { ReportListItem, ScoreHistoryEntry, WindowScoresRaw } from '@/api/accounts';
 
 export type SearchAccount = Account & {
   claimed?: boolean;
@@ -187,4 +187,20 @@ export async function addSocialLink(
   await new Promise((resolve) => setTimeout(resolve, 300));
   void accountId;
   return { platform, url, is_verified: false };
+}
+
+export async function getAccountScoreHistory(
+  id: string,
+): Promise<ApiResponse<{ history: ScoreHistoryEntry[] }>> {
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  void id;
+  return { ok: true, data: { history: [] } };
+}
+
+export async function getAccountScoreWindows(
+  id: string,
+): Promise<ApiResponse<{ window_scores: WindowScoresRaw | null }>> {
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  void id;
+  return { ok: true, data: { window_scores: null } };
 }

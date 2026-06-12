@@ -71,14 +71,26 @@ export async function getModerationQueue(limit = 100): Promise<ReportOut[]> {
   return data.items;
 }
 
+export interface ModerationScoringPayload {
+  category?: string;
+  deed?: string;
+  base_score?: number;
+  repetition_pattern?: number;
+  intent?: number;
+  circumstances?: number;
+  final_impact?: number;
+}
+
 export async function moderateReport(
   reportId: string,
   decision: 'APPROVED' | 'REJECTED',
   note?: string,
+  scoring?: ModerationScoringPayload,
 ): Promise<{ report: ReportOut }> {
   const { data } = await apiClient.post<{ report: ReportOut }>(`/reports/${reportId}/moderate`, {
     decision,
     note: note ?? '',
+    ...scoring,
   });
   return data;
 }

@@ -3,10 +3,20 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, MapPin, Shield } from 'lucide-react';
 import { useAuth } from '@/providers/AuthProvider';
-import { getAccount, listAccountReports, listAccounts } from '@/api/accounts';
+import {
+  getAccount,
+  getAccountScoreHistory,
+  getAccountScoreWindows,
+  listAccountReports,
+  listAccounts,
+} from '@/api/accounts';
+import type { ScoreHistoryEntry, WindowScoresRaw } from '@/api/accounts';
 import type { Account } from '@/types/account';
 import ScoreLedgerPanel from '@/components/profile/ScoreLedgerPanel';
+import type { WindowScores } from '@/components/profile/ScoreLedgerPanel';
 import ProfileImpactAnalytics from '@/components/profile/ProfileImpactAnalytics';
+import type { HistoryPoint } from '@/components/profile/ProfileImpactAnalytics';
+import { applySheetScore, BASE_SCORE } from '@/lib/scoring';
 import SimilarProfiles from '@/components/profile/SimilarProfiles';
 import AccountShareButton from '@/components/profile/AccountShareButton';
 import { isAdminRole } from '@/lib/roles';
@@ -20,6 +30,31 @@ import { cn } from '@/lib/utils';
 
 type Tab = 'overview' | 'activity' | 'about' | 'impact';
 
+// Backend returns per-entry deltas (s = delta). Rebuild the cumulative score
+// timeline with the same sheet-score decay the ledger uses for V1 parity.
+function ledgerToHistory(entries: ScoreHistoryEntry[]): HistoryPoint[] {
+  let score = BASE_SCORE;
+  return entries.map((entry) => {
+    score = applySheetScore(score, entry.s).score;
+    return { t: entry.t, s: score, delta: entry.s };
+  });
+}
+
+function toWindowScores(raw: WindowScoresRaw | null): WindowScores | null {
+  if (!raw) return null;
+  return {
+    w1Delta: raw.w1_delta,
+    w1Decay: raw.w1_decay,
+    w1Score: raw.w1_score,
+    w2Delta: raw.w2_delta,
+    w2Decay: raw.w2_decay,
+    w2Score: raw.w2_score,
+    w3Delta: raw.w3_delta,
+    w3Decay: raw.w3_decay,
+    w3Score: raw.w3_score,
+  };
+}
+
 export default function AccountDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -31,6 +66,8 @@ export default function AccountDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [similarAccounts, setSimilarAccounts] = useState<Account[]>([]);
+  const [scoreHistory, setScoreHistory] = useState<HistoryPoint[]>([]);
+  const [windowScores, setWindowScores] = useState<WindowScores | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -40,10 +77,12 @@ export default function AccountDetailPage() {
       setLoading(true);
       setError(null);
       try {
-        const [accRes, repRes, allRes] = await Promise.all([
+        const [accRes, repRes, allRes, histRes, winRes] = await Promise.all([
           getAccount(id),
           listAccountReports(id),
           listAccounts(6),
+          getAccountScoreHistory(id),
+          getAccountScoreWindows(id),
         ]);
         if (!mounted) return;
         if (!accRes.ok || !accRes.data?.account) {
@@ -53,6 +92,12 @@ export default function AccountDetailPage() {
         setAccount(loadedAccount);
         const items = repRes.ok && repRes.data ? repRes.data.items : [];
         setFilings(items.map(reportToMeFiling));
+        setScoreHistory(
+          histRes.ok && histRes.data ? ledgerToHistory(histRes.data.history) : [],
+        );
+        setWindowScores(
+          winRes.ok && winRes.data ? toWindowScores(winRes.data.window_scores) : null,
+        );
         const allItems = allRes.items ?? [];
         const similar = allItems
           .filter((a) => a.id !== loadedAccount.id)
@@ -194,7 +239,7 @@ export default function AccountDetailPage() {
         />
 
         <ScoreLedgerPanel
-          windowScores={null}
+          windowScores={windowScores}
           globalScore={account.score}
           viewerIsAdmin={isAdminRole(profile?.role)}
         />
@@ -256,13 +301,12 @@ export default function AccountDetailPage() {
                 exit={{ opacity: 0, y: 8 }}
               >
                 <ProfileImpactAnalytics
-                  history={[]}
+                  history={scoreHistory}
                   filings={impactFilings}
-                  showGraph={false}
+                  showGraph={scoreHistory.length >= 2}
                   showImpactDetails
                   totalScore={account.score}
                 />
-                {/* TODO: wire history[] when /accounts/{id}/score-history endpoint exists */}
               </motion.div>
             )}
 

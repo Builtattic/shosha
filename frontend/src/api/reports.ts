@@ -40,6 +40,16 @@ export interface ModerationQueueItem {
 export type VoteType = 'ALIGN' | 'OPPOSE';
 export type ModerationDecision = 'APPROVED' | 'REJECTED' | 'REMOVED';
 
+export interface ModerationScoringFields {
+  category?: string;
+  deed?: string;
+  base_score?: number;
+  repetition_pattern?: number;
+  intent?: number;
+  circumstances?: number;
+  final_impact?: number;
+}
+
 // ── Real API ───────────────────────────────────────────────────────────────────
 
 const real = {
@@ -167,11 +177,13 @@ const real = {
     reportId: string,
     decision: ModerationDecision,
     note?: string,
+    scoring?: ModerationScoringFields,
   ): Promise<ApiResponse<{ report: FeedReport }>> => {
     try {
       const response = await apiClient.post<{ report: ReportOut }>(`/reports/${reportId}/moderate`, {
         decision,
         note,
+        ...scoring,
       });
       return {
         ok: true,

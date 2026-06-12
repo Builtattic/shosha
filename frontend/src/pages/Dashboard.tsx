@@ -17,6 +17,7 @@ import { replayMyScore } from '@/api/me';
 // Lib
 import { useAuth } from '@/providers/AuthProvider';
 import { cn } from '@/lib/utils';
+import { calcCredibility } from '@/lib/credibility';
 
 // Types
 import type { FeedFilter, FeedReport } from '@/types/feed';
@@ -135,8 +136,36 @@ export default function Dashboard() {
     );
   }, [feed, query]);
 
-  // TODO: restore full credibility formula when onboarding fields are in UserPrivate
-  const credibility = Math.min(100, Math.max(0, Math.round((myScore / 10000) * 100)));
+  const credibility = useMemo(() => {
+    const u = meData?.user;
+    if (!u) return 0;
+    return calcCredibility({
+      name: u.display_name ?? undefined,
+      username: u.username ?? undefined,
+      phone: u.phone ?? undefined,
+      dob: u.dob ?? undefined,
+      city: u.city ?? undefined,
+      country: u.country ?? undefined,
+      occupationRole: u.occupation_role ?? undefined,
+      networkSize: u.network_size ?? undefined,
+      education: u.education ?? undefined,
+      specializedField: u.specialized_field ?? undefined,
+      managesMoneyPeopleSystem: u.manages_money_people_system ?? undefined,
+      physicalIntellectualLimitations: u.physical_intellectual_limitations ?? undefined,
+      igUrl: u.ig_url ?? undefined,
+      tiktokUrl: u.tiktok_url ?? undefined,
+      xUrl: u.x_url ?? undefined,
+      linkedinUrl: u.linkedin_url ?? undefined,
+      redditUrl: u.reddit_url ?? undefined,
+      ytUrl: u.yt_url ?? undefined,
+      fbUrl: u.fb_url ?? undefined,
+      snapchatUrl: u.snapchat_url ?? undefined,
+      photoUrl: u.photo_url ?? undefined,
+      bio: u.bio ?? undefined,
+      quote: u.quote ?? undefined,
+      trustBadge: u.trust_badge ?? false,
+    }).total;
+  }, [meData]);
   const ledgerScore = myScore;
   const hasOnboarded = true;
   const displayName =

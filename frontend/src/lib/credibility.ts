@@ -13,7 +13,7 @@
 // Max from completion alone: 80%. The remaining 20% requires verification.
 
 export const CRED_SECTIONS = {
-  basicInfo:        { weight: 30, label: 'Basic Info' },
+  basicInfo:        { weight: 25, label: 'Basic Info' },
   questions:        { weight: 25, label: 'Questions' },
   socialLinks:      { weight: 10, label: 'Social Links' },
   profileExtras:    { weight: 15, label: 'Profile Extras' },

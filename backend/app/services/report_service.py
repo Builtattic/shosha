@@ -45,8 +45,10 @@ from app.services import moderation_request_service
 from app.services._helpers import is_moderator_plus
 from app.services.notification_service import emit_report_notification
 from app.services.scoring_service import (
-    DEFAULT_MULTIPLIERS,
     apply_report_score,
+    profile_multipliers_from_account,
+    resolve_sheet_base_impact,
+    resolve_sheet_base_impact_from_admin_impact,
     reverse_report_score,
 )
 
@@ -277,8 +279,41 @@ async def moderate_report(
     account = await get_account_by_id(db, report.account_id)
     if new_status == ReportStatus.APPROVED and old_status != ReportStatus.APPROVED:
         if account is not None:
+            # Resolve deed/base_score before scoring, mirroring V1 adjudicate:
+            # admin-supplied deed/base_score override; otherwise resolve from the
+            # final impact (admin delta) or the scoring sheet.
+            if data.deed is not None:
+                report.deed = data.deed
+            if data.base_score is not None:
+                report.base_score = data.base_score
+            if report.deed is None and report.base_score is None:
+                if data.final_impact is not None:
+                    row = resolve_sheet_base_impact_from_admin_impact(
+                        data.final_impact, report.report_type
+                    )
+                else:
+                    row = resolve_sheet_base_impact(report.deed, report.report_type)
+                report.deed = row["deed"]
+                report.base_score = float(row["base_score"])
+
+            # Persist the resolved report fields so apply_report_score's read of
+            # report.base_score sees the updated value (flush, not commit).
+            await db.flush()
+
+            multipliers = profile_multipliers_from_account(
+                account,
+                repetition_pattern=data.repetition_pattern,
+                intent=data.intent,
+                circumstances=data.circumstances,
+            )
             # scoring_service owns its own commit; notification commit follows below.
-            await apply_report_score(db, report, account, dict(DEFAULT_MULTIPLIERS))
+            await apply_report_score(
+                db,
+                report,
+                account,
+                multipliers,
+                category_override=data.category or None,
+            )
     elif new_status == ReportStatus.REJECTED and old_status == ReportStatus.APPROVED:
         if account is not None:
             await reverse_report_score(db, report, account)
