@@ -1,6 +1,6 @@
 # Shosha V2 API Spec (MVP Contract)
 
-> **Status (Day 19):** This document originated as the MVP contract. Implementation has **exceeded** this scope — notifications, claims, disputes, admin, bubbles, people, impact, events, AI, imports, and payments are live. For the current endpoint inventory and gaps vs V1, see **[PARITY_STATUS.md](./PARITY_STATUS.md)**.
+> **Status (Day 21):** This document originated as the MVP contract. Implementation has **exceeded** this scope — notifications, claims, disputes, admin, bubbles, people, impact, events, AI, imports, payments, full user onboarding, and score history/windows are live. For the current endpoint inventory and gaps vs V1, see **[PARITY_STATUS.md](./PARITY_STATUS.md)**.
 
 This document defines the **original MVP API contract** for implementation.
 

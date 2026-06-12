@@ -1,6 +1,6 @@
 # Shosha V2 Project Setup
 
-> **Migration status (Day 19):** Scaffold and core implementation are complete. For parity tracking and next steps, see [PARITY_STATUS.md](./PARITY_STATUS.md) and [PHASE_2_PLAN.md](./PHASE_2_PLAN.md). Documentation index: [README.md](./README.md).
+> **Migration status (Day 21):** Scaffold and core implementation are complete; onboarding persistence and score history/windows shipped in Phase 2. For parity tracking and next steps, see [PARITY_STATUS.md](./PARITY_STATUS.md) and [PHASE_2_PLAN.md](./PHASE_2_PLAN.md). Documentation index: [README.md](./README.md).
 
 This document defines the greenfield foundation for Shosha V2. It covers scaffolding, architecture boundaries, and local development setup.
 

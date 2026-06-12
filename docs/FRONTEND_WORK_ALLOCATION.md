@@ -10,22 +10,25 @@ Do NOT wait for backend completion.
 
 ---
 
-# Current Backend Status (Updated Day 19)
+# Current Backend Status (Updated Day 21)
 
 Backend API endpoints are **largely implemented**.
 
 What exists now:
 
-- **108 route handlers** under `/api/v1` (see `docs/PARITY_STATUS.md`)
-- SQLAlchemy models + Alembic migrations
+- **110 route handlers** under `/api/v1` (see `docs/PARITY_STATUS.md`)
+- SQLAlchemy models + Alembic migrations (user onboarding fields, account workbook columns)
 - Services for reports, scoring, claims, disputes, admin, bubbles, notifications, etc.
 - Live API responses; frontend `api/*.ts` clients wired for core flows
+- Full user onboarding persistence (`PATCH /users/me`)
+- `GET /accounts/{id}/score-history` and `score-windows`
+- `POST /reports/{id}/moderate` with V1 adjudicate payload
 
 What is still partial:
 
 - Bookmark toggle route (service exists, no router)
-- Score history / window scores / swipe aggregate endpoints
-- Admin adjudicate scoring fields on moderate
+- `/me/swipe-aggregate` endpoint
+- `profile_multipliers_from_user()` — moderate reads account workbook, not user onboarding
 - Evidence scan stub, generic admin data CRUD
 - Weekly-momentum cron
 

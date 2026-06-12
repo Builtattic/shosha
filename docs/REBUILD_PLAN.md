@@ -58,10 +58,10 @@ See [PARITY_STATUS.md](./PARITY_STATUS.md) for detailed scorecard.
 
 Focus shifts from **route coverage** to **behavioral parity**:
 
-1. Persist all onboarding fields + credibility
-2. Admin adjudicate with V1 scoring fields
+1. ~~Persist all onboarding fields + credibility~~ **Done (Day 20)**
+2. ~~Admin adjudicate with V1 scoring fields~~ **Done on `AdminReview` (Day 21)**; user→multiplier bridge open
 3. Bookmarks, feed filters, notification triggers
-4. Score history, window scores, weekly-momentum cron
+4. ~~Score history, window scores~~ **Done (Day 21)**; weekly-momentum cron still open
 5. Evidence scan, account audit, claim upload, cleanup
 
 Full checklist: [PHASE_2_PLAN.md](./PHASE_2_PLAN.md)

@@ -1,6 +1,6 @@
 # V1 → V2 Parity Status
 
-Master gap-tracking document. Updated at end of **Days 1–19** migration sprint.
+Master gap-tracking document. Updated after **Phase 2 Days 20–21** (data foundation + scoring core).
 
 - **V1 reference:** `C:\Others\project\Builtattic\Shoshaaahhh`
 - **V2 target:** this repository (`shosha`)
@@ -11,15 +11,42 @@ Master gap-tracking document. Updated at end of **Days 1–19** migration sprint
 
 | Area | V1 baseline | V2 status | % complete* |
 |------|-------------|-----------|-------------|
-| Pages / routes | 55 routable pages | 38 FULL · 14 PARTIAL · 0 missing | **69%** |
-| API endpoints | ~95 handlers (+ OG) | 108 handlers; 7 gaps + stubs | **78%** |
-| Admin features | 20 tracked | 12 FULL · 8 PARTIAL | **60%** |
-| Onboarding fields | 24 fields | 6 persisted · 18 missing | **25%** |
+| Pages / routes | 55 routable pages | 41 FULL · 11 PARTIAL · 0 missing | **75%** |
+| API endpoints | ~95 handlers (+ OG) | 110 handlers; 5 gaps + stubs | **82%** |
+| Admin features | 20 tracked | 13 FULL · 7 PARTIAL | **65%** |
+| Onboarding fields | 24 fields | 23 persisted · 1 not collected (`region`) | **96%** |
 | Notification triggers | 15 types | 6 implemented · 8 missing | **40%** |
 | Background jobs | 2 planned | 0 (webhook partial) | **0%** |
-| Scoring components | 8 | 3 full · 3 partial · 2 missing | **38%** |
+| Scoring components | 8 | 5 full · 2 partial · 1 missing | **75%** |
 
 \* `(FULL + 0.5 × PARTIAL) / total × 100`
+
+---
+
+## What shipped in Phase 2 (Days 20–21)
+
+### Day 20 — User profile & onboarding (data foundation)
+- Alembic `02868f72cba7`: all V1 onboarding columns on `users` (phone, dob, country, quote, 6 profile questions, 8 social URLs)
+- `UserUpdateRequest` / `UserPrivate` / `UserPublic` expose credibility-relevant fields; URL validators on social links
+- `PATCH /users/me`, `GET /users/me`, `GET /users/{id}` persist and return full profile
+- `GET /users/username-availability` wired in `Onboard.tsx`
+- Frontend: `Onboard.tsx` sends full payload; `EditProfile.tsx` full field editor; `types/user.ts` extended
+- `Dashboard.tsx` runs `calcCredibility()` from stored `UserPrivate` (no score proxy)
+
+### Day 21 — Scoring engine core (partial)
+- `ModerationDecisionRequest`: category, deed, base_score, repetition_pattern, intent, circumstances, final_impact, note
+- `POST /reports/{id}/moderate` resolves deed/base_score and calls `profile_multipliers_from_account()` + `apply_report_score()`
+- `GET /accounts/{id}/score-history`, `GET /accounts/{id}/score-windows`; account detail includes `score_history`, `window_scores`, `score_breakdown`
+- Alembic `b7d2f4a9c1e3`: account workbook columns for multiplier lookup
+- Frontend: `AdminReviewControls.tsx` sends full adjudicate payload; `AccountDetail.tsx` wires history + W1/W2/W3
+
+### Still open from Days 20–21
+- `profile_multipliers_from_user()` — moderate uses **Account** workbook fields, not **User** onboarding; empty accounts get neutral 1.0 multipliers
+- No sync from user onboarding → account workbook columns
+- Enum validators on profile question slugs (stored as strings; V1 option sets not enforced server-side)
+- `region` on user model but not collected in onboard UI
+- `LiveAccountScorePanel.tsx` — followers + credibility still stubbed
+- `DEFAULT_MULTIPLIERS` still used on admin report-create and evidence-proposal paths
 
 ---
 
@@ -38,12 +65,11 @@ Master gap-tracking document. Updated at end of **Days 1–19** migration sprint
 - Admin shell with moderation, claims, disputes, evidence, audits, abuse, users, accounts, settings, and more
 
 ### Still stubbed or partial (high level)
-- Onboarding collects 24 fields; only 6 reach the backend
-- Credibility uses score proxy on dashboard/profile
+- Profile score multipliers do not yet read user onboarding (account workbook columns empty by default)
 - Following / Near You feed tabs show "coming soon"
 - Bookmark toggle in feed is local-only (no API route)
-- Admin review cannot send V1 adjudicate scoring fields
-- Score history, window scores, swipe aggregate endpoints missing
+- `AdminQueue.tsx` quick-moderate does not send adjudicate scoring fields (use `AdminReview` for full adjudicate)
+- `/me/swipe-aggregate` missing
 - Weekly-momentum cron missing
 - Evidence scan returns empty proposals
 - 8 notification trigger types missing vs V1
@@ -63,13 +89,13 @@ Master gap-tracking document. Updated at end of **Days 1–19** migration sprint
 | `/[slug]` | `/:slug` | `SlugPage.tsx` | FULL |
 | `/sign-in` | `/sign-in` | `SignIn.tsx` | PARTIAL — V2 adds phone/OTP |
 | `/sign-up` | `/sign-up` → redirect | — | FULL |
-| `/onboard` | `/onboard` | `Onboard.tsx` | PARTIAL — 18 fields not persisted |
-| `/dashboard` | `/dashboard` | `Dashboard.tsx` | PARTIAL — credibility proxy; 2 feed tabs stubbed |
+| `/onboard` | `/onboard` | `Onboard.tsx` | FULL — all fields persisted; `region` not collected |
+| `/dashboard` | `/dashboard` | `Dashboard.tsx` | PARTIAL — credibility from profile; 2 feed tabs stubbed |
 | `/feed` | `/feed` | `Feed.tsx` | PARTIAL — Following/Near You stubbed |
 | `/profile` | `/profile` | `Profile.tsx` | PARTIAL — follower counts TODO |
-| `/profile/edit` | `/profile/edit` | `EditProfile.tsx` | PARTIAL — limited fields |
+| `/profile/edit` | `/profile/edit` | `EditProfile.tsx` | FULL |
 | `/profile/upgrade` | `/profile/upgrade` | `ProfileUpgrade.tsx` | FULL |
-| `/account/[id]` | `/accounts/:id` | `AccountDetail.tsx` | PARTIAL — score history, audit, window scores |
+| `/account/[id]` | `/accounts/:id` | `AccountDetail.tsx` | PARTIAL — score history + windows wired; audit missing |
 | `/people` | `/people` | `People.tsx` | PARTIAL — swipe aggregate missing |
 | `/search` | `/search` | `Search.tsx` | FULL |
 | `/notifications` | `/notifications` | `Notifications.tsx` | FULL |
@@ -85,9 +111,9 @@ Master gap-tracking document. Updated at end of **Days 1–19** migration sprint
 | `/post/[id]` | `/reports/:id` | `ReportDetail.tsx` | FULL |
 | `/legal-policies/*` | `/legal-policies/*` | `legal/LegalHub.tsx`, `LegalPage.tsx` | FULL |
 | `/admin` | `/admin` | `admin/AdminDashboard.tsx` | PARTIAL — charts/metrics stubbed |
-| `/admin/queue` | `/admin/queue` | `admin/AdminQueue.tsx` | PARTIAL — scoring fields not sent |
+| `/admin/queue` | `/admin/queue` | `admin/AdminQueue.tsx` | PARTIAL — quick-moderate without adjudicate payload |
 | `/admin/moderation` | `/admin/moderation` | `admin/AdminModeration.tsx` | FULL |
-| `/admin/review/[id]` | `/admin/review/:id` | `admin/AdminReview.tsx` | PARTIAL |
+| `/admin/review/[id]` | `/admin/review/:id` | `admin/AdminReview.tsx` | PARTIAL — full adjudicate via `AdminReviewControls` |
 | `/admin/claims` | `/admin/claims` | `admin/AdminClaims.tsx` | FULL |
 | `/admin/disputes` | `/admin/disputes` | `admin/AdminDisputes.tsx` | FULL |
 | `/admin/evidence` | `/admin/evidence` | `admin/AdminEvidence.tsx` | PARTIAL — scan stubbed |
@@ -121,8 +147,6 @@ Master gap-tracking document. Updated at end of **Days 1–19** migration sprint
 | `DELETE /accounts/[id]/dossier-unfollow` | No dossier unfollow |
 | Bookmark toggle | Service exists; no POST/DELETE route |
 | `GET /me/swipe-aggregate` | Referenced in UI; not implemented |
-| `GET /accounts/{id}/score-history` | Not implemented |
-| `GET /accounts/{id}/score-windows` | Not implemented |
 | `POST/GET /cron/weekly-momentum` | Missing entirely |
 | `GET /api/og` | OG image generation missing |
 | `POST /admin/data/[collection]` | Collection record create missing |
@@ -132,7 +156,8 @@ Master gap-tracking document. Updated at end of **Days 1–19** migration sprint
 | Endpoint | Issue |
 |----------|-------|
 | `POST /admin/accounts/{id}/evidence/scan` | Returns `proposals: []`, `scan_stubbed` |
-| `POST /reports/{id}/moderate` | Uses `DEFAULT_MULTIPLIERS`; no adjudicate field overrides |
+| `POST /reports/{id}/moderate` | Adjudicate fields supported; multipliers from account workbook (not user onboarding) |
+| `POST /admin/reports` (create) | Still uses `DEFAULT_MULTIPLIERS` |
 | `GET /bubbles/leaderboard` | Sorts by created_at/member count, not bubble score |
 | `POST /webhooks/razorpay` | No user notifications on payment events |
 
@@ -142,12 +167,13 @@ Master gap-tracking document. Updated at end of **Days 1–19** migration sprint
 
 | Field | Sent to backend? | In schema? |
 |-------|------------------|------------|
-| name, username, city, photoUrl, bio, onboardingComplete | Yes | Yes |
-| phone, dob, country, quote | No | No |
-| occupationRole, networkSize, education, specializedField, managesMoneyPeopleSystem, physicalIntellectualLimitations | No | No |
-| igUrl, tiktokUrl, xUrl, linkedinUrl, redditUrl, ytUrl, fbUrl, snapchatUrl | No | No |
+| display_name, username, city, photo_url, bio, onboarding_complete | Yes | Yes |
+| phone, dob, country, quote | Yes | Yes |
+| occupation_role, network_size, education, specialized_field, manages_money_people_system, physical_intellectual_limitations | Yes | Yes |
+| ig_url, tiktok_url, x_url, linkedin_url, reddit_url, yt_url, fb_url, snapchat_url | Yes | Yes |
+| region | No (not in onboard UI) | Yes |
 
-**Impact:** credibility formula, profile multipliers, and profile display cannot match V1 until these are persisted.
+**Impact:** credibility and profile display use stored data. **Score multipliers** still read account workbook columns, not user onboarding — see open item `profile_multipliers_from_user()`.
 
 ---
 
@@ -173,25 +199,28 @@ Master gap-tracking document. Updated at end of **Days 1–19** migration sprint
 ## Prioritized punch list
 
 ### P0 — Blocks core user flows
-1. Persist onboarding credibility fields (User model + Onboard payload)
-2. Admin adjudicate with scoring fields (deed, baseScore, intent, circumstances, repetitionPattern)
-3. Bookmark toggle API + FeedItem wire-up
-4. Notification triggers for votes, comments, claims, disputes, moderation-create, deletion-create
-5. `POST /cron/weekly-momentum` for W1/W2 window scores
+1. ~~Persist onboarding credibility fields (User model + Onboard payload)~~ **Done (Day 20)**
+2. ~~Admin adjudicate with scoring fields (deed, baseScore, intent, circumstances, repetitionPattern)~~ **Done (Day 21)** — use `AdminReview`, not `AdminQueue`
+3. `profile_multipliers_from_user()` — map user onboarding → moderate multipliers (V1 parity)
+4. Bookmark toggle API + FeedItem wire-up
+5. Notification triggers for votes, comments, claims, disputes, moderation-create, deletion-create
+6. `POST /cron/weekly-momentum` for leaderboard weekly delta (windows API exists; cron does not)
 
 ### P1 — Acknowledged TODOs
-6. Score history + score windows endpoints
-7. `/me/swipe-aggregate`
-8. Following / Near You feed filters
-9. Evidence scan integration
-10. Admin dashboard metrics (filingsLast7, aiAgreementRate, time-series)
-11. Claim evidence S3 upload
-12. `POST /accounts/{id}/audit`
-13. Generic admin data CRUD
-14. Razorpay webhook notifications
+7. ~~Score history + score windows endpoints~~ **Done (Day 21)**
+8. `/me/swipe-aggregate`
+9. Following / Near You feed filters
+10. Evidence scan integration
+11. Admin dashboard metrics (filingsLast7, aiAgreementRate, time-series)
+12. Claim evidence S3 upload
+13. `POST /accounts/{id}/audit`
+14. Generic admin data CRUD
+15. Razorpay webhook notifications
+16. `LiveAccountScorePanel` — followers + credibility from API
+17. Strict enum validators on onboarding slug fields
 
 ### P2 — Nice-to-have
-15. PDF share export, impact range selector, bubble crop, ranks region filter, OG route, orphan page cleanup, proxy-image path fix
+18. PDF share export, impact range selector, bubble crop, ranks region filter, OG route, orphan page cleanup, proxy-image path fix
 
 ---
 

@@ -2,7 +2,7 @@
 
 V2 rebuild target: `shosha` (this repo). V1 reference: `C:\Others\project\Builtattic\Shoshaaahhh`.
 
-**Last updated:** June 2026 — end of Days 1–19 migration sprint.
+**Last updated:** June 2026 — after Phase 2 Days 20–21 (onboarding persistence + scoring core).
 
 ---
 
@@ -30,18 +30,18 @@ V2 rebuild target: `shosha` (this repo). V1 reference: `C:\Others\project\Builta
 
 ---
 
-## Quick status (Day 19)
+## Quick status (after Day 21)
 
 | Area | Progress |
 |------|----------|
-| Pages / routes | **69%** — 38 FULL, 14 PARTIAL, 0 missing |
-| API endpoints | **78%** — 108 V2 handlers; ~7 V1 gaps + several stubs |
-| Admin panel | **60%** — 19 pages; adjudicate scoring + dashboard charts partial |
-| Onboarding fields | **25%** — 6/24 fields persisted to backend |
+| Pages / routes | **75%** — 41 FULL, 11 PARTIAL, 0 missing |
+| API endpoints | **82%** — 110 V2 handlers; ~5 V1 gaps + several stubs |
+| Admin panel | **65%** — full adjudicate on `AdminReview`; dashboard charts partial |
+| Onboarding fields | **96%** — 23/24 persisted (`region` not collected in onboard) |
 | Notification triggers | **40%** — 6/15 V1 trigger types |
 | Background jobs | **0%** — weekly-momentum cron missing |
-| Scoring engine | **38%** — core formula ported; windows/cron/multipliers partial |
+| Scoring engine | **75%** — adjudicate + score history/windows; user→multiplier bridge open |
 
-**Next milestone:** Phase 2 plan — real profile data, admin adjudicate, bookmarks, feed tabs, score windows (~Days 20–31).
+**Next milestone:** `profile_multipliers_from_user()`, bookmarks, feed tabs, notifications (~Days 22–25).
 
 See [PHASE_2_PLAN.md](./PHASE_2_PLAN.md) for the day-by-day checklist.

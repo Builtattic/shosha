@@ -7,13 +7,14 @@ Post–Day 19 execution plan. Goal: V2 **behaves** like V1, not just routes like
 
 ---
 
-## Current state (Day 19)
+## Current state (after Day 21)
 
 Structure is largely complete:
-- 55+ routable pages, 19 admin pages, 108 API handlers
-- Core flows exist but many use proxies, stubs, or "coming soon" UI
+- 55+ routable pages, 19 admin pages, 110 API handlers
+- Onboarding fields persisted; credibility computed from stored profile on Dashboard
+- Admin review (`AdminReviewControls`) sends full V1 adjudicate payload; score history + window endpoints live
 
-Remaining work is **behavioral parity**: data persistence, scoring, notifications, feed filters, admin adjudicate.
+Remaining work is **behavioral parity**: user→multiplier bridge, notifications, feed filters, cron/ranks, evidence scan.
 
 See [PARITY_STATUS.md](./PARITY_STATUS.md) for the full gap matrix.
 
@@ -23,22 +24,22 @@ See [PARITY_STATUS.md](./PARITY_STATUS.md) for the full gap matrix.
 
 **Goal:** User profile and scores are real, not proxies.
 
-### Day 20 — User model + onboarding persistence
-- [ ] Alembic migration: add V1 onboarding fields to `users` (or `user_profiles`)
-- [ ] Expand `UserUpdateRequest` / `UserPrivate` schemas
-- [ ] `Onboard.tsx` — send all collected fields (remove line ~424 TODO)
-- [ ] `EditProfile.tsx` — edit same fields; remove "coming soon" banner
-- [ ] Wire live `GET /users/username-availability` during onboard
+### Day 20 — User model + onboarding persistence ✅
+- [x] Alembic migration: add V1 onboarding fields to `users` (`02868f72cba7`)
+- [x] Expand `UserUpdateRequest` / `UserPrivate` / `UserPublic` schemas
+- [x] `Onboard.tsx` — send all collected fields
+- [x] `EditProfile.tsx` — edit same fields (full section editor)
+- [x] Wire live `GET /users/username-availability` during onboard
 
-**Exit criteria:** Complete onboard → reload → all fields visible on Profile and PublicProfile.
+**Exit criteria:** Complete onboard → reload → all fields visible on Profile and PublicProfile. **Met** (except `region` not in onboard UI).
 
-### Day 21 — Credibility + scoring multipliers
-- [ ] Store or compute `credibility` from onboarding fields
-- [ ] Backend: `profile_multipliers_from_user()` in `apply_report_score` / moderate (replace `DEFAULT_MULTIPLIERS`)
-- [ ] Remove Dashboard/Profile credibility proxy (`score/10000`)
-- [ ] `LiveAccountScorePanel` — wire follower counts from social API
+### Day 21 — Credibility + scoring multipliers (partial)
+- [x] Compute `credibility` from onboarding fields (`calcCredibility` on Dashboard from `UserPrivate`)
+- [ ] Backend: `profile_multipliers_from_user()` in `apply_report_score` / moderate — **uses `profile_multipliers_from_account()` instead; account workbook not synced from user**
+- [x] Remove Dashboard credibility proxy (`score/10000`)
+- [ ] `LiveAccountScorePanel` — wire follower counts + credibility from API
 
-**Exit criteria:** User with full onboard gets different score multiplier than empty profile.
+**Exit criteria:** User with full onboard gets different score multiplier than empty profile. **Not met** until user onboarding feeds moderate multipliers.
 
 ---
 
@@ -46,13 +47,14 @@ See [PARITY_STATUS.md](./PARITY_STATUS.md) for the full gap matrix.
 
 **Goal:** Admin review matches V1 adjudicate behavior.
 
-### Day 22 — Adjudicate API + admin UI
-- [ ] Extend `POST /reports/{id}/moderate` (or add `/adjudicate`) with V1 scoring payload
-- [ ] `AdminReviewControls.tsx` — send deed, baseScore, intent, circumstances, repetitionPattern
-- [ ] `AdminQueue.tsx` / `AdminReview.tsx` — same payload
+### Day 22 — Adjudicate API + admin UI (partial — started Day 21)
+- [x] Extend `POST /reports/{id}/moderate` with V1 scoring payload (`ModerationDecisionRequest`)
+- [x] `AdminReviewControls.tsx` — send deed, baseScore, intent, circumstances, repetitionPattern
+- [ ] `AdminQueue.tsx` — quick-moderate still omits adjudicate payload
+- [x] `AdminReview.tsx` — uses `AdminReviewControls` with full payload
 - [ ] Optional: pre-fill from `POST /ai/classify`
 
-**Exit criteria:** Admin moderates with custom deed/score → ledger reflects override.
+**Exit criteria:** Admin moderates with custom deed/score → ledger reflects override. **Met** on `AdminReview` path; multiplier source still account workbook, not user profile.
 
 ### Day 23 — Admin dashboard + activity polish
 - [ ] Backend: `filingsLast7`, `aiAgreementRate`, time-series on `/admin/stats`
@@ -90,13 +92,14 @@ See [PARITY_STATUS.md](./PARITY_STATUS.md) for the full gap matrix.
 
 **Goal:** Leaderboard, Ranks, People, Account pages match V1 score behavior.
 
-### Day 26 — Score history + windows + swipe aggregate
-- [ ] `GET /accounts/{id}/score-history` (from `ledger_entries`)
-- [ ] `GET /accounts/{id}/score-windows` (W1/W2/W3)
+### Day 26 — Score history + windows + swipe aggregate (partial — started Day 21)
+- [x] `GET /accounts/{id}/score-history` (from `ledger_entries`)
+- [x] `GET /accounts/{id}/score-windows` (W1/W2/W3)
 - [ ] `GET /me/swipe-aggregate`
-- [ ] Wire `AccountDetail.tsx`, `ScoreLedgerPanel.tsx`, `SwipeScoreBreakdownCard.tsx`
+- [x] Wire `AccountDetail.tsx`, `ScoreLedgerPanel.tsx`
+- [ ] `SwipeScoreBreakdownCard.tsx` — needs swipe aggregate
 
-**Exit criteria:** Account page shows score history; people swipe breakdown populated.
+**Exit criteria:** Account page shows score history; people swipe breakdown populated. **Partial** — account dossier met; people swipe not.
 
 ### Day 27 — Weekly momentum cron + rank surfaces
 - [ ] Port `POST/GET /cron/weekly-momentum` from V1
@@ -200,11 +203,11 @@ Defer cron/ranks (Phase 4) and evidence scan (Phase 5) by one week.
 
 ## Success metrics (target end of Day 31)
 
-| Metric | Target |
-|--------|--------|
-| Onboarding fields persisted | 24/24 |
-| Pages FULL (not PARTIAL) | ≥ 50/55 |
-| P0 punch list | 5/5 done |
-| P1 punch list | ≥ 8/9 done |
-| Notification triggers | ≥ 13/15 |
-| Smoke test | 12/12 pass |
+| Metric | Target | Current (Day 21) |
+|--------|--------|------------------|
+| Onboarding fields persisted | 24/24 | 23/24 (`region` not in onboard UI) |
+| Pages FULL (not PARTIAL) | ≥ 50/55 | 41/55 |
+| P0 punch list | 5/5 done | 2/6 done |
+| P1 punch list | ≥ 8/9 done | 1/11 done |
+| Notification triggers | ≥ 13/15 | 6/15 |
+| Smoke test | 12/12 pass | partial (onboard + adjudicate + account windows) |

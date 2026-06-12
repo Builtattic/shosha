@@ -1,6 +1,6 @@
 # Shosha Feature Inventory
 
-Updated at **Day 19** — reflects implemented V2 state vs V1 reference.
+Updated after **Phase 2 Day 21** — reflects implemented V2 state vs V1 reference.
 
 V1 reference: `C:\Others\project\Builtattic\Shoshaaahhh`
 
@@ -11,9 +11,9 @@ V1 reference: `C:\Others\project\Builtattic\Shoshaaahhh`
 | Domain | V2 status | Notes |
 |--------|-----------|-------|
 | Auth (Firebase + session sync) | **Done** | Google, email/password, phone/OTP (V2-only) |
-| Users / profile | **Partial** | 6/24 onboarding fields persisted |
-| Accounts / dossiers | **Done** | CRUD, search, social links |
-| Reports / filing | **Done** | Create, vote, comment, moderate |
+| Users / profile | **Done** | 23/24 onboarding fields persisted (`region` not in onboard UI); full edit profile |
+| Accounts / dossiers | **Partial** | CRUD, search, score history + windows; workbook columns for multipliers not synced from user |
+| Reports / filing | **Partial** | Create, vote, comment; moderate with V1 adjudicate fields on `AdminReview` |
 | Feed | **Partial** | For You works; Following/Near You stubbed |
 | People / swipe deck | **Partial** | Deck works; swipe aggregate missing |
 | Bubbles | **Done** | Create, join, leaderboard (sort partial) |
@@ -21,7 +21,7 @@ V1 reference: `C:\Others\project\Builtattic\Shoshaaahhh`
 | Disputes | **Done** | File, withdraw, admin decide (notifications partial) |
 | Notifications | **Partial** | List/read works; 8 trigger types missing |
 | Bookmarks | **Partial** | GET works; toggle API missing |
-| Admin panel | **Partial** | 19 pages; adjudicate scoring + dashboard partial |
+| Admin panel | **Partial** | 19 pages; full adjudicate on `AdminReview`; `AdminQueue` quick-moderate partial; dashboard charts stubbed |
 | Payments / upgrade | **Done** | Razorpay order/verify; webhook notifications partial |
 | Impact / ranks / stats | **Partial** | APIs exist; UI partial (weekly delta, global rank) |
 | Legal / policies | **Done** | 12 pages via dynamic legal routes |
