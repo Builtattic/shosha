@@ -18,12 +18,13 @@ from app.integrations.gemini import (
     heuristic_adjudication,
     verdict_to_dict,
 )
-from app.models.enums import ReportStatus
+from app.models.enums import NotificationType, ReportStatus, VoteType
 from app.models.report import Report, ReportComment, ReportVote
 from app.models.user import User
 from app.repositories import (
     add_comment as repo_add_comment,
     add_media,
+    create_notification,
     create_report as repo_create_report,
     get_account_by_id,
     get_report_by_id,
@@ -184,6 +185,9 @@ async def vote_on_report(
     if report is None:
         raise_api_error("not_found", "Report not found")
 
+    reporter_user_id = report.reporter_user_id
+    account_id = report.account_id
+
     vote, align_count, oppose_count = await upsert_vote(
         db,
         report_id,
@@ -192,6 +196,27 @@ async def vote_on_report(
     )
     await db.commit()
     await db.refresh(vote)
+
+    if reporter_user_id is not None and current_user.id != reporter_user_id:
+        title = (
+            "New aligned vote"
+            if data.vote_type == VoteType.ALIGN
+            else "New opposing vote"
+        )
+        await create_notification(
+            db,
+            reporter_user_id,
+            NotificationType.REPORT,
+            title,
+            f"Someone {'aligned with' if data.vote_type == VoteType.ALIGN else 'opposed'} your filing.",
+            metadata_json={
+                "report_id": str(report_id),
+                "actor_id": str(current_user.id),
+                "account_id": str(account_id),
+            },
+        )
+        await db.commit()
+
     return vote, align_count, oppose_count
 
 
@@ -205,9 +230,28 @@ async def add_comment(
     if report is None:
         raise_api_error("not_found", "Report not found")
 
+    reporter_user_id = report.reporter_user_id
+    account_id = report.account_id
+
     comment = await repo_add_comment(db, report_id, current_user.id, data.body)
     await db.commit()
     await db.refresh(comment)
+
+    if reporter_user_id is not None and current_user.id != reporter_user_id:
+        await create_notification(
+            db,
+            reporter_user_id,
+            NotificationType.REPORT,
+            "New comment",
+            "Someone commented on your filing.",
+            metadata_json={
+                "report_id": str(report_id),
+                "actor_id": str(current_user.id),
+                "account_id": str(account_id),
+            },
+        )
+        await db.commit()
+
     return comment
 
 

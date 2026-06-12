@@ -114,6 +114,17 @@ const real = {
     }
   },
 
+  toggleBookmark: async (
+    reportId: string,
+  ): Promise<ApiResponse<{ bookmarked: boolean }>> => {
+    try {
+      const response = await apiClient.post(`/reports/${reportId}/bookmark`);
+      return { ok: true, data: response.data };
+    } catch (error: any) {
+      return { ok: false, error: error.message };
+    }
+  },
+
   getComments: async (
     reportId: string,
     cursor?: string,
@@ -204,6 +215,7 @@ export const getReport          = USE_MOCKS ? mock.getReport          : real.get
 export const listReports        = USE_MOCKS ? mock.listReports        : real.listReports;
 export const submitReport       = USE_MOCKS ? mock.submitReport       : real.submitReport;
 export const postVote           = USE_MOCKS ? mock.postVote           : real.postVote;
+export const toggleBookmark     = USE_MOCKS ? mock.toggleBookmark     : real.toggleBookmark;
 export const getComments        = USE_MOCKS ? mock.getComments        : real.getComments;
 export const postComment        = USE_MOCKS ? mock.postComment        : real.postComment;
 export const requestModeration  = USE_MOCKS ? mock.requestModeration  : real.requestModeration;

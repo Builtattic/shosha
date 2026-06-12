@@ -198,3 +198,14 @@ export async function postInteraction(
   await new Promise((resolve) => setTimeout(resolve, 400));
   return { ok: true, data: {} };
 }
+
+const mockBookmarkState = new Map<string, boolean>();
+
+export async function toggleBookmark(
+  reportId: string,
+): Promise<ApiResponse<{ bookmarked: boolean }>> {
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  const next = !mockBookmarkState.get(reportId);
+  mockBookmarkState.set(reportId, next);
+  return { ok: true, data: { bookmarked: next } };
+}

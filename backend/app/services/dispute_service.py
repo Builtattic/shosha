@@ -7,10 +7,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import raise_api_error
 from app.models.dispute import Dispute
-from app.models.enums import DisputeStatus, ReportStatus
+from app.models.enums import DisputeStatus, NotificationType, ReportStatus
 from app.models.user import User
 from app.repositories import (
     create_dispute,
+    create_notification,
     get_dispute_by_id,
     get_dispute_by_report_and_user,
     get_report_by_id,
@@ -46,6 +47,8 @@ async def file_dispute(
     if existing is not None:
         raise_api_error("conflict", "You already have an open dispute on this report")
 
+    reporter_user_id = report.reporter_user_id
+
     dispute = await create_dispute(
         db,
         data.report_id,
@@ -56,6 +59,22 @@ async def file_dispute(
     )
     await db.commit()
     await db.refresh(dispute)
+
+    if reporter_user_id is not None and reporter_user_id != current_user.id:
+        await create_notification(
+            db,
+            reporter_user_id,
+            NotificationType.DISPUTE,
+            "Your filing is being disputed",
+            "A dispute has been filed against your filing. A moderator will review.",
+            metadata_json={
+                "report_id": str(data.report_id),
+                "dispute_id": str(dispute.id),
+                "account_id": str(data.account_id),
+            },
+        )
+        await db.commit()
+
     return dispute
 
 
@@ -123,6 +142,21 @@ async def decide_dispute(
 
     loaded = await get_dispute_by_id(db, dispute.id)
     assert loaded is not None
+
+    await create_notification(
+        db,
+        loaded.requester_user_id,
+        NotificationType.DISPUTE,
+        "Dispute resolved",
+        "A moderator has reviewed your dispute.",
+        metadata_json={
+            "dispute_id": str(dispute_id),
+            "report_id": str(loaded.report_id),
+            "account_id": str(loaded.account_id),
+        },
+    )
+    await db.commit()
+
     return loaded
 
 

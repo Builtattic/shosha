@@ -24,7 +24,7 @@ import { cn, formatDate } from '@/lib/utils';
 import { siteUrl } from '@/lib/seo';
 import { handleAvatarError, resolveAvatarUrl } from '@/lib/media';
 import { useToast } from '@/components/ui/Toast';
-import { postVote, getComments, postComment, requestModeration } from '@/api/reports';
+import { postVote, getComments, postComment, requestModeration, toggleBookmark } from '@/api/reports';
 import { FeedShareCard } from './FeedShareCard';
 import type { FeedItemProps } from '@/types/feed';
 
@@ -251,8 +251,16 @@ export function FeedItem({
     e?.stopPropagation();
 
     if (action === 'bookmark') {
-      // TODO: bookmark API when backend exposes report bookmarks
+      const prev = viewerState.bookmarked;
       setViewerState((cur) => ({ ...cur, bookmarked: !cur.bookmarked }));
+      const res = await toggleBookmark(id);
+      if (!res.ok) {
+        setViewerState((cur) => ({ ...cur, bookmarked: prev }));
+        if (res.error?.includes('401')) { navigate('/sign-in'); return; }
+        toast.push(res.error ?? 'Bookmark failed.');
+      } else if (res.data) {
+        setViewerState((cur) => ({ ...cur, bookmarked: res.data!.bookmarked }));
+      }
       return;
     }
 

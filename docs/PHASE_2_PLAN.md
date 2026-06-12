@@ -71,8 +71,8 @@ See [PARITY_STATUS.md](./PARITY_STATUS.md) for the full gap matrix.
 **Goal:** Feed, bookmarks, notifications feel alive.
 
 ### Day 24 — Bookmarks + feed enrichment
-- [ ] `POST/DELETE /reports/{id}/bookmark` (toggle) using `report_bookmark_service`
-- [ ] `FeedItem.tsx` — wire bookmark toggle
+- [x] `POST /reports/{id}/bookmark` (toggle) using `report_bookmark_service` *(Day 3 parity sprint)*
+- [x] `FeedItem.tsx` — wire bookmark toggle *(Day 3 parity sprint)*
 - [ ] Feed API: include vote aggregates on feed items
 - [ ] `api/feed.ts` — remove enrich TODO
 
@@ -81,8 +81,8 @@ See [PARITY_STATUS.md](./PARITY_STATUS.md) for the full gap matrix.
 ### Day 25 — Feed tabs + notification triggers
 - [ ] Backend: `GET /feed?filter=following|near` with real filters
 - [ ] `lib/feed.ts`, `Dashboard.tsx`, `Feed.tsx` — enable Following / Near You tabs
-- [ ] Notifications: vote, comment, moderation-request-to-admins
-- [ ] Notifications: claim decided, dispute filed/decided, deletion-request submitted
+- [x] Notifications: vote, comment, moderation-request-to-admins *(Day 3 parity sprint)*
+- [x] Notifications: claim decided, dispute filed/decided, deletion-request submitted *(Day 3 parity sprint)*
 
 **Exit criteria:** Following tab shows followed users' reports; vote/comment creates notification.
 
@@ -127,8 +127,8 @@ See [PARITY_STATUS.md](./PARITY_STATUS.md) for the full gap matrix.
 
 ### Day 29 — Claims upload + payments notifications
 - [ ] `ClaimProfileModal.tsx` — `uploadMedia` for evidence (replace blob URL)
-- [ ] Razorpay webhook: payment failed/cancelled notifications
-- [ ] Claim decide → notification
+- [x] Razorpay webhook: payment failed/cancelled notifications *(Day 3 parity sprint)*
+- [x] Claim decide → notification *(Day 3 parity sprint)*
 
 **Exit criteria:** Claim with file upload works; payment failure notifies user.
 
@@ -209,5 +209,5 @@ Defer cron/ranks (Phase 4) and evidence scan (Phase 5) by one week.
 | Pages FULL (not PARTIAL) | ≥ 50/55 | 41/55 |
 | P0 punch list | 5/5 done | 2/6 done |
 | P1 punch list | ≥ 8/9 done | 1/11 done |
-| Notification triggers | ≥ 13/15 | 6/15 |
+| Notification triggers | ≥ 13/15 | 15/15 *(Day 3 parity sprint)* |
 | Smoke test | 12/12 pass | partial (onboard + adjudicate + account windows) |

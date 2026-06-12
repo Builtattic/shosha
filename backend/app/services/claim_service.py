@@ -7,10 +7,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import raise_api_error
 from app.models.claim_request import ClaimRequest
-from app.models.enums import ClaimRequestStatus
+from app.models.enums import ClaimRequestStatus, NotificationType
 from app.models.user import User
 from app.repositories import (
     create_claim,
+    create_notification,
     get_account_by_id,
     get_any_claim_by_account_and_user,
     get_claim_by_account_and_user,
@@ -133,4 +134,24 @@ async def decide_claim(
 
     loaded = await get_claim_by_id(db, claim.id)
     assert loaded is not None
+
+    if data.decision == ClaimRequestStatus.APPROVED:
+        title = "Claim approved"
+        message = "Your claim on this account was approved."
+    else:
+        title = "Claim rejected"
+        message = "Your claim on this account was not approved."
+    await create_notification(
+        db,
+        loaded.requester_user_id,
+        NotificationType.CLAIM,
+        title,
+        message,
+        metadata_json={
+            "claim_id": str(claim_id),
+            "account_id": str(loaded.account_id),
+        },
+    )
+    await db.commit()
+
     return loaded

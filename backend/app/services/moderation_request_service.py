@@ -6,12 +6,18 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import raise_api_error
-from app.models.enums import AdminActionType, ModerationRequestStatus, NotificationType
+from app.models.enums import (
+    AdminActionType,
+    ModerationRequestStatus,
+    NotificationType,
+    UserRole,
+)
 from app.models.moderation_request import ModerationRequest
 from app.repositories import (
     moderation_request_repository as repo,
     notification_repository,
     report_repository,
+    user_repository,
 )
 from app.services import admin_action_service
 
@@ -36,6 +42,26 @@ async def create_moderation_request(
     )
     await db.commit()
     await db.refresh(moderation_request)
+
+    staff = await user_repository.list_by_roles(
+        db, [UserRole.MODERATOR, UserRole.ADMIN, UserRole.SUPER_ADMIN]
+    )
+    for staff_user in staff:
+        await notification_repository.create(
+            db,
+            user_id=staff_user.id,
+            notification_type=NotificationType.MODERATION,
+            title="Moderation request submitted",
+            message="A user requested review of a filing.",
+            metadata_json={
+                "moderation_request_id": str(moderation_request.id),
+                "report_id": str(report_id),
+                "account_id": str(account_id),
+            },
+        )
+    if staff:
+        await db.commit()
+
     return moderation_request
 
 
