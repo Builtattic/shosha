@@ -29,6 +29,7 @@ class DeckAccountOut(BaseModel):
     score: float
     owner_user_id: UUID | None
     status: AccountStatus
+    week_delta: float | None = None
 
 
 class SwipeRequest(BaseModel):

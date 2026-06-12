@@ -11,6 +11,7 @@ type LeaderRow = {
   displayName: string;
   bio: string;
   score: number;
+  weeklyDelta: number | null;
 };
 
 function toRow(account: Account): LeaderRow {
@@ -19,7 +20,18 @@ function toRow(account: Account): LeaderRow {
     displayName: account.display_name ?? account.handle,
     bio: `${account.platform.toUpperCase()} · @${account.handle}`,
     score: account.score,
+    weeklyDelta: account.weekly_delta ?? null,
   };
+}
+
+function formatWeeklyDelta(delta: number | null): { text: string; className: string } {
+  if (delta == null || delta === 0) {
+    return { text: '—', className: 'text-muted-foreground' };
+  }
+  if (delta > 0) {
+    return { text: `▲ +${delta}`, className: 'text-emerald-500' };
+  }
+  return { text: `▼ ${Math.abs(delta)}`, className: 'text-red-500' };
 }
 
 function initials(name: string) {
@@ -63,6 +75,8 @@ function TopCard({ row, rank, featured = false }: { row: LeaderRow; rank: number
 }
 
 function RankRow({ row, rank, negative = false }: { row: LeaderRow; rank: number; negative?: boolean }) {
+  const delta = formatWeeklyDelta(row.weeklyDelta);
+
   return (
     <Link
       to={`/accounts/${row.id}`}
@@ -89,8 +103,14 @@ function RankRow({ row, rank, negative = false }: { row: LeaderRow; rank: number
         </div>
       </div>
 
-      <div className={cn('font-serif text-3xl font-black', negative ? 'text-red-500' : 'text-emerald-500')}>
-        {row.score.toLocaleString()}
+      <div className="flex items-center gap-8">
+        <div className="min-w-[4rem] text-right">
+          <p className="font-mono text-[9px] uppercase tracking-[2px] text-muted-foreground/50">7d Δ</p>
+          <p className={cn('font-mono text-sm font-bold tabular-nums', delta.className)}>{delta.text}</p>
+        </div>
+        <div className={cn('font-serif text-3xl font-black tabular-nums', negative ? 'text-red-500' : 'text-emerald-500')}>
+          {row.score.toLocaleString()}
+        </div>
       </div>
     </Link>
   );

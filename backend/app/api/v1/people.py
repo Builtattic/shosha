@@ -23,6 +23,12 @@ from app.services.people_service import get_deck, get_trending, record_swipe
 router = APIRouter()
 
 
+def _serialize_deck_account(account) -> dict:
+    payload = DeckAccountOut.model_validate(account).model_dump(mode="json")
+    payload["week_delta"] = account.w1_delta
+    return payload
+
+
 @router.get(
     "/trending",
     response_model=SuccessEnvelope[TrendingResponse],
@@ -66,7 +72,7 @@ async def get_deck_route(
     return success(
         {
             "items": [
-                DeckAccountOut.model_validate(a).model_dump(mode="json") for a in items
+                _serialize_deck_account(a) for a in items
             ],
             "next_cursor": next_cursor,
             "has_more": has_more,

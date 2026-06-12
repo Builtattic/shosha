@@ -46,7 +46,12 @@ router = APIRouter()
 
 
 def _serialize_accounts(items: list) -> list[dict]:
-    return [AccountOut.model_validate(a).model_dump(mode="json") for a in items]
+    serialized: list[dict] = []
+    for account in items:
+        payload = AccountOut.model_validate(account).model_dump(mode="json")
+        payload["weekly_delta"] = account.w1_delta
+        serialized.append(payload)
+    return serialized
 
 
 @router.post(

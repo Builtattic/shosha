@@ -63,6 +63,7 @@ export default function Impact() {
   const { firebaseUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [myScore, setMyScore] = useState<number | null>(null);
+  const [myGlobalRank, setMyGlobalRank] = useState<number | null>(null);
   const [stats, setStats] = useState<{
     accounts_tracked: number;
     events_total: number;
@@ -110,14 +111,20 @@ export default function Impact() {
   useEffect(() => {
     if (!firebaseUser) {
       setMyScore(null);
+      setMyGlobalRank(null);
       return;
     }
     replayMyScore()
       .then((res) => {
-        const s = res.account_results?.[0]?.final_score;
+        const first = res.account_results?.[0];
+        const s = first?.final_score;
         setMyScore(typeof s === 'number' ? s : null);
+        setMyGlobalRank(typeof first?.global_rank === 'number' ? first.global_rank : null);
       })
-      .catch(() => setMyScore(null));
+      .catch(() => {
+        setMyScore(null);
+        setMyGlobalRank(null);
+      });
   }, [firebaseUser]);
 
   const goToAccount = (accountId: string | undefined) => {
@@ -159,7 +166,10 @@ export default function Impact() {
               <div className="text-center sm:text-left">
                 <p className="text-sm text-muted-foreground">Your Civil Impact Score</p>
                 <p className="text-3xl font-semibold tabular-nums">{myScore.toLocaleString()}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Global rank — coming soon</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Global rank{' '}
+                  {myGlobalRank != null ? `#${myGlobalRank.toLocaleString()}` : '—'}
+                </p>
               </div>
             </div>
           </section>

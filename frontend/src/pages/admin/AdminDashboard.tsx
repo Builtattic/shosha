@@ -1,37 +1,32 @@
-import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Database, Globe, TrendingUp, Users } from 'lucide-react';
 import AdminDashboardChart from '@/components/admin/AdminDashboardChart';
-import { getAdminStats, getModerationQueue, type AdminStats } from '@/api/admin';
-import type { ReportOut } from '@/types/report';
+import { getAdminStats, getModerationQueue } from '@/api/admin';
 import { cn, formatDate } from '@/lib/utils';
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState<AdminStats | null>(null);
-  const [queuePreview, setQueuePreview] = useState<ReportOut[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data: stats,
+    isLoading: statsLoading,
+    error: statsError,
+  } = useQuery({
+    queryKey: ['admin', 'stats'],
+    queryFn: getAdminStats,
+  });
 
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const [statsData, queue] = await Promise.all([getAdminStats(), getModerationQueue(5)]);
-        if (!mounted) return;
-        setStats(statsData);
-        setQueuePreview(queue);
-      } catch (err) {
-        if (mounted) setError(err instanceof Error ? err.message : 'Failed to load dashboard');
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  const { data: queuePreview = [], isLoading: queueLoading } = useQuery({
+    queryKey: ['admin', 'queue-preview'],
+    queryFn: () => getModerationQueue(5),
+  });
+
+  const loading = statsLoading || queueLoading;
+  const error = statsError instanceof Error ? statsError.message : statsError ? 'Failed to load dashboard' : null;
+
+  const aiAgreementLabel =
+    stats?.ai_agreement_rate != null
+      ? `${Math.round(stats.ai_agreement_rate * 100)}%`
+      : '—';
 
   const mainStats = [
     {
@@ -49,8 +44,8 @@ export default function AdminDashboard() {
       bg: 'bg-purple-500/20',
     },
     {
-      label: 'Network Velocity',
-      value: 0, // TODO: wire filingsLast7 when backend exposes it
+      label: 'Filings (7d)',
+      value: stats?.filings_last_7 ?? 0,
       icon: TrendingUp,
       color: 'text-emerald-400',
       bg: 'bg-emerald-500/20',
@@ -93,7 +88,7 @@ export default function AdminDashboard() {
         <h1 className="font-serif text-3xl font-black tracking-tight">Executive Summary</h1>
         <p className="mt-1 text-sm text-muted-foreground">Operational overview for tribunal staff.</p>
         <p className="mt-2 text-xs text-muted-foreground">
-          Queue depth: {queueDepth} · AI agreement: 0% {/* TODO: aiAgreementRate when backend exposes it */}
+          Queue depth: {queueDepth} · AI agreement: {aiAgreementLabel}
         </p>
       </div>
 
@@ -117,7 +112,7 @@ export default function AdminDashboard() {
         })}
       </div>
 
-      {/* TODO: wire real time-series data when backend exposes it */}
+      {/* TODO: time-series endpoint */}
       <AdminDashboardChart />
 
       <div>

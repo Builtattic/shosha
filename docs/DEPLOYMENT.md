@@ -36,6 +36,7 @@ Target: AWS EC2 + RDS + S3.
 | AWS_REGION | No | Default: ap-south-1 |
 | UPSTASH_REDIS_REST_URL | No | Upstash console (enables rate limiting) |
 | UPSTASH_REDIS_REST_TOKEN | No | Upstash console |
+| CRON_TOKEN | No | Shared secret for `POST/GET /api/v1/cron/weekly-momentum`; required in production for scheduled jobs |
 
 ## S3 Bucket Requirements
 Before deployment, ensure the S3 bucket has:

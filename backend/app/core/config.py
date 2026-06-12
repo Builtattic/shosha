@@ -42,6 +42,8 @@ class Settings(BaseSettings):
     RAZORPAY_PLAN_ID_INR: str = ""
     RAZORPAY_WEBHOOK_SECRET: str = ""
 
+    CRON_TOKEN: str = ""
+
     @computed_field
     @property
     def origins_list(self) -> list[str]:

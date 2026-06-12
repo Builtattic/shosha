@@ -102,11 +102,11 @@ See [PARITY_STATUS.md](./PARITY_STATUS.md) for the full gap matrix.
 **Exit criteria:** Account page shows score history; people swipe breakdown populated. **Partial** — account dossier met; people swipe not.
 
 ### Day 27 — Weekly momentum cron + rank surfaces
-- [ ] Port `POST/GET /cron/weekly-momentum` from V1
-- [ ] Persist/update `window_scores` on accounts
-- [ ] `Leaderboard.tsx` — weekly delta from score history
-- [ ] `Ranks.tsx` — "Under Fire" + `weekly_delta`
-- [ ] `Impact.tsx` — global rank
+- [x] Port `POST/GET /cron/weekly-momentum` from V1 (V2: ledger delta persistence via `sum_deltas_by_age`)
+- [x] Persist `w1_delta` / `w2_delta` / `w3_delta` + `momentum_updated_at` on accounts
+- [x] `Leaderboard.tsx` — 7d Δ column from `weekly_delta`
+- [x] `Ranks.tsx` — "Under Fire" + `weekly_delta` (region filter deferred — Day 20)
+- [x] `Impact.tsx` — global rank via `/me/score/replay`
 
 **Exit criteria:** Run cron → Leaderboard/Ranks show weekly movement like V1.
 

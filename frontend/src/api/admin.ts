@@ -32,6 +32,8 @@ export interface AdminStats {
   reports: { total: number; by_status: Record<string, number>; pending_count: number };
   claims: { pending: number };
   disputes: { pending: number };
+  filings_last_7: number;
+  ai_agreement_rate: number | null;
 }
 
 export interface ModerationRequestItem {

@@ -70,19 +70,20 @@ export default function AccountDetailPage() {
   const [windowScores, setWindowScores] = useState<WindowScores | null>(null);
 
   useEffect(() => {
-    if (!id) return;
+    const accountId = id;
+    if (!accountId) return;
     let mounted = true;
 
-    async function load() {
+    async function load(resolvedId: string) {
       setLoading(true);
       setError(null);
       try {
         const [accRes, repRes, allRes, histRes, winRes] = await Promise.all([
-          getAccount(id),
-          listAccountReports(id),
+          getAccount(resolvedId),
+          listAccountReports(resolvedId),
           listAccounts(6),
-          getAccountScoreHistory(id),
-          getAccountScoreWindows(id),
+          getAccountScoreHistory(resolvedId),
+          getAccountScoreWindows(resolvedId),
         ]);
         if (!mounted) return;
         if (!accRes.ok || !accRes.data?.account) {
@@ -113,7 +114,7 @@ export default function AccountDetailPage() {
       }
     }
 
-    load();
+    load(accountId);
     return () => {
       mounted = false;
     };

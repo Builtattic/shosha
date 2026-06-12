@@ -751,6 +751,36 @@ Allowed transitions:
 
 ---
 
+## Day 4 additions (cron, admin stats, momentum fields)
+
+### Cron — weekly momentum
+
+#### POST `/api/v1/cron/weekly-momentum`
+- **Auth:** `Authorization: Bearer <CRON_TOKEN>` (non-empty) **or** Firebase admin (`ADMIN` / `SUPER_ADMIN`)
+- **Response:** `{ "ok": true, "data": { "accounts_updated": N, "run_at": "<iso>" } }`
+- **Behavior:** For each account, loads ledger entries, calls `sum_deltas_by_age`, persists `w1_delta`, `w2_delta`, `w3_delta`, `momentum_updated_at`. Buckets match scoring engine (W1≤7d, W2=8–30d, W3>30d).
+
+#### GET `/api/v1/cron/weekly-momentum`
+- **Auth:** Same as POST
+- **Response:** `{ "ok": true, "data": { "last_run_at": "<iso>|null", "accounts_with_momentum": N, "engine": "v2" } }`
+
+### Admin stats extensions — GET `/api/v1/admin/stats`
+
+Additional top-level fields (existing fields unchanged):
+- `filings_last_7` (integer) — reports with `created_at` in last 7 days
+- `ai_agreement_rate` (float 0–1 or `null`) — not yet tracked; returns `null`
+
+### List/deck momentum aliases
+
+- `GET /api/v1/accounts/` — each item includes `weekly_delta` (from persisted `w1_delta`, nullable until cron runs)
+- `GET /api/v1/people/deck` — each item includes `week_delta` (from persisted `w1_delta`)
+
+### Global rank — POST `/api/v1/me/score/replay`
+
+Each `account_results[]` entry includes `global_rank` (1 + count of active accounts with higher score).
+
+---
+
 ## Out of Scope for This Phase
 
 The following modules are intentionally excluded from this document revision and will be added in later phases:

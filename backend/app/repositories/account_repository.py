@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import func, or_, select
@@ -217,3 +218,31 @@ async def list_by_owner(
         .limit(limit)
     )
     return list(result.scalars().all())
+
+
+async def list_all_account_ids(db: AsyncSession) -> list[UUID]:
+    result = await db.execute(select(Account.id))
+    return list(result.scalars().all())
+
+
+async def get_momentum_status(db: AsyncSession) -> tuple[datetime | None, int]:
+    last_run_result = await db.execute(select(func.max(Account.momentum_updated_at)))
+    last_run_at = last_run_result.scalar_one_or_none()
+    count_result = await db.execute(
+        select(func.count())
+        .select_from(Account)
+        .where(Account.w1_delta.is_not(None))
+    )
+    return last_run_at, count_result.scalar_one()
+
+
+async def count_accounts_with_higher_score(db: AsyncSession, score: float) -> int:
+    result = await db.execute(
+        select(func.count())
+        .select_from(Account)
+        .where(
+            Account.status == AccountStatus.ACTIVE,
+            Account.score > score,
+        )
+    )
+    return result.scalar_one()

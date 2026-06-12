@@ -77,14 +77,6 @@ function Prose({ children, className }: { children: React.ReactNode; className?:
   );
 }
 
-function Footnote({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="text-[10px] text-muted-foreground/50 leading-[1.8] mt-8 pt-6 border-t border-border">
-      {children}
-    </div>
-  );
-}
-
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function HowItWorks() {

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Literal
 from uuid import UUID
 
@@ -373,6 +373,7 @@ async def get_admin_stats(
         reports_by_status,
         pending_claims,
         pending_disputes,
+        filings_last_7,
     ) = await asyncio.gather(
         user_repository.count_users(db),
         user_repository.count_active_users(db),
@@ -381,6 +382,9 @@ async def get_admin_stats(
         report_repository.count_by_status(db),
         _count_pending_claims(db),
         _count_pending_disputes(db),
+        report_repository.count_reports_since(
+            db, datetime.now(timezone.utc) - timedelta(days=7)
+        ),
     )
     return success(
         {
@@ -393,6 +397,9 @@ async def get_admin_stats(
             },
             "claims": {"pending": pending_claims},
             "disputes": {"pending": pending_disputes},
+            "filings_last_7": filings_last_7,
+            # TODO: no ai_classify_used column on admin_actions yet
+            "ai_agreement_rate": None,
         }
     )
 

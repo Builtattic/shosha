@@ -69,7 +69,7 @@ Master gap-tracking document. Updated after **Phase 2 Days 20–21** (data found
 - Following / Near You feed tabs show "coming soon"
 - `AdminQueue.tsx` quick-moderate does not send adjudicate scoring fields (use `AdminReview` for full adjudicate)
 - `/me/swipe-aggregate` missing
-- Weekly-momentum cron missing
+- Weekly-momentum cron implemented (`POST/GET /api/v1/cron/weekly-momentum`); run migration + set `CRON_TOKEN` before scheduling
 - Evidence scan returns empty proposals
 
 ---
@@ -80,7 +80,7 @@ Master gap-tracking document. Updated after **Phase 2 Days 20–21** (data found
 |----------|----------|---------|--------|
 | `/` | `/` | `Landing.tsx` | FULL |
 | `/how-it-works` | `/how-it-works` | `HowItWorks.tsx` | FULL |
-| `/leaderboard` | `/leaderboard` | `Leaderboard.tsx` | PARTIAL — no weekly delta from score history |
+| `/leaderboard` | `/leaderboard` | `Leaderboard.tsx` | PARTIAL — 7d Δ column wired from `weekly_delta`; scope buttons still display-only |
 | `/report-issue` | `/report-issue` | `ReportIssue.tsx` | FULL |
 | `/trust-badge` | `/trust-badge` | `TrustBadge.tsx` | FULL |
 | `/profile/[id]` | `/profile/:id` | `PublicProfile.tsx` | PARTIAL — credibility/followers not fully wired |
@@ -99,8 +99,8 @@ Master gap-tracking document. Updated after **Phase 2 Days 20–21** (data found
 | `/notifications` | `/notifications` | `Notifications.tsx` | FULL |
 | `/bookmarks` | `/bookmarks` | `Bookmarks.tsx` | FULL — toggle wired in feed |
 | `/disputes` | `/disputes` | `Disputes.tsx` | FULL |
-| `/impact` | `/impact` | `Impact.tsx` | PARTIAL — global rank coming soon |
-| `/ranks` | `/ranks` | `Ranks.tsx` | PARTIAL — no region / Under Fire |
+| `/impact` | `/impact` | `Impact.tsx` | PARTIAL — global rank wired via `/me/score/replay` |
+| `/ranks` | `/ranks` | `Ranks.tsx` | PARTIAL — Under Fire wired; region filter blocked on Day 20 onboarding |
 | `/access` | `/access` | `Access.tsx` | FULL |
 | `/settings` | `/settings` | `Settings.tsx` | PARTIAL — deletion attachment; prefs localStorage |
 | `/bubbles` | `/bubbles` | `Bubbles.tsx` | FULL |
@@ -108,7 +108,7 @@ Master gap-tracking document. Updated after **Phase 2 Days 20–21** (data found
 | `/bubbles/create` | `/bubbles/new` | `BubbleNew.tsx` | PARTIAL — image crop TODO |
 | `/post/[id]` | `/reports/:id` | `ReportDetail.tsx` | FULL |
 | `/legal-policies/*` | `/legal-policies/*` | `legal/LegalHub.tsx`, `LegalPage.tsx` | FULL |
-| `/admin` | `/admin` | `admin/AdminDashboard.tsx` | PARTIAL — charts/metrics stubbed |
+| `/admin` | `/admin` | `admin/AdminDashboard.tsx` | PARTIAL — filings (7d) + queue depth wired; chart time-series TODO; `ai_agreement_rate` null until audit field exists |
 | `/admin/queue` | `/admin/queue` | `admin/AdminQueue.tsx` | PARTIAL — quick-moderate without adjudicate payload |
 | `/admin/moderation` | `/admin/moderation` | `admin/AdminModeration.tsx` | FULL |
 | `/admin/review/[id]` | `/admin/review/:id` | `admin/AdminReview.tsx` | PARTIAL — full adjudicate via `AdminReviewControls` |
@@ -145,7 +145,7 @@ Master gap-tracking document. Updated after **Phase 2 Days 20–21** (data found
 | `DELETE /accounts/[id]/dossier-unfollow` | No dossier unfollow |
 | ~~Bookmark toggle~~ | Done — `POST /reports/{id}/bookmark` |
 | `GET /me/swipe-aggregate` | Referenced in UI; not implemented |
-| `POST/GET /cron/weekly-momentum` | Missing entirely |
+| `POST/GET /cron/weekly-momentum` | **Done** — persists `w1/w2/w3_delta` via `sum_deltas_by_age`; auth via `CRON_TOKEN` or admin |
 | `GET /api/og` | OG image generation missing |
 | `POST /admin/data/[collection]` | Collection record create missing |
 | `GET/PATCH/DELETE /admin/data/{collection}/{id}` | Returns `not_implemented` |

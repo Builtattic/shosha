@@ -77,12 +77,16 @@ async def get_score_replay(db: AsyncSession, current_user_id: UUID) -> dict:
         await account_repository.update(
             db, account, score=score, score_breakdown=breakdown
         )
+        higher_count = await account_repository.count_accounts_with_higher_score(
+            db, score
+        )
         account_results.append(
             {
                 "account_id": str(account.id),
                 "final_score": score,
                 "platform": account.platform,
                 "handle": account.handle,
+                "global_rank": higher_count + 1,
             }
         )
     await db.commit()
