@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { TrendingUp } from 'lucide-react';
 import { listAccounts } from '@/api/accounts';
 import type { Account } from '@/types/account';
+import { UNDER_FIRE_THRESHOLD } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 
 type Scope = 'global' | 'regional';
@@ -33,12 +34,23 @@ export default function Ranks() {
   }, []);
 
   const sorted = useMemo(() => {
-    // TODO: add region filtering when available
+    // TODO: region filter — blocked on onboarding region field (Day 20 open item)
     const list = activeScope === 'regional' ? [...accounts] : [...accounts];
     return list.sort((a, b) => b.score - a.score);
   }, [accounts, activeScope]);
 
   const onFire = sorted.slice(0, 10);
+  const underFire = useMemo(
+    () =>
+      sorted
+        .filter(
+          (account) =>
+            account.weekly_delta != null &&
+            account.weekly_delta < UNDER_FIRE_THRESHOLD,
+        )
+        .sort((a, b) => (a.weekly_delta ?? 0) - (b.weekly_delta ?? 0)),
+    [sorted],
+  );
   const allAccounts = sorted;
 
   return (
@@ -119,7 +131,37 @@ export default function Ranks() {
               </ul>
             </section>
 
-            {/* TODO: add Under Fire when weekly_delta is available in list endpoint */}
+            {underFire.length > 0 && (
+              <section>
+                <h2 className="mb-4 text-[16px] font-bold text-destructive">Under Fire</h2>
+                <ul className="space-y-2">
+                  {underFire.map((account) => (
+                    <li key={`under-${account.id}`}>
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/accounts/${account.id}`)}
+                        className="flex w-full items-center gap-4 rounded-[18px] border border-destructive/30 bg-card p-4 text-left transition-colors hover:bg-destructive/5"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[15px] font-bold text-foreground truncate">
+                            {account.display_name ?? account.handle}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground capitalize">{account.platform}</p>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="text-[18px] font-black tabular-nums">
+                            {account.score.toLocaleString()}
+                          </span>
+                          <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-[11px] font-bold text-destructive tabular-nums">
+                            {account.weekly_delta} pts this week
+                          </span>
+                        </div>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
 
             <section>
               <h2 className="mb-4 text-[16px] font-bold text-foreground">All Accounts</h2>

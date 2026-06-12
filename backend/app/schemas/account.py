@@ -31,6 +31,7 @@ class AccountOut(BaseModel):
     score: float = 1000.0
     score_breakdown: dict | None = None
     social_links: list[SocialLinkOut] = Field(default_factory=list)
+    weekly_delta: float | None = None
 
 
 class ScoreHistoryPoint(BaseModel):

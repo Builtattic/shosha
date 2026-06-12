@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import uuid
 
+from datetime import datetime
+
 from sqlalchemy import (
     Boolean,
+    DateTime,
     Enum,
     Float,
     ForeignKey,
@@ -40,6 +43,12 @@ class Account(Base, BaseModelMixin):
     )
     score: Mapped[float] = mapped_column(Float, nullable=False, default=1000.0)
     score_breakdown: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    w1_delta: Mapped[float | None] = mapped_column(Float, nullable=True)
+    w2_delta: Mapped[float | None] = mapped_column(Float, nullable=True)
+    w3_delta: Mapped[float | None] = mapped_column(Float, nullable=True)
+    momentum_updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # Workbook profile fields (V1-faithful). Nullable; populated by admin in a
     # future day. Absent values fall back to neutral multipliers (1.0) in

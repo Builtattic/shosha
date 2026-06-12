@@ -208,22 +208,25 @@ export default function ReportDetailView() {
 
       <div className="max-w-2xl mx-auto p-4 space-y-6">
         {/* Account Subject Chip */}
-        {report.account && (
-          <div 
-            onClick={() => navigate(`/accounts/${report.account.id}`)}
-            className="inline-flex items-center space-x-2 bg-card border border-border/50 hover:bg-muted/50 transition-colors p-1.5 pr-4 rounded-full cursor-pointer"
-          >
-            <img
-              src={`https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(report.account.display_name ?? report.account.handle)}`}
-              alt=""
-              className="w-8 h-8 rounded-full bg-background"
-            />
-            <div className="flex flex-col">
-              <span className="text-sm font-bold leading-tight">{report.account.display_name ?? report.account.handle}</span>
-              <span className="text-xs text-muted-foreground leading-tight">@{report.account.handle.replace(/^@/, '')}</span>
+        {report.account && (() => {
+          const subject = report.account;
+          return (
+            <div
+              onClick={() => navigate(`/accounts/${subject.id}`)}
+              className="inline-flex items-center space-x-2 bg-card border border-border/50 hover:bg-muted/50 transition-colors p-1.5 pr-4 rounded-full cursor-pointer"
+            >
+              <img
+                src={`https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(subject.display_name ?? subject.handle)}`}
+                alt=""
+                className="w-8 h-8 rounded-full bg-background"
+              />
+              <div className="flex flex-col">
+                <span className="text-sm font-bold leading-tight">{subject.display_name ?? subject.handle}</span>
+                <span className="text-xs text-muted-foreground leading-tight">@{subject.handle.replace(/^@/, '')}</span>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Hero Info */}
         <div>

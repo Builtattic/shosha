@@ -193,6 +193,11 @@ export default function ProfileUpgrade() {
         setStep(3);
         return;
       }
+      if (!selfieRes.data) {
+        toast.push('Selfie upload failed.');
+        setStep(3);
+        return;
+      }
       const selfieUrl = selfieRes.data.url;
 
       if (!docFile) throw new Error('Document required.');
@@ -203,6 +208,11 @@ export default function ProfileUpgrade() {
         } else {
           toast.push(docRes.error ?? 'Document upload failed.');
         }
+        setStep(3);
+        return;
+      }
+      if (!docRes.data) {
+        toast.push('Document upload failed.');
         setStep(3);
         return;
       }

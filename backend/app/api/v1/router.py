@@ -7,6 +7,7 @@ from app.api.v1 import (
     auth,
     bubbles,
     claims,
+    cron,
     discovery,
     disputes,
     events,
@@ -41,6 +42,7 @@ api_router.include_router(claims.router, prefix="/claims", tags=["claims"])
 api_router.include_router(bubbles.router, prefix="/bubbles", tags=["bubbles"])
 api_router.include_router(disputes.router, prefix="/disputes", tags=["disputes"])
 api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
+api_router.include_router(cron.router, prefix="/cron", tags=["cron"])
 api_router.include_router(media.router, prefix="/media", tags=["media"])
 api_router.include_router(discovery.router, tags=["discovery"])
 api_router.include_router(impact.router, tags=["impact"])

@@ -27,7 +27,7 @@ V1 reference: `C:\Others\project\Builtattic\Shoshaaahhh`
 | Legal / policies | **Done** | 12 pages via dynamic legal routes |
 | AI (Gemini) | **Done** | analyze, classify endpoints |
 | Imports | **Done** | contacts, links |
-| Background jobs | **Missing** | weekly-momentum cron not ported |
+| Background jobs | **Partial** | `POST/GET /api/v1/cron/weekly-momentum` implemented; schedule externally with `CRON_TOKEN` |
 | OG images | **Missing** | V1 `/api/og` not in V2 |
 
 ---

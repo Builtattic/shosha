@@ -9,6 +9,7 @@ export interface DeckItem {
   score: number;
   owner_user_id: string | null;
   status: string;
+  week_delta?: number | null;
 }
 
 export interface DeckResponse {

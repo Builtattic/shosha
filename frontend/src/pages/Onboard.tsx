@@ -325,7 +325,7 @@ export default function Onboard() {
     setUsernameChecking(true);
     usernameCheckRef.current = setTimeout(async () => {
       const res = await checkUsernameAvailability(cleaned);
-      if (res.ok) {
+      if (res.ok && res.data) {
         setUsernameAvailable(res.data.available);
         setUsernameError(res.data.available ? null : 'Username is already taken');
       } else {

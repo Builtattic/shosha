@@ -7,13 +7,11 @@ import {
   Heart,
   AlertTriangle,
   Image as ImageIcon,
-  Video,
   Plus,
   Search,
   MapPin,
   ShieldCheck,
   ChevronLeft,
-  EyeOff,
   UserRound,
   Camera
 } from 'lucide-react';
@@ -49,8 +47,6 @@ type AccountCandidate = {
   reason: string;
   existingAccountId?: string;
 };
-
-type AdditionalSocialLinkRow = { platform: Platform; url: string };
 
 const CAMERA_IDEAL_WIDTH = 1280;
 const CAMERA_IDEAL_HEIGHT = 720;
@@ -93,7 +89,6 @@ export function ReportModal({
   const [category, setCategory] = useState('');
   const [deed, setDeed] = useState('');
   const [description, setDescription] = useState('');
-  const [feelings, setFeelings] = useState('');
   const [evidenceSourceUrl, setEvidenceSourceUrl] = useState('');
   const [isIRL, setIsIRL] = useState(false);
   const [aiConsent, setAiConsent] = useState(true);
@@ -103,13 +98,11 @@ export function ReportModal({
   const [searchingTags, setSearchingTags] = useState(false);
   const [showTagSuggestions, setShowTagSuggestions] = useState(false);
   const [tagPickedId, setTagPickedId] = useState<string | null>(null);
-  const [links, setLinks] = useState<Array<{ url: string; title: string }>>([]);
   const [targetPlatform, setTargetPlatform] = useState<Platform>('instagram');
   const [targetHandle, setTargetHandle] = useState('');
   const [targetDisplayName, setTargetDisplayName] = useState('');
   const [targetSourceUrl, setTargetSourceUrl] = useState('');
   const [targetBio, setTargetBio] = useState('');
-  const [targetFollowers, setTargetFollowers] = useState('');
   const [targetVerified, setTargetVerified] = useState(false);
   const [targetManual, setTargetManual] = useState(false);
   const [candidates, setCandidates] = useState<AccountCandidate[]>([]);
@@ -120,18 +113,12 @@ export function ReportModal({
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
-  const [geminiApiKey, setGeminiApiKey] = useState('');
   const [isClassifying, setIsClassifying] = useState(false);
   const [view, setView] = useState<'report' | 'add_profile'>('report');
   const [newProfileName, setNewProfileName] = useState('');
-  const [newProfileEmail, setNewProfileEmail] = useState('');
   const [newProfileUrl, setNewProfileUrl] = useState('');
   const [newProfileUsername, setNewProfileUsername] = useState('');
   const [newProfilePlatform, setNewProfilePlatform] = useState<Platform>('instagram');
-  const [addProfileStep, setAddProfileStep] = useState(1);
-  const [additionalSocialLinks, setAdditionalSocialLinks] = useState<AdditionalSocialLinkRow[]>([]);
-  const [extraLinkPlatform, setExtraLinkPlatform] = useState<Platform>('instagram');
-  const [extraLinkUrl, setExtraLinkUrl] = useState('');
   const [cameraModalOpen, setCameraModalOpen] = useState(false);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -170,7 +157,6 @@ export function ReportModal({
     setCategory('');
     setDeed('');
     setDescription('');
-    setFeelings('');
     setEvidenceSourceUrl('');
     setIsIRL(false);
     setAiConsent(true);
@@ -179,13 +165,11 @@ export function ReportModal({
     setTagSuggestions([]);
     setShowTagSuggestions(false);
     setTagPickedId(null);
-    setLinks([]);
     setTargetPlatform('instagram');
     setTargetHandle('');
     setTargetDisplayName('');
     setTargetSourceUrl('');
     setTargetBio('');
-    setTargetFollowers('');
     setTargetVerified(false);
     setTargetManual(false);
     setCandidates([]);
@@ -199,14 +183,9 @@ export function ReportModal({
     setSubmitError('');
     setView('report');
     setNewProfileName('');
-    setNewProfileEmail('');
     setNewProfileUrl('');
     setNewProfileUsername('');
     setNewProfilePlatform('instagram');
-    setAddProfileStep(1);
-    setAdditionalSocialLinks([]);
-    setExtraLinkPlatform('instagram');
-    setExtraLinkUrl('');
   }
 
   useEffect(() => {
@@ -253,24 +232,10 @@ export function ReportModal({
     setTargetDisplayName(candidate.displayName);
     setTargetSourceUrl(candidate.sourceUrl);
     setTargetBio(candidate.bio);
-    setTargetFollowers(candidate.followers ?? '');
     setTargetVerified(Boolean(candidate.verified));
     setTargetManual(false);
     if (candidate.existingAccountId) setResolvedAccountId(candidate.existingAccountId);
     else setResolvedAccountId(null);
-  }
-
-  function addLink() {
-    if (links.length >= 10) return;
-    setLinks((prev) => [...prev, { url: '', title: '' }]);
-  }
-
-  function removeLink(index: number) {
-    setLinks((prev) => prev.filter((_, i) => i !== index));
-  }
-
-  function updateLink(index: number, field: 'url' | 'title', value: string) {
-    setLinks((prev) => prev.map((l, i) => (i === index ? { ...l, [field]: value } : l)));
   }
 
   // Initialize category/deed when impact type changes. Reset only when the
@@ -352,7 +317,6 @@ export function ReportModal({
       try {
         const result = await apiClient.post<{ intent?: string; pattern?: string }>('/ai/classify', {
           description,
-          gemini_api_key: geminiApiKey || undefined,
         });
         if (result.data.intent) setIntent(result.data.intent.toString());
         if (result.data.pattern) setRepetitionPattern(result.data.pattern.toString());
@@ -364,7 +328,7 @@ export function ReportModal({
     }, 1500);
 
     return () => clearTimeout(timeout);
-  }, [description, geminiApiKey]);
+  }, [description]);
 
   function close() {
     reset();
@@ -820,7 +784,6 @@ export function ReportModal({
                       setTargetDisplayName('');
                       setTargetSourceUrl('');
                       setTargetBio('');
-                      setTargetFollowers('');
                       setTargetVerified(false);
                       setTargetManual(false);
                       setResolvedAccountId(null);
@@ -858,7 +821,6 @@ export function ReportModal({
                           setTargetSourceUrl('');
                           setTargetDisplayName('');
                           setTargetBio('');
-                          setTargetFollowers('');
                           setTargetVerified(false);
                           setTargetManual(false);
                           setResolvedAccountId(null);
@@ -929,10 +891,6 @@ export function ReportModal({
                             variant="secondary" 
                             className="w-full rounded-full py-3 text-[13px] font-black"
                             onClick={() => {
-                              setAddProfileStep(1);
-                              setAdditionalSocialLinks([]);
-                              setExtraLinkPlatform('instagram');
-                              setExtraLinkUrl('');
                               setNewProfilePlatform(targetPlatform || 'instagram');
                               setView('add_profile');
                             }}

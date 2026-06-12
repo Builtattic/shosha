@@ -16,6 +16,7 @@ export interface ScoreReplayResult {
     final_score: number;
     platform: string;
     handle: string;
+    global_rank: number;
   }>;
   user_results: never[];
 }
