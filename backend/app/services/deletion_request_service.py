@@ -11,6 +11,7 @@ from app.models.enums import (
     AdminActionType,
     DeletionRequestStatus,
     NotificationType,
+    UserRole,
 )
 from app.repositories import deletion_request_repository as repo
 from app.repositories import notification_repository, user_repository
@@ -45,6 +46,25 @@ async def create_deletion_request(
     )
     await db.commit()
     await db.refresh(deletion_request)
+
+    staff = await user_repository.list_by_roles(
+        db, [UserRole.MODERATOR, UserRole.ADMIN, UserRole.SUPER_ADMIN]
+    )
+    for staff_user in staff:
+        await notification_repository.create(
+            db,
+            user_id=staff_user.id,
+            notification_type=NotificationType.SYSTEM,
+            title="Deletion request submitted",
+            message="A user has requested account deletion.",
+            metadata_json={
+                "deletion_request_id": str(deletion_request.id),
+                "requested_by": str(user_id),
+            },
+        )
+    if staff:
+        await db.commit()
+
     return deletion_request
 
 

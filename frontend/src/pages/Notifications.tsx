@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Bell,
@@ -34,8 +35,32 @@ function getIcon(type: NotificationItem['notification_type']) {
   }
 }
 
+function strMeta(meta: Record<string, unknown> | null | undefined, key: string): string | undefined {
+  const v = meta?.[key];
+  return typeof v === 'string' ? v : undefined;
+}
+
+function getNotificationLink(notif: NotificationItem): string | null {
+  const accountId = strMeta(notif.metadata_json, 'account_id');
+  switch (notif.notification_type) {
+    case 'REPORT':
+    case 'CLAIM':
+      return accountId ? `/account/${accountId}` : null;
+    case 'DISPUTE':
+      return '/disputes';
+    case 'MODERATION':
+      return '/admin/moderation';
+    case 'TRUST_BADGE':
+      return '/profile/upgrade';
+    case 'SYSTEM':
+    default:
+      return null;
+  }
+}
+
 export default function Notifications() {
   const toast = useToast();
+  const navigate = useNavigate();
   const { markAllRead: contextMarkAllRead, refreshCount } = useNotifications();
 
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -77,6 +102,8 @@ export default function Notifications() {
         // silently fail read state
       }
     }
+    const link = getNotificationLink(notif);
+    if (link) navigate(link);
   };
 
   const handleMarkAllRead = async () => {

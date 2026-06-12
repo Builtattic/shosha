@@ -15,7 +15,7 @@ Master gap-tracking document. Updated after **Phase 2 Days 20–21** (data found
 | API endpoints | ~95 handlers (+ OG) | 110 handlers; 5 gaps + stubs | **82%** |
 | Admin features | 20 tracked | 13 FULL · 7 PARTIAL | **65%** |
 | Onboarding fields | 24 fields | 23 persisted · 1 not collected (`region`) | **96%** |
-| Notification triggers | 15 types | 6 implemented · 8 missing | **40%** |
+| Notification triggers | 15 types | 15 implemented | **100%** |
 | Background jobs | 2 planned | 0 (webhook partial) | **0%** |
 | Scoring components | 8 | 5 full · 2 partial · 1 missing | **75%** |
 
@@ -57,7 +57,7 @@ Master gap-tracking document. Updated after **Phase 2 Days 20–21** (data found
 - Postgres models: users, accounts, reports, votes, comments, bookmarks, claims, disputes, bubbles, notifications, ledger, admin actions, and related tables
 - Routers: auth, users, social, me, accounts, reports, feed, people, bubbles, claims, disputes, notifications, admin, media, discovery, impact, events, ai, imports, misc, payments, webhooks
 - Gemini integration for AI analyze/classify
-- Razorpay order/verify + webhook (status updates only)
+- Razorpay order/verify + webhook (status updates + cancel/payment-failed notifications)
 
 ### Frontend
 - **55+ routable pages** including public, auth, app, legal, and 19 admin pages
@@ -67,12 +67,10 @@ Master gap-tracking document. Updated after **Phase 2 Days 20–21** (data found
 ### Still stubbed or partial (high level)
 - Profile score multipliers do not yet read user onboarding (account workbook columns empty by default)
 - Following / Near You feed tabs show "coming soon"
-- Bookmark toggle in feed is local-only (no API route)
 - `AdminQueue.tsx` quick-moderate does not send adjudicate scoring fields (use `AdminReview` for full adjudicate)
 - `/me/swipe-aggregate` missing
 - Weekly-momentum cron missing
 - Evidence scan returns empty proposals
-- 8 notification trigger types missing vs V1
 
 ---
 
@@ -99,7 +97,7 @@ Master gap-tracking document. Updated after **Phase 2 Days 20–21** (data found
 | `/people` | `/people` | `People.tsx` | PARTIAL — swipe aggregate missing |
 | `/search` | `/search` | `Search.tsx` | FULL |
 | `/notifications` | `/notifications` | `Notifications.tsx` | FULL |
-| `/bookmarks` | `/bookmarks` | `Bookmarks.tsx` | PARTIAL — toggle in feed not wired |
+| `/bookmarks` | `/bookmarks` | `Bookmarks.tsx` | FULL — toggle wired in feed |
 | `/disputes` | `/disputes` | `Disputes.tsx` | FULL |
 | `/impact` | `/impact` | `Impact.tsx` | PARTIAL — global rank coming soon |
 | `/ranks` | `/ranks` | `Ranks.tsx` | PARTIAL — no region / Under Fire |
@@ -145,7 +143,7 @@ Master gap-tracking document. Updated after **Phase 2 Days 20–21** (data found
 |----------|-----|
 | `POST /accounts/[id]/audit` | No user-facing audit endpoint |
 | `DELETE /accounts/[id]/dossier-unfollow` | No dossier unfollow |
-| Bookmark toggle | Service exists; no POST/DELETE route |
+| ~~Bookmark toggle~~ | Done — `POST /reports/{id}/bookmark` |
 | `GET /me/swipe-aggregate` | Referenced in UI; not implemented |
 | `POST/GET /cron/weekly-momentum` | Missing entirely |
 | `GET /api/og` | OG image generation missing |
@@ -159,7 +157,7 @@ Master gap-tracking document. Updated after **Phase 2 Days 20–21** (data found
 | `POST /reports/{id}/moderate` | Adjudicate fields supported; multipliers from account workbook (not user onboarding) |
 | `POST /admin/reports` (create) | Still uses `DEFAULT_MULTIPLIERS` |
 | `GET /bubbles/leaderboard` | Sorts by created_at/member count, not bubble score |
-| `POST /webhooks/razorpay` | No user notifications on payment events |
+| `POST /webhooks/razorpay` | Notifies on cancel/halt; no notification on `subscription.charged` (V1 parity) |
 
 ---
 
@@ -186,13 +184,13 @@ Master gap-tracking document. Updated after **Phase 2 Days 20–21** (data found
 | Trust badge decided | Yes | Yes |
 | Deletion resolved | Yes | Yes |
 | Abuse dismissed | Yes | Yes |
-| Vote align/oppose | Yes | **No** |
-| Comment | Yes | **No** |
-| Moderation requested (admins) | Yes | **No** |
-| Claim decided | Yes | **No** |
-| Dispute filed/decided | Yes | **No** |
-| Deletion submitted | Yes | **No** |
-| Razorpay payment failed/cancelled | Yes | **No** |
+| Vote align/oppose | Yes | Yes |
+| Comment | Yes | Yes |
+| Moderation requested (admins) | Yes | Yes |
+| Claim decided | Yes | Yes |
+| Dispute filed/decided | Yes | Yes |
+| Deletion submitted | Yes | Yes |
+| Razorpay payment failed/cancelled | Yes | Yes |
 
 ---
 
@@ -202,8 +200,8 @@ Master gap-tracking document. Updated after **Phase 2 Days 20–21** (data found
 1. ~~Persist onboarding credibility fields (User model + Onboard payload)~~ **Done (Day 20)**
 2. ~~Admin adjudicate with scoring fields (deed, baseScore, intent, circumstances, repetitionPattern)~~ **Done (Day 21)** — use `AdminReview`, not `AdminQueue`
 3. `profile_multipliers_from_user()` — map user onboarding → moderate multipliers (V1 parity)
-4. Bookmark toggle API + FeedItem wire-up
-5. Notification triggers for votes, comments, claims, disputes, moderation-create, deletion-create
+4. ~~Bookmark toggle API + FeedItem wire-up~~ **Done (Day 3 parity sprint)**
+5. ~~Notification triggers for votes, comments, claims, disputes, moderation-create, deletion-create~~ **Done (Day 3 parity sprint)**
 6. `POST /cron/weekly-momentum` for leaderboard weekly delta (windows API exists; cron does not)
 
 ### P1 — Acknowledged TODOs
@@ -215,7 +213,7 @@ Master gap-tracking document. Updated after **Phase 2 Days 20–21** (data found
 12. Claim evidence S3 upload
 13. `POST /accounts/{id}/audit`
 14. Generic admin data CRUD
-15. Razorpay webhook notifications
+15. ~~Razorpay webhook notifications~~ **Done (Day 3 parity sprint)** — cancel + payment-failed emits
 16. `LiveAccountScorePanel` — followers + credibility from API
 17. Strict enum validators on onboarding slug fields
 

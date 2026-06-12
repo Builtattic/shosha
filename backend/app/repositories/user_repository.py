@@ -6,6 +6,7 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.enums import UserRole
 from app.models.user import User
 
 
@@ -62,6 +63,11 @@ async def list_all(db: AsyncSession, limit: int = 500) -> list[User]:
     result = await db.execute(
         select(User).order_by(User.created_at.desc()).limit(limit)
     )
+    return list(result.scalars().all())
+
+
+async def list_by_roles(db: AsyncSession, roles: list[UserRole]) -> list[User]:
+    result = await db.execute(select(User).where(User.role.in_(roles)))
     return list(result.scalars().all())
 
 

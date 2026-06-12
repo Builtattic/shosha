@@ -727,6 +727,28 @@ Allowed transitions:
   - `422 validation_error`
   - `500 internal_error`
 
+### 4.10 POST `/api/v1/reports/{report_id}/bookmark`
+- **Business Purpose:** Toggle the current user's bookmark on a report (create if absent, remove if present).
+- **Authentication:** Required
+- **Request Payload:** None
+- **Response Payload:**
+  - Returned inside standard success envelope:
+```json
+{
+  "ok": true,
+  "data": {
+    "bookmarked": true
+  }
+}
+```
+  - `bookmarked` reflects the state **after** the toggle.
+- **Validation Rules:**
+  - idempotent per user/report pair: repeat calls alternate the bookmark state.
+- **Error Responses:**
+  - `401 unauthorized`
+  - `500 internal_error`
+- **Related:** `GET /api/v1/me/bookmarks` returns the user's bookmarked reports.
+
 ---
 
 ## Out of Scope for This Phase

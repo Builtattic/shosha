@@ -96,7 +96,10 @@ async def dismiss_abuse(
             notification_type=NotificationType.SYSTEM,
             title="Abuse flag reviewed",
             message="An abuse flag on your report has been reviewed and cleared.",
-            metadata_json={"report_id": str(report_id)},
+            metadata_json={
+                "report_id": str(report_id),
+                "account_id": str(report.account_id),
+            },
         )
         await db.commit()
 

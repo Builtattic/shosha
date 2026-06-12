@@ -17,12 +17,12 @@ V1 reference: `C:\Others\project\Builtattic\Shoshaaahhh`
 | Feed | **Partial** | For You works; Following/Near You stubbed |
 | People / swipe deck | **Partial** | Deck works; swipe aggregate missing |
 | Bubbles | **Done** | Create, join, leaderboard (sort partial) |
-| Claims | **Done** | File, admin decide (notification missing) |
-| Disputes | **Done** | File, withdraw, admin decide (notifications partial) |
-| Notifications | **Partial** | List/read works; 8 trigger types missing |
-| Bookmarks | **Partial** | GET works; toggle API missing |
+| Claims | **Done** | File, admin decide, decide notifications |
+| Disputes | **Done** | File, withdraw, admin decide; file + decide notifications |
+| Notifications | **Done** | List/read works; all V1 triggers emit (vote, comment, claim, dispute, moderation, deletion, trust badge, abuse) |
+| Bookmarks | **Done** | GET + toggle API wired to feed UI |
 | Admin panel | **Partial** | 19 pages; full adjudicate on `AdminReview`; `AdminQueue` quick-moderate partial; dashboard charts stubbed |
-| Payments / upgrade | **Done** | Razorpay order/verify; webhook notifications partial |
+| Payments / upgrade | **Done** | Razorpay order/verify; webhook cancel/halt notifications |
 | Impact / ranks / stats | **Partial** | APIs exist; UI partial (weekly delta, global rank) |
 | Legal / policies | **Done** | 12 pages via dynamic legal routes |
 | AI (Gemini) | **Done** | analyze, classify endpoints |
@@ -124,6 +124,6 @@ See [PHASE_2_PLAN.md](./PHASE_2_PLAN.md) for prioritized Days 20–31 checklist.
 P0 items:
 1. Onboarding field persistence
 2. Admin adjudicate scoring fields
-3. Bookmark toggle API
-4. Social notification triggers
+3. ~~Bookmark toggle API~~ (done — Day 3 parity sprint)
+4. ~~Social notification triggers~~ (done — Day 3 parity sprint)
 5. Weekly-momentum cron

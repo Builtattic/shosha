@@ -5,6 +5,7 @@ from app.repositories.user_repository import (
     get_by_firebase_uid,
     get_by_id as get_user_by_id,
     get_by_username,
+    list_by_roles as list_users_by_roles,
     update as update_user,
     update_last_login,
 )
@@ -84,6 +85,7 @@ __all__ = [
     "create_user",
     "update_user",
     "update_last_login",
+    "list_users_by_roles",
     "get_account_by_id",
     "get_by_platform_handle",
     "list_accounts",

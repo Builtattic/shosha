@@ -41,6 +41,7 @@ from app.services import (
     request_moderation,
     vote_on_report,
 )
+from app.services import report_bookmark_service
 
 router = APIRouter()
 
@@ -216,3 +217,18 @@ async def post_report_moderate(
     return success(
         {"report": ReportOut.model_validate(report).model_dump(mode="json")}
     )
+
+
+@router.post(
+    "/{report_id}/bookmark",
+    summary="Toggle report bookmark",
+)
+async def post_report_bookmark(
+    report_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await report_bookmark_service.toggle_bookmark(
+        db, current_user.id, report_id
+    )
+    return success(result)
