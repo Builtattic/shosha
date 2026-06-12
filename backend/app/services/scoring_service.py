@@ -16,8 +16,10 @@ rebuilt from the ledger rather than mutated incrementally.
 
 from __future__ import annotations
 
+import logging
 import math
 import re
+from datetime import datetime, timezone
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,6 +29,8 @@ from app.models.ledger_entry import LedgerEntry
 from app.models.report import Report
 from app.core.scoring_constants import BASE_SCORE
 from app.repositories import ledger_repository
+
+logger = logging.getLogger(__name__)
 WORKBOOK_DECAY_DENOMINATOR = 1000.0
 WORKBOOK_FORMULA_VERSION = "workbook-v1"
 
@@ -175,6 +179,116 @@ def _normalize_lookup(value: str) -> str:
     return re.sub(r"^_+|_+$", "", lowered)
 
 
+# Workbook multiplier lookup tables — ported value-for-value from V1.
+# Keys must match V1 workbook vocabulary — see Shoshaaahhh/src/lib/scoring.ts.
+WORKBOOK_ROLE_POWER: dict[str, float] = {
+    "student_unemployed": 0.5,
+    "student": 0.5,
+    "unemployed": 0.5,
+    "individual_contributor_job": 1,
+    "individual_contributor": 1,
+    "manager": 1.5,
+    "founder_business_owner": 2,
+    "public_figure_influencer": 2.5,
+    "government_political_role": 3,
+    "government_political": 3,
+}
+
+# Keys must match V1 workbook vocabulary — see Shoshaaahhh/src/lib/scoring.ts.
+WORKBOOK_REACH_RESPONSIBILITY: dict[str, float] = {
+    "none": 0.5,
+    "1k": 1,
+    "1k_10k": 1.5,
+    "10k_100k": 2,
+    "100k_1m": 2.5,
+    "1m": 3,
+    "10m_100m": 3,
+    "100m": 3,
+}
+
+# Keys must match V1 workbook vocabulary — see Shoshaaahhh/src/lib/scoring.ts.
+WORKBOOK_EDUCATION_AWARENESS: dict[str, float] = {
+    "no_formal_education": 0.5,
+    "no_formal": 0.5,
+    "school": 1,
+    "undergraduate": 1.5,
+    "postgraduate": 2,
+    "doctorate_specialized": 2.5,
+    "field_contributor": 3,
+}
+
+# Keys must match V1 workbook vocabulary — see Shoshaaahhh/src/lib/scoring.ts.
+WORKBOOK_SPECIALIZED_IDENTITY: dict[str, float] = {
+    "no": 0.5,
+    "some_experience": 1,
+    "professional": 1.5,
+    "expert": 2,
+}
+
+# Keys must match V1 workbook vocabulary — see Shoshaaahhh/src/lib/scoring.ts.
+WORKBOOK_MANAGEMENT_MEANS: dict[str, float] = {
+    "none": 1,
+    "small_team_limited_control": 1.5,
+    "moderate_responsibility": 2,
+    "large_team_major_decisions": 2.5,
+    "organizational_institutional_control": 3,
+    "organizational_institutional": 3,
+}
+
+# Keys must match V1 workbook vocabulary — see Shoshaaahhh/src/lib/scoring.ts.
+WORKBOOK_REGION_ENVIRONMENT: dict[str, float] = {
+    "syria_palestine_lebanon": 0.5,
+    "rest_of_the_world": 1,
+    "rest_of_asia_rest_of_africa": 1.5,
+    "india_se_asia_north_africa_south_america": 2,
+    "india": 2,
+    "gcc": 2.5,
+    "east_asia_russia_east_europe_middle_east": 2.5,
+    "usa_canada": 3,
+    "us_west_europe_aus_nz": 3,
+    "west_europe": 3,
+}
+
+# Keys must match V1 workbook vocabulary — see Shoshaaahhh/src/lib/scoring.ts.
+WORKBOOK_ABILITY: dict[str, float] = {
+    "yes": 0.5,
+    "prefer_not_to_say": 1,
+    "no": 1,
+}
+
+# Keys must match V1 workbook vocabulary — see Shoshaaahhh/src/lib/scoring.ts.
+WORKBOOK_LIFESTYLE_CIRCUMSTANCES: dict[str, float] = {
+    "high_pressure": 0.5,
+    "balanced": 1,
+    "manageable": 1.5,
+    "comfortable": 2,
+    "well_supported": 2.5,
+    "ideal": 3,
+}
+
+
+def _lookup_workbook_value(
+    value: str | None, table: dict[str, float], fallback: float = 1.0
+) -> float:
+    """Port of V1 lookupWorkbookValue.
+
+    Returns ``fallback`` for empty/missing values. A non-null value that does
+    not match any table key after normalization logs a warning (never raises)
+    so misconfigured workbook fields are visible rather than silently neutral.
+    """
+    if not value:
+        return fallback
+    normalized = _normalize_lookup(value)
+    if normalized not in table:
+        logger.warning(
+            "workbook lookup miss: value=%r normalized=%r did not match any key",
+            value,
+            normalized,
+        )
+        return fallback
+    return table[normalized]
+
+
 def calc_multiplier_quotient(multipliers: dict) -> float:
     """multiplierQuotient = RP * IN * IY * P * M * E * AB * C * RY * AW."""
     return _round_to(
@@ -238,6 +352,34 @@ def resolve_sheet_base_impact(deed: str | None, report_type: str | None) -> dict
     }
 
 
+def resolve_sheet_base_impact_from_admin_impact(
+    final_impact: float, fallback_type: str | None
+) -> dict:
+    """Port of V1 resolveSheetBaseImpactFromAdminImpact.
+
+    Picks the SHEET_SCORING_INDEX row of matching sign whose abs(base_score)
+    is closest to abs(final_impact) * 10 (reverse of delta = baseScore / 10 at
+    neutral multipliers).
+    """
+    if final_impact > 0:
+        impact_type = "positive"
+    elif final_impact < 0:
+        impact_type = "negative"
+    else:
+        impact_type = fallback_type
+
+    target = abs(final_impact) * 10
+    candidates = [row for row in SHEET_SCORING_INDEX if row["type"] == impact_type]
+    if not candidates or target == 0:
+        return resolve_sheet_base_impact("", impact_type)
+
+    best = candidates[0]
+    for row in candidates[1:]:
+        if abs(abs(row["base_score"]) - target) < abs(abs(best["base_score"]) - target):
+            best = row
+    return best
+
+
 def cap_delta(
     delta: float, cap: float = SINGLE_REPORT_DELTA_CAP
 ) -> tuple[float, bool]:
@@ -247,6 +389,131 @@ def cap_delta(
     if delta < -cap:
         return -cap, True
     return delta, False
+
+
+def profile_multipliers_from_account(
+    account: Account,
+    repetition_pattern: float | None = None,
+    intent: float | None = None,
+    circumstances: float | None = None,
+) -> dict[str, float]:
+    """Port of V1 profileMultipliersFromWorkbookProfile.
+
+    Reads workbook fields directly off the Account document (NOT a User
+    onboarding record). Absent fields fall back to neutral multipliers (1.0).
+    Per-event overrides (repetition_pattern, intent, circumstances) take
+    precedence over the account-derived values when provided.
+    """
+    opposed_posts = account.opposed_posts or 0
+    if repetition_pattern is not None:
+        repetition = repetition_pattern
+    else:
+        repetition = max(0.5, min(3, 0.5 + (opposed_posts / 10)))
+
+    specialized_identity = _lookup_workbook_value(
+        account.specialized_field_workbook, WORKBOOK_SPECIALIZED_IDENTITY, 1
+    )
+
+    return {
+        "reputation": repetition,
+        "intent": intent if intent is not None else 1.0,
+        "identity": min(3, specialized_identity),
+        "power": _lookup_workbook_value(account.role, WORKBOOK_ROLE_POWER, 1),
+        "means": _lookup_workbook_value(
+            account.management_workbook, WORKBOOK_MANAGEMENT_MEANS, 1
+        ),
+        "environment": _lookup_workbook_value(
+            account.region, WORKBOOK_REGION_ENVIRONMENT, 1
+        ),
+        "ability": _lookup_workbook_value(account.disability, WORKBOOK_ABILITY, 1),
+        "circumstances": circumstances
+        if circumstances is not None
+        else _lookup_workbook_value(
+            account.lifestyle, WORKBOOK_LIFESTYLE_CIRCUMSTANCES, 1
+        ),
+        "responsibility": _lookup_workbook_value(
+            account.reach, WORKBOOK_REACH_RESPONSIBILITY, 1
+        ),
+        "awareness": max(
+            _lookup_workbook_value(
+                account.education_workbook, WORKBOOK_EDUCATION_AWARENESS, 1
+            ),
+            min(3, specialized_identity + 0.5),
+        ),
+    }
+
+
+def sum_deltas_by_age(
+    entries: list, now: datetime | None = None
+) -> dict[str, float]:
+    """Port of V1 sumDeltasByAge.
+
+    Buckets ledger deltas by age: window 1 (<=7d), window 2 (<=30d),
+    window 3 (>30d). Entries are objects with `timestamp` (datetime) and
+    `delta` (float).
+    """
+    now = now or datetime.now(timezone.utc)
+    w1_delta = 0.0
+    w2_delta = 0.0
+    w3_delta = 0.0
+    for entry in entries:
+        when = getattr(entry, "timestamp", None)
+        delta = getattr(entry, "delta", None)
+        if when is None or not isinstance(delta, (int, float)):
+            continue
+        age_days = max(0.0, (now - when).total_seconds() / (24 * 60 * 60))
+        if age_days <= 7:
+            w1_delta += delta
+        elif age_days <= 30:
+            w2_delta += delta
+        else:
+            w3_delta += delta
+    return {
+        "w1_delta": _round_to(w1_delta, 1),
+        "w2_delta": _round_to(w2_delta, 1),
+        "w3_delta": _round_to(w3_delta, 1),
+    }
+
+
+def calc_sheet_score_tracker(
+    base_score: float, w1_delta: float, w2_delta: float, w3_delta: float
+) -> dict:
+    """Port of V1 calcSheetScoreTracker.
+
+    Sequentially applies apply_sheet_score per window starting from base_score.
+    """
+    w1_score, w1_decay = apply_sheet_score(base_score, w1_delta)
+    w2_score, w2_decay = apply_sheet_score(w1_score, w2_delta)
+    w3_score, w3_decay = apply_sheet_score(w2_score, w3_delta)
+    return {
+        "base_score": base_score,
+        "w1_delta": w1_delta,
+        "w1_decay": w1_decay,
+        "w1_score": w1_score,
+        "w2_delta": w2_delta,
+        "w2_decay": w2_decay,
+        "w2_score": w2_score,
+        "w3_delta": w3_delta,
+        "w3_decay": w3_decay,
+        "w3_score": w3_score,
+        "final_score": w3_score,
+    }
+
+
+def calc_window_scores_from_entries(
+    entries: list, base_score: float = BASE_SCORE, now: datetime | None = None
+) -> dict:
+    """Port of V1 calcWorkbookScoreFromEntries.
+
+    Buckets entry deltas by age then runs the sequential window tracker.
+    """
+    buckets = sum_deltas_by_age(entries, now)
+    return calc_sheet_score_tracker(
+        base_score,
+        buckets["w1_delta"],
+        buckets["w2_delta"],
+        buckets["w3_delta"],
+    )
 
 
 def _apply_impact_to_breakdown(
@@ -296,21 +563,27 @@ async def apply_report_score(
     report: Report,
     account: Account,
     multipliers: dict,
+    category_override: str | None = None,
 ) -> tuple[float, LedgerEntry]:
     """Apply an approved report's score impact and persist a ledger entry.
 
     Idempotent at the call site is the caller's responsibility; this creates a
-    new ledger row, rebuilds the account score, and commits.
+    new ledger row, rebuilds the account score, and commits. ``category_override``
+    (when truthy) sets the ledger entry's category, mirroring V1 where the
+    adjudicated category lands only on the ledger entry, never on the report.
     """
     if report.base_score is not None:
         base_score = float(report.base_score)
-        category = report.deed
         deed = report.deed
+        category = report.deed
     else:
         scoring_row = resolve_sheet_base_impact(report.deed, report.report_type)
         base_score = float(scoring_row["base_score"])
         category = scoring_row["category"]
         deed = scoring_row["deed"]
+
+    if category_override:
+        category = category_override
 
     raw_delta = calc_delta(base_score, multipliers)
     delta, capped = cap_delta(raw_delta)

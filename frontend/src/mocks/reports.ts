@@ -183,6 +183,7 @@ export async function moderateReport(
   reportId: string,
   _decision: string,
   _note?: string,
+  _scoring?: Record<string, unknown>,
 ): Promise<ApiResponse<{ report: FeedReport }>> {
   await new Promise((resolve) => setTimeout(resolve, 800));
   const report = MOCK_FEED_REPORTS.find((r) => r.id === reportId) ?? MOCK_FEED_REPORTS[0];

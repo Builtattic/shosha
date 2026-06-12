@@ -66,14 +66,15 @@ export default function AdminReviewControls({
     }
     setLoading(true);
     try {
-      // TODO: send scoring fields when backend adjudicate endpoint is added
-      void category;
-      void deed;
-      void baseScore;
-      void repetitionPattern;
-      void intent;
-      void circumstances;
-      await moderateReport(reportId, verdict, note);
+      await moderateReport(reportId, verdict, note, {
+        category,
+        deed,
+        base_score: baseScore,
+        repetition_pattern: parseFloat(repetitionPattern),
+        intent: parseFloat(intent),
+        circumstances: parseFloat(circumstances),
+        final_impact: Math.round(previewDelta),
+      });
       toast.push(verdict === 'APPROVED' ? 'Decision entered into the ledger.' : 'Filing rejected.');
       onDecided?.(verdict);
     } catch (err) {
@@ -113,7 +114,7 @@ export default function AdminReviewControls({
               {previewDelta.toLocaleString()}
             </span>
             <span className="mt-1 block text-[9px] font-black uppercase tracking-widest text-muted-foreground">
-              Preview delta
+              Est. delta (excl. profile)
             </span>
           </div>
         </div>

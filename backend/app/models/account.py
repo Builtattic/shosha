@@ -2,7 +2,17 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import Boolean, Enum, Float, ForeignKey, Index, String, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    Enum,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -30,6 +40,21 @@ class Account(Base, BaseModelMixin):
     )
     score: Mapped[float] = mapped_column(Float, nullable=False, default=1000.0)
     score_breakdown: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
+    # Workbook profile fields (V1-faithful). Nullable; populated by admin in a
+    # future day. Absent values fall back to neutral multipliers (1.0) in
+    # scoring_service.profile_multipliers_from_account.
+    role: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    reach: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    education_workbook: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    specialized_field_workbook: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    management_workbook: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    disability: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    lifestyle: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    region: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    opposed_posts: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
 
     owner = relationship("User", back_populates="owned_accounts", foreign_keys=[owner_user_id])
     social_links = relationship("AccountSocialLink", back_populates="account", cascade="all, delete-orphan")

@@ -19,6 +19,27 @@ export interface ReportListItem {
   created_at: string;
 }
 
+export interface ScoreHistoryEntry {
+  t: string;
+  s: number;
+  cause: string | null;
+}
+
+/** Window scores returned by the backend (snake_case from FastAPI). */
+export interface WindowScoresRaw {
+  base_score: number;
+  w1_delta: number;
+  w1_decay: number;
+  w1_score: number;
+  w2_delta: number;
+  w2_decay: number;
+  w2_score: number;
+  w3_delta: number;
+  w3_decay: number;
+  w3_score: number;
+  final_score: number;
+}
+
 // ── Real API ───────────────────────────────────────────────────────────────────
 
 const real = {
@@ -103,6 +124,28 @@ const real = {
     });
     return res.data.link;
   },
+
+  getAccountScoreHistory: async (
+    id: string,
+  ): Promise<ApiResponse<{ history: ScoreHistoryEntry[] }>> => {
+    try {
+      const response = await apiClient.get(`/accounts/${id}/score-history`);
+      return { ok: true, data: { history: response.data.history ?? [] } };
+    } catch (error: unknown) {
+      return { ok: false, error: error instanceof Error ? error.message : 'Request failed' };
+    }
+  },
+
+  getAccountScoreWindows: async (
+    id: string,
+  ): Promise<ApiResponse<{ window_scores: WindowScoresRaw | null }>> => {
+    try {
+      const response = await apiClient.get(`/accounts/${id}/score-windows`);
+      return { ok: true, data: { window_scores: response.data.window_scores ?? null } };
+    } catch (error: unknown) {
+      return { ok: false, error: error instanceof Error ? error.message : 'Request failed' };
+    }
+  },
 };
 
 // ── Exports ────────────────────────────────────────────────────────────────────
@@ -115,3 +158,5 @@ export const createAccount = USE_MOCKS ? mock.createAccount : real.createAccount
 export const listAccounts = USE_MOCKS ? mock.listAccounts : real.listAccounts;
 export const updateAccount = USE_MOCKS ? mock.updateAccount : real.updateAccount;
 export const addSocialLink = USE_MOCKS ? mock.addSocialLink : real.addSocialLink;
+export const getAccountScoreHistory = USE_MOCKS ? mock.getAccountScoreHistory : real.getAccountScoreHistory;
+export const getAccountScoreWindows = USE_MOCKS ? mock.getAccountScoreWindows : real.getAccountScoreWindows;

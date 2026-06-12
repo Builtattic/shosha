@@ -10,9 +10,12 @@ from app.core.dependencies import get_current_user, get_current_user_optional
 from app.core.responses import success
 from app.models.enums import AccountStatus
 from app.models.user import User
+from app.repositories import ledger_repository
 from app.schemas.account import (
     AccountCreateRequest,
     AccountData,
+    AccountDetailData,
+    AccountDetailOut,
     AccountOut,
     AccountUpdateRequest,
     SocialLinkCreateRequest,
@@ -30,6 +33,14 @@ from app.services import (
     search_accounts,
     update_account,
 )
+from app.services.scoring_service import calc_window_scores_from_entries
+
+
+def _score_history(entries: list) -> list[dict]:
+    return [
+        {"t": e.timestamp.isoformat(), "s": e.delta, "cause": e.cause}
+        for e in entries
+    ]
 
 router = APIRouter()
 
@@ -92,8 +103,36 @@ async def get_accounts_search(
 
 
 @router.get(
+    "/{account_id}/score-history",
+    summary="Get account score history",
+)
+async def get_account_score_history(
+    account_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User | None = Depends(get_current_user_optional),
+):
+    await get_account(db, account_id, current_user)
+    entries = await ledger_repository.list_for_account(db, account_id)
+    return success({"history": _score_history(entries)})
+
+
+@router.get(
+    "/{account_id}/score-windows",
+    summary="Get account window scores",
+)
+async def get_account_score_windows(
+    account_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User | None = Depends(get_current_user_optional),
+):
+    await get_account(db, account_id, current_user)
+    entries = await ledger_repository.list_for_account(db, account_id)
+    return success({"window_scores": calc_window_scores_from_entries(entries)})
+
+
+@router.get(
     "/{account_id}",
-    response_model=SuccessEnvelope[AccountData],
+    response_model=SuccessEnvelope[AccountDetailData],
     summary="Get account by ID",
 )
 async def get_account_by_id(
@@ -102,9 +141,11 @@ async def get_account_by_id(
     current_user: User | None = Depends(get_current_user_optional),
 ):
     account = await get_account(db, account_id, current_user)
-    return success(
-        {"account": AccountOut.model_validate(account).model_dump(mode="json")}
-    )
+    entries = await ledger_repository.list_for_account(db, account_id)
+    payload = AccountDetailOut.model_validate(account)
+    payload.score_history = _score_history(entries)
+    payload.window_scores = calc_window_scores_from_entries(entries)
+    return success({"account": payload.model_dump(mode="json")})
 
 
 @router.patch(

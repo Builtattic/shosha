@@ -123,15 +123,34 @@ class CommentOut(BaseModel):
     created_at: datetime
 
 
+_WORKBOOK_SCALE = frozenset({0.5, 1.0, 1.5, 2.0, 2.5, 3.0})
+
+
 class ModerationDecisionRequest(BaseModel):
     decision: ReportStatus
-    note: str | None = None
+    note: str | None = Field(default=None, max_length=500)
+    category: str | None = Field(default=None, max_length=120)
+    deed: str | None = Field(default=None, max_length=160)
+    base_score: float | None = None
+    repetition_pattern: float | None = None
+    intent: float | None = None
+    circumstances: float | None = None
+    final_impact: float | None = None
 
     @field_validator("decision")
     @classmethod
     def validate_decision(cls, value: ReportStatus) -> ReportStatus:
         if value not in _MODERATION_DECISIONS:
             raise ValueError("decision must be APPROVED, REJECTED, or REMOVED")
+        return value
+
+    @field_validator("repetition_pattern", "intent", "circumstances")
+    @classmethod
+    def validate_workbook_scale(cls, value: float | None) -> float | None:
+        if value is not None and value not in _WORKBOOK_SCALE:
+            raise ValueError(
+                "must be one of the workbook scale values: 0.5, 1, 1.5, 2, 2.5, 3"
+            )
         return value
 
 

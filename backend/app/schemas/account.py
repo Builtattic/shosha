@@ -33,6 +33,17 @@ class AccountOut(BaseModel):
     social_links: list[SocialLinkOut] = Field(default_factory=list)
 
 
+class ScoreHistoryPoint(BaseModel):
+    t: str
+    s: float
+    cause: str | None = None
+
+
+class AccountDetailOut(AccountOut):
+    score_history: list[ScoreHistoryPoint] = Field(default_factory=list)
+    window_scores: dict = Field(default_factory=dict)
+
+
 class AccountCreateRequest(BaseModel):
     platform: str = Field(max_length=32)
     handle: str = Field(max_length=128)
@@ -58,6 +69,10 @@ class SocialLinkCreateRequest(BaseModel):
 
 class AccountData(BaseModel):
     account: AccountOut
+
+
+class AccountDetailData(BaseModel):
+    account: AccountDetailOut
 
 
 class SocialLinksData(BaseModel):
