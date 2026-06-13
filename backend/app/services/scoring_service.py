@@ -27,6 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.account import Account
 from app.models.ledger_entry import LedgerEntry
 from app.models.report import Report
+from app.models.user import User
 from app.core.scoring_constants import BASE_SCORE
 from app.repositories import ledger_repository
 
@@ -389,6 +390,180 @@ def cap_delta(
     if delta < -cap:
         return -cap, True
     return delta, False
+
+
+# V1 calcProfileScores lookup tables (Shoshaaahhh/src/lib/scoring.ts).
+_USER_ROLE_POWER: dict[str, float] = {
+    "student": 0.5,
+    "unemployed": 0.5,
+    "individual_contributor": 1,
+    "manager": 2,
+    "founder_business_owner": 2,
+    "public_figure_influencer": 2.5,
+    "government_political": 3,
+}
+_USER_NETWORK_POWER: dict[str, float] = {
+    "none": 0.5,
+    "<1k": 1,
+    "1k-10k": 1.5,
+    "10k-100k": 2,
+    "100k-1m": 2.5,
+    "1m-100m": 3,
+    "100m+": 3,
+}
+_USER_EDUCATION_AWARENESS: dict[str, float] = {
+    "no_formal": 0.5,
+    "school": 1,
+    "undergraduate": 1.5,
+    "postgraduate": 2,
+    "doctorate_specialized": 2.5,
+}
+_USER_MANAGEMENT_MEANS: dict[str, float] = {
+    "none": 1,
+    "small_team_limited_control": 1.5,
+    "moderate_responsibility": 2,
+    "large_team_major_decisions": 2.5,
+    "organizational_institutional": 3,
+}
+_USER_SPECIALIZED: dict[str, float] = {
+    "no": 0,
+    "some_experience": 0.25,
+    "professional": 0.5,
+    "expert": 0.75,
+}
+_USER_ABILITY: dict[str, float] = {
+    "yes": 0.5,
+    "prefer_not_to_say": 1,
+    "no": 1,
+}
+_USER_ROLE_MEANS: dict[str, float] = {
+    "student": 0.5,
+    "unemployed": 0.5,
+    "individual_contributor": 1,
+    "manager": 1.5,
+    "founder_business_owner": 2,
+    "public_figure_influencer": 2,
+    "government_political": 2.5,
+}
+_USER_ROLE_ENV: dict[str, float] = {
+    "student": 1,
+    "unemployed": 0.5,
+    "individual_contributor": 1.5,
+    "manager": 2,
+    "founder_business_owner": 2,
+    "public_figure_influencer": 2.5,
+    "government_political": 3,
+}
+_USER_ROLE_RESP: dict[str, float] = {
+    "student": 0.5,
+    "unemployed": 0.5,
+    "individual_contributor": 1,
+    "manager": 2,
+    "founder_business_owner": 2,
+    "public_figure_influencer": 2,
+    "government_political": 2.5,
+}
+
+
+def _user_has_onboarding_for_multipliers(user: User) -> bool:
+    """V1 early-return inverse: calcProfileScores needs at least one question field."""
+    return bool(
+        user.occupation_role or user.education or user.manages_money_people_system
+    )
+
+
+def calc_profile_scores_from_user(user: User) -> dict[str, float]:
+    """Port of V1 calcProfileScores — returns dimension key → multiplier value."""
+    if not _user_has_onboarding_for_multipliers(user):
+        return {}
+
+    role = user.occupation_role or ""
+    net = user.network_size or ""
+    edu = user.education or ""
+    mgmt = user.manages_money_people_system or ""
+    spec = user.specialized_field or ""
+    ability = user.physical_intellectual_limitations or ""
+
+    r_p = _USER_ROLE_POWER.get(role, 1)
+    n_p = _USER_NETWORK_POWER.get(net, 0.5)
+    e_p = _USER_EDUCATION_AWARENESS.get(edu, 1)
+    m_p = _USER_MANAGEMENT_MEANS.get(mgmt, 1)
+    s_p = _USER_SPECIALIZED.get(spec, 0)
+    a_p = _USER_ABILITY.get(ability, 1)
+    rm_p = _USER_ROLE_MEANS.get(role, 1)
+    re_p = _USER_ROLE_ENV.get(role, 1)
+    rr_p = _USER_ROLE_RESP.get(role, 1)
+
+    role_power = _USER_ROLE_POWER.get(role, 1)
+    identity = min(1.5, 0.5 + ((role_power - 0.5) + (n_p - 0.5)) / 3)
+    power = r_p * 0.6 + n_p * 0.4
+    means = (rm_p + m_p) / 2
+    environment = (re_p + e_p) / 2
+    responsibility = (rr_p + m_p) / 2
+    awareness = min(3, e_p + s_p)
+
+    return {
+        "IY": identity,
+        "P": power,
+        "M": means,
+        "E": environment,
+        "AB": a_p,
+        "RY": responsibility,
+        "AW": awareness,
+    }
+
+
+def profile_multipliers_from_user(
+    user: User,
+    repetition_pattern: float | None = None,
+    intent: float | None = None,
+    circumstances: float | None = None,
+) -> dict[str, float]:
+    """Port of V1 profileMultipliersFromUser using onboarding fields on User."""
+    dims = calc_profile_scores_from_user(user)
+    if not dims:
+        return dict(DEFAULT_MULTIPLIERS)
+
+    return {
+        "identity": dims.get("IY", 1.0),
+        "power": dims.get("P", 1.0),
+        "means": dims.get("M", 1.0),
+        "environment": dims.get("E", 1.0),
+        "awareness": dims.get("AW", 1.0),
+        "ability": dims.get("AB", 1.0),
+        "responsibility": dims.get("RY", 1.0),
+        # V1 reporterScore has no V2 equivalent; neutral default.
+        "reputation": 1.0,
+        "circumstances": circumstances if circumstances is not None else 1.0,
+        "intent": intent if intent is not None else 1.0,
+    }
+
+
+async def resolve_report_multipliers(
+    db: AsyncSession,
+    account: Account,
+    repetition_pattern: float | None = None,
+    intent: float | None = None,
+    circumstances: float | None = None,
+) -> dict[str, float]:
+    """Prefer owner onboarding multipliers; fall back to account workbook fields."""
+    from app.repositories import user_repository
+
+    if account.owner_user_id is not None:
+        owner = await user_repository.get_by_id(db, account.owner_user_id)
+        if owner is not None and _user_has_onboarding_for_multipliers(owner):
+            return profile_multipliers_from_user(
+                owner,
+                repetition_pattern=repetition_pattern,
+                intent=intent,
+                circumstances=circumstances,
+            )
+    return profile_multipliers_from_account(
+        account,
+        repetition_pattern=repetition_pattern,
+        intent=intent,
+        circumstances=circumstances,
+    )
 
 
 def profile_multipliers_from_account(

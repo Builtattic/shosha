@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.core.exceptions import raise_api_error
+from app.core.ratelimit import check_rate_limit, get_events_limiter
 from app.core.responses import success
 from app.models.enums import ReportStatus
 from app.models.event import Event
@@ -67,6 +68,7 @@ async def post_event(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    await check_rate_limit(f"events:{current_user.id}", get_events_limiter())
     if data.event_type not in ("positive", "negative"):
         raise_api_error("validation_error", "event_type must be positive or negative")
 

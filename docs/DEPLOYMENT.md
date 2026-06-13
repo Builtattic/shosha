@@ -156,3 +156,48 @@ GET /health returns:
 {"ok":true,"data":{"status":"healthy"}}
 
 Use this as the load balancer health check endpoint.
+
+## Scheduled Jobs — Weekly Momentum
+
+The weekly-momentum job rolls ledger deltas into each account's `w1_delta`, `w2_delta`, and `w3_delta` fields (exposed as `weekly_delta` on account API responses). V2 does **not** run this on a timer inside the API process — you must trigger it from an external scheduler (cron, GitHub Actions, AWS EventBridge, etc.).
+
+### Configuration
+
+Set a non-empty shared secret in the backend environment:
+
+| Variable | Required | Purpose |
+|----------|----------|---------|
+| CRON_TOKEN | Yes (production) | Bearer token for `POST/GET /api/v1/cron/weekly-momentum` |
+
+Auth accepts either `Authorization: Bearer <CRON_TOKEN>` **or** a Firebase JWT for an active `ADMIN` / `SUPER_ADMIN` user.
+
+### Run the job (production)
+
+```bash
+curl -X POST "${API_URL}/api/v1/cron/weekly-momentum" \
+  -H "Authorization: Bearer ${CRON_TOKEN}"
+```
+
+Expected success envelope:
+
+```json
+{"ok":true,"data":{"accounts_updated":42,"run_at":"2026-06-13T12:00:00+00:00"}}
+```
+
+### Status check
+
+```bash
+curl -X GET "${API_URL}/api/v1/cron/weekly-momentum" \
+  -H "Authorization: Bearer ${CRON_TOKEN}"
+```
+
+Returns `last_run_at`, `accounts_with_momentum`, and `engine`.
+
+### Local verification
+
+1. Add `CRON_TOKEN=<your-local-secret>` to the project root `.env` (see [`PROJECT_SETUP.md`](./PROJECT_SETUP.md)).
+2. Restart the backend so settings reload.
+3. Run the POST curl against `http://127.0.0.1:8000`.
+4. Confirm `GET /api/v1/accounts/{id}` returns a populated `weekly_delta` for a seeded account with ledger entries.
+
+Recommended schedule: once per day (V1 used a daily cron). Adjust to your ops needs.

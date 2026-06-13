@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Brain, CheckCircle, ChevronRight, Layers } from 'lucide-react';
+import { Brain, CheckCircle, ChevronDown, ChevronRight, Layers } from 'lucide-react';
+import AdminReviewControls from '@/components/admin/AdminReviewControls';
 import { getModerationQueue } from '@/api/admin';
 import type { ReportOut } from '@/types/report';
 import { cn, formatDate } from '@/lib/utils';
@@ -19,24 +20,23 @@ export default function AdminQueue() {
   const [items, setItems] = useState<ReportOut[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const loadQueue = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const queue = await getModerationQueue(100);
+      setItems(queue);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load queue');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    let mounted = true;
-    (async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const queue = await getModerationQueue(100);
-        if (mounted) setItems(queue);
-      } catch (err) {
-        if (mounted) setError(err instanceof Error ? err.message : 'Failed to load queue');
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
+    loadQueue();
   }, []);
 
   const sorted = useMemo(
@@ -46,6 +46,11 @@ export default function AdminQueue() {
       ),
     [items],
   );
+
+  function handleDecided(reportId: string) {
+    setItems((prev) => prev.filter((r) => r.id !== reportId));
+    setExpandedId(null);
+  }
 
   if (loading) {
     return (
@@ -89,6 +94,11 @@ export default function AdminQueue() {
           {sorted.map((report) => {
             const { proposedImpact, confidence } = readAiVerdict(report);
             const isPositive = report.type === 'positive';
+            const isExpanded = expandedId === report.id;
+            const reportType = (report.type === 'positive' || report.type === 'negative'
+              ? report.type
+              : 'negative') as 'positive' | 'negative';
+
             return (
               <div
                 key={report.id}
@@ -113,7 +123,7 @@ export default function AdminQueue() {
                     <p className="mt-2 line-clamp-2 text-sm">{report.description.slice(0, 100)}</p>
                     <p className="mt-1 text-xs text-muted-foreground">{formatDate(report.created_at)}</p>
                   </div>
-                  <div className="flex items-center gap-6 shrink-0">
+                  <div className="flex flex-wrap items-center gap-3 shrink-0">
                     {confidence != null && (
                       <div className="text-center">
                         <div className="flex items-center gap-1 text-[10px] font-black uppercase text-muted-foreground">
@@ -138,13 +148,35 @@ export default function AdminQueue() {
                     )}
                     <button
                       type="button"
+                      onClick={() => setExpandedId(isExpanded ? null : report.id)}
+                      className="flex h-10 items-center gap-1 rounded-xl border border-border bg-background px-4 text-xs font-black uppercase text-foreground"
+                    >
+                      {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                      Quick adjudicate
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => navigate(`/admin/review/${report.id}`)}
                       className="flex h-10 items-center gap-1 rounded-xl bg-primary px-4 text-xs font-black uppercase text-primary-foreground"
                     >
-                      Review <ChevronRight size={16} />
+                      Full review
                     </button>
                   </div>
                 </div>
+
+                {isExpanded ? (
+                  <div className="mt-6 border-t border-border pt-6">
+                    <AdminReviewControls
+                      reportId={report.id}
+                      proposedImpact={proposedImpact ?? 0}
+                      score={report.account?.score ?? 1000}
+                      reportType={reportType}
+                      initialDeed={report.deed ?? undefined}
+                      initialBaseScore={report.base_score ?? undefined}
+                      onDecided={() => handleDecided(report.id)}
+                    />
+                  </div>
+                ) : null}
               </div>
             );
           })}

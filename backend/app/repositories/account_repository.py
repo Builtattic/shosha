@@ -61,6 +61,7 @@ async def list_accounts(
         stmt, Account.created_at, decode_cursor(cursor), descending=True
     )
     stmt = stmt.order_by(Account.created_at.desc(), Account.id.desc()).limit(limit + 1)
+    stmt = stmt.options(*_ACCOUNT_LOAD_OPTIONS)
     result = await db.execute(stmt)
     return build_next_cursor(list(result.scalars().all()), limit)
 
@@ -82,6 +83,7 @@ async def search(
         stmt, Account.created_at, decode_cursor(cursor), descending=True
     )
     stmt = stmt.order_by(Account.created_at.desc(), Account.id.desc()).limit(limit + 1)
+    stmt = stmt.options(*_ACCOUNT_LOAD_OPTIONS)
     result = await db.execute(stmt)
     return build_next_cursor(list(result.scalars().all()), limit)
 

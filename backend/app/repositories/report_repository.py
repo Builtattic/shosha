@@ -22,15 +22,17 @@ from app.repositories._pagination import (
 
 FeedFilter = Literal["all", "following", "near", "top"]
 
+_REPORT_OUT_LOAD_OPTIONS = (
+    selectinload(Report.media_items),
+    selectinload(Report.account),
+)
+
 
 def _approved_feed_stmt(*, platform: str | None):
     stmt = (
         select(Report)
         .where(Report.status == ReportStatus.APPROVED)
-        .options(
-            selectinload(Report.media_items),
-            selectinload(Report.account),
-        )
+        .options(*_REPORT_OUT_LOAD_OPTIONS)
     )
     if platform is not None:
         stmt = stmt.join(Account).where(Account.platform == platform)
@@ -128,7 +130,7 @@ async def get_by_id(db: AsyncSession, report_id: UUID) -> Report | None:
     result = await db.execute(
         select(Report)
         .where(Report.id == report_id)
-        .options(selectinload(Report.media_items))
+        .options(*_REPORT_OUT_LOAD_OPTIONS)
     )
     report = result.scalar_one_or_none()
     if report is None:
@@ -153,6 +155,7 @@ async def list_reports(
         stmt, Report.created_at, decode_cursor(cursor), descending=True
     )
     stmt = stmt.order_by(Report.created_at.desc(), Report.id.desc()).limit(limit + 1)
+    stmt = stmt.options(*_REPORT_OUT_LOAD_OPTIONS)
     result = await db.execute(stmt)
     return build_next_cursor(list(result.scalars().all()), limit)
 
@@ -228,6 +231,7 @@ async def list_moderation_queue(
     else:
         stmt = stmt.order_by(Report.created_at.asc(), Report.id.asc())
     stmt = stmt.limit(limit + 1)
+    stmt = stmt.options(*_REPORT_OUT_LOAD_OPTIONS)
     result = await db.execute(stmt)
     return build_next_cursor(list(result.scalars().all()), limit)
 
@@ -393,6 +397,7 @@ async def search_reports(
                 | Report.title.ilike(pattern)
             ),
         )
+        .options(*_REPORT_OUT_LOAD_OPTIONS)
         .order_by(Report.created_at.desc())
         .limit(limit)
     )
@@ -407,6 +412,7 @@ async def list_by_reporter(
     result = await db.execute(
         select(Report)
         .where(Report.reporter_user_id == reporter_user_id)
+        .options(*_REPORT_OUT_LOAD_OPTIONS)
         .order_by(Report.created_at.desc())
         .limit(limit)
     )

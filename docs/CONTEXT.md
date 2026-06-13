@@ -1,6 +1,6 @@
 # Shosha — AI Session Context
 
-> **Last updated:** 2026-06-13 · Phase 2 behavioral parity (Days 20–31)
+> **Last updated:** 2026-06-13 · Day 8 (parity hardening) + Phase 2 Days 6–7
 
 Single-file onboarding map. Link out to detailed docs; do not treat this as a substitute for [PARITY_STATUS.md](./PARITY_STATUS.md).
 
@@ -40,29 +40,37 @@ Single-file onboarding map. Link out to detailed docs; do not treat this as a su
 
 ### Phase / day
 
-- **Phase 2, Day 7** per execution plan; scorecard in [PARITY_STATUS.md](./PARITY_STATUS.md) updated through Day 7 credibility + OG batch
-- **Last merged to main:** PR #32 — weekly-momentum cron + rank surfaces (`a8f6c86`)
+- **Day 8 (parity hardening)** — multipliers, UI wiring, AdminQueue quick adjudicate, cron docs, V1 rate limits, community auto-reject Rule A; see [PARITY_STATUS.md](./PARITY_STATUS.md) § Day 8
+- **Last merged to main:** PR #34 credibility wiring; Day 8 work in local working tree (uncommitted)
 
-### Just completed (Day 7 parity sprint)
+### Just completed (Day 8 parity hardening)
+
+1. `profile_multipliers_from_user()` + tests; wired to moderate + admin report create
+2. `LiveAccountScorePanel` + `PublicProfile` credibility / weekly_delta / social links
+3. `AdminQueue` expandable quick adjudicate via `AdminReviewControls`
+4. Cron curl + `CRON_TOKEN` documented in `DEPLOYMENT.md` / `PROJECT_SETUP.md`
+5. Five V1 rate limiters (analyze, classify, search, claims, events)
+6. Community vote Rule A auto-reject (`PENDING`-only guard; system actor audit + notification)
+7. Stale TODO cleanup + doc updates
+
+**Verification:** `pytest` 17 passed (multipliers + credibility + community auto-reject); `npx tsc --noEmit` clean.
+
+### Previously completed (Day 7 parity sprint)
 
 Credibility wiring end-to-end (stored `User.credibility`, computed `profile_credibility`, trust-badge + webhook recalc, API + Dashboard). OG image route + meta tags. Share card PDF. Billing redirect. Bubble image crop + member score sort. AccountDetail credibility display. Orphan page cleanup.
 
-**Manual verification (same session):** OG no-auth curl passed after `misc.py` syntax fix; seed credibility values sane (22 / 62 / 8 for admin / full1 / incomplete1); `GET /accounts/{id}` `profile_credibility` matches. Billing redirect + share-modal PDF need authenticated browser pass (env uses real Firebase, not mock dev preview).
-
 ### Actively in progress
 
-- Day 6 + Day 7 code in working tree — **not yet committed** (batched commits planned)
-- Item 12 **TODO triage** — grep done (~12 markers); full categorize + CONTEXT inventory still open
+- Day 8 code in working tree — **not yet committed**
 
 ### Not started / next up (from PHASE_2_PLAN + punch list)
 
 | Area | Status |
 |------|--------|
-| `profile_multipliers_from_user()` — user onboarding → moderate multipliers | **P0 open** |
+| Community vote **Rule B** (`dispute_status` column + migration) | **Deferred** — needs Alembic approval |
+| Events tier daily cap (free=5 / pro=50) | **Deferred** |
 | Admin dashboard charts (`filingsLast7`, `aiAgreementRate`, time-series) | Day 23 |
-| `AdminQueue.tsx` quick-moderate without adjudicate payload | Day 22 partial |
 | Evidence scan (`POST /admin/accounts/{id}/evidence/scan`) | Day 28 |
-| `LiveAccountScorePanel` followers count | Day 21 open (credibility now on account API) |
 | Generic admin data CRUD | P1 |
 | Ship-ready cleanup (Days 30–31 smoke test) | Not started |
 
@@ -87,6 +95,9 @@ Decisions from planning that may not yet be fully folded into all docs.
 | **Stored vs computed credibility** | `User.credibility` persisted on PATCH/badge/webhook; `profile_credibility` computed at read only; Dashboard uses API value | PARITY_STATUS (Day 7) |
 | **`/billing` redirect chain** | `/billing` → `/profile/upgrade` (React Router); upgrade page requires auth → unauth users land on `/sign-in` | — |
 | **OG route no auth** | `GET /api/v1/og` uses `Depends(get_db)` only — no `get_current_user` | PARITY_STATUS (verified) |
+| **Community auto-reject Rule A (Day 8)** | `PENDING`-only status guard (V1 uses `status !== 'rejected'`); no ledger reversal; `get_or_create_system_actor()` for audit | PARITY_STATUS, BUSINESS_RULES review |
+| **PublicProfile social links** | Show all links from `account.social_links` — no V1 `canViewProfileField` gating | PARITY_STATUS |
+| **Score multiplier `reputation=1.0`** | No V2 reporter-score mapping yet; explicit default in `profile_multipliers_from_user()` | PARITY_STATUS |
 
 ---
 
@@ -94,15 +105,16 @@ Decisions from planning that may not yet be fully folded into all docs.
 
 Do not re-litigate these without user confirmation:
 
-- **`profile_multipliers_from_user()`** — moderate reads account workbook columns; user onboarding not synced → empty accounts get 1.0 multipliers
+- **Community vote Rule B** — `reports.dispute_status` not in V2 schema; needs migration before port
+- **Events tier daily cap** (free=5 / pro=50) — rate limit is 10/h only for now
 - **`region`** on user model but not collected in onboard UI → ranks region filter blocked
 - **Dossier-unfollow** (`DELETE /accounts/{id}/dossier-unfollow`) — unimplemented; Following feed uses `user_follows` only
 - **Near You location** — requires both viewer and reporter to have onboarded `city`; sparse data → empty feed with `empty_reason`
 - **Shares stat** — hardcoded `0` in feed mapping; no V1 backend source identified
 - **Evidence scan** — returns `proposals: []` / `scan_stubbed`
 - **Inter-bubble leaderboard** — member list uses live scores; bubble-level sort still by created_at/members
-- **TODO triage (item 12)** — inventory started in CONTEXT §8; stale markers (e.g. `DossierActions` audit) not yet removed in code
-- **Day 7 commits** — large uncommitted working tree; batched commits pending
+- **TODO triage** — `DossierActions` audit TODO removed (Day 8); `ProfileImpactAnalytics` range selector still open
+- **Day 8 commits** — working tree uncommitted; user must request git commit
 - **Root `README.md`** — legacy V1 (Next.js/Firebase); use `docs/` for V2 truth
 
 ---

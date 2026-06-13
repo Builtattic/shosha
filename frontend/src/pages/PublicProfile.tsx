@@ -77,11 +77,36 @@ export default function PublicProfile() {
       <section aria-labelledby="score-heading" className="mb-8">
         <h2 id="score-heading" className="text-lg font-medium mb-2">Shosha™ Score</h2>
         <p className="text-5xl font-bold">{score.toLocaleString()}</p>
+        {typeof account.profile_credibility === 'number' ? (
+          <p className="text-muted-foreground text-sm mt-2">
+            Profile credibility: <span className="font-semibold text-foreground">{account.profile_credibility}</span>
+          </p>
+        ) : null}
         <p className="text-muted-foreground text-sm mt-2">
           Algorithmically calculated from verified real-world actions, weighted
           by context factors including role, intent, and power held.
         </p>
       </section>
+
+      {account.social_links && account.social_links.length > 0 ? (
+        <section aria-labelledby="social-heading" className="mb-8">
+          <h2 id="social-heading" className="text-lg font-medium mb-2">Social links</h2>
+          <ul className="space-y-2">
+            {account.social_links.map((link) => (
+              <li key={`${link.platform}-${link.url}`}>
+                <a
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-primary underline underline-offset-2"
+                >
+                  {link.platform}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       {account.bio && (
         <section aria-labelledby="bio-heading" className="mb-8">
