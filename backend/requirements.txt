@@ -13,3 +13,4 @@ httpx
 Pillow
 upstash-ratelimit
 upstash-redis
+pytest

@@ -1,6 +1,6 @@
 # V1 → V2 Parity Status
 
-Master gap-tracking document. Updated after **Phase 2 Day 6** (feed filters, aggregates, profile counts, audit, claims S3) and **Days 20–21** (data foundation + scoring core).
+Master gap-tracking document. Updated after **Phase 2 Day 7** (credibility wiring, OG images, billing redirect, bubble polish) and **Days 20–21** (data foundation + scoring core).
 
 - **V1 reference:** `C:\Others\project\Builtattic\Shoshaaahhh`
 - **V2 target:** this repository (`shosha`)
@@ -8,7 +8,62 @@ Master gap-tracking document. Updated after **Phase 2 Day 6** (feed filters, agg
 
 ---
 
-## Summary scorecard
+## What shipped in Phase 2 (Day 7)
+
+### Credibility (items 1–5)
+- `backend/app/services/credibility_service.py` — ports `calcCredibility` + `calcProfileCredibility` from frontend TS
+- Alembic `d7a1b2c3e4f5`: `users.credibility` (int, default 0)
+- `PATCH /users/me` recomputes and persists `credibility` after profile updates
+- Trust-badge approve recomputes `credibility` (+20 verification); **removed** website `score=1000` proxy reset
+- Razorpay webhook `subscription.cancelled` / `subscription.completed` clears badge and recomputes `credibility`
+- `GET /users/me` exposes `credibility` + computed `profile_credibility` (`opposed_posts` from owned website account)
+- `GET /accounts/{id}` exposes `profile_credibility`
+- Frontend: `Dashboard.tsx` uses API `profile_credibility` (no client `calcCredibility` for gauge); `Onboard.tsx` still uses client calc for live panel
+- `pytest` + `backend/tests/test_credibility_service.py` (5 tests)
+
+### OG + share (items 6, 8)
+- `GET /api/v1/og?id={account_uuid}` — Pillow PNG, **no auth** (crawler-safe)
+- `AccountDetail.tsx` / `PublicProfile.tsx` inject `og:image` meta via `lib/ogMeta.ts`
+- `ShareCardModal.tsx` — PDF export via dynamic `jspdf` import (PNG unchanged)
+
+### Routing + bubbles + cleanup (items 7, 9–12)
+- `/billing` → redirect to `/profile/upgrade`; deleted orphan `Billing.tsx`
+- `CreateBubbleFlow.tsx` — `react-easy-crop` modal (cover 16:6, avatar 1:1) before `uploadMedia`
+- Bubble detail members sorted by live profile score (`owner_profile_score` helper)
+- `AccountDetail.tsx` displays `profile_credibility` + social links (from account response)
+- Deleted orphan stubs: `Login.tsx`, `Onboarding.tsx`, `Subscribe.tsx`, `Admin.tsx` (admin lives under `pages/admin/`)
+
+### Still deferred (Day 7 triage)
+- Inter-bubble leaderboard denormalized scores (`bubbles.py` TODO)
+- `LiveAccountScorePanel` followers count wiring
+- `AdminQueue` quick-moderate adjudicate payload
+- Evidence scan stub
+- `region` onboard field / ranks filter
+- **Full TODO grep + categorize pass** (item 12) — partial list above only; see [CONTEXT.md](./CONTEXT.md) §3
+
+### Day 7 manual verification (2026-06-13)
+
+Automated gates: `pytest tests/test_credibility_service.py` (5/5), `npx tsc --noEmit` (clean).
+
+| Check | Result | Notes |
+|-------|--------|-------|
+| `GET /api/v1/og?id={uuid}` (no `Authorization`) | **PASS** — HTTP 200, `image/png`, ~25 KB | Fixed startup blocker: invalid `raise_api_error(...) from None` in `misc.py` (function call, not `raise`) |
+| `GET /accounts/{id}` `profile_credibility` | **PASS** — live API matches serializer | `seed_account_01` → 22, `seed_account_02` → 62, `seed_account_08` → 8 |
+| Seed user credibility (`GET /users/me` serializer path) | **PASS** — no red flags | See table below |
+| `/billing` → `/profile/upgrade` | **PARTIAL** | Route redirect wired (`routes/index.tsx`); `/profile/upgrade` is behind `AppRoute` — unauthenticated users chain to `/sign-in`. Authenticated E2E not run in verification session (real Firebase env, `VITE_USE_MOCKS=false`). |
+| Share modal PDF download | **PARTIAL** | `jspdf` smoke test passed; full modal flow needs signed-in user (same auth constraint). |
+
+**Seed credibility spot-check** (serializer ≡ `GET /users/me` response fields):
+
+| User | Trust badge | `credibility` (stored) | `profile_credibility` | Assessment |
+|------|-------------|------------------------|----------------------|------------|
+| `seed_admin` | no | 0 | 22 | OK — sparse seed profile; stored `0` until PATCH/badge/webhook |
+| `seed_full1` | yes | 0 | 62 | OK — computed 42 + badge bonus → 62 |
+| `seed_incomplete1` | no | 0 | 8 | OK — incomplete onboarding |
+
+**Not yet done:** batched git commits (Day 6 + Day 7 working tree); full TODO inventory in docs.
+
+---
 
 | Area | V1 baseline | V2 status | % complete* |
 |------|-------------|-----------|-------------|
@@ -32,7 +87,7 @@ Master gap-tracking document. Updated after **Phase 2 Day 6** (feed filters, agg
 - `PATCH /users/me`, `GET /users/me`, `GET /users/{id}` persist and return full profile
 - `GET /users/username-availability` wired in `Onboard.tsx`
 - Frontend: `Onboard.tsx` sends full payload; `EditProfile.tsx` full field editor; `types/user.ts` extended
-- `Dashboard.tsx` runs `calcCredibility()` from stored `UserPrivate` (no score proxy)
+- ~~`Dashboard.tsx` runs `calcCredibility()` from stored `UserPrivate`~~ → **Day 7:** Dashboard uses API `profile_credibility`
 
 ### Day 21 — Scoring engine core (partial)
 - `ModerationDecisionRequest`: category, deed, base_score, repetition_pattern, intent, circumstances, final_impact, note
@@ -99,7 +154,7 @@ Master gap-tracking document. Updated after **Phase 2 Day 6** (feed filters, agg
 | `/sign-in` | `/sign-in` | `SignIn.tsx` | PARTIAL — V2 adds phone/OTP |
 | `/sign-up` | `/sign-up` → redirect | — | FULL |
 | `/onboard` | `/onboard` | `Onboard.tsx` | FULL — all fields persisted; `region` not collected |
-| `/dashboard` | `/dashboard` | `Dashboard.tsx` | PARTIAL — credibility from profile; feed tabs wired (following/near/top) |
+| `/dashboard` | `/dashboard` | `Dashboard.tsx` | PARTIAL — credibility from API `profile_credibility` (Day 7); feed tabs wired (following/near/top) |
 | `/feed` | `/feed` | `Feed.tsx` | PARTIAL — following/near/top filters wired; shares stat client-only |
 | `/profile` | `/profile` | `Profile.tsx` | PARTIAL — follower counts + swipe aggregate wired |
 | `/profile/edit` | `/profile/edit` | `EditProfile.tsx` | FULL |

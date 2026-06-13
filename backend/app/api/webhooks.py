@@ -12,6 +12,7 @@ from app.core.config import settings
 from app.core.database import async_session_maker
 from app.models.enums import NotificationType
 from app.repositories import notification_repository, user_repository
+from app.services.credibility_service import calc_credibility
 
 router = APIRouter()
 
@@ -54,6 +55,11 @@ async def _handle_event(db: AsyncSession, event: str, payload: dict) -> None:
             trust_badge_pending=False,
             trust_badge_subscription_status="cancelled",
         )
+        await db.commit()
+        await db.refresh(user)
+        cred = calc_credibility(user)
+        await user_repository.update(db, user, credibility=cred.total)
+        await db.commit()
         await notification_repository.create(
             db,
             user_id=user.id,
@@ -71,6 +77,10 @@ async def _handle_event(db: AsyncSession, event: str, payload: dict) -> None:
             trust_badge_pending=False,
             trust_badge_subscription_status="completed",
         )
+        await db.commit()
+        await db.refresh(user)
+        cred = calc_credibility(user)
+        await user_repository.update(db, user, credibility=cred.total)
         await db.commit()
     elif event == "subscription.halted":
         await user_repository.update(

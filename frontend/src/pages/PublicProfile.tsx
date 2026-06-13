@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { getAccount } from '@/api/accounts';
 import type { Account } from '@/types/account';
+import { clearOgImage, setOgImage } from '@/lib/ogMeta';
 
 export default function PublicProfile() {
   const { id } = useParams<{ id: string }>();
@@ -31,6 +32,11 @@ export default function PublicProfile() {
       });
     return () => { alive = false; };
   }, [id]);
+
+  useEffect(() => {
+    if (account?.id) setOgImage(account.id);
+    return () => clearOgImage();
+  }, [account?.id]);
 
   if (loading) {
     return (

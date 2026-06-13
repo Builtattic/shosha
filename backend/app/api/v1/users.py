@@ -26,8 +26,22 @@ from app.services import (
 )
 from app.services.user_service import with_follow_counts
 from app.services._helpers import normalize_username
+from app.services.credibility_service import (
+    get_website_account,
+    profile_credibility_for_user,
+)
 
 router = APIRouter()
+
+
+async def _serialize_user_private(db: AsyncSession, user: User) -> dict:
+    payload = UserPrivate.model_validate(user).model_dump(mode="json")
+    website_account = await get_website_account(db, user.id)
+    opposed_posts = website_account.opposed_posts if website_account else 0
+    payload["profile_credibility"] = profile_credibility_for_user(
+        user, opposed_posts=opposed_posts
+    )
+    return payload
 
 
 @router.get(
@@ -40,9 +54,7 @@ async def get_users_me(
     db: AsyncSession = Depends(get_db),
 ):
     user = await get_me(db, current_user)
-    return success(
-        {"user": UserPrivate.model_validate(user).model_dump(mode="json")}
-    )
+    return success({"user": await _serialize_user_private(db, user)})
 
 
 @router.patch(
@@ -57,9 +69,7 @@ async def patch_users_me(
 ):
     user = await update_me(db, current_user, body)
     user = await with_follow_counts(db, user)
-    return success(
-        {"user": UserPrivate.model_validate(user).model_dump(mode="json")}
-    )
+    return success({"user": await _serialize_user_private(db, user)})
 
 
 @router.get(

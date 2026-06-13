@@ -40,25 +40,19 @@ Single-file onboarding map. Link out to detailed docs; do not treat this as a su
 
 ### Phase / day
 
-- **Phase 2, Day 21+** per [PHASE_2_PLAN.md](./PHASE_2_PLAN.md); scorecard in [PARITY_STATUS.md](./PARITY_STATUS.md) updated through Days 20–21
+- **Phase 2, Day 7** per execution plan; scorecard in [PARITY_STATUS.md](./PARITY_STATUS.md) updated through Day 7 credibility + OG batch
 - **Last merged to main:** PR #32 — weekly-momentum cron + rank surfaces (`a8f6c86`)
-- **Most recent plan:** [Day 6 Implementation](file:///C:/Users/Admin/.cursor/plans/day_6_implementation_dce9040a.plan.md) — all 7 todos **completed** (local; **not yet committed**)
 
-### Just completed (Day 6 parity sprint — uncommitted)
+### Just completed (Day 7 parity sprint)
 
-Feed/profile/audit batch; documented in PARITY_STATUS "Day 6" section:
+Credibility wiring end-to-end (stored `User.credibility`, computed `profile_credibility`, trust-badge + webhook recalc, API + Dashboard). OG image route + meta tags. Share card PDF. Billing redirect. Bubble image crop + member score sort. AccountDetail credibility display. Orphan page cleanup.
 
-- `GET /me/swipe-aggregate` + Profile / People swipe breakdown wiring
-- `FeedReportOut` aggregates (`align_count`, `oppose_count`, `comment_count`, `viewer_vote`)
-- `GET /feed?filter=following|near|top` + frontend tab refetch
-- `followers_count` / `following_count` on user schemas
-- `POST /accounts/{id}/audit` with service-layer dedupe
-- Claims evidence via S3 (`uploadMedia` → `evidence_payload` JSONB)
-- PARITY_STATUS note on dossier-unfollow deferral
+**Manual verification (same session):** OG no-auth curl passed after `misc.py` syntax fix; seed credibility values sane (22 / 62 / 8 for admin / full1 / incomplete1); `GET /accounts/{id}` `profile_credibility` matches. Billing redirect + share-modal PDF need authenticated browser pass (env uses real Firebase, not mock dev preview).
 
 ### Actively in progress
 
-- None locked — Day 6 code/docs sit in working tree awaiting commit/PR
+- Day 6 + Day 7 code in working tree — **not yet committed** (batched commits planned)
+- Item 12 **TODO triage** — grep done (~12 markers); full categorize + CONTEXT inventory still open
 
 ### Not started / next up (from PHASE_2_PLAN + punch list)
 
@@ -68,7 +62,7 @@ Feed/profile/audit batch; documented in PARITY_STATUS "Day 6" section:
 | Admin dashboard charts (`filingsLast7`, `aiAgreementRate`, time-series) | Day 23 |
 | `AdminQueue.tsx` quick-moderate without adjudicate payload | Day 22 partial |
 | Evidence scan (`POST /admin/accounts/{id}/evidence/scan`) | Day 28 |
-| `LiveAccountScorePanel` followers + credibility | Day 21 open |
+| `LiveAccountScorePanel` followers count | Day 21 open (credibility now on account API) |
 | Generic admin data CRUD | P1 |
 | Ship-ready cleanup (Days 30–31 smoke test) | Not started |
 
@@ -90,7 +84,9 @@ Decisions from planning that may not yet be fully folded into all docs.
 | **No notification on audit create** | Not listed in BUSINESS_RULES notification triggers | BUSINESS_RULES |
 | **Claims evidence = S3 URLs in existing `evidence_payload` JSONB** | No new table; matches report media pattern | BUSINESS_RULES / MVP_DATABASE_DESIGN |
 | **`stats.shares: 0`** kept with inline comment | No backend source; dropping field ripples through frontend types | — |
-| **Dossier-unfollow deferred** | No V1 reference to confirm semantics; no `account_follows` in V2 | PARITY_STATUS (done) |
+| **Stored vs computed credibility** | `User.credibility` persisted on PATCH/badge/webhook; `profile_credibility` computed at read only; Dashboard uses API value | PARITY_STATUS (Day 7) |
+| **`/billing` redirect chain** | `/billing` → `/profile/upgrade` (React Router); upgrade page requires auth → unauth users land on `/sign-in` | — |
+| **OG route no auth** | `GET /api/v1/og` uses `Depends(get_db)` only — no `get_current_user` | PARITY_STATUS (verified) |
 
 ---
 
@@ -104,10 +100,9 @@ Do not re-litigate these without user confirmation:
 - **Near You location** — requires both viewer and reporter to have onboarded `city`; sparse data → empty feed with `empty_reason`
 - **Shares stat** — hardcoded `0` in feed mapping; no V1 backend source identified
 - **Evidence scan** — returns `proposals: []` / `scan_stubbed`
-- **OG image route** (`GET /api/og`) — missing in V2
-- **Admin data CRUD** — `not_implemented` stubs
-- **`AdminQueue` quick-moderate** — omits full adjudicate scoring fields (use `AdminReview` path)
-- **Bubble leaderboard** — sorts by created_at/member count, not bubble score
+- **Inter-bubble leaderboard** — member list uses live scores; bubble-level sort still by created_at/members
+- **TODO triage (item 12)** — inventory started in CONTEXT §8; stale markers (e.g. `DossierActions` audit) not yet removed in code
+- **Day 7 commits** — large uncommitted working tree; batched commits pending
 - **Root `README.md`** — legacy V1 (Next.js/Firebase); use `docs/` for V2 truth
 
 ---
@@ -124,13 +119,34 @@ Do not re-litigate these without user confirmation:
 - **Do not invent business rules** — flag assumptions; check V1 reference or ask user
 - **V1 reference path:** `C:\Others\project\Builtattic\Shoshaaahhh` for behavioral parity questions
 - **Seed caveat:** `swipe_records` not seeded by default — swipe-aggregate verification needs manual swipes or SQL check
+- **Stored `users.credibility` on seed rows:** defaults to `0` until `PATCH /users/me`, trust-badge approve, or webhook recalc; `profile_credibility` on `GET /users/me` is always computed at read from live profile fields
 
 ---
 
 ## 7. How to resume work
 
 1. Read this file fully
-2. Check `.cursor/plans/` for the most recent plan file and todo status (e.g. `day_6_implementation_*.plan.md`)
+2. Check `.cursor/plans/` for the most recent plan file and todo status (e.g. `day_7_execution_*.plan.md`)
 3. Run `git log --oneline -10` and `git status` — distinguish **merged** vs **local uncommitted** work
 4. Cross-reference [PARITY_STATUS.md](./PARITY_STATUS.md) punch list (P0 → P1 → P2)
 5. **Ask the user what's next** rather than assuming the next PHASE_2_PLAN checkbox is correct
+
+---
+
+## 8. TODO inventory (Day 7 triage — partial)
+
+Grep snapshot (~12 markers). **Not fully categorized yet** — do not treat as closed.
+
+| Marker | File | Status |
+|--------|------|--------|
+| Wire `POST /accounts/{id}/audit` | `DossierActions.tsx` | **Stale** — audit shipped Day 6; remove comment |
+| Followers + credibility in score panel | `LiveAccountScorePanel.tsx` | **Partially stale** — `profile_credibility` on account API; followers still deferred |
+| Denormalized bubble leaderboard scores | `bubbles.py` | Deferred — member list uses live scores |
+| Region filter on ranks | `Ranks.tsx` | Deferred — blocked on `region` onboard field |
+| Time-series admin charts | `AdminDashboard.tsx` | Deferred |
+| Expand admin account/user edit payloads | `AdminAccounts.tsx`, `AdminUsers.tsx` | Deferred |
+| Data center CRUD panel | `AdminData.tsx` | Deferred |
+| Impact analytics range selector | `ProfileImpactAnalytics.tsx` | Deferred |
+| `ai_classify_used` column | `admin.py` | Deferred |
+| Evidence scan integration | `admin.py` | Deferred (Day 28) |
+| Batch actor username resolution | `AdminActivity.tsx` | Deferred |

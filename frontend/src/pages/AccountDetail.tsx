@@ -27,6 +27,7 @@ import DossierActions from '@/components/profile/DossierActions';
 import FilingsList from '@/components/profile/FilingsList';
 import { FollowButton } from '@/components/profile/FollowButton';
 import { cn } from '@/lib/utils';
+import { clearOgImage, setOgImage } from '@/lib/ogMeta';
 
 type Tab = 'overview' | 'activity' | 'about' | 'impact';
 
@@ -117,8 +118,14 @@ export default function AccountDetailPage() {
     load(accountId);
     return () => {
       mounted = false;
+      clearOgImage();
     };
   }, [id]);
+
+  useEffect(() => {
+    if (account?.id) setOgImage(account.id);
+    return () => clearOgImage();
+  }, [account?.id]);
 
   if (loading) {
     return (
@@ -238,6 +245,18 @@ export default function AccountDetailPage() {
           initialScore={account.score}
           linkedUserId={account.owner_user_id}
         />
+
+        {typeof account.profile_credibility === 'number' ? (
+          <div className="mt-4 rounded-2xl border border-border bg-card p-4">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+              Profile Credibility
+            </p>
+            <p className="mt-1 text-3xl font-bold">{account.profile_credibility}</p>
+            <p className="mt-1 text-[12px] text-muted-foreground">
+              Reflects profile completeness, verification, and ledger integrity signals.
+            </p>
+          </div>
+        ) : null}
 
         <ScoreLedgerPanel
           windowScores={windowScores}

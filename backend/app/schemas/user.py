@@ -58,6 +58,8 @@ class UserPrivate(UserPublic):
     trust_badge_rejected_at: datetime | None = None
     trust_badge_rejection_reason: str | None = None
     trust_badge_doc_type: str | None = None
+    credibility: int = 0
+    profile_credibility: int = 0
 
 
 class UserUpdateRequest(BaseModel):

@@ -19,6 +19,7 @@ from app.schemas.bubble import (
     VoteRequest,
 )
 from app.schemas.common import PaginatedResponse, SuccessEnvelope
+from app.repositories import account_repository
 from app.services.bubble_service import (
     create_bubble,
     get_bubble,
@@ -38,12 +39,17 @@ def _bubble_out(bubble: Bubble) -> dict:
     return data
 
 
-def _bubble_detail_out(bubble: Bubble) -> dict:
+async def _bubble_detail_out(db: AsyncSession, bubble: Bubble) -> dict:
     data = BubbleDetailOut.model_validate(bubble).model_dump(mode="json")
+    members_with_scores: list[tuple[dict, float]] = []
+    for member in bubble.members:
+        member_data = BubbleMemberOut.model_validate(member).model_dump(mode="json")
+        live_score = await account_repository.owner_profile_score(db, member.user_id)
+        member_data["score"] = live_score
+        members_with_scores.append((member_data, live_score))
+    members_with_scores.sort(key=lambda item: item[1], reverse=True)
     data["member_count"] = len(bubble.members)
-    data["members"] = [
-        BubbleMemberOut.model_validate(m).model_dump(mode="json") for m in bubble.members
-    ]
+    data["members"] = [item[0] for item in members_with_scores]
     return data
 
 
@@ -80,7 +86,7 @@ async def post_bubble(
     db: AsyncSession = Depends(get_db),
 ):
     bubble = await create_bubble(db, body, current_user)
-    return success({"bubble": _bubble_detail_out(bubble)})
+    return success({"bubble": await _bubble_detail_out(db, bubble)})
 
 
 @router.get(
@@ -127,7 +133,7 @@ async def get_bubble_by_id_route(
     db: AsyncSession = Depends(get_db),
 ):
     bubble = await get_bubble(db, bubble_id)
-    return success({"bubble": _bubble_detail_out(bubble)})
+    return success({"bubble": await _bubble_detail_out(db, bubble)})
 
 
 @router.post(

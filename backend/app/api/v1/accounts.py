@@ -36,6 +36,8 @@ from app.services import (
 )
 from app.services import audit_request_service
 from app.services.scoring_service import calc_window_scores_from_entries
+from app.services.credibility_service import profile_credibility_for_account
+from app.repositories import user_repository
 
 
 def _score_history(entries: list) -> list[dict]:
@@ -149,9 +151,13 @@ async def get_account_by_id(
 ):
     account = await get_account(db, account_id, current_user)
     entries = await ledger_repository.list_for_account(db, account_id)
+    owner = None
+    if account.owner_user_id:
+        owner = await user_repository.get_by_id(db, account.owner_user_id)
     payload = AccountDetailOut.model_validate(account)
     payload.score_history = _score_history(entries)
     payload.window_scores = calc_window_scores_from_entries(entries)
+    payload.profile_credibility = profile_credibility_for_account(account, owner)
     return success({"account": payload.model_dump(mode="json")})
 
 

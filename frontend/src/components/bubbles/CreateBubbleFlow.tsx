@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { uploadMedia } from '@/api/media';
 import { createBubble } from '@/api/bubbles';
 import type { BubbleType, BubbleVisibility } from '@/types/bubble';
+import ImageCropModal from '@/components/bubbles/ImageCropModal';
 
 const STEPS = [
   { id: 1, label: 'Basic Info' },
@@ -58,14 +59,16 @@ export default function CreateBubbleFlow() {
 
   const [invitedUsernames, setInvitedUsernames] = useState<string[]>([]);
   const [usernameInput, setUsernameInput] = useState('');
+  const [cropState, setCropState] = useState<{
+    type: 'cover' | 'image';
+    src: string;
+    aspect: number;
+  } | null>(null);
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'cover' | 'image') => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    e.target.value = '';
-  // TODO: add crop modal
+  const uploadCroppedBlob = async (blob: Blob, type: 'cover' | 'image') => {
     setUploading(type);
     try {
+      const file = new File([blob], `${type}.jpg`, { type: 'image/jpeg' });
       const res = await uploadMedia(file);
       if (!res.ok || !res.data?.url) {
         throw new Error(typeof res.error === 'string' ? res.error : 'Upload failed');
@@ -79,7 +82,20 @@ export default function CreateBubbleFlow() {
       toast.push(err instanceof Error ? err.message : 'Upload failed');
     } finally {
       setUploading(null);
+      setCropState(null);
     }
+  };
+
+  const handleUpload = (e: React.ChangeEvent<HTMLInputElement>, type: 'cover' | 'image') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    const src = URL.createObjectURL(file);
+    setCropState({
+      type,
+      src,
+      aspect: type === 'cover' ? 16 / 6 : 1,
+    });
   };
 
   const addUsername = () => {
@@ -228,7 +244,7 @@ export default function CreateBubbleFlow() {
                       type="file"
                       accept="image/*"
                       className="hidden"
-                      onChange={(e) => void handleUpload(e, 'cover')}
+                      onChange={(e) => handleUpload(e, 'cover')}
                     />
                   </label>
                 </div>
@@ -257,7 +273,7 @@ export default function CreateBubbleFlow() {
                         type="file"
                         accept="image/*"
                         className="hidden"
-                        onChange={(e) => void handleUpload(e, 'image')}
+                        onChange={(e) => handleUpload(e, 'image')}
                       />
                     </label>
                   </div>
@@ -542,6 +558,20 @@ export default function CreateBubbleFlow() {
           </button>
         </div>
       </main>
+
+      {cropState ? (
+        <ImageCropModal
+          open
+          imageSrc={cropState.src}
+          aspect={cropState.aspect}
+          title={cropState.type === 'cover' ? 'Crop cover image' : 'Crop bubble image'}
+          onClose={() => {
+            URL.revokeObjectURL(cropState.src);
+            setCropState(null);
+          }}
+          onConfirm={(blob) => void uploadCroppedBlob(blob, cropState.type)}
+        />
+      ) : null}
     </div>
   );
 }

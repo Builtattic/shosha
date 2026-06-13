@@ -10,6 +10,7 @@ from app.repositories import get_by_username, get_user_by_id, update_user
 from app.repositories import follow_repository
 from app.schemas.user import UserUpdateRequest
 from app.services._helpers import normalize_username, validate_username_format
+from app.services.credibility_service import calc_credibility
 
 
 async def get_me(db: AsyncSession, current_user: User) -> User:
@@ -39,6 +40,8 @@ async def update_me(
         return current_user
 
     user = await update_user(db, current_user, **fields)
+    cred = calc_credibility(user)
+    user = await update_user(db, user, credibility=cred.total)
     await db.commit()
     await db.refresh(user)
     return user
