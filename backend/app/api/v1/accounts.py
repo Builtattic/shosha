@@ -18,6 +18,7 @@ from app.schemas.account import (
     AccountDetailOut,
     AccountOut,
     AccountUpdateRequest,
+    AuditCreateRequest,
     SocialLinkCreateRequest,
     SocialLinkData,
     SocialLinkOut,
@@ -33,6 +34,7 @@ from app.services import (
     search_accounts,
     update_account,
 )
+from app.services import audit_request_service
 from app.services.scoring_service import calc_window_scores_from_entries
 
 
@@ -167,6 +169,30 @@ async def patch_account_by_id(
     account = await update_account(db, account_id, body, current_user)
     return success(
         {"account": AccountOut.model_validate(account).model_dump(mode="json")}
+    )
+
+
+@router.post(
+    "/{account_id}/audit",
+    summary="Request account audit",
+)
+async def post_account_audit(
+    account_id: UUID,
+    body: AuditCreateRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    audit_request = await audit_request_service.create_audit_request(
+        db,
+        current_user.id,
+        account_id,
+        body.reason,
+    )
+    return success(
+        {
+            "audit_request_id": str(audit_request.id),
+            "status": audit_request.status.value,
+        }
     )
 
 

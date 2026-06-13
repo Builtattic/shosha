@@ -10,31 +10,34 @@ Do NOT wait for backend completion.
 
 ---
 
-# Current Backend Status (Updated Day 21)
+# Current Backend Status (Updated Day 6)
 
 Backend API endpoints are **largely implemented**.
 
 What exists now:
 
-- **110 route handlers** under `/api/v1` (see `docs/PARITY_STATUS.md`)
+- **~112 route handlers** under `/api/v1` (see `docs/PARITY_STATUS.md`)
 - SQLAlchemy models + Alembic migrations (user onboarding fields, account workbook columns)
 - Services for reports, scoring, claims, disputes, admin, bubbles, notifications, etc.
 - Live API responses; frontend `api/*.ts` clients wired for core flows
 - Full user onboarding persistence (`PATCH /users/me`)
 - `GET /accounts/{id}/score-history` and `score-windows`
 - `POST /reports/{id}/moderate` with V1 adjudicate payload
+- `GET /me/swipe-aggregate`, feed filters + aggregates, profile follower counts
+- `POST /accounts/{id}/audit` (user-facing, dedupe on open requests)
+- Claims evidence via `POST /media/upload` from `ClaimProfileModal`
 
 What is still partial:
 
-- Bookmark toggle route (service exists, no router)
-- `/me/swipe-aggregate` endpoint
 - `profile_multipliers_from_user()` — moderate reads account workbook, not user onboarding
 - Evidence scan stub, generic admin data CRUD
-- Weekly-momentum cron
+- `LiveAccountScorePanel` / `PublicProfile` credibility wiring
+- Dossier-unfollow (deferred — no `account_follows` table)
+- Weekly-momentum cron implemented — schedule externally with `CRON_TOKEN`
 
 Frontend should prefer **live API** (`VITE_USE_MOCKS=false`). Mocks remain for local dev fallback only.
 
-See `docs/PHASE_2_PLAN.md` for remaining frontend wiring tasks.
+See `docs/V1_TO_V2_PARITY_AUDIT.md` for the master plan and `docs/PHASE_2_PLAN.md` for remaining frontend wiring tasks.
 
 ---
 

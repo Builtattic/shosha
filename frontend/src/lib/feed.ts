@@ -2,17 +2,13 @@ import type { FeedFilter, FeedReport, FeedItemProps } from '@/types/feed';
 
 export type { FeedReport };
 
+/** Client-side passthrough — server handles following/near/top via filter param. */
 export function filterFeedReports(reports: FeedReport[], filter: FeedFilter): FeedReport[] {
   switch (filter) {
-    case 'top':
-      return [...reports].sort((a, b) => Math.abs(b.base_score ?? 0) - Math.abs(a.base_score ?? 0));
-    case 'following':
-      // TODO: filter by followed accounts when follow graph is available in feed
-      return [];
-    case 'near':
-      // TODO: filter by location when location data is available in feed
-      return [];
     case 'for_you':
+    case 'following':
+    case 'near':
+    case 'top':
     default:
       return reports;
   }

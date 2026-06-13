@@ -10,6 +10,12 @@ export interface MeFiling {
   created_at: string;
 }
 
+export interface SwipeAggregate {
+  score: number;
+  aligns: number;
+  opposes: number;
+}
+
 export interface ScoreReplayResult {
   account_results: Array<{
     account_id: string;
@@ -19,6 +25,11 @@ export interface ScoreReplayResult {
     global_rank: number;
   }>;
   user_results: never[];
+}
+
+export async function getSwipeAggregate(): Promise<SwipeAggregate> {
+  const res = await apiClient.get<SwipeAggregate>('/me/swipe-aggregate');
+  return res.data;
 }
 
 export async function getMyFilings(): Promise<{ filings: MeFiling[] }> {

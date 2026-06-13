@@ -28,7 +28,6 @@ export default function SwipeScoreBreakdownCard({
               ? 'Swipe data loading…'
               : 'Community alignment from People page'}
           </p>
-          {/* TODO: wire /me/swipe-aggregate when endpoint exists (Day 13+) */}
         </div>
         <span
           className={cn(

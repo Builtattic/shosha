@@ -51,30 +51,45 @@ export default function Dashboard() {
   const trendingPeople = rawTrendingPeople;
 
   const [allFeed, setAllFeed] = useState<FeedReport[]>([]);
+  const [topStories, setTopStories] = useState<FeedReport[]>([]);
+  const [feedEmptyReason, setFeedEmptyReason] = useState<string | null>(null);
   const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null);
   const [storyDetailOpen, setStoryDetailOpen] = useState(false);
 
-  const feed = useMemo(
-    () => filterFeedReports(allFeed, activeTab),
-    [allFeed, activeTab],
-  );
+  const feed = useMemo(() => filterFeedReports(allFeed, activeTab), [allFeed, activeTab]);
 
-  const topStories = useMemo(
-    () => filterFeedReports(allFeed, 'top').slice(0, 5),
-    [allFeed],
-  );
-
-  // ── Feed + trending fetch ────────────────────────────────────────────────
+  // ── Feed fetch (per tab) ───────────────────────────────────────────────
   useEffect(() => {
     let active = true;
     setLoading(true);
 
-    getFeed(30)
+    getFeed(30, undefined, activeTab)
       .then((res) => {
-        if (active && res.ok && res.data) setAllFeed(res.data.items);
+        if (active && res.ok && res.data) {
+          setAllFeed(res.data.items);
+          setFeedEmptyReason(res.data.empty_reason ?? null);
+        }
       })
       .catch(() => undefined)
       .finally(() => { if (active) setLoading(false); });
+
+    return () => { active = false; };
+  }, [activeTab]);
+
+  // ── Top stories strip (always top filter) ──────────────────────────────
+  useEffect(() => {
+    let active = true;
+    getFeed(5, undefined, 'top')
+      .then((res) => {
+        if (active && res.ok && res.data) setTopStories(res.data.items);
+      })
+      .catch(() => undefined);
+    return () => { active = false; };
+  }, []);
+
+  // ── Trending fetch ─────────────────────────────────────────────────────
+  useEffect(() => {
+    let active = true;
 
     getTrendingPeople()
       .then((res) => {
@@ -491,16 +506,22 @@ export default function Dashboard() {
             >
               {activeTab === 'following' ? (
                 <>
-                  <p className="text-[15px] font-bold text-foreground">Following feed coming soon</p>
+                  <p className="text-[15px] font-bold text-foreground">No reports from people you follow</p>
                   <p className="mt-2 text-[13px] text-muted-foreground">
-                    Following feed coming soon — follow accounts to see their reports here.
+                    Follow users to see reports they file here.
                   </p>
                 </>
               ) : activeTab === 'near' ? (
                 <>
-                  <p className="text-[15px] font-bold text-foreground">Near You feed coming soon</p>
+                  <p className="text-[15px] font-bold text-foreground">
+                    {feedEmptyReason === 'insufficient_location_data'
+                      ? 'Add your city to see Near You'
+                      : 'No reports near you yet'}
+                  </p>
                   <p className="mt-2 text-[13px] text-muted-foreground">
-                    Near You feed coming soon — location-based reports will appear here.
+                    {feedEmptyReason === 'insufficient_location_data'
+                      ? 'Set your city in profile settings to filter reports by reporter location.'
+                      : 'Reports filed by people in your city will appear here.'}
                   </p>
                 </>
               ) : (

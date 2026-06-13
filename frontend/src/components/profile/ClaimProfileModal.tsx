@@ -7,11 +7,14 @@ import {
 import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/Toast';
 import { createClaim } from '@/api/claims';
+import { uploadMedia } from '@/api/media';
 
 type UploadedMedia = {
   url: string;
   type: 'image' | 'video';
   bytes: number;
+  thumbnail_url?: string | null;
+  media_type?: 'image' | 'video';
 };
 
 type ClaimStep = 1 | 2 | 3 | 4;
@@ -68,12 +71,17 @@ export function ClaimProfileModal({
     if (!file || !uploadTarget) return;
     setUploading(true);
     try {
-      // TODO: replace with uploadMedia (S3) when wiring evidence file upload
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const res = await uploadMedia(file);
+      if (!res.ok || !res.data?.url) {
+        toast.push(res.error ?? 'Upload failed');
+        return;
+      }
       const media: UploadedMedia = {
-        url: URL.createObjectURL(file), // Mock URL
-        type: file.type.startsWith('video/') ? 'video' : 'image',
-        bytes: file.size,
+        url: res.data.url,
+        type: res.data.media_type,
+        media_type: res.data.media_type,
+        bytes: res.data.size_bytes,
+        thumbnail_url: res.data.thumbnail_url,
       };
       if (uploadTarget === 'id') setIdMedia(media);
       else setLivenessMedia(media);

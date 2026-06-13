@@ -34,6 +34,14 @@ export interface ReportOut {
   } | null;
 }
 
+/** Feed list item — extends ReportOut with interaction aggregates. */
+export interface FeedReportOut extends ReportOut {
+  align_count?: number;
+  oppose_count?: number;
+  comment_count?: number;
+  viewer_vote?: 'ALIGN' | 'OPPOSE' | null;
+}
+
 export interface ReportCreatePayload {
   account_id: string;
   title: string;

@@ -3,7 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MapPin, Pencil } from 'lucide-react';
 import { useAuth } from '@/providers/AuthProvider';
-import { getMyFilings, replayMyScore, type MeFiling, type ScoreReplayResult } from '@/api/me';
+import {
+  getMyFilings,
+  getSwipeAggregate,
+  replayMyScore,
+  type MeFiling,
+  type ScoreReplayResult,
+  type SwipeAggregate,
+} from '@/api/me';
 import FilingsList from '@/components/profile/FilingsList';
 import SwipeScoreBreakdownCard from '@/components/profile/SwipeScoreBreakdownCard';
 import ProfileImpactAnalytics from '@/components/profile/ProfileImpactAnalytics';
@@ -27,6 +34,7 @@ export default function ProfilePage() {
   const [replayResults, setReplayResults] = useState<ScoreReplayResult['account_results']>([]);
   const [loadingExtras, setLoadingExtras] = useState(true);
   const [shareOpen, setShareOpen] = useState(false);
+  const [swipeAggregate, setSwipeAggregate] = useState<SwipeAggregate | null>(null);
 
   useEffect(() => {
     if (!profile?.id) return;
@@ -43,6 +51,14 @@ export default function ProfilePage() {
             if (typeof first === 'number') setScore(first);
           })
           .catch(() => null);
+
+        void getSwipeAggregate()
+          .then((aggregate) => {
+            if (mounted) setSwipeAggregate(aggregate);
+          })
+          .catch(() => {
+            if (mounted) setSwipeAggregate(null);
+          });
 
         const filingsRes = await getMyFilings();
         if (mounted) setFilings(filingsRes.filings ?? []);
@@ -130,8 +146,8 @@ export default function ProfilePage() {
           <ConnectionListModal
             ref={connectionListModalRef}
             targetUserId={profile.id}
-            followersCount={0}
-            followingCount={0}
+            followersCount={profile.followers_count ?? 0}
+            followingCount={profile.following_count ?? 0}
             showInlineTriggers={false}
           />
         ) : null}
@@ -143,8 +159,7 @@ export default function ProfilePage() {
             onClick={() => connectionListModalRef.current?.open('followers')}
             className="rounded-2xl border border-border py-3 text-center text-[12px] font-bold disabled:opacity-50"
           >
-            0 Followers
-            {/* TODO: wire follower counts when available */}
+            {profile.followers_count ?? 0} Followers
           </button>
           <button
             type="button"
@@ -152,7 +167,7 @@ export default function ProfilePage() {
             onClick={() => connectionListModalRef.current?.open('following')}
             className="rounded-2xl border border-border py-3 text-center text-[12px] font-bold disabled:opacity-50"
           >
-            0 Following
+            {profile.following_count ?? 0} Following
           </button>
         </div>
 
@@ -190,7 +205,7 @@ export default function ProfilePage() {
                     <p className="text-[14px] leading-relaxed">{profile.bio}</p>
                   </div>
                 ) : null}
-                <SwipeScoreBreakdownCard swipeAggregate={null} totalScore={score} />
+                <SwipeScoreBreakdownCard swipeAggregate={swipeAggregate} totalScore={score} />
               </motion.div>
             )}
 
@@ -231,7 +246,7 @@ export default function ProfilePage() {
                   }))}
                   showGraph
                   showImpactDetails
-                  swipeAggregate={null}
+                  swipeAggregate={swipeAggregate}
                   totalScore={score}
                 />
                 {replayResults.length > 0 && (

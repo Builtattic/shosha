@@ -29,6 +29,7 @@ export default function Feed() {
   const [reports, setReports] = useState<FeedReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [emptyReason, setEmptyReason] = useState<string | null>(null);
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -38,11 +39,13 @@ export default function Feed() {
     const fetchFeed = async () => {
       setLoading(true);
       setError(null);
+      setEmptyReason(null);
       try {
-        const res = await getFeed(30);
+        const res = await getFeed(30, undefined, filter);
         if (mounted) {
           if (res.ok && res.data) {
             setReports(res.data.items);
+            setEmptyReason(res.data.empty_reason ?? null);
           } else {
             setError(res.error || 'Failed to load feed');
           }
@@ -56,7 +59,7 @@ export default function Feed() {
 
     fetchFeed();
     return () => { mounted = false; };
-  }, [reloadKey]);
+  }, [filter, reloadKey]);
 
   const tabbedReports = useMemo(
     () => filterFeedReports(reports, filter),
@@ -172,17 +175,23 @@ export default function Feed() {
               {filter === 'following' ? (
                 <>
                   <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-                  <h3 className="text-xl font-medium text-foreground mb-2">Following feed coming soon</h3>
+                  <h3 className="text-xl font-medium text-foreground mb-2">No reports from people you follow</h3>
                   <p className="text-muted-foreground max-w-sm mx-auto">
-                    Following feed coming soon — follow accounts to see their reports here.
+                    Follow users to see reports they file here.
                   </p>
                 </>
               ) : filter === 'near' ? (
                 <>
                   <MapPin className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-                  <h3 className="text-xl font-medium text-foreground mb-2">Near You feed coming soon</h3>
+                  <h3 className="text-xl font-medium text-foreground mb-2">
+                    {emptyReason === 'insufficient_location_data'
+                      ? 'Add your city to see Near You'
+                      : 'No reports near you yet'}
+                  </h3>
                   <p className="text-muted-foreground max-w-sm mx-auto">
-                    Near You feed coming soon — location-based reports will appear here.
+                    {emptyReason === 'insufficient_location_data'
+                      ? 'Set your city in profile settings to filter reports by reporter location.'
+                      : 'Reports filed by people in your city will appear here.'}
                   </p>
                 </>
               ) : (

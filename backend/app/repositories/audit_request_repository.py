@@ -40,6 +40,21 @@ async def get_by_id(db: AsyncSession, audit_request_id: UUID) -> AuditRequest | 
     return result.scalar_one_or_none()
 
 
+async def get_open_by_user_and_account(
+    db: AsyncSession,
+    user_id: UUID,
+    account_id: UUID,
+) -> AuditRequest | None:
+    result = await db.execute(
+        select(AuditRequest).where(
+            AuditRequest.user_id == user_id,
+            AuditRequest.account_id == account_id,
+            AuditRequest.status.in_(_OPEN_AUDIT_STATUSES),
+        )
+    )
+    return result.scalar_one_or_none()
+
+
 async def update(db: AsyncSession, obj: AuditRequest, **kwargs) -> AuditRequest:
     for key, value in kwargs.items():
         setattr(obj, key, value)

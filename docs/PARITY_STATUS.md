@@ -1,9 +1,10 @@
 # V1 → V2 Parity Status
 
-Master gap-tracking document. Updated after **Phase 2 Days 20–21** (data foundation + scoring core).
+Master gap-tracking document. Updated after **Phase 2 Day 6** (feed filters, aggregates, profile counts, audit, claims S3) and **Days 20–21** (data foundation + scoring core).
 
 - **V1 reference:** `C:\Others\project\Builtattic\Shoshaaahhh`
 - **V2 target:** this repository (`shosha`)
+- **Master plan:** [V1_TO_V2_PARITY_AUDIT.md](./V1_TO_V2_PARITY_AUDIT.md) — gap audit (Tasks 1–10) + 8-day execution plan; live progress tracked here and in [PHASE_2_PLAN.md](./PHASE_2_PLAN.md)
 
 ---
 
@@ -11,12 +12,12 @@ Master gap-tracking document. Updated after **Phase 2 Days 20–21** (data found
 
 | Area | V1 baseline | V2 status | % complete* |
 |------|-------------|-----------|-------------|
-| Pages / routes | 55 routable pages | 41 FULL · 11 PARTIAL · 0 missing | **75%** |
-| API endpoints | ~95 handlers (+ OG) | 110 handlers; 5 gaps + stubs | **82%** |
+| Pages / routes | 55 routable pages | 41 FULL · 11 PARTIAL · 0 missing | **~78%** |
+| API endpoints | ~95 handlers (+ OG) | ~112 handlers; 3 gaps + stubs | **~85%** |
 | Admin features | 20 tracked | 13 FULL · 7 PARTIAL | **65%** |
 | Onboarding fields | 24 fields | 23 persisted · 1 not collected (`region`) | **96%** |
 | Notification triggers | 15 types | 15 implemented | **100%** |
-| Background jobs | 2 planned | 0 (webhook partial) | **0%** |
+| Background jobs | 2 planned | 1 (weekly-momentum cron); schedule externally | **50%** |
 | Scoring components | 8 | 5 full · 2 partial · 1 missing | **75%** |
 
 \* `(FULL + 0.5 × PARTIAL) / total × 100`
@@ -66,11 +67,21 @@ Master gap-tracking document. Updated after **Phase 2 Days 20–21** (data found
 
 ### Still stubbed or partial (high level)
 - Profile score multipliers do not yet read user onboarding (account workbook columns empty by default)
-- Following / Near You feed tabs show "coming soon"
 - `AdminQueue.tsx` quick-moderate does not send adjudicate scoring fields (use `AdminReview` for full adjudicate)
-- `/me/swipe-aggregate` missing
 - Weekly-momentum cron implemented (`POST/GET /api/v1/cron/weekly-momentum`); run migration + set `CRON_TOKEN` before scheduling
 - Evidence scan returns empty proposals
+
+### Day 6 — feed, profile, audit (shipped)
+- **Following feed:** `GET /feed?filter=following` — approved reports where `reporter_user_id` is in the current user's `user_follows.following_id` set. This is **user-follow → reporter** semantics, not account/dossier subscribe.
+- **Near You feed:** `GET /feed?filter=near` — approved reports where the reporter's onboarded `users.city` matches the viewer's city (case-insensitive). Returns `empty_reason: insufficient_location_data` when the viewer has no city. Does **not** use `accounts.region` (workbook field).
+- **`GET /me/swipe-aggregate`:** aggregate over `swipe_records` for profile swipe breakdown.
+- **Feed aggregates:** `FeedReportOut` on `GET /feed` includes `align_count`, `oppose_count`, `comment_count`, `viewer_vote`.
+- **`POST /accounts/{id}/audit`:** user-facing audit request with service-layer dedupe on open `(user_id, account_id)`.
+- **Profile counts:** `followers_count` / `following_count` on `UserPublic` / `UserPrivate`.
+- **Claims S3:** `ClaimProfileModal` uses `POST /media/upload` for evidence URLs in `evidence_payload` JSONB.
+
+### Dossier-unfollow (deferred)
+- V1 route `DELETE /accounts/{id}/dossier-unfollow` remains unimplemented. No `account_follows` table in V2. Day 6 Following feed uses `user_follows` only. Future options: add `account_follows` table after V1 reference confirms behavior, or defer if user-follow semantics suffice.
 
 ---
 
@@ -88,13 +99,13 @@ Master gap-tracking document. Updated after **Phase 2 Days 20–21** (data found
 | `/sign-in` | `/sign-in` | `SignIn.tsx` | PARTIAL — V2 adds phone/OTP |
 | `/sign-up` | `/sign-up` → redirect | — | FULL |
 | `/onboard` | `/onboard` | `Onboard.tsx` | FULL — all fields persisted; `region` not collected |
-| `/dashboard` | `/dashboard` | `Dashboard.tsx` | PARTIAL — credibility from profile; 2 feed tabs stubbed |
-| `/feed` | `/feed` | `Feed.tsx` | PARTIAL — Following/Near You stubbed |
-| `/profile` | `/profile` | `Profile.tsx` | PARTIAL — follower counts TODO |
+| `/dashboard` | `/dashboard` | `Dashboard.tsx` | PARTIAL — credibility from profile; feed tabs wired (following/near/top) |
+| `/feed` | `/feed` | `Feed.tsx` | PARTIAL — following/near/top filters wired; shares stat client-only |
+| `/profile` | `/profile` | `Profile.tsx` | PARTIAL — follower counts + swipe aggregate wired |
 | `/profile/edit` | `/profile/edit` | `EditProfile.tsx` | FULL |
 | `/profile/upgrade` | `/profile/upgrade` | `ProfileUpgrade.tsx` | FULL |
-| `/account/[id]` | `/accounts/:id` | `AccountDetail.tsx` | PARTIAL — score history + windows wired; audit missing |
-| `/people` | `/people` | `People.tsx` | PARTIAL — swipe aggregate missing |
+| `/account/[id]` | `/accounts/:id` | `AccountDetail.tsx` | PARTIAL — score history + windows wired; user audit wired |
+| `/people` | `/people` | `People.tsx` | PARTIAL — swipe aggregate on profile wired |
 | `/search` | `/search` | `Search.tsx` | FULL |
 | `/notifications` | `/notifications` | `Notifications.tsx` | FULL |
 | `/bookmarks` | `/bookmarks` | `Bookmarks.tsx` | FULL — toggle wired in feed |
@@ -141,10 +152,10 @@ Master gap-tracking document. Updated after **Phase 2 Days 20–21** (data found
 ### Missing vs V1
 | V1 route | Gap |
 |----------|-----|
-| `POST /accounts/[id]/audit` | No user-facing audit endpoint |
-| `DELETE /accounts/[id]/dossier-unfollow` | No dossier unfollow |
+| ~~`POST /accounts/[id]/audit`~~ | **Done (Day 6)** — `POST /api/v1/accounts/{id}/audit` |
+| `DELETE /accounts/[id]/dossier-unfollow` | No dossier unfollow — deferred; see Day 6 note (no `account_follows` table) |
 | ~~Bookmark toggle~~ | Done — `POST /reports/{id}/bookmark` |
-| `GET /me/swipe-aggregate` | Referenced in UI; not implemented |
+| ~~`GET /me/swipe-aggregate`~~ | **Done (Day 6)** |
 | `POST/GET /cron/weekly-momentum` | **Done** — persists `w1/w2/w3_delta` via `sum_deltas_by_age`; auth via `CRON_TOKEN` or admin |
 | `GET /api/og` | OG image generation missing |
 | `POST /admin/data/[collection]` | Collection record create missing |
@@ -202,16 +213,16 @@ Master gap-tracking document. Updated after **Phase 2 Days 20–21** (data found
 3. `profile_multipliers_from_user()` — map user onboarding → moderate multipliers (V1 parity)
 4. ~~Bookmark toggle API + FeedItem wire-up~~ **Done (Day 3 parity sprint)**
 5. ~~Notification triggers for votes, comments, claims, disputes, moderation-create, deletion-create~~ **Done (Day 3 parity sprint)**
-6. `POST /cron/weekly-momentum` for leaderboard weekly delta (windows API exists; cron does not)
+6. ~~`POST /cron/weekly-momentum` for leaderboard weekly delta~~ **Done (Day 4)** — schedule with `CRON_TOKEN`
 
 ### P1 — Acknowledged TODOs
 7. ~~Score history + score windows endpoints~~ **Done (Day 21)**
-8. `/me/swipe-aggregate`
-9. Following / Near You feed filters
+8. ~~`/me/swipe-aggregate`~~ **Done (Day 6)**
+9. ~~Following / Near You feed filters~~ **Done (Day 6)**
 10. Evidence scan integration
 11. Admin dashboard metrics (filingsLast7, aiAgreementRate, time-series)
-12. Claim evidence S3 upload
-13. `POST /accounts/{id}/audit`
+12. ~~Claim evidence S3 upload~~ **Done (Day 6)**
+13. ~~`POST /accounts/{id}/audit`~~ **Done (Day 6)**
 14. Generic admin data CRUD
 15. ~~Razorpay webhook notifications~~ **Done (Day 3 parity sprint)** — cancel + payment-failed emits
 16. `LiveAccountScorePanel` — followers + credibility from API

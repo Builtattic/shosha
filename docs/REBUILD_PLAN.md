@@ -5,8 +5,9 @@
 The original scaffold-only plan below was the **Days 1–5 baseline**. Implementation continued through **Day 19** with full-stack feature work.
 
 **Current docs:**
+- [V1_TO_V2_PARITY_AUDIT.md](./V1_TO_V2_PARITY_AUDIT.md) — master gap audit + 8-day final parity plan
 - [PARITY_STATUS.md](./PARITY_STATUS.md) — what is done vs V1
-- [PHASE_2_PLAN.md](./PHASE_2_PLAN.md) — Days 20–31 behavioral parity plan
+- [PHASE_2_PLAN.md](./PHASE_2_PLAN.md) — Days 20–31 behavioral parity plan (maps to audit Days 1–8)
 - [docs/README.md](./README.md) — documentation index
 
 ---
@@ -20,7 +21,7 @@ This phase generated project structure and setup only.
 ### Hard constraints (scaffold phase — satisfied)
 
 - ~~Do not generate business logic.~~ → **Now implemented**
-- ~~Do not generate API endpoints.~~ → **108 handlers live**
+- ~~Do not generate API endpoints.~~ → **~112 handlers live**
 - ~~Do not generate database tables.~~ → **16+ SQLAlchemy models**
 
 ### Target stack (unchanged)
@@ -60,9 +61,9 @@ Focus shifts from **route coverage** to **behavioral parity**:
 
 1. ~~Persist all onboarding fields + credibility~~ **Done (Day 20)**
 2. ~~Admin adjudicate with V1 scoring fields~~ **Done on `AdminReview` (Day 21)**; user→multiplier bridge open
-3. Bookmarks, feed filters, notification triggers
-4. ~~Score history, window scores~~ **Done (Day 21)**; weekly-momentum cron still open
-5. Evidence scan, account audit, claim upload, cleanup
+3. ~~Bookmarks, feed filters, notification triggers~~ **Done (Day 3 parity sprint + Day 6)**
+4. ~~Score history, window scores~~ **Done (Day 21)**; ~~weekly-momentum cron~~ **Done (Day 4)** — schedule with `CRON_TOKEN`
+5. ~~User account audit, claim S3 upload~~ **Done (Day 6)**; evidence scan + dossier-unfollow still open
 
 Full checklist: [PHASE_2_PLAN.md](./PHASE_2_PLAN.md)
 

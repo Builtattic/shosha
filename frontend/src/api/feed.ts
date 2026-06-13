@@ -1,10 +1,24 @@
 import { USE_MOCKS, apiClient } from '@/lib/apiClient';
 import * as mock from '@/mocks/feed';
 import type { ApiResponse } from '@/types/common';
-import type { FeedReport } from '@/types/feed';
-import type { ReportOut } from '@/types/report';
+import type { FeedFilter, FeedReport } from '@/types/feed';
+import type { FeedReportOut } from '@/types/report';
 
-export function toFeedReport(r: ReportOut): FeedReport {
+export function feedFilterToApi(filter: FeedFilter): 'all' | 'following' | 'near' | 'top' {
+  switch (filter) {
+    case 'following':
+      return 'following';
+    case 'near':
+      return 'near';
+    case 'top':
+      return 'top';
+    case 'for_you':
+    default:
+      return 'all';
+  }
+}
+
+export function toFeedReport(r: FeedReportOut): FeedReport {
   return {
     id: r.id,
     type: r.type ?? 'negative',
@@ -22,9 +36,15 @@ export function toFeedReport(r: ReportOut): FeedReport {
       thumbnail_url: m.thumbnail_url,
       media_type: m.media_type as 'image' | 'video',
     })),
-    // TODO: enrich feed with vote aggregates when backend exposes them
-    stats: { aligns: 0, opposes: 0, comments: 0, shares: 0 },
-    viewer: null,
+    stats: {
+      aligns: r.align_count ?? 0,
+      opposes: r.oppose_count ?? 0,
+      comments: r.comment_count ?? 0,
+      shares: 0, // no backend source — FeedItem tracks share clicks locally
+    },
+    viewer: r.viewer_vote
+      ? { vote: r.viewer_vote, bookmarked: false }
+      : null,
     account: r.account,
     reporter: null,
     can_request_moderation: false,
@@ -33,22 +53,35 @@ export function toFeedReport(r: ReportOut): FeedReport {
   };
 }
 
+export interface FeedResponse {
+  items: FeedReport[];
+  next_cursor: string | null;
+  empty_reason?: string | null;
+}
+
 const real = {
   getFeed: async (
     limit = 30,
     cursor?: string,
-  ): Promise<ApiResponse<{ items: FeedReport[]; next_cursor: string | null }>> => {
+    filter: FeedFilter = 'for_you',
+  ): Promise<ApiResponse<FeedResponse>> => {
     try {
-      const params = new URLSearchParams({ limit: String(limit) });
+      const params = new URLSearchParams({
+        limit: String(limit),
+        filter: feedFilterToApi(filter),
+      });
       if (cursor) params.set('cursor', cursor);
-      const response = await apiClient.get<{ items: ReportOut[]; next_cursor: string | null }>(
-        `/feed?${params}`,
-      );
+      const response = await apiClient.get<{
+        items: FeedReportOut[];
+        next_cursor: string | null;
+        empty_reason?: string | null;
+      }>(`/feed?${params}`);
       return {
         ok: true,
         data: {
           items: response.data.items.map(toFeedReport),
           next_cursor: response.data.next_cursor,
+          empty_reason: response.data.empty_reason ?? null,
         },
       };
     } catch (error: unknown) {
@@ -60,9 +93,10 @@ const real = {
 export async function getFeed(
   limit = 30,
   cursor?: string,
-): Promise<ApiResponse<{ items: FeedReport[]; next_cursor: string | null }>> {
+  filter: FeedFilter = 'for_you',
+): Promise<ApiResponse<FeedResponse>> {
   if (USE_MOCKS) {
     return mock.getFeed(limit, cursor);
   }
-  return real.getFeed(limit, cursor);
+  return real.getFeed(limit, cursor, filter);
 }
