@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, get_current_user_optional
+from app.core.ratelimit import check_rate_limit, client_ip_from_request, get_account_search_limiter
 from app.core.responses import success
 from app.models.enums import AccountStatus
 from app.models.user import User
@@ -100,6 +101,7 @@ async def get_accounts(
     summary="Search accounts",
 )
 async def get_accounts_search(
+    request: Request,
     q: str = Query(...),
     platform: str | None = Query(default=None),
     limit: int = Query(default=20, ge=1, le=100),
@@ -107,6 +109,10 @@ async def get_accounts_search(
     db: AsyncSession = Depends(get_db),
     current_user: User | None = Depends(get_current_user_optional),
 ):
+    await check_rate_limit(
+        f"search:{client_ip_from_request(request)}",
+        get_account_search_limiter(),
+    )
     items, next_cursor = await search_accounts(db, q, platform, limit, cursor)
     return success({"items": _serialize_accounts(items), "next_cursor": next_cursor})
 

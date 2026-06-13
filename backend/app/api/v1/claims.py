@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, require_moderator
+from app.core.ratelimit import check_rate_limit, get_claims_limiter
 from app.core.responses import success
 from app.models.user import User
 from app.schemas.claim import ClaimCreateRequest, ClaimDecisionRequest, ClaimOut
@@ -36,6 +37,7 @@ async def post_claim(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    await check_rate_limit(f"claims:{current_user.id}", get_claims_limiter())
     claim = await submit_claim(db, body, current_user)
     return success(
         {"claim": ClaimOut.model_validate(claim).model_dump(mode="json")}

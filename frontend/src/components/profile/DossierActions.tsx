@@ -40,7 +40,6 @@ export default function DossierActions({
     if (!reason.trim()) return;
     setAuditing(true);
     try {
-      // TODO: wire POST /accounts/{id}/audit when user-facing audit endpoint exists
       await apiClient.post(`/accounts/${accountId}/audit`, { reason });
       toast.push('Audit request entered into the queue.');
       setAuditOpen(false);

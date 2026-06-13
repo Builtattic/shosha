@@ -122,6 +122,7 @@ Backend variables:
 - `AWS_SECRET_ACCESS_KEY`
 - `AWS_REGION`
 - `S3_BUCKET_NAME`
+- `CRON_TOKEN` — shared secret for `POST/GET /api/v1/cron/weekly-momentum` (see [DEPLOYMENT.md — Scheduled Jobs](./DEPLOYMENT.md#scheduled-jobs--weekly-momentum))
 
 Notes:
 
@@ -235,6 +236,17 @@ uv run python -m app.db.seed --reset  # delete seed-* rows and reseed
 Requires `alembic upgrade head` to have been run first. The script is gated to non-production via the `ENVIRONMENT` setting — it exits immediately without touching the database when `ENVIRONMENT=production`.
 
 Admin marker user: `seed-admin@shosha.dev` (for mock-mode admin testing).
+
+### Weekly-momentum cron (local)
+
+Set `CRON_TOKEN` in the project root `.env`, restart the backend, then trigger the job:
+
+```bash
+curl -X POST "http://127.0.0.1:8000/api/v1/cron/weekly-momentum" \
+  -H "Authorization: Bearer ${CRON_TOKEN}"
+```
+
+Status check: `GET` the same path with the same header. Full production scheduling notes: [DEPLOYMENT.md](./DEPLOYMENT.md#scheduled-jobs--weekly-momentum).
 
 ### PostgreSQL connection quick check
 

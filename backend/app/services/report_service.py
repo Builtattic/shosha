@@ -18,7 +18,7 @@ from app.integrations.gemini import (
     heuristic_adjudication,
     verdict_to_dict,
 )
-from app.models.enums import NotificationType, ReportStatus, VoteType
+from app.models.enums import AdminActionType, NotificationType, ReportStatus, VoteType
 from app.models.report import Report, ReportComment, ReportVote
 from app.models.user import User
 from app.repositories import (
@@ -35,6 +35,7 @@ from app.repositories import (
     update_status,
     upsert_vote,
 )
+from app.repositories import admin_action_repository
 from app.schemas.report import (
     CommentCreateRequest,
     ModerationDecisionRequest,
@@ -45,9 +46,11 @@ from app.schemas.report import (
 from app.services import moderation_request_service
 from app.services._helpers import is_moderator_plus
 from app.services.notification_service import emit_report_notification
+from app.services.site_setting_service import get_settings as get_site_settings
+from app.services.system_actor_service import get_or_create_system_actor
 from app.services.scoring_service import (
     apply_report_score,
-    profile_multipliers_from_account,
+    resolve_report_multipliers,
     resolve_sheet_base_impact,
     resolve_sheet_base_impact_from_admin_impact,
     reverse_report_score,
@@ -175,6 +178,76 @@ async def get_report(
     return report
 
 
+def _community_auto_reject_eligible(
+    report_status: ReportStatus,
+    align_count: int,
+    oppose_count: int,
+    dispute_threshold: int,
+) -> bool:
+    """
+    Rule A (V1 parity, narrowed status guard).
+
+    V1 (`interactions/route.ts`) allows auto-reject when status !== 'rejected'.
+    Day 8 (parity hardening) restricts to PENDING only to avoid flipping APPROVED
+    reports to REJECTED while ledger entries remain — document as intentional divergence.
+    """
+    if report_status != ReportStatus.PENDING:
+        return False
+    total = align_count + oppose_count
+    if total < dispute_threshold:
+        return False
+    return oppose_count >= (2 / 3) * total
+
+
+async def _maybe_apply_community_auto_reject(
+    db: AsyncSession,
+    report: Report,
+    align_count: int,
+    oppose_count: int,
+) -> None:
+    settings = await get_site_settings(db)
+    threshold = int(settings.get("disputeThreshold", 3))
+    if not _community_auto_reject_eligible(
+        report.status, align_count, oppose_count, threshold
+    ):
+        return
+
+    system_actor = await get_or_create_system_actor(db)
+    now = datetime.now(timezone.utc)
+    report = await update_status(
+        db,
+        report,
+        ReportStatus.REJECTED,
+        system_actor.id,
+        now,
+    )
+    await admin_action_repository.create(
+        db,
+        actor_user_id=system_actor.id,
+        action_type=AdminActionType.REPORT_UPDATE,
+        target_type="report",
+        target_id=report.id,
+        reason="Auto-discarded by community vote ratio",
+        metadata_json={
+            "source": "system",
+            "verdict": "rejected",
+            "final_impact": 0,
+            "note": "Auto-discarded by community vote ratio",
+        },
+    )
+
+    account = await get_account_by_id(db, report.account_id)
+    if account is not None:
+        await emit_report_notification(
+            db=db,
+            report=report,
+            account=account,
+            new_status=ReportStatus.REJECTED,
+            reviewer=system_actor,
+        )
+    await db.commit()
+
+
 async def vote_on_report(
     db: AsyncSession,
     report_id: UUID,
@@ -216,6 +289,9 @@ async def vote_on_report(
             },
         )
         await db.commit()
+
+    await db.refresh(report)
+    await _maybe_apply_community_auto_reject(db, report, align_count, oppose_count)
 
     return vote, align_count, oppose_count
 
@@ -344,7 +420,8 @@ async def moderate_report(
             # report.base_score sees the updated value (flush, not commit).
             await db.flush()
 
-            multipliers = profile_multipliers_from_account(
+            multipliers = await resolve_report_multipliers(
+                db,
                 account,
                 repetition_pattern=data.repetition_pattern,
                 intent=data.intent,

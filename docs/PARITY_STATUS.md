@@ -1,10 +1,60 @@
 # V1 → V2 Parity Status
 
-Master gap-tracking document. Updated after **Phase 2 Day 7** (credibility wiring, OG images, billing redirect, bubble polish) and **Days 20–21** (data foundation + scoring core).
+Master gap-tracking document. Updated after **Day 8 (parity hardening)**, **Phase 2 Day 7** (credibility wiring, OG images, billing redirect, bubble polish), and **Days 20–21** (data foundation + scoring core).
 
 - **V1 reference:** `C:\Others\project\Builtattic\Shoshaaahhh`
 - **V2 target:** this repository (`shosha`)
 - **Master plan:** [V1_TO_V2_PARITY_AUDIT.md](./V1_TO_V2_PARITY_AUDIT.md) — gap audit (Tasks 1–10) + 8-day execution plan; live progress tracked here and in [PHASE_2_PLAN.md](./PHASE_2_PLAN.md)
+
+---
+
+## What shipped in Day 8 (parity hardening)
+
+> Label disambiguates this sprint from the original roadmap Day 8 in [PHASE_2_PLAN.md](./PHASE_2_PLAN.md).
+
+### Item 1 — Profile score multipliers from user onboarding
+- `calc_profile_scores_from_user()`, `profile_multipliers_from_user()`, `resolve_report_multipliers()` in `scoring_service.py` (ported V1 `calcProfileScores` lookup tables)
+- `reputation` multiplier hardcoded to `1.0` (no V2 `reporterScore` mapping yet)
+- Wired into `moderate_report()` and `admin_create_report()` (replaces `DEFAULT_MULTIPLIERS` on those paths)
+- `pytest tests/test_profile_multipliers.py` (7 tests)
+
+### Item 2 — LiveAccountScorePanel + PublicProfile UI
+- `LiveAccountScorePanel.tsx`: `profile_credibility`, `weekly_delta` (or "Pending"), follower counts via `getPublicUser(linkedUserId)`
+- `PublicProfile.tsx`: `profile_credibility` + `account.social_links` (all links shown — no V1 `canViewProfileField` gating; intentional divergence)
+
+### Item 3 — AdminQueue inline quick-adjudicate
+- Expandable **Quick adjudicate** reuses `AdminReviewControls` / full `moderateReport` payload per row
+- `AdminReview.tsx` unchanged
+
+### Item 4 — Cron ops documentation
+- `DEPLOYMENT.md` + `PROJECT_SETUP.md`: `CRON_TOKEN`, POST/GET curl for `/api/v1/cron/weekly-momentum`
+- `backend/scripts/verify_weekly_momentum_cron.py` — local ASGI verification
+
+### Item 5 — V1 rate limits (Upstash; skip silently when unset)
+| Route | Limit | Key |
+|-------|-------|-----|
+| `POST /ai/analyze` | 30/h | `ai:analyze:{user_id}` |
+| `POST /ai/classify` | 20/h | `ai:classify:{user_id}` |
+| `GET /accounts/search` | 60/min | `search:{client_ip}` |
+| `POST /claims` | 3/day | `claims:{user_id}` |
+| `POST /events` | 10/h | `events:{user_id}` (Redis prefix `rl:events`) |
+
+**Deferred:** events subscription tier daily cap (free=5 / pro=50).
+
+### Item 6 — Community vote auto-discard (Rule A only)
+- `vote_on_report()` auto-rejects when PENDING report hits `disputeThreshold` (default 3) with ≥⅔ opposes
+- **Status guard:** `PENDING` only (V1 uses `status !== 'rejected'` — documented intentional divergence)
+- No ledger reversal on community discard (V1 parity)
+- `get_or_create_system_actor()` (`username=shosha_system`) + `AdminAction` audit + `emit_report_notification` on reject
+- **Rule B deferred:** `reports.dispute_status` column missing — needs Alembic migration
+
+### Item 7 — Cleanup
+- Removed stale TODO in `DossierActions.tsx` (audit endpoint wired Day 6)
+- This doc + [CONTEXT.md](./CONTEXT.md) updated
+
+### Day 8 verification
+- `pytest` — `test_profile_multipliers`, `test_credibility_service`, `test_community_auto_reject` (17 passed)
+- `npx tsc --noEmit` — clean
 
 ---
 
@@ -33,13 +83,14 @@ Master gap-tracking document. Updated after **Phase 2 Day 7** (credibility wirin
 - `AccountDetail.tsx` displays `profile_credibility` + social links (from account response)
 - Deleted orphan stubs: `Login.tsx`, `Onboarding.tsx`, `Subscribe.tsx`, `Admin.tsx` (admin lives under `pages/admin/`)
 
-### Still deferred (Day 7 triage)
+### Still deferred (Day 7 triage — partially cleared Day 8)
 - Inter-bubble leaderboard denormalized scores (`bubbles.py` TODO)
-- `LiveAccountScorePanel` followers count wiring
-- `AdminQueue` quick-moderate adjudicate payload
+- ~~`LiveAccountScorePanel` followers count wiring~~ **Done (Day 8)**
+- ~~`AdminQueue` quick-moderate adjudicate payload~~ **Done (Day 8)**
 - Evidence scan stub
 - `region` onboard field / ranks filter
-- **Full TODO grep + categorize pass** (item 12) — partial list above only; see [CONTEXT.md](./CONTEXT.md) §3
+- Community vote **Rule B** (`dispute_status`) — migration pending
+- Events tier daily cap (free=5 / pro=50)
 
 ### Day 7 manual verification (2026-06-13)
 
@@ -73,7 +124,8 @@ Automated gates: `pytest tests/test_credibility_service.py` (5/5), `npx tsc --no
 | Onboarding fields | 24 fields | 23 persisted · 1 not collected (`region`) | **96%** |
 | Notification triggers | 15 types | 15 implemented | **100%** |
 | Background jobs | 2 planned | 1 (weekly-momentum cron); schedule externally | **50%** |
-| Scoring components | 8 | 5 full · 2 partial · 1 missing | **75%** |
+| Scoring components | 8 | 7 full · 1 partial · 0 missing | **~94%** |
+| Rate limits (V1 routes) | 8 tracked | 8 wired (Upstash optional) | **100%** |
 
 \* `(FULL + 0.5 × PARTIAL) / total × 100`
 
@@ -96,13 +148,13 @@ Automated gates: `pytest tests/test_credibility_service.py` (5/5), `npx tsc --no
 - Alembic `b7d2f4a9c1e3`: account workbook columns for multiplier lookup
 - Frontend: `AdminReviewControls.tsx` sends full adjudicate payload; `AccountDetail.tsx` wires history + W1/W2/W3
 
-### Still open from Days 20–21
-- `profile_multipliers_from_user()` — moderate uses **Account** workbook fields, not **User** onboarding; empty accounts get neutral 1.0 multipliers
-- No sync from user onboarding → account workbook columns
+### Still open from Days 20–21 (partially cleared Day 8)
+- ~~`profile_multipliers_from_user()`~~ **Done (Day 8)** — moderate + admin create use user onboarding lookup tables; `reputation=1.0`
+- No sync from user onboarding → account workbook columns (multipliers read user at moderate time, not stored on account)
 - Enum validators on profile question slugs (stored as strings; V1 option sets not enforced server-side)
 - `region` on user model but not collected in onboard UI
-- `LiveAccountScorePanel.tsx` — followers + credibility still stubbed
-- `DEFAULT_MULTIPLIERS` still used on admin report-create and evidence-proposal paths
+- ~~`LiveAccountScorePanel.tsx` — followers + credibility still stubbed~~ **Done (Day 8)**
+- `DEFAULT_MULTIPLIERS` still used on evidence-proposal path only
 
 ---
 
@@ -121,10 +173,11 @@ Automated gates: `pytest tests/test_credibility_service.py` (5/5), `npx tsc --no
 - Admin shell with moderation, claims, disputes, evidence, audits, abuse, users, accounts, settings, and more
 
 ### Still stubbed or partial (high level)
-- Profile score multipliers do not yet read user onboarding (account workbook columns empty by default)
-- `AdminQueue.tsx` quick-moderate does not send adjudicate scoring fields (use `AdminReview` for full adjudicate)
-- Weekly-momentum cron implemented (`POST/GET /api/v1/cron/weekly-momentum`); run migration + set `CRON_TOKEN` before scheduling
+- ~~Profile score multipliers from user onboarding~~ **Done (Day 8)**
+- ~~`AdminQueue.tsx` quick-moderate~~ **Done (Day 8)** — inline quick adjudicate; full review page unchanged
+- Weekly-momentum cron implemented; schedule externally — see [DEPLOYMENT.md](./DEPLOYMENT.md#scheduled-jobs--weekly-momentum)
 - Evidence scan returns empty proposals
+- Community vote Rule B (`dispute_status`) — deferred pending migration
 
 ### Day 6 — feed, profile, audit (shipped)
 - **Following feed:** `GET /feed?filter=following` — approved reports where `reporter_user_id` is in the current user's `user_follows.following_id` set. This is **user-follow → reporter** semantics, not account/dossier subscribe.
@@ -149,7 +202,7 @@ Automated gates: `pytest tests/test_credibility_service.py` (5/5), `npx tsc --no
 | `/leaderboard` | `/leaderboard` | `Leaderboard.tsx` | PARTIAL — 7d Δ column wired from `weekly_delta`; scope buttons still display-only |
 | `/report-issue` | `/report-issue` | `ReportIssue.tsx` | FULL |
 | `/trust-badge` | `/trust-badge` | `TrustBadge.tsx` | FULL |
-| `/profile/[id]` | `/profile/:id` | `PublicProfile.tsx` | PARTIAL — credibility/followers not fully wired |
+| `/profile/[id]` | `/profile/:id` | `PublicProfile.tsx` | PARTIAL — credibility + social links wired (Day 8); no field-level privacy gating |
 | `/[slug]` | `/:slug` | `SlugPage.tsx` | FULL |
 | `/sign-in` | `/sign-in` | `SignIn.tsx` | PARTIAL — V2 adds phone/OTP |
 | `/sign-up` | `/sign-up` → redirect | — | FULL |
@@ -175,7 +228,7 @@ Automated gates: `pytest tests/test_credibility_service.py` (5/5), `npx tsc --no
 | `/post/[id]` | `/reports/:id` | `ReportDetail.tsx` | FULL |
 | `/legal-policies/*` | `/legal-policies/*` | `legal/LegalHub.tsx`, `LegalPage.tsx` | FULL |
 | `/admin` | `/admin` | `admin/AdminDashboard.tsx` | PARTIAL — filings (7d) + queue depth wired; chart time-series TODO; `ai_agreement_rate` null until audit field exists |
-| `/admin/queue` | `/admin/queue` | `admin/AdminQueue.tsx` | PARTIAL — quick-moderate without adjudicate payload |
+| `/admin/queue` | `/admin/queue` | `admin/AdminQueue.tsx` | PARTIAL — inline quick adjudicate wired (Day 8); full review page for deep review |
 | `/admin/moderation` | `/admin/moderation` | `admin/AdminModeration.tsx` | FULL |
 | `/admin/review/[id]` | `/admin/review/:id` | `admin/AdminReview.tsx` | PARTIAL — full adjudicate via `AdminReviewControls` |
 | `/admin/claims` | `/admin/claims` | `admin/AdminClaims.tsx` | FULL |
@@ -220,8 +273,8 @@ Automated gates: `pytest tests/test_credibility_service.py` (5/5), `npx tsc --no
 | Endpoint | Issue |
 |----------|-------|
 | `POST /admin/accounts/{id}/evidence/scan` | Returns `proposals: []`, `scan_stubbed` |
-| `POST /reports/{id}/moderate` | Adjudicate fields supported; multipliers from account workbook (not user onboarding) |
-| `POST /admin/reports` (create) | Still uses `DEFAULT_MULTIPLIERS` |
+| `POST /reports/{id}/moderate` | Full adjudicate + `profile_multipliers_from_user()` (Day 8) |
+| `POST /admin/reports` (create) | Uses `resolve_report_multipliers` (Day 8) |
 | `GET /bubbles/leaderboard` | Sorts by created_at/member count, not bubble score |
 | `POST /webhooks/razorpay` | Notifies on cancel/halt; no notification on `subscription.charged` (V1 parity) |
 
@@ -237,7 +290,7 @@ Automated gates: `pytest tests/test_credibility_service.py` (5/5), `npx tsc --no
 | ig_url, tiktok_url, x_url, linkedin_url, reddit_url, yt_url, fb_url, snapchat_url | Yes | Yes |
 | region | No (not in onboard UI) | Yes |
 
-**Impact:** credibility and profile display use stored data. **Score multipliers** still read account workbook columns, not user onboarding — see open item `profile_multipliers_from_user()`.
+**Impact:** credibility and profile display use stored data. **Score multipliers** resolve from linked user onboarding at moderate time (Day 8).
 
 ---
 
@@ -246,6 +299,7 @@ Automated gates: `pytest tests/test_credibility_service.py` (5/5), `npx tsc --no
 | Trigger | V1 | V2 |
 |---------|----|----|
 | Report approved/rejected | Yes | Yes |
+| Community auto-reject (Rule A) | Yes | Yes (Day 8; PENDING-only guard) |
 | Moderation resolved | Yes | Yes |
 | Trust badge decided | Yes | Yes |
 | Deletion resolved | Yes | Yes |
@@ -265,7 +319,7 @@ Automated gates: `pytest tests/test_credibility_service.py` (5/5), `npx tsc --no
 ### P0 — Blocks core user flows
 1. ~~Persist onboarding credibility fields (User model + Onboard payload)~~ **Done (Day 20)**
 2. ~~Admin adjudicate with scoring fields (deed, baseScore, intent, circumstances, repetitionPattern)~~ **Done (Day 21)** — use `AdminReview`, not `AdminQueue`
-3. `profile_multipliers_from_user()` — map user onboarding → moderate multipliers (V1 parity)
+3. ~~`profile_multipliers_from_user()`~~ **Done (Day 8)**
 4. ~~Bookmark toggle API + FeedItem wire-up~~ **Done (Day 3 parity sprint)**
 5. ~~Notification triggers for votes, comments, claims, disputes, moderation-create, deletion-create~~ **Done (Day 3 parity sprint)**
 6. ~~`POST /cron/weekly-momentum` for leaderboard weekly delta~~ **Done (Day 4)** — schedule with `CRON_TOKEN`
@@ -280,11 +334,13 @@ Automated gates: `pytest tests/test_credibility_service.py` (5/5), `npx tsc --no
 13. ~~`POST /accounts/{id}/audit`~~ **Done (Day 6)**
 14. Generic admin data CRUD
 15. ~~Razorpay webhook notifications~~ **Done (Day 3 parity sprint)** — cancel + payment-failed emits
-16. `LiveAccountScorePanel` — followers + credibility from API
+16. ~~`LiveAccountScorePanel` — followers + credibility from API~~ **Done (Day 8)**
 17. Strict enum validators on onboarding slug fields
+18. Community vote Rule B (`dispute_status` migration + port)
+19. Events tier daily cap (free=5 / pro=50)
 
 ### P2 — Nice-to-have
-18. PDF share export, impact range selector, bubble crop, ranks region filter, OG route, orphan page cleanup, proxy-image path fix
+20. PDF share export, impact range selector, bubble crop, ranks region filter, OG route, orphan page cleanup, proxy-image path fix
 
 ---
 

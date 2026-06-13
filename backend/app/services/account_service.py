@@ -68,8 +68,9 @@ async def create_account(
         data.bio,
     )
     await db.commit()
-    await db.refresh(account)
-    return account
+    loaded = await get_account_by_id(db, account.id)
+    assert loaded is not None
+    return loaded
 
 
 async def list_accounts(
@@ -127,8 +128,9 @@ async def update_account(
 
     account = await repo_update_account(db, account, **fields)
     await db.commit()
-    await db.refresh(account)
-    return account
+    loaded = await get_account_by_id(db, account_id)
+    assert loaded is not None
+    return loaded
 
 
 async def get_social_links(

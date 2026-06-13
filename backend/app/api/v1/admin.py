@@ -51,7 +51,7 @@ from app.services import (
     site_setting_service,
     trust_badge_service,
 )
-from app.services.scoring_service import DEFAULT_MULTIPLIERS, apply_report_score
+from app.services.scoring_service import apply_report_score, resolve_report_multipliers
 
 router = APIRouter()
 
@@ -549,7 +549,8 @@ async def admin_create_report(
     report.reviewed_by = current_user.id
     await db.flush()
 
-    await apply_report_score(db, report, account, dict(DEFAULT_MULTIPLIERS))
+    multipliers = await resolve_report_multipliers(db, account)
+    await apply_report_score(db, report, account, multipliers)
 
     await admin_action_service.log_action(
         db,

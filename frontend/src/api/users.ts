@@ -12,6 +12,8 @@ export interface PublicUser {
   photo_url: string | null;
   role: string;
   created_at: string;
+  followers_count?: number;
+  following_count?: number;
 }
 
 // ── Real API ───────────────────────────────────────────────────────────────────
