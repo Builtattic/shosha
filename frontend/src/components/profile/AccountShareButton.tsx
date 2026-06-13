@@ -49,7 +49,6 @@ export default function AccountShareButton({
     } finally {
       setGenerating(false);
     }
-    // TODO: add PDF export when jspdf is installed
   }, [displayName, username, toast]);
 
   async function handleShare() {

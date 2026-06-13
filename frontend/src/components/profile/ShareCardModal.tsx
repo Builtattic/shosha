@@ -26,7 +26,9 @@ export default function ShareCardModal({
 }: ShareCardModalProps) {
   const toast = useToast();
   const exportRef = useRef<HTMLDivElement>(null);
-  const [exporting, setExporting] = useState(false);
+  const [exporting, setExporting] = useState<'png' | 'pdf' | null>(null);
+
+  const CARD_SIZE = 600;
 
   useEffect(() => {
     if (!open) return;
@@ -37,21 +39,25 @@ export default function ShareCardModal({
     };
   }, [open]);
 
+  async function getCanvas() {
+    const { default: html2canvas } = await import('html2canvas');
+    const node = exportRef.current;
+    if (!node) throw new Error('Card element not found');
+    return html2canvas(node, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: false,
+      backgroundColor: '#18181b',
+      logging: false,
+      width: CARD_SIZE,
+      height: CARD_SIZE,
+    });
+  }
+
   async function handlePng() {
-    setExporting(true);
+    setExporting('png');
     try {
-      const { default: html2canvas } = await import('html2canvas');
-      const node = exportRef.current;
-      if (!node) throw new Error('Card element not found');
-
-      const canvas = await html2canvas(node, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: false,
-        backgroundColor: '#18181b',
-        logging: false,
-      });
-
+      const canvas = await getCanvas();
       canvas.toBlob((blob) => {
         if (!blob) return;
         const url = URL.createObjectURL(blob);
@@ -65,9 +71,29 @@ export default function ShareCardModal({
     } catch {
       toast.push('PNG export failed');
     } finally {
-      setExporting(false);
+      setExporting(null);
     }
-    // TODO: add PDF export when jspdf is installed
+  }
+
+  async function handlePdf() {
+    setExporting('pdf');
+    try {
+      const [canvas, { jsPDF }] = await Promise.all([
+        getCanvas(),
+        import('jspdf'),
+      ]);
+      const imgData = canvas.toDataURL('image/png');
+      const w = CARD_SIZE * 0.2646;
+      const h = CARD_SIZE * 0.2646;
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [w, h] });
+      pdf.addImage(imgData, 'PNG', 0, 0, w, h);
+      pdf.save(`shosha_${username.replace(/^@/, '')}.pdf`);
+      toast.push('PDF saved');
+    } catch {
+      toast.push('PDF export failed');
+    } finally {
+      setExporting(null);
+    }
   }
 
   async function handleCopyLink() {
@@ -97,11 +123,20 @@ export default function ShareCardModal({
             <button
               type="button"
               onClick={handlePng}
-              disabled={exporting}
+              disabled={exporting !== null}
               className="flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-[12px] font-bold text-white disabled:opacity-50"
             >
-              {exporting ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+              {exporting === 'png' ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
               PNG
+            </button>
+            <button
+              type="button"
+              onClick={handlePdf}
+              disabled={exporting !== null}
+              className="flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-[12px] font-bold text-white disabled:opacity-50"
+            >
+              {exporting === 'pdf' ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+              PDF
             </button>
             <button
               type="button"
@@ -141,6 +176,8 @@ export default function ShareCardModal({
             top: 0,
             zIndex: -1,
             pointerEvents: 'none',
+            width: CARD_SIZE,
+            height: CARD_SIZE,
           }}
           aria-hidden
         >

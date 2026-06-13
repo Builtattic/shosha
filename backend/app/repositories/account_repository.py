@@ -220,6 +220,17 @@ async def list_by_owner(
     return list(result.scalars().all())
 
 
+async def owner_profile_score(db: AsyncSession, owner_user_id: UUID) -> float:
+    """Live profile score: website account if present, else highest owned account."""
+    accounts = await list_by_owner(db, owner_user_id, limit=50)
+    if not accounts:
+        return 0.0
+    for account in accounts:
+        if account.platform == "website":
+            return float(account.score or 0)
+    return max(float(account.score or 0) for account in accounts)
+
+
 async def list_all_account_ids(db: AsyncSession) -> list[UUID]:
     result = await db.execute(select(Account.id))
     return list(result.scalars().all())

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Enum, Index, String, Text
+from sqlalchemy import Boolean, DateTime, Enum, Index, Integer, String, Text, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -64,6 +64,9 @@ class User(Base, BaseModelMixin):
     trust_badge_payment_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     trust_badge_subscription_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
     trust_badge_subscription_currency: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    credibility: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("0"), default=0
+    )
     fcm_tokens: Mapped[list | None] = mapped_column(JSONB, nullable=True)
 
     owned_accounts = relationship("Account", back_populates="owner", foreign_keys="Account.owner_user_id")

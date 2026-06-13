@@ -32,6 +32,8 @@ export interface DashboardMeUser {
   snapchat_url?: string | null;
   // Verification
   trust_badge?: boolean | null;
+  credibility?: number;
+  profile_credibility?: number;
 }
 
 export interface TrendingPerson {

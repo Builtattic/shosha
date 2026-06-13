@@ -19,6 +19,7 @@ export interface Account {
   score_breakdown: Record<string, unknown> | null;
   social_links: SocialLink[];
   weekly_delta?: number | null;
+  profile_credibility?: number | null;
 }
 
 export interface AccountCreatePayload {

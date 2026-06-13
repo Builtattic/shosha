@@ -39,6 +39,8 @@ export interface UserProfile {
   yt_url?: string | null;
   fb_url?: string | null;
   snapchat_url?: string | null;
+  credibility?: number;
+  profile_credibility?: number;
 }
 
 export interface UpdateUserPayload {

@@ -53,7 +53,6 @@ import BubbleNew from '@/pages/BubbleNew';
 import People from '@/pages/People';
 import TrustBadge from '@/pages/TrustBadge';
 import ProfileUpgrade from '@/pages/ProfileUpgrade';
-import Billing from '@/pages/Billing';
 import LegalHub from '@/pages/legal/LegalHub';
 import LegalPage from '@/pages/legal/LegalPage';
 import Bookmarks from '@/pages/Bookmarks';
@@ -150,7 +149,7 @@ export const router = createBrowserRouter([
 
   // Payments
   { path: '/subscribe', element: <Navigate to="/profile/upgrade" replace /> },
-  { path: '/billing',   element: <AppRoute><Billing /></AppRoute> },
+  { path: '/billing',   element: <Navigate to="/profile/upgrade" replace /> },
 
   // Admin
   { path: '/admin', element: <AdminPageRoute><AdminDashboard /></AdminPageRoute> },

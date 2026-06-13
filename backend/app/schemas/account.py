@@ -43,6 +43,7 @@ class ScoreHistoryPoint(BaseModel):
 class AccountDetailOut(AccountOut):
     score_history: list[ScoreHistoryPoint] = Field(default_factory=list)
     window_scores: dict = Field(default_factory=dict)
+    profile_credibility: int | None = None
 
 
 class AccountCreateRequest(BaseModel):
