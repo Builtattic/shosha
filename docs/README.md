@@ -6,6 +6,8 @@ V2 rebuild target: `shosha` (this repo). V1 reference: `C:\Others\project\Builta
 
 ---
 
+> Starting a new AI session? Read [CONTEXT.md](./CONTEXT.md) first.
+
 ## Start here
 
 | Document | Purpose |
