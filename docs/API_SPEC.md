@@ -1,6 +1,6 @@
 # Shosha V2 API Spec (MVP Contract)
 
-> **Status (Day 21):** This document originated as the MVP contract. Implementation has **exceeded** this scope — notifications, claims, disputes, admin, bubbles, people, impact, events, AI, imports, payments, full user onboarding, and score history/windows are live. For the current endpoint inventory and gaps vs V1, see **[PARITY_STATUS.md](./PARITY_STATUS.md)**.
+> **Status (Day 6):** This document originated as the MVP contract. Implementation has **exceeded** this scope — notifications, claims, disputes, admin, bubbles, people, impact, events, AI, imports, payments, full user onboarding, score history/windows, feed filters/aggregates, swipe aggregate, profile follower counts, user audit, and claims S3 upload are live. For the current endpoint inventory and gaps vs V1, see **[PARITY_STATUS.md](./PARITY_STATUS.md)**.
 
 This document defines the **original MVP API contract** for implementation.
 
@@ -778,6 +778,38 @@ Additional top-level fields (existing fields unchanged):
 ### Global rank — POST `/api/v1/me/score/replay`
 
 Each `account_results[]` entry includes `global_rank` (1 + count of active accounts with higher score).
+
+---
+
+## Day 6 additions (feed, profile, audit, claims)
+
+### GET `/api/v1/me/swipe-aggregate`
+- **Auth:** Required (Firebase Bearer)
+- **Response:** `{ "ok": true, "data": { "score": float, "aligns": int, "opposes": int } }`
+- **Behavior:** Read-only aggregate over `swipe_records` for the current user (`SUM(delta)`, counts by `SwipeDirection`).
+
+### GET `/api/v1/feed` (extended)
+- **Query params:** existing `limit`, `cursor`, `platform` plus `filter` = `all` | `following` | `near` | `top` (default `all`)
+- **Auth:** Optional for `all` and `top`; **required** for `following` and `near` (401 if missing)
+- **Response items:** `FeedReportOut` extends `ReportOut` with `align_count`, `oppose_count`, `comment_count`, `viewer_vote` (nullable)
+- **Response envelope:** `{ items, next_cursor, empty_reason? }` — `empty_reason: "insufficient_location_data"` when `filter=near` and viewer has no `city`
+- **Filter semantics:**
+  - `following` — `reporter_user_id IN (SELECT following_id FROM user_follows WHERE follower_id = :me)` (user-follow → reporter; not account/dossier subscribe)
+  - `near` — inner join reporter `users`; `lower(trim(reporter.city)) = lower(trim(viewer.city))`
+  - `top` — order by `abs(base_score) DESC NULLS LAST`, then `created_at DESC`
+- **Aggregates:** Batch GROUP BY queries per page (not N+1 per report)
+
+### POST `/api/v1/accounts/{account_id}/audit`
+- **Auth:** Required
+- **Body:** `{ "reason": string }` (1–2000 chars)
+- **Response:** `{ "audit_request_id": uuid, "status": "PENDING" }`
+- **Behavior:** Creates `audit_requests` row; service-layer dedupe blocks open `(user_id, account_id)` pairs (409). No notification (not in BUSINESS_RULES).
+
+### User profile counts — GET `/api/v1/users/me`, GET `/api/v1/users/{user_id}`
+- **Additional fields on `UserPublic` / `UserPrivate`:** `followers_count`, `following_count` (from `user_follows`)
+
+### Claims evidence (frontend)
+- `ClaimProfileModal` uploads via `POST /api/v1/media/upload`; stores HTTPS URLs in `claim_requests.evidence_payload` JSONB (no schema change).
 
 ---
 

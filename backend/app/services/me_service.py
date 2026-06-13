@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.repositories import account_repository
 from app.repositories import report_bookmark_repository as bookmark_repo
 from app.repositories import report_repository
+from app.repositories import swipe_repository
 from app.services import scoring_service
 
 
@@ -67,6 +68,13 @@ async def get_filings(db: AsyncSession, current_user_id: UUID) -> dict:
             }
         )
     return {"filings": filings}
+
+
+async def get_swipe_aggregate(
+    db: AsyncSession,
+    current_user_id: UUID,
+) -> dict[str, float | int]:
+    return await swipe_repository.aggregate_for_user(db, current_user_id)
 
 
 async def get_score_replay(db: AsyncSession, current_user_id: UUID) -> dict:

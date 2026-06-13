@@ -57,6 +57,19 @@ class ReportOut(BaseModel):
     account: AccountSummary | None = None
 
 
+class FeedReportOut(ReportOut):
+    align_count: int = 0
+    oppose_count: int = 0
+    comment_count: int = 0
+    viewer_vote: VoteType | None = None
+
+
+class FeedListData(BaseModel):
+    items: list[FeedReportOut]
+    next_cursor: str | None = None
+    empty_reason: str | None = None
+
+
 class ReportMediaCreate(BaseModel):
     media_type: str = Field(max_length=32)
     url: str = Field(max_length=1024)

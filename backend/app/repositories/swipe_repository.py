@@ -11,6 +11,31 @@ from app.models.enums import SwipeDirection
 from app.models.swipe_record import SwipeRecord
 
 
+async def aggregate_for_user(
+    db: AsyncSession,
+    user_id: UUID,
+) -> dict[str, float | int]:
+    result = await db.execute(
+        select(
+            func.count()
+            .filter(SwipeRecord.direction == SwipeDirection.ALIGN)
+            .label("aligns"),
+            func.count()
+            .filter(SwipeRecord.direction == SwipeDirection.OPPOSE)
+            .label("opposes"),
+            func.coalesce(func.sum(SwipeRecord.delta), 0).label("score"),
+        )
+        .select_from(SwipeRecord)
+        .where(SwipeRecord.user_id == user_id)
+    )
+    row = result.one()
+    return {
+        "aligns": int(row.aligns),
+        "opposes": int(row.opposes),
+        "score": float(row.score),
+    }
+
+
 async def get_by_user_and_account(
     db: AsyncSession,
     user_id: UUID,

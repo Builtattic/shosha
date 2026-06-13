@@ -74,3 +74,12 @@ async def post_me_score_replay(
 ):
     result = await me_service.get_score_replay(db, current_user.id)
     return success(result)
+
+
+@router.get("/me/swipe-aggregate")
+async def get_me_swipe_aggregate(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = await me_service.get_swipe_aggregate(db, current_user.id)
+    return success(result)

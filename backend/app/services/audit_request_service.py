@@ -8,6 +8,7 @@ from app.core.exceptions import raise_api_error
 from app.models.audit_request import AuditRequest
 from app.models.enums import AuditRequestStatus
 from app.repositories import audit_request_repository as repo
+from app.repositories import get_account_by_id
 
 
 async def create_audit_request(
@@ -16,6 +17,17 @@ async def create_audit_request(
     account_id: UUID,
     reason: str,
 ) -> AuditRequest:
+    account = await get_account_by_id(db, account_id)
+    if account is None:
+        raise_api_error("not_found", "Account not found")
+
+    existing = await repo.get_open_by_user_and_account(db, user_id, account_id)
+    if existing is not None:
+        raise_api_error(
+            "conflict",
+            "A pending audit request already exists for this account",
+        )
+
     audit_request = await repo.create(db, user_id, account_id, reason)
     await db.commit()
     await db.refresh(audit_request)

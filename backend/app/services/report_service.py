@@ -397,6 +397,17 @@ async def get_feed(
     limit: int = 20,
     cursor: str | None = None,
     platform: str | None = None,
+    feed_filter: str = "all",
     current_user=None,
-) -> tuple[list[Report], str | None]:
-    return await repo_list_feed(db, limit, cursor, platform)
+) -> tuple[list[Report], str | None, str | None]:
+    viewer_user_id = current_user.id if current_user is not None else None
+    viewer_city = current_user.city if current_user is not None else None
+    return await repo_list_feed(
+        db,
+        limit,
+        cursor,
+        platform,
+        feed_filter=feed_filter,  # type: ignore[arg-type]
+        viewer_user_id=viewer_user_id,
+        viewer_city=viewer_city,
+    )

@@ -2,19 +2,33 @@
 
 Post–Day 19 execution plan. Goal: V2 **behaves** like V1, not just routes like V1.
 
+**Canonical source:** [V1_TO_V2_PARITY_AUDIT.md](./V1_TO_V2_PARITY_AUDIT.md) — original gap audit + **8-day final parity plan** (Days 1–8). This file tracks the same work using Phase 2 numbering (Days 20–31).
+
+| Audit 8-day plan | Phase 2 (this doc) | Theme |
+|------------------|-------------------|-------|
+| Day 1 | Day 20 | Onboarding / user profile fields |
+| Day 2 | Day 21–22 | Scoring engine, adjudicate, score history/windows |
+| Day 3 | Day 23 | Notifications + bookmark toggle |
+| Day 4 | Day 27 | Weekly-momentum cron, ranks/leaderboard |
+| Day 5 | Day 28 (partial) | Admin panel completion (evidence scan, data CRUD) |
+| Day 6 | Day 24–26, 28–29 | Feed, people, audit, claims *(dossier-unfollow deferred)* |
+| Day 7 | Day 30–31 | Page polish, orphans, PDF/crop/billing |
+| Day 8 | Day 31 | Integration sign-off |
+
 **Timeline:** Days 20–31 (~12 working days)  
 **Compressed MVP:** Days 20–25 (Phases 1–3 only) if time-constrained
 
 ---
 
-## Current state (after Day 21)
+## Current state (after Day 6)
 
 Structure is largely complete:
-- 55+ routable pages, 19 admin pages, 110 API handlers
+- 55+ routable pages, 19 admin pages, ~112 API handlers
 - Onboarding fields persisted; credibility computed from stored profile on Dashboard
 - Admin review (`AdminReviewControls`) sends full V1 adjudicate payload; score history + window endpoints live
+- Feed tabs (following/near/top), feed vote aggregates, swipe aggregate, profile follower counts, user audit, claims S3 upload
 
-Remaining work is **behavioral parity**: user→multiplier bridge, notifications, feed filters, cron/ranks, evidence scan.
+Remaining work is **behavioral parity**: user→multiplier bridge, evidence scan, admin dashboard charts, `PublicProfile`/`LiveAccountScorePanel` credibility wiring.
 
 See [PARITY_STATUS.md](./PARITY_STATUS.md) for the full gap matrix.
 
@@ -70,21 +84,21 @@ See [PARITY_STATUS.md](./PARITY_STATUS.md) for the full gap matrix.
 
 **Goal:** Feed, bookmarks, notifications feel alive.
 
-### Day 24 — Bookmarks + feed enrichment
+### Day 24 — Bookmarks + feed enrichment ✅ (partial Day 6)
 - [x] `POST /reports/{id}/bookmark` (toggle) using `report_bookmark_service` *(Day 3 parity sprint)*
 - [x] `FeedItem.tsx` — wire bookmark toggle *(Day 3 parity sprint)*
-- [ ] Feed API: include vote aggregates on feed items
-- [ ] `api/feed.ts` — remove enrich TODO
+- [x] Feed API: include vote aggregates on feed items (`FeedReportOut`) *(Day 6)*
+- [x] `api/feed.ts` — map real align/oppose/comment counts *(Day 6)*
 
-**Exit criteria:** Bookmark from feed → `/bookmarks`; unbookmark works.
+**Exit criteria:** Bookmark from feed → `/bookmarks`; unbookmark works. **Met.** Feed cards show vote/comment counts.
 
-### Day 25 — Feed tabs + notification triggers
-- [ ] Backend: `GET /feed?filter=following|near` with real filters
-- [ ] `lib/feed.ts`, `Dashboard.tsx`, `Feed.tsx` — enable Following / Near You tabs
+### Day 25 — Feed tabs + notification triggers ✅ (partial Day 6)
+- [x] Backend: `GET /feed?filter=all|following|near|top` with real filters *(Day 6)*
+- [x] `lib/feed.ts`, `Dashboard.tsx`, `Feed.tsx` — Following / Near You / Top tabs *(Day 6)*
 - [x] Notifications: vote, comment, moderation-request-to-admins *(Day 3 parity sprint)*
 - [x] Notifications: claim decided, dispute filed/decided, deletion-request submitted *(Day 3 parity sprint)*
 
-**Exit criteria:** Following tab shows followed users' reports; vote/comment creates notification.
+**Exit criteria:** Following tab shows followed users' reports; vote/comment creates notification. **Met** (Following = reports from followed **reporters** via `user_follows`; Near = reporter city match).
 
 ---
 
@@ -92,14 +106,14 @@ See [PARITY_STATUS.md](./PARITY_STATUS.md) for the full gap matrix.
 
 **Goal:** Leaderboard, Ranks, People, Account pages match V1 score behavior.
 
-### Day 26 — Score history + windows + swipe aggregate (partial — started Day 21)
+### Day 26 — Score history + windows + swipe aggregate ✅ (Day 6)
 - [x] `GET /accounts/{id}/score-history` (from `ledger_entries`)
 - [x] `GET /accounts/{id}/score-windows` (W1/W2/W3)
-- [ ] `GET /me/swipe-aggregate`
+- [x] `GET /me/swipe-aggregate` *(Day 6)*
 - [x] Wire `AccountDetail.tsx`, `ScoreLedgerPanel.tsx`
-- [ ] `SwipeScoreBreakdownCard.tsx` — needs swipe aggregate
+- [x] `SwipeScoreBreakdownCard.tsx` — swipe aggregate on Profile *(Day 6)*
 
-**Exit criteria:** Account page shows score history; people swipe breakdown populated. **Partial** — account dossier met; people swipe not.
+**Exit criteria:** Account page shows score history; people swipe breakdown populated. **Met.**
 
 ### Day 27 — Weekly momentum cron + rank surfaces
 - [x] Port `POST/GET /cron/weekly-momentum` from V1 (V2: ledger delta persistence via `sum_deltas_by_age`)
@@ -116,21 +130,21 @@ See [PARITY_STATUS.md](./PARITY_STATUS.md) for the full gap matrix.
 
 **Goal:** Ops tooling and dossier actions complete.
 
-### Day 28 — Evidence scan + account audit
+### Day 28 — Evidence scan + account audit (partial — Day 6)
 - [ ] Wire `scanPublicEvidence` in `admin.py` (port V1 integration)
 - [ ] `AdminEvidence.tsx` — remove stub warning when proposals return
-- [ ] `POST /accounts/{id}/audit` — user-facing audit request
-- [ ] `DossierActions.tsx` — wire audit button
-- [ ] `DELETE /accounts/{id}/dossier-unfollow` (if needed for V1 parity)
+- [x] `POST /accounts/{id}/audit` — user-facing audit request *(Day 6)*
+- [x] `DossierActions.tsx` — wire audit button *(Day 6)*
+- [ ] `DELETE /accounts/{id}/dossier-unfollow` — **deferred** (no `account_follows` table; see PARITY_STATUS)
 
-**Exit criteria:** Admin scan → proposals appear; user can request audit.
+**Exit criteria:** Admin scan → proposals appear; user can request audit. **Partial** — user audit met; evidence scan + dossier-unfollow not.
 
-### Day 29 — Claims upload + payments notifications
-- [ ] `ClaimProfileModal.tsx` — `uploadMedia` for evidence (replace blob URL)
+### Day 29 — Claims upload + payments notifications ✅ (Day 6)
+- [x] `ClaimProfileModal.tsx` — `uploadMedia` for evidence (replace blob URL) *(Day 6)*
 - [x] Razorpay webhook: payment failed/cancelled notifications *(Day 3 parity sprint)*
 - [x] Claim decide → notification *(Day 3 parity sprint)*
 
-**Exit criteria:** Claim with file upload works; payment failure notifies user.
+**Exit criteria:** Claim with file upload works; payment failure notifies user. **Met** (S3 required locally; 503 shows error toast).
 
 ---
 
@@ -140,7 +154,7 @@ See [PARITY_STATUS.md](./PARITY_STATUS.md) for the full gap matrix.
 
 ### Day 30 — Path fixes + partial page completion
 - [ ] Fix `FeedShareCard` proxy path → `/api/v1/proxy-image`
-- [ ] `PublicProfile.tsx` — follower counts + credibility from backend
+- [ ] `PublicProfile.tsx` — credibility from backend (follower counts on `GET /users/{id}` done Day 6)
 - [ ] `Settings.tsx` — deletion attachment upload (or document intentional skip)
 - [ ] Bubble leaderboard denormalized score OR document sort parity
 - [ ] `CreateBubbleFlow.tsx` crop modal (or defer with resize-only)
@@ -203,11 +217,11 @@ Defer cron/ranks (Phase 4) and evidence scan (Phase 5) by one week.
 
 ## Success metrics (target end of Day 31)
 
-| Metric | Target | Current (Day 21) |
-|--------|--------|------------------|
+| Metric | Target | Current (Day 6) |
+|--------|--------|-----------------|
 | Onboarding fields persisted | 24/24 | 23/24 (`region` not in onboard UI) |
-| Pages FULL (not PARTIAL) | ≥ 50/55 | 41/55 |
-| P0 punch list | 5/5 done | 2/6 done |
-| P1 punch list | ≥ 8/9 done | 1/11 done |
-| Notification triggers | ≥ 13/15 | 15/15 *(Day 3 parity sprint)* |
-| Smoke test | 12/12 pass | partial (onboard + adjudicate + account windows) |
+| Pages FULL (not PARTIAL) | ≥ 50/55 | ~43/55 |
+| P0 punch list | 5/5 done | 5/6 done (multipliers from user open) |
+| P1 punch list | ≥ 8/9 done | 7/11 done |
+| Notification triggers | ≥ 13/15 | 15/15 |
+| Smoke test | 12/12 pass | partial (feed tabs, swipe aggregate, audit, claims upload added) |

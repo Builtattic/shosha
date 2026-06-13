@@ -23,6 +23,8 @@ export interface UserProfile {
   trust_badge_pending?: boolean;
   trust_badge_rejected_at?: string | null;
   trust_badge_rejection_reason?: string | null;
+  followers_count?: number;
+  following_count?: number;
   occupation_role?: string | null;
   network_size?: string | null;
   education?: string | null;

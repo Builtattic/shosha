@@ -82,3 +82,7 @@ class SocialLinksData(BaseModel):
 
 class SocialLinkData(BaseModel):
     link: SocialLinkOut
+
+
+class AuditCreateRequest(BaseModel):
+    reason: str = Field(min_length=1, max_length=2000)

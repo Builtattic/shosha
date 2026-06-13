@@ -24,6 +24,7 @@ from app.services import (
     get_public_profile,
     update_me,
 )
+from app.services.user_service import with_follow_counts
 from app.services._helpers import normalize_username
 
 router = APIRouter()
@@ -55,6 +56,7 @@ async def patch_users_me(
     db: AsyncSession = Depends(get_db),
 ):
     user = await update_me(db, current_user, body)
+    user = await with_follow_counts(db, user)
     return success(
         {"user": UserPrivate.model_validate(user).model_dump(mode="json")}
     )

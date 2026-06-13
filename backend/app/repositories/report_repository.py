@@ -1,21 +1,100 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import aliased, selectinload
 
 from app.models.account import Account
 from app.models.enums import ReportStatus, VoteType
 from app.models.report import Report, ReportComment, ReportMedia, ReportVote
+from app.models.user import User
+from app.models.user_follow import UserFollow
 from app.repositories._pagination import (
     apply_created_at_cursor,
     build_next_cursor,
     decode_cursor,
 )
+
+FeedFilter = Literal["all", "following", "near", "top"]
+
+
+def _approved_feed_stmt(*, platform: str | None):
+    stmt = (
+        select(Report)
+        .where(Report.status == ReportStatus.APPROVED)
+        .options(
+            selectinload(Report.media_items),
+            selectinload(Report.account),
+        )
+    )
+    if platform is not None:
+        stmt = stmt.join(Account).where(Account.platform == platform)
+    return stmt
+
+
+async def fetch_feed_aggregates(
+    db: AsyncSession,
+    report_ids: list[UUID],
+    viewer_user_id: UUID | None,
+) -> dict[UUID, dict]:
+    if not report_ids:
+        return {}
+
+    vote_result = await db.execute(
+        select(
+            ReportVote.report_id,
+            func.count()
+            .filter(ReportVote.vote_type == VoteType.ALIGN)
+            .label("align_count"),
+            func.count()
+            .filter(ReportVote.vote_type == VoteType.OPPOSE)
+            .label("oppose_count"),
+        )
+        .where(ReportVote.report_id.in_(report_ids))
+        .group_by(ReportVote.report_id)
+    )
+    comment_result = await db.execute(
+        select(
+            ReportComment.report_id,
+            func.count().label("comment_count"),
+        )
+        .where(ReportComment.report_id.in_(report_ids))
+        .group_by(ReportComment.report_id)
+    )
+
+    aggregates: dict[UUID, dict] = {
+        report_id: {
+            "align_count": 0,
+            "oppose_count": 0,
+            "comment_count": 0,
+            "viewer_vote": None,
+        }
+        for report_id in report_ids
+    }
+
+    for row in vote_result.all():
+        aggregates[row.report_id]["align_count"] = int(row.align_count)
+        aggregates[row.report_id]["oppose_count"] = int(row.oppose_count)
+
+    for row in comment_result.all():
+        aggregates[row.report_id]["comment_count"] = int(row.comment_count)
+
+    if viewer_user_id is not None:
+        viewer_result = await db.execute(
+            select(ReportVote.report_id, ReportVote.vote_type).where(
+                ReportVote.report_id.in_(report_ids),
+                ReportVote.user_id == viewer_user_id,
+            )
+        )
+        for report_id, vote_type in viewer_result.all():
+            aggregates[report_id]["viewer_vote"] = vote_type
+
+    return aggregates
 
 
 async def _attach_vote_comment_counts(db: AsyncSession, report: Report) -> None:
@@ -83,23 +162,48 @@ async def list_feed(
     limit: int = 20,
     cursor: str | None = None,
     platform: str | None = None,
-) -> tuple[list[Report], str | None]:
-    stmt = (
-        select(Report)
-        .where(Report.status == ReportStatus.APPROVED)
-        .options(
-            selectinload(Report.media_items),
-            selectinload(Report.account),
+    feed_filter: FeedFilter = "all",
+    viewer_user_id: UUID | None = None,
+    viewer_city: str | None = None,
+) -> tuple[list[Report], str | None, str | None]:
+    empty_reason: str | None = None
+
+    if feed_filter == "near":
+        normalized_city = (viewer_city or "").strip()
+        if not normalized_city:
+            return [], None, "insufficient_location_data"
+
+    stmt = _approved_feed_stmt(platform=platform)
+
+    if feed_filter == "following":
+        following_subq = select(UserFollow.following_id).where(
+            UserFollow.follower_id == viewer_user_id
         )
-    )
-    if platform is not None:
-        stmt = stmt.join(Account).where(Account.platform == platform)
+        stmt = stmt.where(Report.reporter_user_id.in_(following_subq))
+    elif feed_filter == "near":
+        reporter = aliased(User)
+        stmt = stmt.join(reporter, Report.reporter_user_id == reporter.id).where(
+            func.lower(func.trim(reporter.city)) == func.lower(normalized_city)
+        )
+    elif feed_filter == "top":
+        stmt = apply_created_at_cursor(
+            stmt, Report.created_at, decode_cursor(cursor), descending=True
+        )
+        stmt = stmt.order_by(
+            func.abs(Report.base_score).desc().nulls_last(),
+            Report.created_at.desc(),
+            Report.id.desc(),
+        ).limit(limit + 1)
+        result = await db.execute(stmt)
+        return (*build_next_cursor(list(result.scalars().all()), limit), empty_reason)
+
     stmt = apply_created_at_cursor(
         stmt, Report.created_at, decode_cursor(cursor), descending=True
     )
     stmt = stmt.order_by(Report.created_at.desc(), Report.id.desc()).limit(limit + 1)
     result = await db.execute(stmt)
-    return build_next_cursor(list(result.scalars().all()), limit)
+    items, next_cursor = build_next_cursor(list(result.scalars().all()), limit)
+    return items, next_cursor, empty_reason
 
 
 async def list_moderation_queue(

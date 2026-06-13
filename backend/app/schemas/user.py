@@ -39,6 +39,8 @@ class UserPublic(BaseModel):
     role: UserRole
     onboarding_complete: bool = False
     created_at: datetime
+    followers_count: int = 0
+    following_count: int = 0
 
 
 class UserPrivate(UserPublic):
