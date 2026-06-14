@@ -41,7 +41,7 @@ function isSameOrigin(url: string): boolean {
 function resolveImg(url?: string): string | null {
   if (!url || url === 'null' || url === 'undefined') return null;
   if (isSameOrigin(url)) return url;
-  return `/api/proxy-image?url=${encodeURIComponent(url)}`;
+  return `/api/v1/proxy-image?url=${encodeURIComponent(url)}`;
 }
 
 /** Best still-image source from a media object (works for both image & video). */
