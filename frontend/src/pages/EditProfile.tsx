@@ -190,6 +190,24 @@ export default function EditProfilePage() {
       return;
     }
 
+    const socialChecks = [
+      [form.ig_url, 'Instagram'],
+      [form.tiktok_url, 'TikTok'],
+      [form.x_url, 'X / Twitter'],
+      [form.linkedin_url, 'LinkedIn'],
+      [form.reddit_url, 'Reddit'],
+      [form.yt_url, 'YouTube'],
+      [form.fb_url, 'Facebook'],
+      [form.snapchat_url, 'Snapchat'],
+    ] as const;
+    for (const [handle, label] of socialChecks) {
+      const trimmed = handle.trim();
+      if (trimmed && !trimmed.startsWith('@')) {
+        setError(`${label} handle must start with @`);
+        return;
+      }
+    }
+
     if (!initial) return;
     // Send only changed fields. Send the RAW value (including "") so that a field
     // the user intentionally cleared is explicitly persisted as empty — the backend
@@ -413,9 +431,13 @@ export default function EditProfilePage() {
             <div key={key} className="rounded-xl border border-border p-3">
               <label className="mb-1 block text-[11px] font-medium text-muted-foreground">{label}</label>
               <input
-                type="url"
+                type="text"
                 value={form[key]}
                 onChange={(e) => updateField(key, e.target.value)}
+                placeholder="@username"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 className="w-full bg-transparent text-[14px] outline-none"
               />
             </div>

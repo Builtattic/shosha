@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/providers/AuthProvider';
 import { getCurrentUser, updateCurrentUser } from '@/api/auth';
+import { uploadMedia } from '@/api/media';
 import { checkUsernameAvailability } from '@/api/users';
 import { USE_MOCKS } from '@/lib/apiClient';
 import { setMockOnboardingComplete } from '@/mocks/auth';
@@ -46,6 +47,151 @@ const EMPTY: FormState = {
   email: '',
 };
 
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const ACCEPTED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+const IMAGE_ACCEPT = 'image/jpeg,image/png,image/webp,image/gif';
+
+type InitialSnapshot = {
+  display_name: string;
+  username: string;
+  photo_url: string;
+  bio: string;
+  city: string;
+  phone: string;
+  dob: string;
+  country: string;
+  quote: string;
+  occupation_role: string;
+  network_size: string;
+  education: string;
+  specialized_field: string;
+  manages_money_people_system: string;
+  physical_intellectual_limitations: string;
+  ig_url: string;
+  tiktok_url: string;
+  x_url: string;
+  linkedin_url: string;
+  reddit_url: string;
+  yt_url: string;
+  fb_url: string;
+  snapchat_url: string;
+  onboarding_complete: boolean;
+};
+
+function snapshotFromForm(form: FormState, username: string, onboardingComplete: boolean): InitialSnapshot {
+  return {
+    display_name: form.name?.trim() ?? '',
+    username,
+    photo_url: form.photoUrl?.trim() ?? '',
+    bio: form.bio?.trim() ?? '',
+    city: form.city?.trim() ?? '',
+    phone: form.phone?.trim() ?? '',
+    dob: form.dob?.trim() ?? '',
+    country: form.country?.trim() ?? '',
+    quote: form.quote?.trim() ?? '',
+    occupation_role: form.occupationRole?.trim() ?? '',
+    network_size: form.networkSize?.trim() ?? '',
+    education: form.education?.trim() ?? '',
+    specialized_field: form.specializedField?.trim() ?? '',
+    manages_money_people_system: form.managesMoneyPeopleSystem?.trim() ?? '',
+    physical_intellectual_limitations: form.physicalIntellectualLimitations?.trim() ?? '',
+    ig_url: form.igUrl?.trim() ?? '',
+    tiktok_url: form.tiktokUrl?.trim() ?? '',
+    x_url: form.xUrl?.trim() ?? '',
+    linkedin_url: form.linkedinUrl?.trim() ?? '',
+    reddit_url: form.redditUrl?.trim() ?? '',
+    yt_url: form.ytUrl?.trim() ?? '',
+    fb_url: form.fbUrl?.trim() ?? '',
+    snapchat_url: form.snapchatUrl?.trim() ?? '',
+    onboarding_complete: onboardingComplete,
+  };
+}
+
+function buildUpdatePayload(
+  current: InitialSnapshot,
+  initial: InitialSnapshot,
+  markComplete: boolean,
+): UpdateUserPayload {
+  const payload: UpdateUserPayload = {};
+  const assignIfChanged = <K extends keyof InitialSnapshot>(
+    key: K,
+    apiKey: keyof UpdateUserPayload,
+  ) => {
+    if (current[key] === initial[key]) return;
+    const value = current[key];
+    (payload as Record<string, unknown>)[apiKey] = value === '' ? undefined : value;
+  };
+
+  assignIfChanged('display_name', 'display_name');
+  assignIfChanged('username', 'username');
+  assignIfChanged('bio', 'bio');
+  assignIfChanged('city', 'city');
+  assignIfChanged('phone', 'phone');
+  assignIfChanged('dob', 'dob');
+  assignIfChanged('country', 'country');
+  assignIfChanged('quote', 'quote');
+  assignIfChanged('occupation_role', 'occupation_role');
+  assignIfChanged('network_size', 'network_size');
+  assignIfChanged('education', 'education');
+  assignIfChanged('specialized_field', 'specialized_field');
+  assignIfChanged('manages_money_people_system', 'manages_money_people_system');
+  assignIfChanged('physical_intellectual_limitations', 'physical_intellectual_limitations');
+  assignIfChanged('ig_url', 'ig_url');
+  assignIfChanged('tiktok_url', 'tiktok_url');
+  assignIfChanged('x_url', 'x_url');
+  assignIfChanged('linkedin_url', 'linkedin_url');
+  assignIfChanged('reddit_url', 'reddit_url');
+  assignIfChanged('yt_url', 'yt_url');
+  assignIfChanged('fb_url', 'fb_url');
+  assignIfChanged('snapchat_url', 'snapchat_url');
+
+  if (current.photo_url !== initial.photo_url && current.photo_url) {
+    payload.photo_url = current.photo_url;
+  }
+
+  if (markComplete && !initial.onboarding_complete) {
+    payload.onboarding_complete = true;
+  }
+
+  return payload;
+}
+
+function validateSocialUrls(form: FormState): string | null {
+  const checks: Array<[string | undefined, string]> = [
+    [form.igUrl, 'Instagram'],
+    [form.tiktokUrl, 'TikTok'],
+    [form.xUrl, 'X / Twitter'],
+    [form.linkedinUrl, 'LinkedIn'],
+    [form.redditUrl, 'Reddit'],
+    [form.ytUrl, 'YouTube'],
+    [form.fbUrl, 'Facebook'],
+    [form.snapchatUrl, 'Snapchat'],
+  ];
+  for (const [handle, label] of checks) {
+    const trimmed = handle?.trim() ?? '';
+    if (trimmed && !trimmed.startsWith('@')) {
+      return `${label} handle must start with @`;
+    }
+  }
+  return null;
+}
+
+function getPhotoUrlValidationError(photoUrl: string, photoUploading: boolean): string | null {
+  const trimmed = photoUrl.trim();
+  if (!trimmed) return null;
+  if (photoUploading) return 'Please wait for photo upload to finish.';
+  if (trimmed.startsWith('data:')) {
+    return 'Photo is still processing. Please wait or upload again.';
+  }
+  if (trimmed.startsWith('blob:')) {
+    return 'Photo upload did not finish. Please upload again.';
+  }
+  if (!/^https?:\/\//i.test(trimmed)) {
+    return 'Profile photo must be a valid http(s) URL.';
+  }
+  return null;
+}
+
 // ── Primitive UI Components ────────────────────────────────────────────────────
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
@@ -57,19 +203,21 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
 }
 
 function TextField({
-  value, onChange, placeholder, type = 'text', readOnly,
+  value, onChange, placeholder, type = 'text', readOnly, maxLength,
 }: {
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
   type?: string;
   readOnly?: boolean;
+  maxLength?: number;
 }) {
   return (
     <input
       type={type}
       value={value}
       readOnly={readOnly}
+      maxLength={maxLength}
       onChange={e => onChange(e.target.value)}
       placeholder={placeholder}
       className={cn(
@@ -129,10 +277,13 @@ function SocialField({
       <div className="flex-1 min-w-0">
         <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground leading-none mb-0.5">{label}</p>
         <input
-          type="url"
+          type="text"
           value={value}
           onChange={e => onChange(e.target.value)}
           placeholder={placeholder}
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           className="w-full bg-transparent text-[12px] font-medium outline-none placeholder:text-muted-foreground/50"
         />
       </div>
@@ -290,7 +441,9 @@ export default function Onboard() {
   };
 
   const [form, setForm] = useState<FormState>(EMPTY);
+  const [initial, setInitial] = useState<InitialSnapshot | null>(null);
   const [saving, setSaving] = useState(false);
+  const [photoUploading, setPhotoUploading] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
   const [checking, setChecking] = useState(true);
@@ -348,35 +501,63 @@ export default function Onboard() {
     getCurrentUser()
       .then(res => {
         const u = res.ok ? res.data : null;
-        setForm(f => ({
-          ...f,
-          // From profile (snake_case → camelCase)
-          name: u?.name || firebaseUser.displayName || f.name,
-          username: u?.username || firebaseUser.email?.split('@')[0] || f.username,
-          phone: u?.phone || firebaseUser.phoneNumber || f.phone,
-          dob: u?.dob || f.dob,
-          city: u?.city || f.city,
-          country: u?.country || f.country,
-          email: u?.email || firebaseUser.email || f.email,
-          occupationRole: u?.occupation_role || f.occupationRole,
-          networkSize: u?.network_size || f.networkSize,
-          education: u?.education || f.education,
-          specializedField: u?.specialized_field || f.specializedField,
-          managesMoneyPeopleSystem: u?.manages_money_people_system || f.managesMoneyPeopleSystem,
-          physicalIntellectualLimitations: u?.physical_intellectual_limitations || f.physicalIntellectualLimitations,
-          igUrl: u?.ig_url || f.igUrl,
-          tiktokUrl: u?.tiktok_url || f.tiktokUrl,
-          xUrl: u?.x_url || f.xUrl,
-          linkedinUrl: u?.linkedin_url || f.linkedinUrl,
-          redditUrl: u?.reddit_url || f.redditUrl,
-          ytUrl: u?.yt_url || f.ytUrl,
-          fbUrl: u?.fb_url || f.fbUrl,
-          snapchatUrl: u?.snapchat_url || f.snapchatUrl,
-          photoUrl: u?.photo_url || firebaseUser.photoURL || f.photoUrl,
-          bio: u?.bio || f.bio,
-          quote: u?.quote || f.quote,
+        const rawUsername = u?.username || firebaseUser.email?.split('@')[0] || '';
+        const normalizedUsername = normalizeUsername(rawUsername);
+        const nextForm: FormState = {
+          ...EMPTY,
+          name: u?.display_name || firebaseUser.displayName || '',
+          username: normalizedUsername,
+          phone: u?.phone || firebaseUser.phoneNumber || '',
+          dob: u?.dob || '',
+          city: u?.city || '',
+          country: u?.country || '',
+          email: u?.email || firebaseUser.email || '',
+          occupationRole: u?.occupation_role || '',
+          networkSize: u?.network_size || '',
+          education: u?.education || '',
+          specializedField: u?.specialized_field || '',
+          managesMoneyPeopleSystem: u?.manages_money_people_system || '',
+          physicalIntellectualLimitations: u?.physical_intellectual_limitations || '',
+          igUrl: u?.ig_url || '',
+          tiktokUrl: u?.tiktok_url || '',
+          xUrl: u?.x_url || '',
+          linkedinUrl: u?.linkedin_url || '',
+          redditUrl: u?.reddit_url || '',
+          ytUrl: u?.yt_url || '',
+          fbUrl: u?.fb_url || '',
+          snapchatUrl: u?.snapchat_url || '',
+          photoUrl: u?.photo_url || firebaseUser.photoURL || '',
+          bio: u?.bio || '',
+          quote: u?.quote || '',
           trustBadge: Boolean(u?.trust_badge),
-        }));
+        };
+        setForm(nextForm);
+        setInitial(snapshotFromForm(nextForm, normalizedUsername, u?.onboarding_complete ?? false));
+
+        if (!normalizedUsername) {
+          setUsernameError(null);
+          setUsernameAvailable(null);
+          return;
+        }
+        const formatError = validateUsernameFormat(normalizedUsername);
+        if (formatError) {
+          setUsernameError(formatError);
+          setUsernameAvailable(null);
+          return;
+        }
+        setUsernameError(null);
+        setUsernameChecking(true);
+        checkUsernameAvailability(normalizedUsername)
+          .then(availRes => {
+            if (availRes.ok && availRes.data) {
+              setUsernameAvailable(availRes.data.available);
+              setUsernameError(availRes.data.available ? null : 'Username is already taken');
+            } else {
+              setUsernameAvailable(false);
+              setUsernameError(availRes.error || 'Invalid username');
+            }
+          })
+          .finally(() => setUsernameChecking(false));
       })
       .finally(() => setChecking(false));
   }, [isLoading, firebaseUser]); // eslint-disable-line
@@ -384,20 +565,100 @@ export default function Onboard() {
   const credibility = useMemo(() => calcCredibility(form), [form]);
   const age = calcAge(form.dob);
 
-  function handlePhotoUpload(file: File | null) {
+  async function handlePhotoUpload(file: File | null) {
     if (!file) return;
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      if (typeof reader.result === 'string') set('photoUrl', reader.result);
-    };
-    reader.readAsDataURL(file);
+
+    if (!ACCEPTED_IMAGE_TYPES.has(file.type)) {
+      setError('Please upload a JPG, PNG, WebP, or GIF image.');
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      setError('Image must be 10MB or smaller.');
+      return;
+    }
+
+    const previousPhoto = form.photoUrl;
+    setPhotoUploading(true);
+    setError('');
+    try {
+      const res = await uploadMedia(file);
+      if (res.ok && res.data?.url) {
+        set('photoUrl', res.data.url);
+      } else {
+        set('photoUrl', previousPhoto);
+        setError(res.error || 'Photo upload failed');
+      }
+    } catch {
+      set('photoUrl', previousPhoto);
+      setError('Photo upload failed');
+    } finally {
+      setPhotoUploading(false);
+      if (photoInputRef.current) photoInputRef.current.value = '';
+    }
   }
 
   async function handleSave({ markComplete }: { markComplete: boolean }) {
     setError('');
 
+    if (photoUploading) {
+      setError('Please wait for photo upload to finish.');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    const normalizedUsername = normalizeUsername(form.username ?? '');
+    const usernameFormatError = normalizedUsername
+      ? validateUsernameFormat(normalizedUsername)
+      : markComplete
+        ? 'Username must be at least 3 characters'
+        : null;
+    if (usernameFormatError) {
+      setUsernameError(usernameFormatError);
+      setError('Please fix your username before continuing.');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    if (usernameChecking) {
+      setError('Please wait — still checking username availability.');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    if (usernameAvailable === false) {
+      setError('Please choose a different username.');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
     if (usernameError) {
       setError('Please fix your username before continuing.');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    const photoError = getPhotoUrlValidationError(form.photoUrl ?? '', photoUploading);
+    if (photoError) {
+      setError(photoError);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    const socialError = validateSocialUrls(form);
+    if (socialError) {
+      setError(socialError);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    if ((form.name?.trim() ?? '').length > 128) {
+      setError('Full name must be at most 128 characters.');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    if ((form.quote?.trim() ?? '').length > 280) {
+      setError('Quote must be at most 280 characters.');
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
@@ -420,42 +681,54 @@ export default function Onboard() {
       }
     }
 
+    if (normalizedUsername) {
+      const availRes = await checkUsernameAvailability(normalizedUsername);
+      if (!availRes.ok || !availRes.data?.available) {
+        const msg = availRes.data?.available === false
+          ? 'Username is already taken'
+          : (availRes.error || 'Invalid username');
+        setUsernameAvailable(false);
+        setUsernameError(msg);
+        setError('Please fix your username before continuing.');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+      setUsernameAvailable(true);
+      setUsernameError(null);
+    }
+
+    if (!initial) {
+      setError('Profile is still loading. Please try again.');
+      return;
+    }
+
+    const current = snapshotFromForm(form, normalizedUsername, markComplete || initial.onboarding_complete);
+    const payload = buildUpdatePayload(current, initial, markComplete);
+
+    if (Object.keys(payload).length === 0) {
+      if (markComplete) {
+        if (USE_MOCKS) setMockOnboardingComplete(true);
+        refetchProfile();
+        setDone(true);
+        setTimeout(() => navigate('/dashboard', { replace: true }), 1500);
+      } else {
+        setError('No changes to save.');
+      }
+      return;
+    }
+
     setSaving(true);
     try {
-      // Empty optional fields are sent as undefined (omitted) — never "" — so blank
-      // social URLs don't trip the backend URL validator. exclude_unset on the
-      // backend means omitted keys are simply skipped. region is intentionally not
-      // sent (no onboarding UI field for it yet — reserved for Day 2).
-      const payload: UpdateUserPayload = {
-        username: form.username?.trim() || undefined,
-        display_name: form.name?.trim() || undefined,
-        photo_url: form.photoUrl?.trim() || undefined,
-        bio: form.bio?.trim() || undefined,
-        city: form.city?.trim() || undefined,
-        phone: form.phone?.trim() || undefined,
-        dob: form.dob?.trim() || undefined,
-        country: form.country?.trim() || undefined,
-        quote: form.quote?.trim() || undefined,
-        occupation_role: form.occupationRole?.trim() || undefined,
-        network_size: form.networkSize?.trim() || undefined,
-        education: form.education?.trim() || undefined,
-        specialized_field: form.specializedField?.trim() || undefined,
-        manages_money_people_system: form.managesMoneyPeopleSystem?.trim() || undefined,
-        physical_intellectual_limitations: form.physicalIntellectualLimitations?.trim() || undefined,
-        ig_url: form.igUrl?.trim() || undefined,
-        tiktok_url: form.tiktokUrl?.trim() || undefined,
-        x_url: form.xUrl?.trim() || undefined,
-        linkedin_url: form.linkedinUrl?.trim() || undefined,
-        reddit_url: form.redditUrl?.trim() || undefined,
-        yt_url: form.ytUrl?.trim() || undefined,
-        fb_url: form.fbUrl?.trim() || undefined,
-        snapchat_url: form.snapchatUrl?.trim() || undefined,
-        ...(markComplete && { onboarding_complete: true }),
-      };
-
       const res = await updateCurrentUser(payload);
 
       if (!res.ok) throw new Error(res.error || 'Failed to save profile');
+
+      const nextInitial = snapshotFromForm(
+        form,
+        normalizedUsername,
+        markComplete ? true : initial.onboarding_complete,
+      );
+      setInitial(nextInitial);
 
       if (markComplete) {
         if (USE_MOCKS) setMockOnboardingComplete(true);
@@ -465,6 +738,7 @@ export default function Onboard() {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setSaving(false);
     }
@@ -565,7 +839,12 @@ export default function Onboard() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <FieldLabel>Full Name</FieldLabel>
-                  <TextField value={form.name ?? ''} onChange={v => set('name', v)} placeholder="Your full name" />
+                  <TextField
+                    value={form.name ?? ''}
+                    onChange={v => set('name', v)}
+                    placeholder="Your full name"
+                    maxLength={128}
+                  />
                 </div>
                 <div>
                   <FieldLabel>Username</FieldLabel>
@@ -664,14 +943,14 @@ export default function Onboard() {
               percent={credibility.breakdown.socialLinks.ratio * 100}
             >
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <SocialField icon={<span className="text-[11px] font-black">IG</span>} label="Instagram" value={form.igUrl ?? ''} onChange={v => set('igUrl', v)} placeholder="instagram.com/username" />
-                <SocialField icon={<span className="text-[11px] font-black">TT</span>} label="TikTok" value={form.tiktokUrl ?? ''} onChange={v => set('tiktokUrl', v)} placeholder="tiktok.com/@username" />
-                <SocialField icon={<span className="text-[11px] font-black">X</span>} label="X / Twitter" value={form.xUrl ?? ''} onChange={v => set('xUrl', v)} placeholder="x.com/username" />
-                <SocialField icon={<Link2 size={16} />} label="LinkedIn" value={form.linkedinUrl ?? ''} onChange={v => set('linkedinUrl', v)} placeholder="linkedin.com/in/username" />
-                <SocialField icon={<span className="text-[11px] font-black">R/</span>} label="Reddit" value={form.redditUrl ?? ''} onChange={v => set('redditUrl', v)} placeholder="reddit.com/u/username" />
-                <SocialField icon={<span className="text-[11px] font-black">YT</span>} label="YouTube" value={form.ytUrl ?? ''} onChange={v => set('ytUrl', v)} placeholder="youtube.com/@channel" />
-                <SocialField icon={<span className="text-[11px] font-black">FB</span>} label="Facebook" value={form.fbUrl ?? ''} onChange={v => set('fbUrl', v)} placeholder="facebook.com/username" />
-                <SocialField icon={<span className="text-[11px] font-black">SC</span>} label="Snapchat" value={form.snapchatUrl ?? ''} onChange={v => set('snapchatUrl', v)} placeholder="snapchat.com/add/username" />
+                <SocialField icon={<span className="text-[11px] font-black">IG</span>} label="Instagram" value={form.igUrl ?? ''} onChange={v => set('igUrl', v)} placeholder="@username" />
+                <SocialField icon={<span className="text-[11px] font-black">TT</span>} label="TikTok" value={form.tiktokUrl ?? ''} onChange={v => set('tiktokUrl', v)} placeholder="@username" />
+                <SocialField icon={<span className="text-[11px] font-black">X</span>} label="X / Twitter" value={form.xUrl ?? ''} onChange={v => set('xUrl', v)} placeholder="@username" />
+                <SocialField icon={<Link2 size={16} />} label="LinkedIn" value={form.linkedinUrl ?? ''} onChange={v => set('linkedinUrl', v)} placeholder="@username" />
+                <SocialField icon={<span className="text-[11px] font-black">R/</span>} label="Reddit" value={form.redditUrl ?? ''} onChange={v => set('redditUrl', v)} placeholder="@username" />
+                <SocialField icon={<span className="text-[11px] font-black">YT</span>} label="YouTube" value={form.ytUrl ?? ''} onChange={v => set('ytUrl', v)} placeholder="@username" />
+                <SocialField icon={<span className="text-[11px] font-black">FB</span>} label="Facebook" value={form.fbUrl ?? ''} onChange={v => set('fbUrl', v)} placeholder="@username" />
+                <SocialField icon={<span className="text-[11px] font-black">SC</span>} label="Snapchat" value={form.snapchatUrl ?? ''} onChange={v => set('snapchatUrl', v)} placeholder="@username" />
               </div>
             </SectionCard>
 
@@ -689,14 +968,18 @@ export default function Onboard() {
                   <FieldLabel>Profile Picture</FieldLabel>
                   <button
                     type="button"
+                    disabled={photoUploading}
                     onClick={() => photoInputRef.current?.click()}
                     className={cn(
                       'group relative h-36 w-36 rounded-2xl border-2 border-dashed bg-muted/30 transition-all',
                       'flex items-center justify-center overflow-hidden',
                       form.photoUrl ? 'border-primary/40' : 'border-border hover:border-primary/40',
+                      photoUploading && 'opacity-60',
                     )}
                   >
-                    {form.photoUrl ? (
+                    {photoUploading ? (
+                      <Loader2 size={24} className="animate-spin text-primary" />
+                    ) : form.photoUrl ? (
                       <>
                         <img src={form.photoUrl} alt="Profile preview" className="h-full w-full object-cover" />
                         <div className="absolute inset-0 hidden items-center justify-center bg-black/40 group-hover:flex">
@@ -713,11 +996,11 @@ export default function Onboard() {
                   <input
                     ref={photoInputRef}
                     type="file"
-                    accept="image/*"
+                    accept={IMAGE_ACCEPT}
                     className="hidden"
                     onChange={e => handlePhotoUpload(e.target.files?.[0] ?? null)}
                   />
-                  <p className="mt-1.5 text-[10px] text-muted-foreground">JPG / PNG · Max ~5MB</p>
+                  <p className="mt-1.5 text-[10px] text-muted-foreground">JPG / PNG / WebP / GIF · Max 10MB</p>
                 </div>
 
                 <div className="space-y-4">
@@ -739,7 +1022,13 @@ export default function Onboard() {
                         <QuoteIcon size={11} /> Your Quote
                       </span>
                     </FieldLabel>
-                    <TextField value={form.quote ?? ''} onChange={v => set('quote', v)} placeholder="A line that represents you." />
+                    <TextField
+                      value={form.quote ?? ''}
+                      onChange={v => set('quote', v)}
+                      placeholder="A line that represents you."
+                      maxLength={280}
+                    />
+                    <p className="mt-1 text-[10px] text-muted-foreground tabular-nums">{(form.quote ?? '').length}/280</p>
                   </div>
                 </div>
               </div>
@@ -821,20 +1110,22 @@ export default function Onboard() {
               <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-3">
                 <button
                   type="button"
-                  disabled={saving}
+                  disabled={saving || photoUploading}
                   onClick={() => handleSave({ markComplete: false })}
                   className="rounded-full border border-border bg-background px-5 py-3 text-[13px] font-bold transition hover:bg-muted disabled:opacity-50"
                 >
-                  Save Draft
+                  {photoUploading ? 'Uploading photo…' : 'Save Draft'}
                 </button>
                 <button
                   type="button"
-                  disabled={saving}
+                  disabled={saving || photoUploading}
                   onClick={() => handleSave({ markComplete: true })}
                   className="flex-1 inline-flex items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-[14px] font-black text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
                 >
                   {saving ? (
                     <><Loader2 size={16} className="animate-spin" /> Saving…</>
+                  ) : photoUploading ? (
+                    <><Loader2 size={16} className="animate-spin" /> Uploading photo…</>
                   ) : (
                     <>Complete Profile <Sparkles size={14} /></>
                   )}

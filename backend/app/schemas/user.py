@@ -126,9 +126,15 @@ class UserUpdateRequest(BaseModel):
             raise ValueError("Username cannot have consecutive special characters")
         return value
 
+    @field_validator("photo_url", "website_url")
+    @classmethod
+    def validate_http_fields(cls, value: str | None) -> str | None:
+        # Allow None and "" so a previously-set URL can be explicitly cleared.
+        if value is None or value == "":
+            return value
+        return validate_http_url(value)
+
     @field_validator(
-        "photo_url",
-        "website_url",
         "ig_url",
         "tiktok_url",
         "x_url",
@@ -139,11 +145,13 @@ class UserUpdateRequest(BaseModel):
         "snapchat_url",
     )
     @classmethod
-    def validate_http_fields(cls, value: str | None) -> str | None:
-        # Allow None and "" so a previously-set URL can be explicitly cleared.
+    def validate_social_handle_fields(cls, value: str | None) -> str | None:
         if value is None or value == "":
             return value
-        return validate_http_url(value)
+        trimmed = value.strip()
+        if not trimmed.startswith("@"):
+            raise ValueError("Social handle must start with @")
+        return trimmed
 
 
 class UsernameAvailabilityResponse(BaseModel):
