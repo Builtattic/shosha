@@ -7,7 +7,7 @@
 //   Basic Info        25
 //   Profile Questions 25
 //   Social Links      10  (gate: at least 4 of 8)
-//   Profile Extras    15  (photo + bio + quote, 5 each)
+//   Profile Extras    20  (photo + bio + quote)
 //   Verification      20  (trustBadge boolean)
 //
 // Max from completion alone: 80%. The remaining 20% requires verification.
@@ -16,7 +16,7 @@ export const CRED_SECTIONS = {
   basicInfo:        { weight: 25, label: 'Basic Info' },
   questions:        { weight: 25, label: 'Questions' },
   socialLinks:      { weight: 10, label: 'Social Links' },
-  profileExtras:    { weight: 15, label: 'Profile Extras' },
+  profileExtras:    { weight: 20, label: 'Profile Extras' },
   verification:     { weight: 20, label: 'Verification' },
 } as const;
 

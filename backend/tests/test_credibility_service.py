@@ -87,15 +87,15 @@ def test_calc_credibility_minimal_user_low_score():
 
 def test_calc_credibility_full_user_no_badge_near_eighty():
     result = calc_credibility(_full_user_no_badge())
-    # Completion sections: 25+25+10+15 = 75 (verification excluded)
-    assert result.total == 75
+    # Completion sections: 25+25+10+20 = 80 (verification excluded)
+    assert result.total == 80
 
 
 def test_calc_credibility_trust_badge_adds_twenty():
     user = _full_user_no_badge()
     user.trust_badge = True
     result = calc_credibility(user)
-    assert result.total == 95
+    assert result.total == 100
 
 
 def test_calc_credibility_from_input_social_gate():

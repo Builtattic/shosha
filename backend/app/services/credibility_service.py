@@ -14,7 +14,7 @@ CRED_SECTIONS = {
     "basic_info": {"weight": 25, "label": "Basic Info"},
     "questions": {"weight": 25, "label": "Questions"},
     "social_links": {"weight": 10, "label": "Social Links"},
-    "profile_extras": {"weight": 15, "label": "Profile Extras"},
+    "profile_extras": {"weight": 20, "label": "Profile Extras"},
     "verification": {"weight": 20, "label": "Verification"},
 }
 
